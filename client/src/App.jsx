@@ -9,7 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/parent" element={<ParentDashboard />} />
-        <Route path="/kid" element={<KidHome />} />
+        <Route path="/kids" element={<KidHome />} />
       </Routes>
     </BrowserRouter>
   )
