@@ -1,4 +1,6 @@
 import searchRouter from './routes/search.js'
+import historyRouter from './routes/history.js'
+import profilesRouter from './routes/profiles.js'
 import analyzeRouter from './routes/analyze.js'
 import express from 'express'
 import cors from 'cors'
@@ -13,6 +15,8 @@ app.use(cors())
 app.use(express.json())
 app.use('/search', searchRouter)
 app.use('/analyze', analyzeRouter)
+app.use('/history', historyRouter)
+app.use('/profiles', profilesRouter)
 app.get('/', (req, res) => {
   res.json({ message: 'KidSafe 서버 작동 중! 🛡️' })
 })
