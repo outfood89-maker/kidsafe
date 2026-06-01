@@ -31,13 +31,11 @@ const TIME_OPTIONS = [
   { label: "2시간", value: 120 },
 ];
 
-// 성별에 따라 헤어스타일 파라미터를 다르게 줘서 남/여 구분
 const getAvatarUrl = (seed, gender) => {
   const hairStyle =
     gender === "여자"
       ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
       : "short01,short02,short03,short04,short05,short06,short07,short08";
-
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
 };
 
@@ -46,6 +44,9 @@ export default function ParentDashboard() {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // 시청 기록 탭 — "전체" 또는 profileId
+  const [activeTab, setActiveTab] = useState("전체");
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -78,9 +79,15 @@ export default function ParentDashboard() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
+
+  // 탭 기준으로 시청 기록 필터링
+  // "전체" 탭이면 전체 기록, 프로필 탭이면 해당 profileId 기록만
+  const filteredHistory =
+    activeTab === "전체"
+      ? history
+      : history.filter((item) => item.profileId === activeTab);
 
   const handleSaveSettings = () => {
     localStorage.setItem("kidAge", selectedAge);
@@ -94,7 +101,6 @@ export default function ParentDashboard() {
       setCreateError("이름을 입력해주세요!");
       return;
     }
-
     try {
       const created = await createProfile({
         name: newName.trim(),
@@ -102,7 +108,6 @@ export default function ParentDashboard() {
         gender: newGender,
         avatarSeed: newName.trim(),
       });
-
       setProfiles((prev) => [...prev, created]);
       setNewName("");
       setNewAge(7);
@@ -116,10 +121,11 @@ export default function ParentDashboard() {
 
   const handleDeleteProfile = async (profileId) => {
     if (!window.confirm("정말 삭제할까요?")) return;
-
     try {
       await deleteProfile(profileId);
       setProfiles((prev) => prev.filter((p) => p.id !== profileId));
+      // 삭제된 프로필 탭이 선택되어 있으면 전체로 초기화
+      if (activeTab === profileId) setActiveTab("전체");
     } catch (err) {
       alert("프로필 삭제에 실패했어요.");
     }
@@ -137,8 +143,7 @@ export default function ParentDashboard() {
   const averageScore =
     history.length > 0
       ? Math.round(
-          history.reduce((sum, v) => sum + (v.totalScore || 0), 0) /
-            history.length
+          history.reduce((sum, v) => sum + (v.totalScore || 0), 0) / history.length
         )
       : 0;
 
@@ -167,18 +172,9 @@ export default function ParentDashboard() {
   ];
 
   const chartData = [
-    {
-      category: "안전 (90+)",
-      count: history.filter((v) => v.totalScore >= 90).length,
-    },
-    {
-      category: "주의 (70-89)",
-      count: history.filter((v) => v.totalScore >= 70 && v.totalScore < 90).length,
-    },
-    {
-      category: "위험 (~69)",
-      count: history.filter((v) => v.totalScore < 70).length,
-    },
+    { category: "안전 (90+)", count: history.filter((v) => v.totalScore >= 90).length },
+    { category: "주의 (70-89)", count: history.filter((v) => v.totalScore >= 70 && v.totalScore < 90).length },
+    { category: "위험 (~69)", count: history.filter((v) => v.totalScore < 70).length },
   ];
 
   return (
@@ -187,9 +183,7 @@ export default function ParentDashboard() {
 
         <section className="mb-12">
           <h1 className="text-4xl font-extrabold text-gray-900">부모 대시보드</h1>
-          <p className="mt-3 text-lg text-gray-600">
-            아이의 콘텐츠 시청 기록과 안전도를 확인하세요.
-          </p>
+          <p className="mt-3 text-lg text-gray-600">아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
         </section>
 
         {loading && <p className="text-center text-gray-500">불러오는 중...</p>}
@@ -240,13 +234,10 @@ export default function ParentDashboard() {
               )}
             </div>
 
-            {/* 프로필 생성 폼 */}
             {showCreateForm && (
               <div className="mb-8 rounded-2xl border border-pink-200 bg-slate-50 p-6">
                 <h3 className="mb-6 text-xl font-bold text-gray-800">새 프로필 만들기</h3>
-
                 <div className="grid gap-6 md:grid-cols-2">
-                  {/* 이름 입력 + 아바타 미리보기 */}
                   <div>
                     <label className="mb-2 block text-sm font-bold text-gray-600">이름</label>
                     <input
@@ -256,7 +247,6 @@ export default function ParentDashboard() {
                       onChange={(e) => setNewName(e.target.value)}
                       className="w-full rounded-2xl border-2 border-gray-200 px-4 py-3 font-semibold text-gray-700 outline-none focus:border-pink-400"
                     />
-                    {/* 이름 입력 + 성별 선택 시 아바타 미리보기 자동 생성 */}
                     {newName.trim() && (
                       <div className="mt-4 flex items-center gap-4">
                         <img
@@ -266,18 +256,12 @@ export default function ParentDashboard() {
                         />
                         <div>
                           <p className="text-sm font-bold text-gray-500">캐릭터 미리보기</p>
-                          <p className="mt-1 text-lg font-extrabold text-pink-500">
-                            {newName}의 캐릭터
-                          </p>
-                          <p className="mt-1 text-sm text-gray-400">
-                            성별을 바꾸면 캐릭터도 바뀌어요!
-                          </p>
+                          <p className="mt-1 text-lg font-extrabold text-pink-500">{newName}의 캐릭터</p>
+                          <p className="mt-1 text-sm text-gray-400">성별을 바꾸면 캐릭터도 바뀌어요!</p>
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* 나이 + 성별 */}
                   <div className="flex flex-col gap-6">
                     <div>
                       <label className="mb-2 block text-sm font-bold text-gray-600">나이</label>
@@ -287,9 +271,7 @@ export default function ParentDashboard() {
                             key={age}
                             onClick={() => setNewAge(age)}
                             className={`rounded-2xl px-4 py-3 font-bold transition ${
-                              newAge === age
-                                ? "bg-pink-500 text-white"
-                                : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
+                              newAge === age ? "bg-pink-500 text-white" : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
                             }`}
                           >
                             {age}세
@@ -297,7 +279,6 @@ export default function ParentDashboard() {
                         ))}
                       </div>
                     </div>
-
                     <div>
                       <label className="mb-2 block text-sm font-bold text-gray-600">성별</label>
                       <div className="flex gap-3">
@@ -306,9 +287,7 @@ export default function ParentDashboard() {
                             key={g}
                             onClick={() => setNewGender(g)}
                             className={`rounded-2xl px-6 py-3 font-bold transition ${
-                              newGender === g
-                                ? "bg-pink-500 text-white"
-                                : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
+                              newGender === g ? "bg-pink-500 text-white" : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
                             }`}
                           >
                             {g}
@@ -318,24 +297,13 @@ export default function ParentDashboard() {
                     </div>
                   </div>
                 </div>
-
-                {createError && (
-                  <p className="mt-4 text-sm font-bold text-red-500">{createError}</p>
-                )}
-
+                {createError && <p className="mt-4 text-sm font-bold text-red-500">{createError}</p>}
                 <div className="mt-6 flex gap-3">
-                  <button
-                    onClick={handleCreateProfile}
-                    className="rounded-2xl bg-pink-500 px-6 py-3 font-bold text-white transition hover:bg-pink-600"
-                  >
+                  <button onClick={handleCreateProfile} className="rounded-2xl bg-pink-500 px-6 py-3 font-bold text-white transition hover:bg-pink-600">
                     저장하기
                   </button>
                   <button
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setCreateError("");
-                      setNewName("");
-                    }}
+                    onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }}
                     className="rounded-2xl bg-gray-200 px-6 py-3 font-bold text-gray-600 transition hover:bg-gray-300"
                   >
                     취소
@@ -344,25 +312,18 @@ export default function ParentDashboard() {
               </div>
             )}
 
-            {/* 프로필 목록 */}
             {profiles.length === 0 ? (
-              <p className="py-10 text-center text-gray-400">
-                아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!
-              </p>
+              <p className="py-10 text-center text-gray-400">아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-4">
                 {profiles.map((profile) => (
-                  <div
-                    key={profile.id}
-                    className="relative flex flex-col items-center rounded-3xl bg-slate-50 p-5 shadow-md"
-                  >
+                  <div key={profile.id} className="relative flex flex-col items-center rounded-3xl bg-slate-50 p-5 shadow-md">
                     <button
                       onClick={() => handleDeleteProfile(profile.id)}
                       className="absolute right-3 top-3 rounded-full bg-red-100 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
                     >
                       <FaTrash className="text-xs" />
                     </button>
-                    {/* 프로필 목록에서도 성별 정보로 아바타 표시 */}
                     <img
                       src={getAvatarUrl(profile.avatarSeed, profile.gender)}
                       alt={profile.name}
@@ -384,7 +345,6 @@ export default function ParentDashboard() {
               <FaCog className="text-2xl text-purple-600" />
               <h2 className="text-3xl font-extrabold text-gray-900">자녀 설정</h2>
             </div>
-
             <div className="grid gap-10 md:grid-cols-2">
               <div>
                 <div className="mb-4 flex items-center gap-2">
@@ -398,9 +358,7 @@ export default function ParentDashboard() {
                       key={age}
                       onClick={() => setSelectedAge(age)}
                       className={`rounded-2xl px-6 py-3 text-lg font-bold transition duration-200 ${
-                        selectedAge === age
-                          ? "bg-purple-500 text-white shadow-lg"
-                          : "bg-slate-100 text-gray-600 hover:bg-purple-100"
+                        selectedAge === age ? "bg-purple-500 text-white shadow-lg" : "bg-slate-100 text-gray-600 hover:bg-purple-100"
                       }`}
                     >
                       {age}세
@@ -408,7 +366,6 @@ export default function ParentDashboard() {
                   ))}
                 </div>
               </div>
-
               <div>
                 <div className="mb-4 flex items-center gap-2">
                   <FaClock className="text-xl text-blue-500" />
@@ -421,9 +378,7 @@ export default function ParentDashboard() {
                       key={option.value}
                       onClick={() => setTimeLimit(option.value)}
                       className={`rounded-2xl px-6 py-3 text-lg font-bold transition duration-200 ${
-                        timeLimit === option.value
-                          ? "bg-blue-500 text-white shadow-lg"
-                          : "bg-slate-100 text-gray-600 hover:bg-blue-100"
+                        timeLimit === option.value ? "bg-blue-500 text-white shadow-lg" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                       }`}
                     >
                       {option.label}
@@ -432,12 +387,8 @@ export default function ParentDashboard() {
                 </div>
               </div>
             </div>
-
             <div className="mt-10 flex items-center gap-4">
-              <button
-                onClick={handleSaveSettings}
-                className="rounded-2xl bg-purple-500 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-purple-600"
-              >
+              <button onClick={handleSaveSettings} className="rounded-2xl bg-purple-500 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-purple-600">
                 설정 저장
               </button>
               {saved && <p className="text-lg font-bold text-green-500">✅ 저장됐어요!</p>}
@@ -445,21 +396,59 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {/* 시청 기록 */}
+        {/* 시청 기록 — 프로필 탭 필터 */}
         {!loading && (
           <section className="mt-14 rounded-3xl bg-white p-8 shadow-xl">
-            <div className="mb-8 flex items-center gap-3">
+            <div className="mb-6 flex items-center gap-3">
               <FaHistory className="text-2xl text-blue-600" />
               <h2 className="text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
             </div>
 
-            {history.length === 0 ? (
+            {/* 프로필 탭 */}
+            <div className="mb-6 flex flex-wrap gap-3">
+              {/* 전체 탭 */}
+              <button
+                onClick={() => setActiveTab("전체")}
+                className={`rounded-2xl px-5 py-2 font-bold transition ${
+                  activeTab === "전체"
+                    ? "bg-blue-500 text-white"
+                    : "bg-slate-100 text-gray-600 hover:bg-blue-100"
+                }`}
+              >
+                전체
+              </button>
+
+              {/* 프로필별 탭 */}
+              {profiles.map((profile) => (
+                <button
+                  key={profile.id}
+                  onClick={() => setActiveTab(profile.id)}
+                  className={`flex items-center gap-2 rounded-2xl px-5 py-2 font-bold transition ${
+                    activeTab === profile.id
+                      ? "bg-blue-500 text-white"
+                      : "bg-slate-100 text-gray-600 hover:bg-blue-100"
+                  }`}
+                >
+                  <img
+                    src={getAvatarUrl(profile.avatarSeed, profile.gender)}
+                    alt={profile.name}
+                    className="h-6 w-6 rounded-full bg-white"
+                  />
+                  {profile.name}
+                </button>
+              ))}
+            </div>
+
+            {/* 기록 목록 */}
+            {filteredHistory.length === 0 ? (
               <p className="py-10 text-center text-gray-400">
-                아직 시청 기록이 없어요. 아이 홈에서 영상을 클릭해보세요!
+                {activeTab === "전체"
+                  ? "아직 시청 기록이 없어요."
+                  : "이 프로필의 시청 기록이 없어요."}
               </p>
             ) : (
               <div className="space-y-5">
-                {history.map((item, index) => {
+                {filteredHistory.map((item, index) => {
                   const { grade, color } = getSafetyGrade(item.totalScore);
                   const badgeColor =
                     color === "green" ? "bg-green-500"
@@ -472,11 +461,7 @@ export default function ParentDashboard() {
                       className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-slate-50 p-5 md:flex-row md:items-center md:justify-between"
                     >
                       <div className="flex items-center gap-4">
-                        <img
-                          src={item.thumbnail}
-                          alt={item.title}
-                          className="h-16 w-28 rounded-xl object-cover"
-                        />
+                        <img src={item.thumbnail} alt={item.title} className="h-16 w-28 rounded-xl object-cover" />
                         <div>
                           <h3 className="line-clamp-1 text-lg font-bold text-gray-900">{item.title}</h3>
                           <p className="mt-1 text-sm text-gray-500">{item.channelTitle}</p>
