@@ -5,32 +5,62 @@ import {
   FaRobot,
   FaPlayCircle,
   FaSpinner,
+  FaExclamationTriangle,
 } from "react-icons/fa";
-import { searchVideos, analyzeVideo, saveHistory } from "../utils/api";
-import { getSafetyGrade } from "../utils/safetyFilter";
+import { searchVideos, analyzeVideo, saveHistory, getHistory } from "../utils/api";
+import { getSafetyGrade, filterByAge } from "../utils/safetyFilter";
 
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // localStorage에서 선택된 프로필 불러오기
   const [selectedProfile, setSelectedProfile] = useState(null);
+  const [timeLimitReached, setTimeLimitReached] = useState(false);
+  const [todayMinutes, setTodayMinutes] = useState(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
     if (stored) {
-      setSelectedProfile(JSON.parse(stored));
+      const profile = JSON.parse(stored);
+      setSelectedProfile(profile);
+      if (profile.timeLimit) {
+        checkTimeLimit(profile);
+      }
     }
   }, []);
 
-  // DiceBear 아바타 URL 생성
-  const getAvatarUrl = (seed) => {
-    return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
+  // 오늘 시청 시간 체크
+  const checkTimeLimit = async (profile) => {
+    try {
+      const history = await getHistory();
+
+      const todayHistory = history.filter((v) => {
+        const isToday =
+          new Date(v.watchedAt).toDateString() === new Date().toDateString();
+        const isThisProfile = v.profileId === profile.id;
+        return isToday && isThisProfile;
+      });
+
+      const minutes = todayHistory.length * 10;
+      setTodayMinutes(minutes);
+
+      if (minutes >= profile.timeLimit) {
+        setTimeLimitReached(true);
+      }
+    } catch (err) {
+      console.error("시청 시간 체크 실패:", err);
+    }
   };
 
-  // 추천 콘텐츠 더미 데이터
+  const getAvatarUrl = (seed, gender) => {
+    const hairStyle =
+      gender === "여자"
+        ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
+        : "short01,short02,short03,short04,short05,short06,short07,short08";
+    return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
+  };
+
   const recommendedContents = [
     {
       id: 1,
@@ -58,7 +88,6 @@ export default function KidHome() {
     },
   ];
 
-  // 검색 함수
   const handleSearch = async () => {
     const trimmedKeyword = searchKeyword.trim();
 
@@ -81,7 +110,14 @@ export default function KidHome() {
         })
       );
 
-      setVideos(analyzedVideos);
+      const age = selectedProfile?.age || null;
+      const filteredVideos = age ? filterByAge(analyzedVideos, age) : analyzedVideos;
+
+      if (filteredVideos.length === 0) {
+        setError(`${age}세 기준에 맞는 영상이 없어요. 다른 키워드로 검색해봐요!`);
+      } else {
+        setVideos(filteredVideos);
+      }
     } catch (err) {
       setError("검색 중 오류가 발생했어요. 다시 시도해줘요!");
     } finally {
@@ -89,7 +125,6 @@ export default function KidHome() {
     }
   };
 
-  // 영상 클릭 시 시청 기록 저장 후 YouTube로 이동
   const handleVideoClick = async (video) => {
     try {
       await saveHistory({
@@ -99,17 +134,19 @@ export default function KidHome() {
         thumbnail: video.thumbnail,
         totalScore: video.totalScore,
         summary: video.summary,
-        // 선택된 프로필 ID도 함께 저장
         profileId: selectedProfile?.id || null,
       });
+
+      // 영상 클릭 후 시청 시간 다시 체크
+      if (selectedProfile?.timeLimit) {
+        await checkTimeLimit(selectedProfile);
+      }
     } catch (err) {
       console.error("시청 기록 저장 실패:", err);
     }
-
     window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank");
   };
 
-  // 안전 뱃지 색상
   const getBadgeStyle = (color) => {
     if (color === "green") return "bg-green-500";
     if (color === "yellow") return "bg-yellow-500";
@@ -120,13 +157,27 @@ export default function KidHome() {
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
 
+        {/* 시청 시간 초과 경고 배너 */}
+        {timeLimitReached && (
+          <div className="mb-8 flex items-center gap-4 rounded-3xl bg-red-100 px-6 py-5 shadow-lg">
+            <FaExclamationTriangle className="text-3xl text-red-500" />
+            <div>
+              <p className="text-lg font-extrabold text-red-600">
+                오늘 시청 시간이 꽉 찼어요! ⏰
+              </p>
+              <p className="text-sm text-red-400">
+                오늘은 약 {todayMinutes}분 봤어요. 부모님이 설정한 {selectedProfile?.timeLimit}분을 넘었어요.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 상단 캐릭터 + 인사말 */}
         <section className="flex flex-col items-center justify-center text-center">
-          {/* 프로필이 있으면 DiceBear 아바타, 없으면 로봇 아이콘 */}
           {selectedProfile ? (
             <div className="h-36 w-36 overflow-hidden rounded-full bg-white shadow-2xl">
               <img
-                src={getAvatarUrl(selectedProfile.avatarSeed)}
+                src={getAvatarUrl(selectedProfile.avatarSeed, selectedProfile.gender)}
                 alt={selectedProfile.name}
                 className="h-full w-full object-cover"
               />
@@ -137,12 +188,15 @@ export default function KidHome() {
             </div>
           )}
 
-          {/* 프로필 이름으로 인사 */}
           <h1 className="mt-8 text-4xl font-extrabold text-gray-800 md:text-5xl">
-            {selectedProfile
-              ? `안녕, ${selectedProfile.name}아! 👋`
-              : "안녕 친구야! 👋"}
+            {selectedProfile ? `안녕, ${selectedProfile.name}아! 👋` : "안녕 친구야! 👋"}
           </h1>
+
+          {selectedProfile && (
+            <p className="mt-2 text-sm font-bold text-purple-500">
+              {selectedProfile.age}세 기준으로 안전한 영상만 보여줄게요!
+            </p>
+          )}
 
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
             KidSafe AI 친구가 안전하고 재미있는 영상을 추천해줄게!
@@ -191,41 +245,25 @@ export default function KidHome() {
         {/* 검색 결과 영역 */}
         {videos.length > 0 && (
           <section className="mt-16">
-            <h2 className="mb-8 text-3xl font-extrabold text-gray-800">
-              🔍 검색 결과
-            </h2>
+            <h2 className="mb-8 text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
             <div className="grid gap-8 md:grid-cols-3">
               {videos.map((video) => {
                 const { grade, color } = getSafetyGrade(video.totalScore);
-
                 return (
                   <div
                     key={video.videoId}
                     className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
                   >
                     <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={video.thumbnail}
-                        alt={video.title}
-                        className="h-full w-full object-cover"
-                      />
-                      <div
-                        className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}
-                      >
+                      <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
+                      <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}>
                         {grade} {video.totalScore}점
                       </div>
                     </div>
-
                     <div className="p-5">
-                      <p className="text-sm font-bold text-pink-500">
-                        {video.channelTitle}
-                      </p>
-                      <h3 className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800">
-                        {video.title}
-                      </h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-gray-500">
-                        {video.summary}
-                      </p>
+                      <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
+                      <h3 className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800">{video.title}</h3>
+                      <p className="mt-2 line-clamp-2 text-sm text-gray-500">{video.summary}</p>
                       <button
                         onClick={() => handleVideoClick(video)}
                         className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-500 px-5 py-3 text-base font-bold text-white transition duration-300 hover:bg-sky-600"
@@ -241,14 +279,12 @@ export default function KidHome() {
           </section>
         )}
 
-        {/* 추천 콘텐츠 — 검색 결과 없을 때만 표시 */}
+        {/* 추천 콘텐츠 */}
         {videos.length === 0 && !loading && (
           <section className="mt-20">
             <div className="mb-10 flex items-center gap-3">
               <FaStar className="text-3xl text-yellow-500" />
-              <h2 className="text-3xl font-extrabold text-gray-800">
-                오늘의 추천 콘텐츠
-              </h2>
+              <h2 className="text-3xl font-extrabold text-gray-800">오늘의 추천 콘텐츠</h2>
             </div>
             <div className="grid gap-8 md:grid-cols-3">
               {recommendedContents.map((content) => (
@@ -257,22 +293,14 @@ export default function KidHome() {
                   className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
                 >
                   <div className="relative h-56 overflow-hidden">
-                    <img
-                      src={content.thumbnail}
-                      alt={content.title}
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={content.thumbnail} alt={content.title} className="h-full w-full object-cover" />
                     <div className="absolute left-4 top-4 rounded-full bg-green-500 px-4 py-2 text-sm font-bold text-white shadow-md">
                       {content.safetyLevel}
                     </div>
                   </div>
                   <div className="p-6">
-                    <p className="text-sm font-bold text-pink-500">
-                      {content.category}
-                    </p>
-                    <h3 className="mt-3 text-2xl font-extrabold text-gray-800">
-                      {content.title}
-                    </h3>
+                    <p className="text-sm font-bold text-pink-500">{content.category}</p>
+                    <h3 className="mt-3 text-2xl font-extrabold text-gray-800">{content.title}</h3>
                     <button className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-500 px-5 py-4 text-lg font-bold text-white transition duration-300 hover:bg-sky-600">
                       <FaPlayCircle />
                       영상 보러가기

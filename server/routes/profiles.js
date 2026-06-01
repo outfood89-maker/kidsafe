@@ -35,7 +35,7 @@ router.get('/', (req, res) => {
 
 // 프로필 생성 (POST /profiles)
 router.post('/', (req, res) => {
-  const { name, age, gender, avatarSeed } = req.body
+  const { name, age, gender, avatarSeed, timeLimit} = req.body
 
   if (!name || !age || !gender || !avatarSeed) {
     return res.status(400).json({ error: '모든 항목을 입력해주세요' })
@@ -55,6 +55,7 @@ router.post('/', (req, res) => {
       age: Number(age),
       gender,
       avatarSeed, // DiceBear 아바타 시드값 (이름 기반)
+      timeLimit: timeLimit ? Number(timeLimit) : null,  // ← 추가
       createdAt: new Date().toISOString(),
     }
 
@@ -70,7 +71,7 @@ router.post('/', (req, res) => {
 // 프로필 수정 (PUT /profiles/:id)
 router.put('/:id', (req, res) => {
   const { id } = req.params
-  const { name, age, gender, avatarSeed } = req.body
+  const { name, age, gender, avatarSeed , timeLimit } = req.body
 
   try {
     const profiles = readProfiles()
@@ -87,6 +88,7 @@ router.put('/:id', (req, res) => {
       age: age ? Number(age) : profiles[index].age,
       gender: gender || profiles[index].gender,
       avatarSeed: avatarSeed || profiles[index].avatarSeed,
+      timeLimit: timeLimit !== undefined ? Number(timeLimit) : profiles[index].timeLimit,
     }
 
     writeProfiles(profiles)

@@ -4,7 +4,6 @@ import {
   FaShieldAlt,
   FaVideo,
   FaHistory,
-  FaCog,
   FaChild,
   FaPlus,
   FaTrash,
@@ -20,7 +19,7 @@ import {
   Tooltip,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 
 const AGE_OPTIONS = [3, 5, 7, 10];
@@ -28,7 +27,6 @@ const AGE_OPTIONS = [3, 5, 7, 10];
 const TIME_OPTIONS = [
   { label: "30분", value: 30 },
   { label: "1시간", value: 60 },
-  { label: "2시간", value: 120 },
 ];
 
 const getAvatarUrl = (seed, gender) => {
@@ -45,24 +43,20 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // 시청 기록 탭 — "전체" 또는 profileId
+  // 시청 기록 탭
   const [activeTab, setActiveTab] = useState("전체");
 
+  // 프로필 생성 폼
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState(7);
   const [newGender, setNewGender] = useState("남자");
   const [createError, setCreateError] = useState("");
 
-  const [selectedAge, setSelectedAge] = useState(() => {
-    return Number(localStorage.getItem("kidAge")) || 7;
-  });
-
-  const [timeLimit, setTimeLimit] = useState(() => {
-    return Number(localStorage.getItem("timeLimit")) || 60;
-  });
-
-  const [saved, setSaved] = useState(false);
+  // 시청 시간 설정 중인 프로필 ID
+  const [editingTimeLimitId, setEditingTimeLimitId] = useState(null);
+  // 직접 입력 시간값
+  const [customMinutes, setCustomMinutes] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,19 +76,10 @@ export default function ParentDashboard() {
     fetchData();
   }, []);
 
-  // 탭 기준으로 시청 기록 필터링
-  // "전체" 탭이면 전체 기록, 프로필 탭이면 해당 profileId 기록만
   const filteredHistory =
     activeTab === "전체"
       ? history
       : history.filter((item) => item.profileId === activeTab);
-
-  const handleSaveSettings = () => {
-    localStorage.setItem("kidAge", selectedAge);
-    localStorage.setItem("timeLimit", timeLimit);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   const handleCreateProfile = async () => {
     if (!newName.trim()) {
@@ -107,6 +92,7 @@ export default function ParentDashboard() {
         age: newAge,
         gender: newGender,
         avatarSeed: newName.trim(),
+        timeLimit: 60, // 기본값 1시간
       });
       setProfiles((prev) => [...prev, created]);
       setNewName("");
@@ -124,10 +110,23 @@ export default function ParentDashboard() {
     try {
       await deleteProfile(profileId);
       setProfiles((prev) => prev.filter((p) => p.id !== profileId));
-      // 삭제된 프로필 탭이 선택되어 있으면 전체로 초기화
       if (activeTab === profileId) setActiveTab("전체");
     } catch (err) {
       alert("프로필 삭제에 실패했어요.");
+    }
+  };
+
+  // 프로필 시청 시간 저장
+  const handleSaveTimeLimit = async (profileId, timeLimit) => {
+    try {
+      const updated = await updateProfile(profileId, { timeLimit });
+      // 업데이트된 프로필로 목록 갱신
+      setProfiles((prev) =>
+        prev.map((p) => (p.id === profileId ? { ...p, timeLimit } : p))
+      );
+      setEditingTimeLimitId(null);
+    } catch (err) {
+      alert("시청 시간 설정에 실패했어요.");
     }
   };
 
@@ -138,7 +137,7 @@ export default function ParentDashboard() {
   });
 
   const estimatedMinutes = todayHistory.length * 10;
-  const timeLimitReached = estimatedMinutes >= timeLimit;
+  const timeLimitReached = false;
 
   const averageScore =
     history.length > 0
@@ -202,9 +201,6 @@ export default function ParentDashboard() {
                   <div>
                     <p className="text-base font-semibold text-gray-500">{item.title}</p>
                     <h2 className="mt-3 text-4xl font-extrabold text-gray-900">{item.value}</h2>
-                    {item.id === 3 && timeLimitReached && (
-                      <p className="mt-2 text-sm font-bold text-red-500">⚠️ 시청 시간 초과!</p>
-                    )}
                   </div>
                   <div className={`flex h-20 w-20 items-center justify-center rounded-3xl ${item.bgColor}`}>
                     {item.icon}
@@ -234,6 +230,7 @@ export default function ParentDashboard() {
               )}
             </div>
 
+            {/* 프로필 생성 폼 */}
             {showCreateForm && (
               <div className="mb-8 rounded-2xl border border-pink-200 bg-slate-50 p-6">
                 <h3 className="mb-6 text-xl font-bold text-gray-800">새 프로필 만들기</h3>
@@ -312,18 +309,22 @@ export default function ParentDashboard() {
               </div>
             )}
 
+            {/* 프로필 목록 */}
             {profiles.length === 0 ? (
               <p className="py-10 text-center text-gray-400">아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-4">
                 {profiles.map((profile) => (
                   <div key={profile.id} className="relative flex flex-col items-center rounded-3xl bg-slate-50 p-5 shadow-md">
+                    {/* 삭제 버튼 */}
                     <button
                       onClick={() => handleDeleteProfile(profile.id)}
                       className="absolute right-3 top-3 rounded-full bg-red-100 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
                     >
                       <FaTrash className="text-xs" />
                     </button>
+
+                    {/* 아바타 */}
                     <img
                       src={getAvatarUrl(profile.avatarSeed, profile.gender)}
                       alt={profile.name}
@@ -331,68 +332,71 @@ export default function ParentDashboard() {
                     />
                     <p className="mt-3 text-lg font-extrabold text-gray-800">{profile.name}</p>
                     <p className="text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
+
+                    {/* 시청 시간 설정 */}
+                    <div className="mt-4 w-full">
+                      {editingTimeLimitId === profile.id ? (
+                        // 시청 시간 선택 버튼
+                        <div className="flex flex-col gap-2">
+                          {TIME_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => handleSaveTimeLimit(profile.id, option.value)}
+                              className={`rounded-xl py-2 text-sm font-bold transition ${
+                                profile.timeLimit === option.value
+                                  ? "bg-blue-500 text-white"
+                                  : "bg-white text-gray-600 border border-gray-200 hover:bg-blue-50"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                          {/* 직접 입력 */}
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              placeholder="분 입력"
+                              value={customMinutes}
+                              onChange={(e) => setCustomMinutes(e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 px-2 py-2 text-sm font-bold text-gray-700 outline-none focus:border-blue-400"
+                              min="1"
+                              max="300"
+                            />
+                            <button
+                              onClick={() => {
+                                const val = Number(customMinutes);
+                                if (val > 0 && val <= 300) {
+                                  handleSaveTimeLimit(profile.id, val);
+                                  setCustomMinutes("");
+                                }
+                              }}
+                              className="rounded-xl bg-blue-500 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-600"
+                            >
+                              확인
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => setEditingTimeLimitId(null)}
+                            className="rounded-xl py-2 text-sm font-bold text-gray-400 hover:text-gray-600"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      ) : (
+                        // 현재 시청 시간 표시 + 수정 버튼
+                        <button
+                          onClick={() => setEditingTimeLimitId(profile.id)}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 py-2 text-sm font-bold text-blue-500 transition hover:bg-blue-100"
+                        >
+                          <FaClock />
+                          {profile.timeLimit ? `${profile.timeLimit}분 제한` : "시청 시간 설정"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </section>
-        )}
-
-        {/* 자녀 설정 */}
-        {!loading && (
-          <section className="mt-14 rounded-3xl bg-white p-8 shadow-xl">
-            <div className="mb-8 flex items-center gap-3">
-              <FaCog className="text-2xl text-purple-600" />
-              <h2 className="text-3xl font-extrabold text-gray-900">자녀 설정</h2>
-            </div>
-            <div className="grid gap-10 md:grid-cols-2">
-              <div>
-                <div className="mb-4 flex items-center gap-2">
-                  <FaChild className="text-xl text-purple-500" />
-                  <h3 className="text-xl font-bold text-gray-800">연령 설정</h3>
-                </div>
-                <p className="mb-5 text-sm text-gray-500">연령에 맞는 콘텐츠 안전 기준이 적용돼요.</p>
-                <div className="flex flex-wrap gap-3">
-                  {AGE_OPTIONS.map((age) => (
-                    <button
-                      key={age}
-                      onClick={() => setSelectedAge(age)}
-                      className={`rounded-2xl px-6 py-3 text-lg font-bold transition duration-200 ${
-                        selectedAge === age ? "bg-purple-500 text-white shadow-lg" : "bg-slate-100 text-gray-600 hover:bg-purple-100"
-                      }`}
-                    >
-                      {age}세
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="mb-4 flex items-center gap-2">
-                  <FaClock className="text-xl text-blue-500" />
-                  <h3 className="text-xl font-bold text-gray-800">하루 시청 시간 제한</h3>
-                </div>
-                <p className="mb-5 text-sm text-gray-500">설정한 시간을 초과하면 경고가 표시돼요.</p>
-                <div className="flex flex-wrap gap-3">
-                  {TIME_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setTimeLimit(option.value)}
-                      className={`rounded-2xl px-6 py-3 text-lg font-bold transition duration-200 ${
-                        timeLimit === option.value ? "bg-blue-500 text-white shadow-lg" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="mt-10 flex items-center gap-4">
-              <button onClick={handleSaveSettings} className="rounded-2xl bg-purple-500 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-purple-600">
-                설정 저장
-              </button>
-              {saved && <p className="text-lg font-bold text-green-500">✅ 저장됐어요!</p>}
-            </div>
           </section>
         )}
 
@@ -406,27 +410,20 @@ export default function ParentDashboard() {
 
             {/* 프로필 탭 */}
             <div className="mb-6 flex flex-wrap gap-3">
-              {/* 전체 탭 */}
               <button
                 onClick={() => setActiveTab("전체")}
                 className={`rounded-2xl px-5 py-2 font-bold transition ${
-                  activeTab === "전체"
-                    ? "bg-blue-500 text-white"
-                    : "bg-slate-100 text-gray-600 hover:bg-blue-100"
+                  activeTab === "전체" ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                 }`}
               >
                 전체
               </button>
-
-              {/* 프로필별 탭 */}
               {profiles.map((profile) => (
                 <button
                   key={profile.id}
                   onClick={() => setActiveTab(profile.id)}
                   className={`flex items-center gap-2 rounded-2xl px-5 py-2 font-bold transition ${
-                    activeTab === profile.id
-                      ? "bg-blue-500 text-white"
-                      : "bg-slate-100 text-gray-600 hover:bg-blue-100"
+                    activeTab === profile.id ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                   }`}
                 >
                   <img
@@ -439,12 +436,9 @@ export default function ParentDashboard() {
               ))}
             </div>
 
-            {/* 기록 목록 */}
             {filteredHistory.length === 0 ? (
               <p className="py-10 text-center text-gray-400">
-                {activeTab === "전체"
-                  ? "아직 시청 기록이 없어요."
-                  : "이 프로필의 시청 기록이 없어요."}
+                {activeTab === "전체" ? "아직 시청 기록이 없어요." : "이 프로필의 시청 기록이 없어요."}
               </p>
             ) : (
               <div className="space-y-5">

@@ -49,3 +49,8 @@ export const deleteProfile = async (profileId) => {
   const response = await axios.delete(`${BASE_URL}/profiles/${profileId}`)
   return response.data
 }
+// 프로필 수정
+export const updateProfile = async (profileId, profileData) => {
+  const response = await axios.put(`${BASE_URL}/profiles/${profileId}`, profileData)
+  return response.data.profile
+}
