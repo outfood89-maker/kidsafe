@@ -54,3 +54,17 @@ export const updateProfile = async (profileId, profileData) => {
   const response = await axios.put(`${BASE_URL}/profiles/${profileId}`, profileData)
   return response.data.profile
 }
+
+// 프로필 배지 조회
+export const getBadges = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/badges/${profileId}`)
+  return response.data.badges
+}
+
+
+export const checkBadges = async (profileId) => {
+  const response = await axios.post(`${BASE_URL}/badges/check/${profileId}`)
+  return response.data
+}
+
+

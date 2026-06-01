@@ -7,7 +7,7 @@ import {
   FaSpinner,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import { searchVideos, analyzeVideo, saveHistory, getHistory } from "../utils/api";
+import { searchVideos, analyzeVideo, saveHistory, getHistory, checkBadges, getBadges } from "../utils/api";
 import { getSafetyGrade, filterByAge } from "../utils/safetyFilter";
 
 export default function KidHome() {
@@ -18,36 +18,41 @@ export default function KidHome() {
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [todayMinutes, setTodayMinutes] = useState(0);
+  const [newBadges, setNewBadges] = useState([]);
+  // 획득한 배지 목록
+  const [earnedBadges, setEarnedBadges] = useState([]);
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
     if (stored) {
       const profile = JSON.parse(stored);
       setSelectedProfile(profile);
-      if (profile.timeLimit) {
-        checkTimeLimit(profile);
-      }
+      if (profile.timeLimit) checkTimeLimit(profile);
+      // 프로필 배지 불러오기
+      fetchBadges(profile.id);
     }
   }, []);
 
-  // 오늘 시청 시간 체크
+  const fetchBadges = async (profileId) => {
+    try {
+      const badges = await getBadges(profileId);
+      setEarnedBadges(badges);
+    } catch (err) {
+      console.error("배지 불러오기 실패:", err);
+    }
+  };
+
   const checkTimeLimit = async (profile) => {
     try {
       const history = await getHistory();
-
       const todayHistory = history.filter((v) => {
-        const isToday =
-          new Date(v.watchedAt).toDateString() === new Date().toDateString();
+        const isToday = new Date(v.watchedAt).toDateString() === new Date().toDateString();
         const isThisProfile = v.profileId === profile.id;
         return isToday && isThisProfile;
       });
-
       const minutes = todayHistory.length * 10;
       setTodayMinutes(minutes);
-
-      if (minutes >= profile.timeLimit) {
-        setTimeLimitReached(true);
-      }
+      if (minutes >= profile.timeLimit) setTimeLimitReached(true);
     } catch (err) {
       console.error("시청 시간 체크 실패:", err);
     }
@@ -66,53 +71,44 @@ export default function KidHome() {
       id: 1,
       title: "공룡 탐험 애니메이션",
       category: "교육 콘텐츠",
-      thumbnail:
-        "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=1200&auto=format&fit=crop",
+      thumbnail: "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=1200&auto=format&fit=crop",
       safetyLevel: "안전",
     },
     {
       id: 2,
       title: "신나는 우주 여행",
       category: "과학 학습",
-      thumbnail:
-        "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=1200&auto=format&fit=crop",
+      thumbnail: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=1200&auto=format&fit=crop",
       safetyLevel: "매우 안전",
     },
     {
       id: 3,
       title: "동물 친구들과 노래해요",
       category: "키즈 뮤직",
-      thumbnail:
-        "https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=1200&auto=format&fit=crop",
+      thumbnail: "https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=1200&auto=format&fit=crop",
       safetyLevel: "안전",
     },
   ];
 
   const handleSearch = async () => {
     const trimmedKeyword = searchKeyword.trim();
-
     if (!trimmedKeyword) {
       alert("보고 싶은 영상을 입력해주세요!");
       return;
     }
-
     try {
       setLoading(true);
       setError("");
       setVideos([]);
-
       const results = await searchVideos(trimmedKeyword);
-
       const analyzedVideos = await Promise.all(
         results.map(async (video) => {
           const safety = await analyzeVideo(video.title, video.description);
           return { ...video, ...safety };
         })
       );
-
       const age = selectedProfile?.age || null;
       const filteredVideos = age ? filterByAge(analyzedVideos, age) : analyzedVideos;
-
       if (filteredVideos.length === 0) {
         setError(`${age}세 기준에 맞는 영상이 없어요. 다른 키워드로 검색해봐요!`);
       } else {
@@ -134,12 +130,27 @@ export default function KidHome() {
         thumbnail: video.thumbnail,
         totalScore: video.totalScore,
         summary: video.summary,
+        violence: video.violence,
+        language: video.language,
+        sexual: video.sexual,
+        educational: video.educational,
         profileId: selectedProfile?.id || null,
       });
 
-      // 영상 클릭 후 시청 시간 다시 체크
-      if (selectedProfile?.timeLimit) {
-        await checkTimeLimit(selectedProfile);
+      if (selectedProfile?.timeLimit) await checkTimeLimit(selectedProfile);
+
+      if (selectedProfile?.id) {
+        const result = await checkBadges(selectedProfile.id);
+        if (result.newBadges && result.newBadges.length > 0) {
+          setNewBadges(result.newBadges);
+          // 새 배지 목록 업데이트
+          setEarnedBadges(result.allBadges);
+          setTimeout(() => {
+            setNewBadges([]);
+            window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank");
+          }, 3000);
+          return;
+        }
       }
     } catch (err) {
       console.error("시청 기록 저장 실패:", err);
@@ -157,14 +168,34 @@ export default function KidHome() {
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
 
+        {/* 신규 배지 획득 팝업 */}
+        {newBadges.length > 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="rounded-3xl bg-white p-10 shadow-2xl text-center">
+              <p className="text-2xl font-extrabold text-yellow-500 mb-4">🎉 새 배지 획득!</p>
+              {newBadges.map((badge) => (
+                <div key={badge.badgeId} className="mb-4">
+                  <p className="text-6xl">{badge.emoji}</p>
+                  <p className="mt-2 text-2xl font-extrabold text-gray-800">{badge.name}</p>
+                  <p className="mt-1 text-sm text-gray-500">{badge.description}</p>
+                </div>
+              ))}
+              <button
+                onClick={() => setNewBadges([])}
+                className="mt-4 rounded-2xl bg-pink-500 px-6 py-3 font-bold text-white transition hover:bg-pink-600"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 시청 시간 초과 경고 배너 */}
         {timeLimitReached && (
           <div className="mb-8 flex items-center gap-4 rounded-3xl bg-red-100 px-6 py-5 shadow-lg">
             <FaExclamationTriangle className="text-3xl text-red-500" />
             <div>
-              <p className="text-lg font-extrabold text-red-600">
-                오늘 시청 시간이 꽉 찼어요! ⏰
-              </p>
+              <p className="text-lg font-extrabold text-red-600">오늘 시청 시간이 꽉 찼어요! ⏰</p>
               <p className="text-sm text-red-400">
                 오늘은 약 {todayMinutes}분 봤어요. 부모님이 설정한 {selectedProfile?.timeLimit}분을 넘었어요.
               </p>
@@ -196,6 +227,22 @@ export default function KidHome() {
             <p className="mt-2 text-sm font-bold text-purple-500">
               {selectedProfile.age}세 기준으로 안전한 영상만 보여줄게요!
             </p>
+          )}
+
+          {/* 획득한 배지 표시 */}
+          {earnedBadges.length > 0 && (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {earnedBadges.map((badge) => (
+                <div
+                  key={badge.badgeId}
+                  title={badge.description}
+                  className="flex items-center gap-1 rounded-full bg-white px-3 py-1 shadow-md text-sm font-bold text-gray-700"
+                >
+                  <span>{badge.emoji}</span>
+                  <span>{badge.name}</span>
+                </div>
+              ))}
+            </div>
           )}
 
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">

@@ -19,7 +19,7 @@ import {
   Tooltip,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 
 const AGE_OPTIONS = [3, 5, 7, 10];
@@ -42,6 +42,8 @@ export default function ParentDashboard() {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // 프로필별 배지 저장 { profileId: [badge, ...] }
+  const [profileBadges, setProfileBadges] = useState({});
 
   // 시청 기록 탭
   const [activeTab, setActiveTab] = useState("전체");
@@ -67,6 +69,16 @@ export default function ParentDashboard() {
         ]);
         setHistory(historyData);
         setProfiles(profilesData);
+
+        // 프로필별 배지 불러오기
+        const badgesMap = {};
+        await Promise.all(
+          profilesData.map(async (profile) => {
+            const badges = await getBadges(profile.id);
+            badgesMap[profile.id] = badges;
+          })
+        );
+        setProfileBadges(badgesMap);
       } catch (err) {
         setError("데이터를 불러오지 못했어요.");
       } finally {
@@ -332,6 +344,21 @@ export default function ParentDashboard() {
                     />
                     <p className="mt-3 text-lg font-extrabold text-gray-800">{profile.name}</p>
                     <p className="text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
+
+                    {/* 획득한 배지 표시 */}
+                    {profileBadges[profile.id]?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap justify-center gap-1">
+                        {profileBadges[profile.id].map((badge) => (
+                          <span
+                            key={badge.badgeId}
+                            title={badge.name}
+                            className="text-xl"
+                          >
+                            {badge.emoji}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* 시청 시간 설정 */}
                     <div className="mt-4 w-full">

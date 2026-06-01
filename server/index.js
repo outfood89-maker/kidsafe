@@ -5,7 +5,7 @@ import analyzeRouter from './routes/analyze.js'
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-
+import badgesRouter from './routes/badges.js' 
 dotenv.config()
 
 const app = express()
@@ -20,6 +20,7 @@ app.use('/profiles', profilesRouter)
 app.get('/', (req, res) => {
   res.json({ message: 'KidSafe 서버 작동 중! 🛡️' })
 })
+app.use('/badges', badgesRouter) 
 
 app.get('/test-env', (req, res) => {
   res.json({
