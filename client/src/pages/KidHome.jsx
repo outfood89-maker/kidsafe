@@ -2,16 +2,16 @@ import { useState, useEffect } from "react";
 import {
   FaSearch,
   FaStar,
+  FaHeart,
   FaRobot,
   FaPlayCircle,
   FaSpinner,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import { searchVideos, analyzeVideo, saveHistory, getHistory, checkBadges, getBadges, getRecommendedVideos } from "../utils/api";
-import { getSafetyGrade, filterByAge } from "../utils/safetyFilter";
+import { searchVideos, analyzeVideo, saveHistory, getHistory, checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos } from "../utils/api";
+import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
 import NavBar from "../components/NavBar";
-import { getSafetyGrade, filterByAge, sortByWeightedScore } from "../utils/safetyFilter";
 
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -25,10 +25,15 @@ export default function KidHome() {
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
 
-  // 추천 콘텐츠 관련 state
+  // 나이별 추천 콘텐츠
   const [recommendedVideos, setRecommendedVideos] = useState([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendKeyword, setRecommendKeyword] = useState("");
+
+  // 시청 기록 기반 추천 콘텐츠
+  const [historyVideos, setHistoryVideos] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyKeyword, setHistoryKeyword] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
@@ -37,22 +42,24 @@ export default function KidHome() {
       setSelectedProfile(profile);
       if (profile.timeLimit) checkTimeLimit(profile);
       fetchBadges(profile.id);
-      // 프로필 나이 기준으로 추천 콘텐츠 불러오기
-      fetchRecommendedVideos(profile.age);
+
+      // 시청 기록 가져와서 두 섹션 모두 로드
+      getHistory().then(history => {
+        fetchRecommendedVideos(profile.age, history);
+        fetchHistoryRecommendedVideos(history, profile.age);
+      });
     } else {
-      // 프로필 없으면 기본 7세 기준으로 추천
-      fetchRecommendedVideos(7);
+      fetchRecommendedVideos(7, []);
     }
   }, []);
 
-  // 나이별 추천 콘텐츠 불러오기 + AI 검수
-  const fetchRecommendedVideos = async (age) => {
+  // 나이별 키워드 추천
+  const fetchRecommendedVideos = async (age, watchHistory = []) => {
     try {
       setRecommendLoading(true);
       const { videos: results, keyword } = await getRecommendedVideos(age);
       setRecommendKeyword(keyword);
 
-      // AI 검수
       const analyzedVideos = await Promise.all(
         results.map(async (video) => {
           const safety = await analyzeVideo(video.title, video.description);
@@ -60,16 +67,47 @@ export default function KidHome() {
         })
       );
 
-      // 나이 기준 필터링
       const filteredVideos = filterByAge(analyzedVideos, age);
-      const sortedVideos = sortByWeightedScore(filteredVideos, age);
-      setRecommendedVideos(sortedVideos);
+      const biasedVideos = applyAntiBias(filteredVideos, watchHistory, age);
+      setRecommendedVideos(biasedVideos);
     } catch (err) {
       console.error("추천 콘텐츠 불러오기 실패:", err);
     } finally {
       setRecommendLoading(false);
     }
   };
+
+  // 시청 기록 기반 추천
+  const fetchHistoryRecommendedVideos = async (watchHistory, age) => {
+    if (!watchHistory || watchHistory.length === 0) return
+
+    // 시청 기록에서 가장 많이 본 키워드 추출
+    const topKeyword = getTopKeyword(watchHistory)
+    if (!topKeyword) return
+
+    try {
+      setHistoryLoading(true)
+      setHistoryKeyword(topKeyword)
+
+      const { videos: results } = await getHistoryRecommendedVideos(topKeyword)
+
+      const analyzedVideos = await Promise.all(
+        results.map(async (video) => {
+          const safety = await analyzeVideo(video.title, video.description)
+          return { ...video, ...safety }
+        })
+      )
+
+      const filteredVideos = filterByAge(analyzedVideos, age)
+      // Anti-Bias 적용 — 많이 본 키워드 영상은 감점, 새로운 영역 보너스
+      const biasedVideos = applyAntiBias(filteredVideos, watchHistory, age)
+      setHistoryVideos(biasedVideos)
+    } catch (err) {
+      console.error("시청 기록 기반 추천 실패:", err)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
 
   const fetchBadges = async (profileId) => {
     try {
@@ -175,6 +213,34 @@ export default function KidHome() {
     if (color === "green") return "bg-green-500";
     if (color === "yellow") return "bg-yellow-500";
     return "bg-red-500";
+  };
+
+  // 영상 카드 공통 컴포넌트
+  const VideoCard = ({ video }) => {
+    const { grade, color } = getSafetyGrade(video.totalScore);
+    return (
+      <div className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl">
+        <div
+          className="relative h-48 md:h-56 overflow-hidden cursor-pointer"
+          onClick={() => setSelectedVideo(video)}
+        >
+          <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
+          <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}>
+            {grade} {video.totalScore}점
+          </div>
+        </div>
+        <div className="p-5 md:p-6">
+          <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
+          <h3
+            className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800 cursor-pointer hover:text-pink-500"
+            onClick={() => setSelectedVideo(video)}
+          >
+            {video.title}
+          </h3>
+          <p className="mt-2 line-clamp-2 text-sm text-gray-500">{video.summary}</p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -315,108 +381,83 @@ export default function KidHome() {
           </div>
         )}
 
-        {/* 검색 결과 영역 */}
+        {/* 검색 결과 */}
         {videos.length > 0 && (
           <section className="mt-12 md:mt-16">
             <h2 className="mb-6 md:mb-8 text-2xl md:text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
             <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {videos.map((video) => {
-                const { grade, color } = getSafetyGrade(video.totalScore);
-                return (
-                  <div
-                    key={video.videoId}
-                    className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
-                  >
-                    <div
-                      className="relative h-48 overflow-hidden cursor-pointer"
-                      onClick={() => setSelectedVideo(video)}
-                    >
-                      <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
-                      <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}>
-                        {grade} {video.totalScore}점
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
-                      <h3
-                        className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800 cursor-pointer hover:text-pink-500"
-                        onClick={() => setSelectedVideo(video)}
-                      >
-                        {video.title}
-                      </h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-gray-500">{video.summary}</p>
-                    </div>
-                  </div>
-                );
-              })}
+              {videos.map((video) => (
+                <VideoCard key={video.videoId} video={video} />
+              ))}
             </div>
           </section>
         )}
 
-        {/* 추천 콘텐츠 — 실제 YouTube API 연동 */}
+        {/* 추천 섹션 — 검색 결과 없을 때만 표시 */}
         {videos.length === 0 && !loading && (
-          <section className="mt-16 md:mt-20">
-            <div className="mb-8 md:mb-10 flex items-center gap-3">
-              <FaStar className="text-2xl md:text-3xl text-yellow-500" />
-              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">
-                오늘의 추천 콘텐츠
-                {recommendKeyword && (
-                  <span className="ml-3 text-lg font-bold text-pink-400">#{recommendKeyword}</span>
+          <>
+            {/* 섹션 1 — 오늘의 추천 (나이별 키워드) */}
+            <section className="mt-16 md:mt-20">
+              <div className="mb-8 flex items-center gap-3">
+                <FaStar className="text-2xl md:text-3xl text-yellow-500" />
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">
+                  오늘의 추천
+                  {recommendKeyword && (
+                    <span className="ml-3 text-lg font-bold text-pink-400">#{recommendKeyword}</span>
+                  )}
+                </h2>
+              </div>
+
+              {recommendLoading && (
+                <div className="flex flex-col items-center gap-4 text-pink-500 py-10">
+                  <FaSpinner className="animate-spin text-4xl" />
+                  <p className="text-base font-bold">AI가 추천 영상을 찾는 중이에요...</p>
+                </div>
+              )}
+
+              {!recommendLoading && recommendedVideos.length > 0 && (
+                <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                  {recommendedVideos.map((video) => (
+                    <VideoCard key={video.videoId} video={video} />
+                  ))}
+                </div>
+              )}
+
+              {!recommendLoading && recommendedVideos.length === 0 && (
+                <p className="py-10 text-center text-gray-400">추천 영상을 불러오지 못했어요.</p>
+              )}
+            </section>
+
+            {/* 섹션 2 — 내가 좋아할 것 같아요 (시청 기록 기반) */}
+            {(historyLoading || historyVideos.length > 0) && (
+              <section className="mt-16 md:mt-20">
+                <div className="mb-8 flex items-center gap-3">
+                  <FaHeart className="text-2xl md:text-3xl text-pink-500" />
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">
+                    내가 좋아할 것 같아요
+                    {historyKeyword && (
+                      <span className="ml-3 text-lg font-bold text-pink-400">#{historyKeyword} 기반</span>
+                    )}
+                  </h2>
+                </div>
+
+                {historyLoading && (
+                  <div className="flex flex-col items-center gap-4 text-pink-500 py-10">
+                    <FaSpinner className="animate-spin text-4xl" />
+                    <p className="text-base font-bold">시청 기록을 분석하는 중이에요...</p>
+                  </div>
                 )}
-              </h2>
-            </div>
 
-            {/* 추천 로딩 */}
-            {recommendLoading && (
-              <div className="flex flex-col items-center gap-4 text-pink-500 py-10">
-                <FaSpinner className="animate-spin text-4xl" />
-                <p className="text-base font-bold">AI가 추천 영상을 찾는 중이에요...</p>
-              </div>
+                {!historyLoading && historyVideos.length > 0 && (
+                  <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {historyVideos.map((video) => (
+                      <VideoCard key={video.videoId} video={video} />
+                    ))}
+                  </div>
+                )}
+              </section>
             )}
-
-            {/* 추천 영상 목록 */}
-            {!recommendLoading && recommendedVideos.length > 0 && (
-              <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {recommendedVideos.map((video) => {
-                  const { grade, color } = getSafetyGrade(video.totalScore);
-                  return (
-                    <div
-                      key={video.videoId}
-                      className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
-                    >
-                      <div
-                        className="relative h-48 md:h-56 overflow-hidden cursor-pointer"
-                        onClick={() => setSelectedVideo(video)}
-                      >
-                        <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
-                        <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}>
-                          {grade} {video.totalScore}점
-                        </div>
-                      </div>
-                      <div className="p-5 md:p-6">
-                        <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
-                        <h3
-                          className="mt-2 line-clamp-2 text-lg md:text-xl font-extrabold text-gray-800 cursor-pointer hover:text-pink-500"
-                          onClick={() => setSelectedVideo(video)}
-                        >
-                          {video.title}
-                        </h3>
-                        <p className="mt-2 line-clamp-2 text-sm text-gray-500">{video.summary}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 추천 영상 없을 때 */}
-            {!recommendLoading && recommendedVideos.length === 0 && (
-              <div className="py-10 text-center text-gray-400">
-                <p>추천 영상을 불러오지 못했어요.</p>
-                <p className="mt-2">검색창에서 원하는 영상을 찾아봐요!</p>
-              </div>
-            )}
-          </section>
+          </>
         )}
 
       </div>

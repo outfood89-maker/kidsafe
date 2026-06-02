@@ -74,3 +74,11 @@ export const checkBadges = async (profileId) => {
   const response = await axios.post(`${BASE_URL}/badges/check/${profileId}`)
   return response.data
 }
+
+// 시청 기록 기반 추천 영상 검색 (신규)
+export const getHistoryRecommendedVideos = async (keyword) => {
+  const response = await axios.get(`${BASE_URL}/search/history-recommend`, {
+    params: { keyword }
+  })
+  return response.data
+}

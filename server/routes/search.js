@@ -22,7 +22,7 @@ const isGameContent = (title) => {
   return GAME_KEYWORDS.some(keyword => title.toLowerCase().includes(keyword.toLowerCase()))
 }
 
-// ISO 8601 duration → 초 변환 (예: PT1M30S → 90)
+// ISO 8601 duration → 초 변환
 const parseDuration = (duration) => {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
   if (!match) return 0
@@ -42,7 +42,6 @@ const getVideoDurations = async (videoIds) => {
         part: 'contentDetails',
       }
     })
-    // videoId → duration(초) 맵으로 반환
     const durationMap = {}
     response.data.items.forEach(item => {
       durationMap[item.id] = parseDuration(item.contentDetails.duration)
@@ -54,8 +53,78 @@ const getVideoDurations = async (videoIds) => {
   }
 }
 
-// 키워드로 YouTube 영상 검색 (쇼츠/게임 차단)
+// 공통 영상 검색 함수 (쇼츠/게임 차단)
+const searchYouTube = async (keyword, maxResults = 10) => {
+  const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+    params: {
+      key: process.env.YOUTUBE_API_KEY,
+      q: keyword,
+      part: 'snippet',
+      type: 'video',
+      maxResults: maxResults + 5,
+      relevanceLanguage: 'ko',
+      videoDuration: 'short',
+      safeSearch: 'strict',
+      order: 'relevance',
+    }
+  })
+
+  const filteredItems = response.data.items
+    .filter(item => !isGameContent(item.snippet.title))
+
+  const videoIds = filteredItems.map(item => item.id.videoId)
+  const durationMap = await getVideoDurations(videoIds)
+
+  return filteredItems
+    .filter(item => {
+      const duration = durationMap[item.id.videoId] || 999
+      return duration > 60
+    })
+    .map(item => ({
+      videoId: item.id.videoId,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      thumbnail: item.snippet.thumbnails.medium.url,
+      channelTitle: item.snippet.channelTitle,
+    }))
+    .slice(0, maxResults)
+}
+
+// 키워드로 YouTube 영상 검색
 router.get('/', async (req, res) => {
+  const { keyword } = req.query
+  if (!keyword) {
+    return res.status(400).json({ error: '키워드를 입력해주세요' })
+  }
+  try {
+    const videos = await searchYouTube(keyword, 10)
+    res.json({ videos })
+  } catch (error) {
+    res.status(500).json({ error: '영상 검색 중 오류가 발생했어요' })
+  }
+})
+
+// 나이별 추천 콘텐츠 검색
+router.get('/recommend', async (req, res) => {
+  const { age } = req.query
+  if (!age) {
+    return res.status(400).json({ error: '나이를 입력해주세요' })
+  }
+  const ageNum = Number(age)
+  const keywords = AGE_KEYWORDS[ageNum] || AGE_KEYWORDS[7]
+  const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)]
+
+  try {
+    const videos = await searchYouTube(randomKeyword, 6)
+    res.json({ videos, keyword: randomKeyword })
+  } catch (error) {
+    res.status(500).json({ error: '추천 영상 검색 중 오류가 발생했어요' })
+  }
+})
+
+// 시청 기록 기반 추천 (신규)
+// 프론트에서 많이 본 키워드를 보내주면, 그 키워드로 검색해서 추천
+router.get('/history-recommend', async (req, res) => {
   const { keyword } = req.query
 
   if (!keyword) {
@@ -63,107 +132,10 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // 1단계: YouTube 검색 (short = 4분 이하)
-    const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-      params: {
-        key: process.env.YOUTUBE_API_KEY,
-        q: keyword,
-        part: 'snippet',
-        type: 'video',
-        maxResults: 15,
-        relevanceLanguage: 'ko',
-        videoDuration: 'short', // 4분 이하 (동요 포함)
-        safeSearch: 'strict',   // 유해 콘텐츠 차단
-      }
-    })
-
-    // 게임 콘텐츠 1차 필터링
-    const filteredItems = response.data.items
-      .filter(item => !isGameContent(item.snippet.title))
-
-    // 2단계: 영상 길이 조회 (쇼츠 60초 이하 차단)
-    const videoIds = filteredItems.map(item => item.id.videoId)
-    const durationMap = await getVideoDurations(videoIds)
-
-    // 60초 이하 쇼츠 제거
-    const videos = filteredItems
-      .filter(item => {
-        const duration = durationMap[item.id.videoId] || 999
-        return duration > 60 // 60초 초과만 통과
-      })
-      .map(item => ({
-        videoId: item.id.videoId,
-        title: item.snippet.title,
-        description: item.snippet.description,
-        thumbnail: item.snippet.thumbnails.medium.url,
-        channelTitle: item.snippet.channelTitle,
-      }))
-      .slice(0, 10)
-
-    res.json({ videos })
-
+    const videos = await searchYouTube(keyword, 6)
+    res.json({ videos, keyword })
   } catch (error) {
-    res.status(500).json({ error: '영상 검색 중 오류가 발생했어요' })
-  }
-})
-
-// 나이별 추천 콘텐츠 검색 (신규)
-router.get('/recommend', async (req, res) => {
-  const { age } = req.query
-
-  if (!age) {
-    return res.status(400).json({ error: '나이를 입력해주세요' })
-  }
-
-  const ageNum = Number(age)
-  const keywords = AGE_KEYWORDS[ageNum] || AGE_KEYWORDS[7]
-
-  // 키워드 중 랜덤으로 1개 선택
-  const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)]
-
-  try {
-    // 1단계: YouTube 검색
-    const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-      params: {
-        key: process.env.YOUTUBE_API_KEY,
-        q: randomKeyword,
-        part: 'snippet',
-        type: 'video',
-        maxResults: 10,
-        relevanceLanguage: 'ko',
-        videoDuration: 'short', // 4분 이하 (동요 포함)
-        safeSearch: 'strict',   // 유해 콘텐츠 차단
-        order: 'relevance',
-      }
-    })
-
-    // 게임 콘텐츠 1차 필터링
-    const filteredItems = response.data.items
-      .filter(item => !isGameContent(item.snippet.title))
-
-    // 2단계: 영상 길이 조회 (쇼츠 60초 이하 차단)
-    const videoIds = filteredItems.map(item => item.id.videoId)
-    const durationMap = await getVideoDurations(videoIds)
-
-    // 60초 이하 쇼츠 제거
-    const videos = filteredItems
-      .filter(item => {
-        const duration = durationMap[item.id.videoId] || 999
-        return duration > 60
-      })
-      .map(item => ({
-        videoId: item.id.videoId,
-        title: item.snippet.title,
-        description: item.snippet.description,
-        thumbnail: item.snippet.thumbnails.medium.url,
-        channelTitle: item.snippet.channelTitle,
-      }))
-      .slice(0, 6) // 추천은 최대 6개
-
-    res.json({ videos, keyword: randomKeyword })
-
-  } catch (error) {
-    res.status(500).json({ error: '추천 영상 검색 중 오류가 발생했어요' })
+    res.status(500).json({ error: '시청 기록 기반 추천 중 오류가 발생했어요' })
   }
 })
 
