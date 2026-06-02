@@ -51,11 +51,9 @@ export default function Landing() {
               <br />
               <span className="text-blue-600">AI로 먼저 검수합니다</span>
             </h2>
-            {/* 히어로 설명 텍스트 — text-sm + font-medium으로 살짝 강조 */}
-            <p className="mx-auto mt-3 md:mt-6 max-w-3xl text-sm md:text-lg lg:text-xl font-medium leading-relaxed text-gray-800 px-2">
-              KidSafe는 유튜브 콘텐츠를 AI 기반으로 분석하여
-              폭력성, 욕설, 자극적인 요소를 검수하고
-              어린이에게 안전한 콘텐츠를 추천합니다.
+            {/* 히어로 설명 — 모바일에서 왼쪽 정렬 + 문장 압축 */}
+            <p className="mx-auto mt-3 md:mt-6 max-w-3xl text-sm md:text-lg lg:text-xl font-medium leading-relaxed text-gray-800 px-2 text-left md:text-center">
+              폭력성, 욕설, 자극적 요소를 AI로 분석해 아이에게 안전한 콘텐츠를 추천해요.
             </p>
           </section>
 
@@ -66,14 +64,14 @@ export default function Landing() {
                 <div className="flex h-10 w-10 md:h-16 md:w-16 md:mb-5 items-center justify-center rounded-xl md:rounded-2xl bg-blue-100 shrink-0">
                   <FaYoutube className="text-lg md:text-3xl text-blue-600" />
                 </div>
-                <h3 className="text-base md:text-2xl font-bold text-gray-900">
+                {/* 카드 제목 — text-lg로 키움 */}
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900">
                   유튜브 안전 분석
                 </h3>
               </div>
-              {/* 카드 설명 텍스트 — text-sm + font-medium으로 살짝 강조 */}
+              {/* 카드 설명 — text-gray-800으로 진하게 */}
               <p className="mt-2 md:mt-4 leading-relaxed text-gray-800 text-sm md:text-base font-medium">
-                AI가 영상 제목, 설명, 자막을 분석하여
-                어린이에게 부적절한 콘텐츠를 탐지합니다.
+                AI가 영상 제목, 설명, 자막을 분석하여 부적절한 콘텐츠를 탐지합니다.
               </p>
             </div>
 
@@ -82,13 +80,12 @@ export default function Landing() {
                 <div className="flex h-10 w-10 md:h-16 md:w-16 md:mb-5 items-center justify-center rounded-xl md:rounded-2xl bg-green-100 shrink-0">
                   <FaLock className="text-lg md:text-3xl text-green-600" />
                 </div>
-                <h3 className="text-base md:text-2xl font-bold text-gray-900">
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900">
                   부모 보호 모드
                 </h3>
               </div>
               <p className="mt-2 md:mt-4 leading-relaxed text-gray-800 text-sm md:text-base font-medium">
-                부모가 직접 콘텐츠를 관리하고
-                안전 등급 및 시청 기록을 확인할 수 있습니다.
+                부모가 직접 콘텐츠를 관리하고 안전 등급 및 시청 기록을 확인할 수 있습니다.
               </p>
             </div>
 
@@ -97,13 +94,12 @@ export default function Landing() {
                 <div className="flex h-10 w-10 md:h-16 md:w-16 md:mb-5 items-center justify-center rounded-xl md:rounded-2xl bg-pink-100 shrink-0">
                   <FaChild className="text-lg md:text-3xl text-pink-600" />
                 </div>
-                <h3 className="text-base md:text-2xl font-bold text-gray-900">
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900">
                   아이 전용 추천
                 </h3>
               </div>
               <p className="mt-2 md:mt-4 leading-relaxed text-gray-800 text-sm md:text-base font-medium">
-                연령에 맞는 안전한 콘텐츠만 추천하여
-                아이들이 안심하고 시청할 수 있습니다.
+                연령에 맞는 안전한 콘텐츠만 추천하여 아이들이 안심하고 시청할 수 있습니다.
               </p>
             </div>
           </section>
