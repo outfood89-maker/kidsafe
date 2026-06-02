@@ -11,6 +11,7 @@ import { searchVideos, analyzeVideo, saveHistory, getHistory, checkBadges, getBa
 import { getSafetyGrade, filterByAge } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
 import NavBar from "../components/NavBar";
+import { getSafetyGrade, filterByAge, sortByWeightedScore } from "../utils/safetyFilter";
 
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -61,7 +62,8 @@ export default function KidHome() {
 
       // 나이 기준 필터링
       const filteredVideos = filterByAge(analyzedVideos, age);
-      setRecommendedVideos(filteredVideos);
+      const sortedVideos = sortByWeightedScore(filteredVideos, age);
+      setRecommendedVideos(sortedVideos);
     } catch (err) {
       console.error("추천 콘텐츠 불러오기 실패:", err);
     } finally {
