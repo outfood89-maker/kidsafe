@@ -10,6 +10,7 @@ import {
 import { searchVideos, analyzeVideo, saveHistory, getHistory, checkBadges, getBadges } from "../utils/api";
 import { getSafetyGrade, filterByAge } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
+import NavBar from "../components/NavBar";
 
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -20,9 +21,7 @@ export default function KidHome() {
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [newBadges, setNewBadges] = useState([]);
-  // 획득한 배지 목록
   const [earnedBadges, setEarnedBadges] = useState([]);
-  // 모달에 표시할 선택된 영상
   const [selectedVideo, setSelectedVideo] = useState(null);
 
   useEffect(() => {
@@ -31,7 +30,6 @@ export default function KidHome() {
       const profile = JSON.parse(stored);
       setSelectedProfile(profile);
       if (profile.timeLimit) checkTimeLimit(profile);
-      // 프로필 배지 불러오기
       fetchBadges(profile.id);
     }
   }, []);
@@ -146,7 +144,6 @@ export default function KidHome() {
         const result = await checkBadges(selectedProfile.id);
         if (result.newBadges && result.newBadges.length > 0) {
           setNewBadges(result.newBadges);
-          // 새 배지 목록 업데이트
           setEarnedBadges(result.allBadges);
           setTimeout(() => {
             setNewBadges([]);
@@ -169,10 +166,12 @@ export default function KidHome() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
-      {/* px-4 → 모바일 여백 / md:px-6 → PC 여백 */}
+      {/* 상단 네비게이션 바 */}
+      <NavBar backTo="/profiles" backLabel="프로필 선택" title="KidSafe" />
+
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
 
-        {/* AI 요약 모달 — 영상 카드 클릭 시 표시 */}
+        {/* AI 요약 모달 */}
         {selectedVideo && (
           <VideoModal
             video={selectedVideo}
@@ -235,7 +234,6 @@ export default function KidHome() {
             </div>
           )}
 
-          {/* 모바일에서 폰트 크기 줄임 */}
           <h1 className="mt-6 md:mt-8 text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">
             {selectedProfile ? `안녕, ${selectedProfile.name}아! 👋` : "안녕 친구야! 👋"}
           </h1>
@@ -246,7 +244,6 @@ export default function KidHome() {
             </p>
           )}
 
-          {/* 획득한 배지 표시 — px-2로 모바일 넘침 방지 */}
           {earnedBadges.length > 0 && (
             <div className="mt-4 flex flex-wrap justify-center gap-2 px-2">
               {earnedBadges.map((badge) => (
@@ -309,9 +306,7 @@ export default function KidHome() {
         {/* 검색 결과 영역 */}
         {videos.length > 0 && (
           <section className="mt-12 md:mt-16">
-            {/* 모바일에서 폰트 크기 줄임 */}
             <h2 className="mb-6 md:mb-8 text-2xl md:text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
-            {/* 모바일 1열 → 태블릿 2열 → PC 3열 */}
             <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {videos.map((video) => {
                 const { grade, color } = getSafetyGrade(video.totalScore);
@@ -320,7 +315,6 @@ export default function KidHome() {
                     key={video.videoId}
                     className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
                   >
-                    {/* 썸네일 클릭 시 모달 오픈 */}
                     <div
                       className="relative h-48 overflow-hidden cursor-pointer"
                       onClick={() => setSelectedVideo(video)}
@@ -332,7 +326,6 @@ export default function KidHome() {
                     </div>
                     <div className="p-5">
                       <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
-                      {/* 제목 클릭 시 모달 오픈 */}
                       <h3
                         className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800 cursor-pointer hover:text-pink-500"
                         onClick={() => setSelectedVideo(video)}
@@ -355,7 +348,6 @@ export default function KidHome() {
               <FaStar className="text-2xl md:text-3xl text-yellow-500" />
               <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">오늘의 추천 콘텐츠</h2>
             </div>
-            {/* 모바일 1열 → 태블릿 2열 → PC 3열 */}
             <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {recommendedContents.map((content) => (
                 <div

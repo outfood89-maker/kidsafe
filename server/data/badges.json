@@ -14,5 +14,13 @@
     "emoji": "🌱",
     "description": "영상 5개를 시청했어요!",
     "earnedAt": "2026-06-01T08:35:02.476Z"
+  },
+  {
+    "profileId": "1779888608658",
+    "badgeId": "first_step",
+    "name": "첫 발걸음",
+    "emoji": "🌟",
+    "description": "첫 번째 영상을 시청했어요!",
+    "earnedAt": "2026-06-02T01:46:21.642Z"
   }
 ]

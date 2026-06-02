@@ -21,6 +21,7 @@ import {
 
 import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
+import NavBar from "../components/NavBar";
 
 const AGE_OPTIONS = [3, 5, 7, 10];
 
@@ -179,10 +180,11 @@ export default function ParentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* px-4 → 모바일 여백 / md:px-6 → PC 여백 */}
+      {/* 상단 네비게이션 바 */}
+      <NavBar backTo="/" backLabel="홈으로" title="부모 대시보드" />
+
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-10">
 
-        {/* 헤더 — 모바일에서 폰트 줄임 */}
         <section className="mb-12 md:mb-16">
           <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900">부모 대시보드</h1>
           <p className="mt-2 md:mt-3 text-base md:text-lg text-gray-600">아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
@@ -195,7 +197,6 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {/* 요약 카드 — 모바일 1열 → PC 3열 */}
         {!loading && (
           <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-3">
             {todaySummaryData.map((item) => (
@@ -203,10 +204,8 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm md:text-base font-semibold text-gray-500">{item.title}</p>
-                    {/* 숫자 — 모바일에서 줄임 */}
                     <h2 className="mt-2 md:mt-3 text-2xl md:text-4xl font-extrabold text-gray-900">{item.value}</h2>
                   </div>
-                  {/* 아이콘 박스 — 모바일에서 줄임 */}
                   <div className={`flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-3xl ${item.bgColor}`}>
                     {item.icon}
                   </div>
@@ -216,7 +215,6 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {/* 자녀 프로필 관리 */}
         {!loading && (
           <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
             <div className="mb-6 md:mb-8 flex items-center justify-between">
@@ -235,7 +233,6 @@ export default function ParentDashboard() {
               )}
             </div>
 
-            {/* 프로필 생성 폼 */}
             {showCreateForm && (
               <div className="mb-8 rounded-2xl border border-pink-200 bg-slate-50 p-5 md:p-6">
                 <h3 className="mb-6 text-lg md:text-xl font-bold text-gray-800">새 프로필 만들기</h3>
@@ -314,7 +311,6 @@ export default function ParentDashboard() {
               </div>
             )}
 
-            {/* 프로필 목록 — 모바일 2열 → PC 4열 */}
             {profiles.length === 0 ? (
               <p className="py-10 text-center text-gray-400">아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
@@ -408,7 +404,6 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {/* 시청 기록 */}
         {!loading && (
           <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
             <div className="mb-6 flex items-center gap-3">
@@ -416,7 +411,6 @@ export default function ParentDashboard() {
               <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
             </div>
 
-            {/* 프로필 탭 */}
             <div className="mb-6 flex flex-wrap gap-2 md:gap-3">
               <button
                 onClick={() => setActiveTab("전체")}
@@ -483,7 +477,6 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {/* 안전도 분포 차트 — 모바일에서 높이 줄임 */}
         {!loading && history.length > 0 && (
           <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
             <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">안전도 분포</h2>

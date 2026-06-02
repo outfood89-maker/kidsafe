@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaShieldAlt } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import { getProfiles } from "../utils/api";
+import NavBar from "../components/NavBar";
 
 export default function ProfileSelect() {
   const navigate = useNavigate();
@@ -28,7 +29,6 @@ export default function ProfileSelect() {
     navigate("/kids");
   };
 
-  // 성별에 따라 헤어스타일 다르게 적용
   const getAvatarUrl = (seed, gender) => {
     const hairStyle =
       gender === "여자"
@@ -40,17 +40,10 @@ export default function ProfileSelect() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
-      {/* 모바일 여백/패딩 줄임 */}
+      {/* 상단 네비게이션 바 */}
+      <NavBar backTo="/" backLabel="홈으로" title="프로필 선택" />
+
       <div className="mx-auto max-w-4xl px-4 md:px-6 py-10 md:py-16">
-
-        <div className="mb-4 flex justify-center">
-          <div className="flex items-center gap-2 text-blue-600">
-            <FaShieldAlt className="text-xl md:text-2xl" />
-            <span className="text-lg md:text-xl font-bold">KidSafe</span>
-          </div>
-        </div>
-
-        {/* 제목 — 모바일에서 줄임 */}
         <h1 className="mb-4 text-center text-2xl md:text-4xl font-extrabold text-gray-800">
           누가 볼 건가요? 👀
         </h1>
@@ -64,14 +57,12 @@ export default function ProfileSelect() {
 
         {!loading && (
           <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-
             {profiles.map((profile) => (
               <button
                 key={profile.id}
                 onClick={() => handleProfileClick(profile)}
                 className="group flex flex-col items-center gap-3 md:gap-4 transition duration-300 hover:-translate-y-3"
               >
-                {/* 아바타 — 모바일에서 크기 줄임 */}
                 <div className="h-32 w-32 md:h-48 md:w-48 overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 group-hover:shadow-2xl group-hover:ring-4 group-hover:ring-pink-400">
                   <img
                     src={getAvatarUrl(profile.avatarSeed, profile.gender)}
@@ -79,7 +70,6 @@ export default function ProfileSelect() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                {/* 이름 — 모바일에서 줄임 */}
                 <p className="text-lg md:text-2xl font-extrabold text-gray-700 group-hover:text-pink-500">
                   {profile.name}
                 </p>
@@ -87,7 +77,6 @@ export default function ProfileSelect() {
               </button>
             ))}
 
-            {/* 프로필 추가 버튼 */}
             {profiles.length < 4 && (
               <button
                 onClick={() => navigate("/parent")}
@@ -111,7 +100,6 @@ export default function ProfileSelect() {
             )}
           </div>
         )}
-
       </div>
     </div>
   );
