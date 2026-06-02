@@ -169,7 +169,8 @@ export default function KidHome() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      {/* px-4 → 모바일 여백 / md:px-6 → PC 여백 */}
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
 
         {/* AI 요약 모달 — 영상 카드 클릭 시 표시 */}
         {selectedVideo && (
@@ -185,8 +186,8 @@ export default function KidHome() {
 
         {/* 신규 배지 획득 팝업 */}
         {newBadges.length > 0 && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="rounded-3xl bg-white p-10 shadow-2xl text-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
+            <div className="rounded-3xl bg-white p-8 md:p-10 shadow-2xl text-center w-full max-w-sm">
               <p className="text-2xl font-extrabold text-yellow-500 mb-4">🎉 새 배지 획득!</p>
               {newBadges.map((badge) => (
                 <div key={badge.badgeId} className="mb-4">
@@ -207,10 +208,10 @@ export default function KidHome() {
 
         {/* 시청 시간 초과 경고 배너 */}
         {timeLimitReached && (
-          <div className="mb-8 flex items-center gap-4 rounded-3xl bg-red-100 px-6 py-5 shadow-lg">
-            <FaExclamationTriangle className="text-3xl text-red-500" />
+          <div className="mb-8 flex items-center gap-4 rounded-3xl bg-red-100 px-4 md:px-6 py-5 shadow-lg">
+            <FaExclamationTriangle className="text-2xl md:text-3xl text-red-500 shrink-0" />
             <div>
-              <p className="text-lg font-extrabold text-red-600">오늘 시청 시간이 꽉 찼어요! ⏰</p>
+              <p className="text-base md:text-lg font-extrabold text-red-600">오늘 시청 시간이 꽉 찼어요! ⏰</p>
               <p className="text-sm text-red-400">
                 오늘은 약 {todayMinutes}분 봤어요. 부모님이 설정한 {selectedProfile?.timeLimit}분을 넘었어요.
               </p>
@@ -221,7 +222,7 @@ export default function KidHome() {
         {/* 상단 캐릭터 + 인사말 */}
         <section className="flex flex-col items-center justify-center text-center">
           {selectedProfile ? (
-            <div className="h-36 w-36 overflow-hidden rounded-full bg-white shadow-2xl">
+            <div className="h-28 w-28 md:h-36 md:w-36 overflow-hidden rounded-full bg-white shadow-2xl">
               <img
                 src={getAvatarUrl(selectedProfile.avatarSeed, selectedProfile.gender)}
                 alt={selectedProfile.name}
@@ -229,12 +230,13 @@ export default function KidHome() {
               />
             </div>
           ) : (
-            <div className="flex h-36 w-36 items-center justify-center rounded-full bg-white shadow-2xl">
-              <FaRobot className="text-7xl text-pink-500" />
+            <div className="flex h-28 w-28 md:h-36 md:w-36 items-center justify-center rounded-full bg-white shadow-2xl">
+              <FaRobot className="text-6xl md:text-7xl text-pink-500" />
             </div>
           )}
 
-          <h1 className="mt-8 text-4xl font-extrabold text-gray-800 md:text-5xl">
+          {/* 모바일에서 폰트 크기 줄임 */}
+          <h1 className="mt-6 md:mt-8 text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">
             {selectedProfile ? `안녕, ${selectedProfile.name}아! 👋` : "안녕 친구야! 👋"}
           </h1>
 
@@ -244,9 +246,9 @@ export default function KidHome() {
             </p>
           )}
 
-          {/* 획득한 배지 표시 */}
+          {/* 획득한 배지 표시 — px-2로 모바일 넘침 방지 */}
           {earnedBadges.length > 0 && (
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <div className="mt-4 flex flex-wrap justify-center gap-2 px-2">
               {earnedBadges.map((badge) => (
                 <div
                   key={badge.badgeId}
@@ -260,13 +262,13 @@ export default function KidHome() {
             </div>
           )}
 
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
+          <p className="mt-4 max-w-2xl text-base md:text-lg leading-relaxed text-gray-600 px-2">
             KidSafe AI 친구가 안전하고 재미있는 영상을 추천해줄게!
           </p>
         </section>
 
         {/* 검색 입력 영역 */}
-        <section className="mx-auto mt-16 max-w-3xl">
+        <section className="mx-auto mt-12 md:mt-16 max-w-3xl">
           <div className="rounded-3xl bg-white p-4 shadow-2xl">
             <div className="flex flex-col gap-4 md:flex-row">
               <input
@@ -306,9 +308,11 @@ export default function KidHome() {
 
         {/* 검색 결과 영역 */}
         {videos.length > 0 && (
-          <section className="mt-16">
-            <h2 className="mb-8 text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
-            <div className="grid gap-8 md:grid-cols-3">
+          <section className="mt-12 md:mt-16">
+            {/* 모바일에서 폰트 크기 줄임 */}
+            <h2 className="mb-6 md:mb-8 text-2xl md:text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
+            {/* 모바일 1열 → 태블릿 2열 → PC 3열 */}
+            <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {videos.map((video) => {
                 const { grade, color } = getSafetyGrade(video.totalScore);
                 return (
@@ -346,27 +350,28 @@ export default function KidHome() {
 
         {/* 추천 콘텐츠 */}
         {videos.length === 0 && !loading && (
-          <section className="mt-20">
-            <div className="mb-10 flex items-center gap-3">
-              <FaStar className="text-3xl text-yellow-500" />
-              <h2 className="text-3xl font-extrabold text-gray-800">오늘의 추천 콘텐츠</h2>
+          <section className="mt-16 md:mt-20">
+            <div className="mb-8 md:mb-10 flex items-center gap-3">
+              <FaStar className="text-2xl md:text-3xl text-yellow-500" />
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">오늘의 추천 콘텐츠</h2>
             </div>
-            <div className="grid gap-8 md:grid-cols-3">
+            {/* 모바일 1열 → 태블릿 2열 → PC 3열 */}
+            <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {recommendedContents.map((content) => (
                 <div
                   key={content.id}
                   className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
                 >
-                  <div className="relative h-56 overflow-hidden">
+                  <div className="relative h-48 md:h-56 overflow-hidden">
                     <img src={content.thumbnail} alt={content.title} className="h-full w-full object-cover" />
                     <div className="absolute left-4 top-4 rounded-full bg-green-500 px-4 py-2 text-sm font-bold text-white shadow-md">
                       {content.safetyLevel}
                     </div>
                   </div>
-                  <div className="p-6">
+                  <div className="p-5 md:p-6">
                     <p className="text-sm font-bold text-pink-500">{content.category}</p>
-                    <h3 className="mt-3 text-2xl font-extrabold text-gray-800">{content.title}</h3>
-                    <button className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-500 px-5 py-4 text-lg font-bold text-white transition duration-300 hover:bg-sky-600">
+                    <h3 className="mt-2 md:mt-3 text-xl md:text-2xl font-extrabold text-gray-800">{content.title}</h3>
+                    <button className="mt-4 md:mt-6 flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-500 px-5 py-3 md:py-4 text-base md:text-lg font-bold text-white transition duration-300 hover:bg-sky-600">
                       <FaPlayCircle />
                       영상 보러가기
                     </button>
