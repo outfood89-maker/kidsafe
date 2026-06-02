@@ -9,6 +9,7 @@ import {
 } from "react-icons/fa";
 import { searchVideos, analyzeVideo, saveHistory, getHistory, checkBadges, getBadges } from "../utils/api";
 import { getSafetyGrade, filterByAge } from "../utils/safetyFilter";
+import VideoModal from "../components/VideoModal";
 
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -21,6 +22,8 @@ export default function KidHome() {
   const [newBadges, setNewBadges] = useState([]);
   // 획득한 배지 목록
   const [earnedBadges, setEarnedBadges] = useState([]);
+  // 모달에 표시할 선택된 영상
+  const [selectedVideo, setSelectedVideo] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
@@ -168,6 +171,18 @@ export default function KidHome() {
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
 
+        {/* AI 요약 모달 — 영상 카드 클릭 시 표시 */}
+        {selectedVideo && (
+          <VideoModal
+            video={selectedVideo}
+            onClose={() => setSelectedVideo(null)}
+            onWatch={(video) => {
+              setSelectedVideo(null);
+              handleVideoClick(video);
+            }}
+          />
+        )}
+
         {/* 신규 배지 획득 팝업 */}
         {newBadges.length > 0 && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
@@ -301,7 +316,11 @@ export default function KidHome() {
                     key={video.videoId}
                     className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
                   >
-                    <div className="relative h-48 overflow-hidden">
+                    {/* 썸네일 클릭 시 모달 오픈 */}
+                    <div
+                      className="relative h-48 overflow-hidden cursor-pointer"
+                      onClick={() => setSelectedVideo(video)}
+                    >
                       <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
                       <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}>
                         {grade} {video.totalScore}점
@@ -309,15 +328,14 @@ export default function KidHome() {
                     </div>
                     <div className="p-5">
                       <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
-                      <h3 className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800">{video.title}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-gray-500">{video.summary}</p>
-                      <button
-                        onClick={() => handleVideoClick(video)}
-                        className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-500 px-5 py-3 text-base font-bold text-white transition duration-300 hover:bg-sky-600"
+                      {/* 제목 클릭 시 모달 오픈 */}
+                      <h3
+                        className="mt-2 line-clamp-2 text-lg font-extrabold text-gray-800 cursor-pointer hover:text-pink-500"
+                        onClick={() => setSelectedVideo(video)}
                       >
-                        <FaPlayCircle />
-                        영상 보러가기
-                      </button>
+                        {video.title}
+                      </h3>
+                      <p className="mt-2 line-clamp-2 text-sm text-gray-500">{video.summary}</p>
                     </div>
                   </div>
                 );
