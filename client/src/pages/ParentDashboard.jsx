@@ -42,22 +42,14 @@ export default function ParentDashboard() {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // 프로필별 배지 저장 { profileId: [badge, ...] }
   const [profileBadges, setProfileBadges] = useState({});
-
-  // 시청 기록 탭
   const [activeTab, setActiveTab] = useState("전체");
-
-  // 프로필 생성 폼
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState(7);
   const [newGender, setNewGender] = useState("남자");
   const [createError, setCreateError] = useState("");
-
-  // 시청 시간 설정 중인 프로필 ID
   const [editingTimeLimitId, setEditingTimeLimitId] = useState(null);
-  // 직접 입력 시간값
   const [customMinutes, setCustomMinutes] = useState("");
 
   useEffect(() => {
@@ -70,7 +62,6 @@ export default function ParentDashboard() {
         setHistory(historyData);
         setProfiles(profilesData);
 
-        // 프로필별 배지 불러오기
         const badgesMap = {};
         await Promise.all(
           profilesData.map(async (profile) => {
@@ -104,7 +95,7 @@ export default function ParentDashboard() {
         age: newAge,
         gender: newGender,
         avatarSeed: newName.trim(),
-        timeLimit: 60, // 기본값 1시간
+        timeLimit: 60,
       });
       setProfiles((prev) => [...prev, created]);
       setNewName("");
@@ -128,11 +119,9 @@ export default function ParentDashboard() {
     }
   };
 
-  // 프로필 시청 시간 저장
   const handleSaveTimeLimit = async (profileId, timeLimit) => {
     try {
-      const updated = await updateProfile(profileId, { timeLimit });
-      // 업데이트된 프로필로 목록 갱신
+      await updateProfile(profileId, { timeLimit });
       setProfiles((prev) =>
         prev.map((p) => (p.id === profileId ? { ...p, timeLimit } : p))
       );
@@ -163,21 +152,21 @@ export default function ParentDashboard() {
       id: 1,
       title: "총 시청 영상",
       value: `${history.length}개`,
-      icon: <FaVideo className="text-3xl text-pink-600" />,
+      icon: <FaVideo className="text-2xl md:text-3xl text-pink-600" />,
       bgColor: "bg-pink-100",
     },
     {
       id: 2,
       title: "평균 안전도",
       value: history.length > 0 ? `${averageScore}점` : "-",
-      icon: <FaShieldAlt className="text-3xl text-green-600" />,
+      icon: <FaShieldAlt className="text-2xl md:text-3xl text-green-600" />,
       bgColor: "bg-green-100",
     },
     {
       id: 3,
       title: "오늘 시청 시간",
       value: `약 ${estimatedMinutes}분`,
-      icon: <FaClock className="text-3xl text-blue-600" />,
+      icon: <FaClock className="text-2xl md:text-3xl text-blue-600" />,
       bgColor: timeLimitReached ? "bg-red-100" : "bg-blue-100",
     },
   ];
@@ -190,11 +179,13 @@ export default function ParentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      {/* px-4 → 모바일 여백 / md:px-6 → PC 여백 */}
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-10">
 
-        <section className="mb-12">
-          <h1 className="text-4xl font-extrabold text-gray-900">부모 대시보드</h1>
-          <p className="mt-3 text-lg text-gray-600">아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
+        {/* 헤더 — 모바일에서 폰트 줄임 */}
+        <section className="mb-12 md:mb-16">
+          <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900">부모 대시보드</h1>
+          <p className="mt-2 md:mt-3 text-base md:text-lg text-gray-600">아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
         </section>
 
         {loading && <p className="text-center text-gray-500">불러오는 중...</p>}
@@ -204,17 +195,19 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {/* 요약 카드 */}
+        {/* 요약 카드 — 모바일 1열 → PC 3열 */}
         {!loading && (
-          <section className="grid gap-6 md:grid-cols-3">
+          <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-3">
             {todaySummaryData.map((item) => (
-              <div key={item.id} className="rounded-3xl bg-white p-7 shadow-xl">
+              <div key={item.id} className="rounded-3xl bg-white p-5 md:p-7 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-base font-semibold text-gray-500">{item.title}</p>
-                    <h2 className="mt-3 text-4xl font-extrabold text-gray-900">{item.value}</h2>
+                    <p className="text-sm md:text-base font-semibold text-gray-500">{item.title}</p>
+                    {/* 숫자 — 모바일에서 줄임 */}
+                    <h2 className="mt-2 md:mt-3 text-2xl md:text-4xl font-extrabold text-gray-900">{item.value}</h2>
                   </div>
-                  <div className={`flex h-20 w-20 items-center justify-center rounded-3xl ${item.bgColor}`}>
+                  {/* 아이콘 박스 — 모바일에서 줄임 */}
+                  <div className={`flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-3xl ${item.bgColor}`}>
                     {item.icon}
                   </div>
                 </div>
@@ -225,16 +218,16 @@ export default function ParentDashboard() {
 
         {/* 자녀 프로필 관리 */}
         {!loading && (
-          <section className="mt-14 rounded-3xl bg-white p-8 shadow-xl">
-            <div className="mb-8 flex items-center justify-between">
+          <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+            <div className="mb-6 md:mb-8 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FaChild className="text-2xl text-pink-500" />
-                <h2 className="text-3xl font-extrabold text-gray-900">자녀 프로필</h2>
+                <FaChild className="text-xl md:text-2xl text-pink-500" />
+                <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">자녀 프로필</h2>
               </div>
               {profiles.length < 4 && (
                 <button
                   onClick={() => setShowCreateForm(!showCreateForm)}
-                  className="flex items-center gap-2 rounded-2xl bg-pink-500 px-5 py-3 font-bold text-white transition hover:bg-pink-600"
+                  className="flex items-center gap-2 rounded-2xl bg-pink-500 px-4 md:px-5 py-2 md:py-3 text-sm md:text-base font-bold text-white transition hover:bg-pink-600"
                 >
                   <FaPlus />
                   프로필 추가
@@ -244,8 +237,8 @@ export default function ParentDashboard() {
 
             {/* 프로필 생성 폼 */}
             {showCreateForm && (
-              <div className="mb-8 rounded-2xl border border-pink-200 bg-slate-50 p-6">
-                <h3 className="mb-6 text-xl font-bold text-gray-800">새 프로필 만들기</h3>
+              <div className="mb-8 rounded-2xl border border-pink-200 bg-slate-50 p-5 md:p-6">
+                <h3 className="mb-6 text-lg md:text-xl font-bold text-gray-800">새 프로필 만들기</h3>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-bold text-gray-600">이름</label>
@@ -261,12 +254,12 @@ export default function ParentDashboard() {
                         <img
                           src={getAvatarUrl(newName.trim(), newGender)}
                           alt="미리보기"
-                          className="h-40 w-40 rounded-2xl bg-white shadow-lg"
+                          className="h-32 w-32 md:h-40 md:w-40 rounded-2xl bg-white shadow-lg"
                         />
                         <div>
                           <p className="text-sm font-bold text-gray-500">캐릭터 미리보기</p>
-                          <p className="mt-1 text-lg font-extrabold text-pink-500">{newName}의 캐릭터</p>
-                          <p className="mt-1 text-sm text-gray-400">성별을 바꾸면 캐릭터도 바뀌어요!</p>
+                          <p className="mt-1 text-base md:text-lg font-extrabold text-pink-500">{newName}의 캐릭터</p>
+                          <p className="mt-1 text-xs md:text-sm text-gray-400">성별을 바꾸면 캐릭터도 바뀌어요!</p>
                         </div>
                       </div>
                     )}
@@ -279,7 +272,7 @@ export default function ParentDashboard() {
                           <button
                             key={age}
                             onClick={() => setNewAge(age)}
-                            className={`rounded-2xl px-4 py-3 font-bold transition ${
+                            className={`rounded-2xl px-3 md:px-4 py-2 md:py-3 text-sm md:text-base font-bold transition ${
                               newAge === age ? "bg-pink-500 text-white" : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
                             }`}
                           >
@@ -295,7 +288,7 @@ export default function ParentDashboard() {
                           <button
                             key={g}
                             onClick={() => setNewGender(g)}
-                            className={`rounded-2xl px-6 py-3 font-bold transition ${
+                            className={`rounded-2xl px-5 md:px-6 py-2 md:py-3 text-sm md:text-base font-bold transition ${
                               newGender === g ? "bg-pink-500 text-white" : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
                             }`}
                           >
@@ -321,49 +314,39 @@ export default function ParentDashboard() {
               </div>
             )}
 
-            {/* 프로필 목록 */}
+            {/* 프로필 목록 — 모바일 2열 → PC 4열 */}
             {profiles.length === 0 ? (
               <p className="py-10 text-center text-gray-400">아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 {profiles.map((profile) => (
-                  <div key={profile.id} className="relative flex flex-col items-center rounded-3xl bg-slate-50 p-5 shadow-md">
-                    {/* 삭제 버튼 */}
+                  <div key={profile.id} className="relative flex flex-col items-center rounded-3xl bg-slate-50 p-4 md:p-5 shadow-md">
                     <button
                       onClick={() => handleDeleteProfile(profile.id)}
                       className="absolute right-3 top-3 rounded-full bg-red-100 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
                     >
                       <FaTrash className="text-xs" />
                     </button>
-
-                    {/* 아바타 */}
                     <img
                       src={getAvatarUrl(profile.avatarSeed, profile.gender)}
                       alt={profile.name}
-                      className="h-36 w-36 rounded-2xl bg-white shadow"
+                      className="h-24 w-24 md:h-36 md:w-36 rounded-2xl bg-white shadow"
                     />
-                    <p className="mt-3 text-lg font-extrabold text-gray-800">{profile.name}</p>
-                    <p className="text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
+                    <p className="mt-3 text-base md:text-lg font-extrabold text-gray-800">{profile.name}</p>
+                    <p className="text-xs md:text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
 
-                    {/* 획득한 배지 표시 */}
                     {profileBadges[profile.id]?.length > 0 && (
                       <div className="mt-3 flex flex-wrap justify-center gap-1">
                         {profileBadges[profile.id].map((badge) => (
-                          <span
-                            key={badge.badgeId}
-                            title={badge.name}
-                            className="text-xl"
-                          >
+                          <span key={badge.badgeId} title={badge.name} className="text-lg md:text-xl">
                             {badge.emoji}
                           </span>
                         ))}
                       </div>
                     )}
 
-                    {/* 시청 시간 설정 */}
                     <div className="mt-4 w-full">
                       {editingTimeLimitId === profile.id ? (
-                        // 시청 시간 선택 버튼
                         <div className="flex flex-col gap-2">
                           {TIME_OPTIONS.map((option) => (
                             <button
@@ -378,7 +361,6 @@ export default function ParentDashboard() {
                               {option.label}
                             </button>
                           ))}
-                          {/* 직접 입력 */}
                           <div className="flex gap-1">
                             <input
                               type="number"
@@ -410,10 +392,9 @@ export default function ParentDashboard() {
                           </button>
                         </div>
                       ) : (
-                        // 현재 시청 시간 표시 + 수정 버튼
                         <button
                           onClick={() => setEditingTimeLimitId(profile.id)}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 py-2 text-sm font-bold text-blue-500 transition hover:bg-blue-100"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 py-2 text-xs md:text-sm font-bold text-blue-500 transition hover:bg-blue-100"
                         >
                           <FaClock />
                           {profile.timeLimit ? `${profile.timeLimit}분 제한` : "시청 시간 설정"}
@@ -427,19 +408,19 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {/* 시청 기록 — 프로필 탭 필터 */}
+        {/* 시청 기록 */}
         {!loading && (
-          <section className="mt-14 rounded-3xl bg-white p-8 shadow-xl">
+          <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
             <div className="mb-6 flex items-center gap-3">
-              <FaHistory className="text-2xl text-blue-600" />
-              <h2 className="text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
+              <FaHistory className="text-xl md:text-2xl text-blue-600" />
+              <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
             </div>
 
             {/* 프로필 탭 */}
-            <div className="mb-6 flex flex-wrap gap-3">
+            <div className="mb-6 flex flex-wrap gap-2 md:gap-3">
               <button
                 onClick={() => setActiveTab("전체")}
-                className={`rounded-2xl px-5 py-2 font-bold transition ${
+                className={`rounded-2xl px-4 md:px-5 py-2 text-sm md:text-base font-bold transition ${
                   activeTab === "전체" ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                 }`}
               >
@@ -449,14 +430,14 @@ export default function ParentDashboard() {
                 <button
                   key={profile.id}
                   onClick={() => setActiveTab(profile.id)}
-                  className={`flex items-center gap-2 rounded-2xl px-5 py-2 font-bold transition ${
+                  className={`flex items-center gap-2 rounded-2xl px-4 md:px-5 py-2 text-sm md:text-base font-bold transition ${
                     activeTab === profile.id ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                   }`}
                 >
                   <img
                     src={getAvatarUrl(profile.avatarSeed, profile.gender)}
                     alt={profile.name}
-                    className="h-6 w-6 rounded-full bg-white"
+                    className="h-5 w-5 md:h-6 md:w-6 rounded-full bg-white"
                   />
                   {profile.name}
                 </button>
@@ -468,7 +449,7 @@ export default function ParentDashboard() {
                 {activeTab === "전체" ? "아직 시청 기록이 없어요." : "이 프로필의 시청 기록이 없어요."}
               </p>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-4 md:space-y-5">
                 {filteredHistory.map((item, index) => {
                   const { grade, color } = getSafetyGrade(item.totalScore);
                   const badgeColor =
@@ -479,19 +460,19 @@ export default function ParentDashboard() {
                   return (
                     <div
                       key={`${item.videoId}-${index}`}
-                      className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-slate-50 p-5 md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-slate-50 p-4 md:p-5 md:flex-row md:items-center md:justify-between"
                     >
-                      <div className="flex items-center gap-4">
-                        <img src={item.thumbnail} alt={item.title} className="h-16 w-28 rounded-xl object-cover" />
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <img src={item.thumbnail} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0" />
                         <div>
-                          <h3 className="line-clamp-1 text-lg font-bold text-gray-900">{item.title}</h3>
-                          <p className="mt-1 text-sm text-gray-500">{item.channelTitle}</p>
+                          <h3 className="line-clamp-1 text-base md:text-lg font-bold text-gray-900">{item.title}</h3>
+                          <p className="mt-1 text-xs md:text-sm text-gray-500">{item.channelTitle}</p>
                           <p className="mt-1 text-xs text-gray-400">
                             {new Date(item.watchedAt).toLocaleString("ko-KR")}
                           </p>
                         </div>
                       </div>
-                      <div className={`w-fit rounded-full px-5 py-2 text-sm font-bold text-white ${badgeColor}`}>
+                      <div className={`w-fit rounded-full px-4 md:px-5 py-2 text-xs md:text-sm font-bold text-white ${badgeColor}`}>
                         {grade} {item.totalScore}점
                       </div>
                     </div>
@@ -502,17 +483,17 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {/* 안전도 분포 차트 */}
+        {/* 안전도 분포 차트 — 모바일에서 높이 줄임 */}
         {!loading && history.length > 0 && (
-          <section className="mt-14 rounded-3xl bg-white p-8 shadow-xl">
-            <h2 className="text-3xl font-extrabold text-gray-900">안전도 분포</h2>
-            <p className="mt-3 text-gray-500">시청한 영상의 안전도 구간별 개수입니다.</p>
-            <div className="mt-10 h-[400px] w-full">
+          <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+            <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">안전도 분포</h2>
+            <p className="mt-2 md:mt-3 text-sm md:text-base text-gray-500">시청한 영상의 안전도 구간별 개수입니다.</p>
+            <div className="mt-6 md:mt-10 h-[250px] md:h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" />
-                  <YAxis allowDecimals={false} />
+                  <XAxis dataKey="category" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Bar dataKey="count" name="영상 수" radius={[12, 12, 0, 0]} fill="#3b82f6" />
                 </BarChart>
