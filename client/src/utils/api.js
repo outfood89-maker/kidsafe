@@ -11,6 +11,14 @@ export const searchVideos = async (keyword) => {
   return response.data.videos
 }
 
+// 나이별 추천 영상 검색 (신규)
+export const getRecommendedVideos = async (age) => {
+  const response = await axios.get(`${BASE_URL}/search/recommend`, {
+    params: { age }
+  })
+  return response.data
+}
+
 // 영상 안전도 검수
 export const analyzeVideo = async (title, description) => {
   const response = await axios.post(`${BASE_URL}/analyze`, {
@@ -49,6 +57,7 @@ export const deleteProfile = async (profileId) => {
   const response = await axios.delete(`${BASE_URL}/profiles/${profileId}`)
   return response.data
 }
+
 // 프로필 수정
 export const updateProfile = async (profileId, profileData) => {
   const response = await axios.put(`${BASE_URL}/profiles/${profileId}`, profileData)
@@ -61,10 +70,7 @@ export const getBadges = async (profileId) => {
   return response.data.badges
 }
 
-
 export const checkBadges = async (profileId) => {
   const response = await axios.post(`${BASE_URL}/badges/check/${profileId}`)
   return response.data
 }
-
-
