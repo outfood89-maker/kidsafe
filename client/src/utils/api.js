@@ -8,7 +8,7 @@ export const searchVideos = async (keyword) => {
   const response = await axios.get(`${BASE_URL}/search`, {
     params: { keyword }
   })
-  return response.data.videos
+  return response.data // videos + playlists 둘 다 반환
 }
 
 // 나이별 추천 영상 검색 (신규)
@@ -82,3 +82,48 @@ export const getHistoryRecommendedVideos = async (keyword) => {
   })
   return response.data
 }
+
+
+// 검색 히스토리 조회
+export const getSearchHistory = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/search-history`, {
+    params: { profileId }
+  })
+  return response.data
+}
+
+// 검색 히스토리 저장
+export const saveSearchHistory = async (profileId, keyword) => {
+  const response = await axios.post(`${BASE_URL}/search-history`, {
+    profileId,
+    keyword
+  })
+  return response.data
+}
+
+// 검색 히스토리 1개 삭제
+export const deleteSearchHistory = async (id) => {
+  const response = await axios.delete(`${BASE_URL}/search-history/${id}`)
+  return response.data
+}
+
+// 검색 히스토리 전체 삭제
+export const deleteAllSearchHistory = async (profileId) => {
+  const response = await axios.delete(`${BASE_URL}/search-history/all/${profileId}`)
+  return response.data
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

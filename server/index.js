@@ -1,4 +1,5 @@
 import searchRouter from './routes/search.js'
+import searchHistoryRouter from './routes/search-history.js'
 import historyRouter from './routes/history.js'
 import profilesRouter from './routes/profiles.js'
 import analyzeRouter from './routes/analyze.js'
@@ -20,7 +21,8 @@ app.use('/profiles', profilesRouter)
 app.get('/', (req, res) => {
   res.json({ message: 'KidSafe 서버 작동 중! 🛡️' })
 })
-app.use('/badges', badgesRouter) 
+app.use('/badges', badgesRouter)
+app.use('/search-history', searchHistoryRouter) 
 
 app.get('/test-env', (req, res) => {
   res.json({
