@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
+  FaCommentDots, FaPaperPlane, FaChevronDown,
 } from "react-icons/fa";
 import {
   searchVideos, analyzeVideo, saveHistory, getHistory,
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
-  getFavorites, addFavorite, removeFavorite,
+  getFavorites, addFavorite, removeFavorite, sendChatMessage,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
@@ -40,6 +41,13 @@ export default function KidHome() {
   const [visibleCount, setVisibleCount] = useState(9);
   const [visibleRecommendCount, setVisibleRecommendCount] = useState(6);
   const [visibleHistoryCount, setVisibleHistoryCount] = useState(6);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { role: "assistant", content: "안녕! 나는 키디야~ 궁금한 게 있으면 뭐든지 물어봐! 😊" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatBottomRef = useRef(null);
   const searchBoxRef = useRef(null);
   const navigate = useNavigate();
 
@@ -83,6 +91,12 @@ export default function KidHome() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (chatOpen && chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, chatOpen]);
 
   const fetchSearchHistory = async (profileId) => {
     try { const data = await getSearchHistory(profileId); setSearchHistory(data); }
@@ -203,6 +217,25 @@ export default function KidHome() {
       : "short01,short02,short03,short04,short05,short06,short07,short08";
     return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
   };
+
+  const handleChatSendWithText = async (text) => {
+    if (!text || chatLoading) return;
+    const userMsg = { role: "user", content: text };
+    const nextMessages = [...chatMessages, userMsg];
+    setChatMessages(nextMessages);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const { reply } = await sendChatMessage(nextMessages, selectedProfile?.name, selectedProfile?.age);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "키디가 잠깐 졸았나봐... 다시 말해줘! 😅" }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleChatSend = () => handleChatSendWithText(chatInput.trim());
 
   const handleSearch = async (keyword) => {
     const trimmedKeyword = (keyword || searchKeyword).trim();
@@ -677,6 +710,118 @@ export default function KidHome() {
             </div>
           </section>
         )}
+
+      </div>
+
+      {/* 키디 플로팅 챗봇 */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+
+        {/* 채팅창 */}
+        {chatOpen && (
+          <div className="flex flex-col w-80 sm:w-96 h-[480px] rounded-3xl bg-white shadow-2xl overflow-hidden border-2 border-yellow-200">
+
+            {/* 헤더 */}
+            <div className="flex items-center justify-between bg-gradient-to-r from-yellow-400 to-orange-400 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-2xl shadow-md">
+                  🤖
+                </div>
+                <div>
+                  <p className="text-sm font-extrabold text-white">키디</p>
+                  <p className="text-xs text-yellow-100">AI 친구</p>
+                </div>
+              </div>
+              <button onClick={() => setChatOpen(false)} className="text-white hover:text-yellow-100 transition">
+                <FaChevronDown className="text-lg" />
+              </button>
+            </div>
+
+            {/* 메시지 영역 */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-yellow-50">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
+                  {msg.role === "assistant" && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-base shadow">
+                      🤖
+                    </div>
+                  )}
+                  <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm font-semibold leading-relaxed shadow-sm ${
+                    msg.role === "user"
+                      ? "bg-pink-500 text-white rounded-br-sm"
+                      : "bg-white text-gray-800 rounded-bl-sm"
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-base shadow">🤖</div>
+                  <div className="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm">
+                    <div className="flex gap-1 items-center">
+                      <span className="h-2 w-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="h-2 w-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="h-2 w-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* 빠른 질문 버튼 */}
+            {chatMessages.length <= 1 && (
+              <div className="flex flex-col gap-2 px-4 py-3 bg-yellow-50 border-t border-yellow-100">
+                <p className="text-xs font-bold text-yellow-500">👇 눌러서 바로 물어봐!</p>
+                {[
+                  { label: "🎬 재미있는 영상 키워드 추천해줘!", text: "재미있는 영상 키워드 추천해줘!" },
+                  { label: "🧩 오늘의 퀴즈 내줘!", text: "오늘의 퀴즈 내줘!" },
+                  { label: "🌍 신기한 사실 알려줘!", text: "신기한 사실 알려줘!" },
+                ].map((q) => (
+                  <button
+                    key={q.text}
+                    onClick={() => {
+                      setChatInput(q.text);
+                      setTimeout(() => handleChatSendWithText(q.text), 0);
+                    }}
+                    className="w-full rounded-2xl border-2 border-yellow-200 bg-white px-4 py-2 text-left text-sm font-semibold text-gray-700 transition hover:border-yellow-400 hover:bg-yellow-50 active:scale-95"
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 입력창 */}
+            <div className="flex items-center gap-2 border-t border-yellow-100 bg-white px-4 py-3">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
+                placeholder="키디한테 물어봐!"
+                className="flex-1 rounded-2xl border-2 border-yellow-200 px-4 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-yellow-400 transition"
+              />
+              <button
+                onClick={handleChatSend}
+                disabled={!chatInput.trim() || chatLoading}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-400 text-white shadow-md transition hover:bg-yellow-500 disabled:opacity-40"
+              >
+                <FaPaperPlane className="text-sm" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 플로팅 버튼 */}
+        <button
+          onClick={() => setChatOpen((prev) => !prev)}
+          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 px-5 py-3 text-white font-extrabold shadow-2xl transition hover:scale-105 active:scale-95"
+        >
+          <span className="text-xl">🤖</span>
+          <span className="text-sm">키디한테 물어봐!</span>
+          {chatOpen ? <FaChevronDown className="text-xs" /> : <FaCommentDots className="text-xs" />}
+        </button>
 
       </div>
     </div>

@@ -131,6 +131,12 @@ export const removeFavorite = async (id) => {
   return response.data
 }
 
+// 키디 챗봇
+export const sendChatMessage = async (messages, profileName, profileAge) => {
+  const response = await axios.post(`${BASE_URL}/chat`, { messages, profileName, profileAge })
+  return response.data
+}
+
 
 
 
