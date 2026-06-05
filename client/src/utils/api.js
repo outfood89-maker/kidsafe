@@ -113,6 +113,24 @@ export const deleteAllSearchHistory = async (profileId) => {
   return response.data
 }
 
+// 찜 목록 조회
+export const getFavorites = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/favorites`, { params: { profileId } })
+  return response.data
+}
+
+// 찜 추가
+export const addFavorite = async (data) => {
+  const response = await axios.post(`${BASE_URL}/favorites`, data)
+  return response.data
+}
+
+// 찜 해제
+export const removeFavorite = async (id) => {
+  const response = await axios.delete(`${BASE_URL}/favorites/${id}`)
+  return response.data
+}
+
 
 
 

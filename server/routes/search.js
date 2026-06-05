@@ -174,7 +174,7 @@ router.get('/', async (req, res) => {
   }
   try {
     const [videos, playlists] = await Promise.all([
-      searchYouTube(keyword, 10),
+      searchYouTube(keyword, 20),
       searchYouTubePlaylists(keyword, 6),
     ])
     res.json({ videos, playlists })

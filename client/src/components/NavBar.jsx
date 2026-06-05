@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaShieldAlt } from "react-icons/fa";
+import { FaArrowLeft, FaShieldAlt, FaHeart } from "react-icons/fa";
 
 export default function NavBar({
   backTo,
   backLabel = "뒤로가기",
   title,
+  showFavorites = false,
 }) {
   const navigate = useNavigate();
 
@@ -44,8 +45,17 @@ export default function NavBar({
           </h1>
         </div>
 
-        {/* 오른쪽 — 로고 (PC에서 더 크게) */}
-        <div className="flex min-w-[120px] md:min-w-[160px] justify-end">
+        {/* 오른쪽 — 찜 버튼(선택) + 로고 */}
+        <div className="flex min-w-[120px] md:min-w-[160px] justify-end items-center gap-3">
+          {showFavorites && (
+            <button
+              onClick={() => navigate("/favorites")}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm md:text-base font-bold text-pink-500 transition hover:bg-pink-50"
+            >
+              <FaHeart className="text-base md:text-xl" />
+              <span className="hidden sm:block">찜 목록</span>
+            </button>
+          )}
           <div className="flex items-center gap-2 md:gap-3">
             <div className="flex h-9 w-9 md:h-12 md:w-12 items-center justify-center rounded-xl md:rounded-2xl bg-blue-600">
               <FaShieldAlt className="text-white text-base md:text-xl" />

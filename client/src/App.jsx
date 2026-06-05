@@ -3,6 +3,7 @@ import Landing from './pages/Landing'
 import ParentDashboard from './pages/ParentDashboard'
 import KidHome from './pages/KidHome'
 import ProfileSelect from './pages/ProfileSelect'
+import Favorites from './pages/Favorites'
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/parent" element={<ParentDashboard />} />
         <Route path="/profiles" element={<ProfileSelect />} />
         <Route path="/kids" element={<KidHome />} />
+        <Route path="/favorites" element={<Favorites />} />
       </Routes>
     </BrowserRouter>
   )

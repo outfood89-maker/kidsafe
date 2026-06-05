@@ -3,10 +3,11 @@ import searchHistoryRouter from './routes/search-history.js'
 import historyRouter from './routes/history.js'
 import profilesRouter from './routes/profiles.js'
 import analyzeRouter from './routes/analyze.js'
+import favoritesRouter from './routes/favorites.js'
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import badgesRouter from './routes/badges.js' 
+import badgesRouter from './routes/badges.js'
 dotenv.config()
 
 const app = express()
@@ -22,7 +23,8 @@ app.get('/', (req, res) => {
   res.json({ message: 'KidSafe 서버 작동 중! 🛡️' })
 })
 app.use('/badges', badgesRouter)
-app.use('/search-history', searchHistoryRouter) 
+app.use('/search-history', searchHistoryRouter)
+app.use('/favorites', favoritesRouter)
 
 app.get('/test-env', (req, res) => {
   res.json({

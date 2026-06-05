@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  FaSearch, FaStar, FaHeart, FaRobot, FaSpinner,
+  FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay,
 } from "react-icons/fa";
 import {
   searchVideos, analyzeVideo, saveHistory, getHistory,
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
+  getFavorites, addFavorite, removeFavorite,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
@@ -34,9 +36,27 @@ export default function KidHome() {
   const [historyKeyword, setHistoryKeyword] = useState("");
   const [searchHistory, setSearchHistory] = useState([]);
   const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(9);
+  const [visibleRecommendCount, setVisibleRecommendCount] = useState(6);
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(6);
   const searchBoxRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // 이전 검색 결과 복원 (페이지 이탈 후 복귀 시)
+    const savedSearch = sessionStorage.getItem("kidsafe_search");
+    if (savedSearch) {
+      try {
+        const { keyword, videos: sv, playlists: sp } = JSON.parse(savedSearch);
+        setSearchKeyword(keyword);
+        setVideos(sv);
+        setPlaylists(sp);
+      } catch {
+        sessionStorage.removeItem("kidsafe_search");
+      }
+    }
+
     const stored = localStorage.getItem("selectedProfile");
     if (stored) {
       const profile = JSON.parse(stored);
@@ -44,6 +64,7 @@ export default function KidHome() {
       if (profile.timeLimit) checkTimeLimit(profile);
       fetchBadges(profile.id);
       fetchSearchHistory(profile.id);
+      fetchFavorites(profile.id);
       getHistory().then(history => {
         fetchRecommendedVideos(profile.age, history);
         fetchHistoryRecommendedVideos(history, profile.age);
@@ -81,10 +102,43 @@ export default function KidHome() {
     catch (err) { console.error("검색 히스토리 전체 삭제 실패:", err); }
   };
 
+  const fetchFavorites = async (profileId) => {
+    try {
+      const data = await getFavorites(profileId);
+      setFavorites(data);
+    } catch (err) {
+      console.error("찜 목록 불러오기 실패:", err);
+    }
+  };
+
+  const toggleFavorite = async (item, type) => {
+    if (!selectedProfile) return;
+    const itemId = type === "video" ? item.videoId : item.playlistId;
+    const existing = favorites.find((f) => f.itemId === itemId);
+    try {
+      if (existing) {
+        await removeFavorite(existing.id);
+        setFavorites((prev) => prev.filter((f) => f.id !== existing.id));
+      } else {
+        const newFav = await addFavorite({
+          profileId: selectedProfile.id,
+          type,
+          itemId,
+          title: item.title,
+          thumbnail: type === "video" ? item.thumbnail : (item.thumbnails?.[0] || ""),
+          channelTitle: item.channelTitle,
+          totalScore: item.totalScore ?? null,
+        });
+        setFavorites((prev) => [newFav, ...prev]);
+      }
+    } catch (err) {
+      console.error("찜 처리 실패:", err);
+    }
+  };
+
   const handleHistoryKeywordClick = (keyword) => {
     setSearchKeyword(keyword);
     setShowSearchHistory(false);
-    handleSearch(keyword);
   };
 
   const fetchRecommendedVideos = async (age, watchHistory = []) => {
@@ -146,7 +200,7 @@ export default function KidHome() {
     const trimmedKeyword = (keyword || searchKeyword).trim();
     if (!trimmedKeyword) { alert("보고 싶은 영상을 입력해주세요!"); return; }
     try {
-      setLoading(true); setError(""); setVideos([]); setPlaylists([]); setShowSearchHistory(false);
+      setLoading(true); setError(""); setVideos([]); setPlaylists([]); setShowSearchHistory(false); setVisibleCount(9);
       if (selectedProfile?.id) {
         await saveSearchHistory(selectedProfile.id, trimmedKeyword);
         await fetchSearchHistory(selectedProfile.id);
@@ -163,6 +217,11 @@ export default function KidHome() {
       } else {
         setVideos(filteredVideos);
         setPlaylists(playlistResults || []);
+        sessionStorage.setItem("kidsafe_search", JSON.stringify({
+          keyword: trimmedKeyword,
+          videos: filteredVideos,
+          playlists: playlistResults || [],
+        }));
       }
     } catch (err) { setError("검색 중 오류가 발생했어요. 다시 시도해줘요!"); }
     finally { setLoading(false); }
@@ -198,6 +257,7 @@ export default function KidHome() {
 
   const VideoCard = ({ video }) => {
     const { grade, color } = getSafetyGrade(video.totalScore);
+    const isFavorited = favorites.some((f) => f.itemId === video.videoId);
     return (
       <div className="overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl">
         <div className="relative h-48 md:h-56 overflow-hidden cursor-pointer" onClick={() => setSelectedVideo(video)}>
@@ -205,6 +265,17 @@ export default function KidHome() {
           <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md ${getBadgeStyle(color)}`}>
             {grade} {video.totalScore}점
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
+            className={`absolute right-4 top-4 rounded-full p-2 shadow-md transition-all duration-200 active:scale-125 ${
+              isFavorited
+                ? "bg-pink-500 text-white scale-110 shadow-lg shadow-pink-300"
+                : "bg-white/80 text-gray-400 hover:text-pink-400 hover:scale-110"
+            }`}
+            title={isFavorited ? "찜 해제" : "찜하기"}
+          >
+            {isFavorited ? <FaHeart /> : <FaRegHeart />}
+          </button>
         </div>
         <div className="p-5 md:p-6">
           <p className="text-sm font-bold text-pink-500">{video.channelTitle}</p>
@@ -220,6 +291,7 @@ export default function KidHome() {
   // 재생목록 카드 — 카드 전체 너비/높이 고정
   const PlaylistCard = ({ playlist }) => {
     const thumbs = (playlist.thumbnails || []).slice(0, 3);
+    const isFavorited = favorites.some((f) => f.itemId === playlist.playlistId);
     return (
       <div
         onClick={() => setSelectedPlaylist(playlist)}
@@ -255,6 +327,19 @@ export default function KidHome() {
               <FaList className="text-5xl text-purple-300" />
             </div>
           )}
+          {/* 찜 버튼 */}
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFavorite(playlist, "playlist"); }}
+            className={`absolute right-4 top-4 rounded-full p-2 shadow-md transition-all duration-200 active:scale-125 ${
+              isFavorited
+                ? "bg-pink-500 text-white scale-110 shadow-lg shadow-pink-300"
+                : "bg-white/80 text-gray-400 hover:text-pink-400 hover:scale-110"
+            }`}
+            title={isFavorited ? "찜 해제" : "찜하기"}
+          >
+            {isFavorited ? <FaHeart /> : <FaRegHeart />}
+          </button>
+
           {/* 하단 그라데이션 바 — 재생목록 + 영상 개수 */}
           <div
             className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3"
@@ -281,7 +366,7 @@ export default function KidHome() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
-      <NavBar backTo="/profiles" backLabel="프로필 선택" title="KidSafe" />
+      <NavBar backTo="/profiles" backLabel="프로필 선택" title="KidSafe" showFavorites={true} />
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
 
         {selectedVideo && (
@@ -354,7 +439,6 @@ export default function KidHome() {
                   type="text" placeholder="어떤 영상 볼까?" value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="flex-1 min-w-0 rounded-2xl border-2 border-pink-200 px-5 py-3 text-base font-semibold text-gray-700 outline-none transition duration-300 focus:border-pink-400"
                 />
                 <button onClick={() => handleSearch()} disabled={loading}
@@ -397,10 +481,23 @@ export default function KidHome() {
 
         {videos.length > 0 && (
           <section className="mt-12 md:mt-16">
-            <h2 className="mb-6 md:mb-8 text-2xl md:text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
-            <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {videos.map((video) => <VideoCard key={video.videoId} video={video} />)}
+            <div className="mb-6 md:mb-8 flex items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">🔍 검색 결과</h2>
+              <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-bold text-pink-600">{videos.length}개</span>
             </div>
+            <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+            </div>
+            {visibleCount < videos.length && (
+              <div className="mt-10 flex justify-center">
+                <button
+                  onClick={() => setVisibleCount((prev) => prev + 9)}
+                  className="flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-pink-500 shadow-lg transition hover:bg-pink-50 hover:shadow-xl border-2 border-pink-200"
+                >
+                  더보기 ({videos.length - visibleCount}개 남음) ↓
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -433,9 +530,21 @@ export default function KidHome() {
                 </div>
               )}
               {!recommendLoading && recommendedVideos.length > 0 && (
-                <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                  {recommendedVideos.map((video) => <VideoCard key={video.videoId} video={video} />)}
-                </div>
+                <>
+                  <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {recommendedVideos.slice(0, visibleRecommendCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+                  </div>
+                  {visibleRecommendCount < recommendedVideos.length && (
+                    <div className="mt-10 flex justify-center">
+                      <button
+                        onClick={() => setVisibleRecommendCount((prev) => prev + 6)}
+                        className="flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-yellow-500 shadow-lg transition hover:bg-yellow-50 hover:shadow-xl border-2 border-yellow-200"
+                      >
+                        더보기 ({recommendedVideos.length - visibleRecommendCount}개 남음) ↓
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
               {!recommendLoading && recommendedVideos.length === 0 && (
                 <p className="py-10 text-center text-gray-400">추천 영상을 불러오지 못했어요.</p>
@@ -458,14 +567,91 @@ export default function KidHome() {
                   </div>
                 )}
                 {!historyLoading && historyVideos.length > 0 && (
-                  <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {historyVideos.map((video) => <VideoCard key={video.videoId} video={video} />)}
-                  </div>
+                  <>
+                    <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                      {historyVideos.slice(0, visibleHistoryCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+                    </div>
+                    {visibleHistoryCount < historyVideos.length && (
+                      <div className="mt-10 flex justify-center">
+                        <button
+                          onClick={() => setVisibleHistoryCount((prev) => prev + 6)}
+                          className="flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-pink-500 shadow-lg transition hover:bg-pink-50 hover:shadow-xl border-2 border-pink-200"
+                        >
+                          더보기 ({historyVideos.length - visibleHistoryCount}개 남음) ↓
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             )}
           </>
         )}
+        {favorites.length > 0 && (
+          <section className="mt-16 md:mt-20">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaHeart className="text-2xl md:text-3xl text-pink-500" />
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">내 찜 목록</h2>
+              </div>
+              <button
+                onClick={() => navigate("/favorites")}
+                className="text-sm font-bold text-pink-500 hover:text-pink-700 transition"
+              >
+                전체 보기 →
+              </button>
+            </div>
+            <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {favorites.slice(0, 3).map((fav) => (
+                <div
+                  key={fav.id}
+                  onClick={() =>
+                    fav.type === "video"
+                      ? window.open(`https://www.youtube.com/watch?v=${fav.itemId}`, "_blank")
+                      : window.open(`https://www.youtube.com/playlist?list=${fav.itemId}`, "_blank")
+                  }
+                  className="cursor-pointer overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    {fav.thumbnail ? (
+                      <img src={fav.thumbnail} alt={fav.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-pink-100">
+                        <FaHeart className="text-5xl text-pink-300" />
+                      </div>
+                    )}
+                    {fav.type === "playlist" && (
+                      <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-purple-500 px-3 py-1 text-xs font-bold text-white shadow">
+                        <FaList style={{ fontSize: "10px" }} /> 재생목록
+                      </div>
+                    )}
+                    {fav.type === "video" && fav.totalScore != null && (
+                      <div className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-bold text-white shadow ${getBadgeStyle(getSafetyGrade(fav.totalScore).color)}`}>
+                        {getSafetyGrade(fav.totalScore).grade} {fav.totalScore}점
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFavorite(fav.id).then(() =>
+                          setFavorites((prev) => prev.filter((f) => f.id !== fav.id))
+                        );
+                      }}
+                      className="absolute right-4 top-4 rounded-full bg-pink-500 p-2 text-white shadow-md transition hover:bg-pink-600"
+                    >
+                      <FaHeart />
+                    </button>
+                  </div>
+                  <div className="p-5">
+                    <p className="text-sm font-bold text-pink-500">{fav.channelTitle}</p>
+                    <h3 className="mt-2 line-clamp-2 text-base font-extrabold text-gray-800">{fav.title}</h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
       </div>
     </div>
   );
