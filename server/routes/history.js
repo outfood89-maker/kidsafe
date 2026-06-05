@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
+import { createAlertIfNeeded } from './alerts.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -35,7 +36,7 @@ router.get('/', (req, res) => {
 
 // 시청 기록 저장 (POST /history)
 router.post('/', (req, res) => {
-  const { videoId, title, channelTitle, thumbnail, totalScore, summary, profileId  } = req.body
+  const { videoId, title, channelTitle, thumbnail, totalScore, summary, profileId, violence, language, sexual } = req.body
 
   if (!videoId || !title) {
     return res.status(400).json({ error: '영상 정보가 부족해요' })
@@ -52,17 +53,19 @@ router.post('/', (req, res) => {
       thumbnail,
       totalScore,
       summary,
-      profileId: profileId || null,  
-      watchedAt: new Date().toISOString(), // 시청 시각 기록
+      violence,
+      language,
+      sexual,
+      profileId: profileId || null,
+      watchedAt: new Date().toISOString(),
     }
 
-    // 최신 기록이 맨 앞에 오도록 추가
     history.unshift(newRecord)
-
-    // 최대 50개까지만 저장
     const trimmed = history.slice(0, 50)
-
     writeHistory(trimmed)
+
+    // 위험 영상 알림 생성
+    createAlertIfNeeded(newRecord)
 
     res.json({ success: true, record: newRecord })
   } catch (error) {

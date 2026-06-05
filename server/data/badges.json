@@ -62,5 +62,37 @@
     "emoji": "🗺️",
     "description": "5가지 이상 다양한 키워드로 검색했어요!",
     "earnedAt": "2026-06-05T15:43:06.409Z"
+  },
+  {
+    "profileId": "1780363260564",
+    "badgeId": "first_step",
+    "name": "첫 발걸음",
+    "emoji": "🌟",
+    "description": "첫 번째 영상을 시청했어요!",
+    "earnedAt": "2026-06-05T16:17:28.038Z"
+  },
+  {
+    "profileId": "1780384750187",
+    "badgeId": "sprout_explorer",
+    "name": "새싹 탐험가",
+    "emoji": "🌱",
+    "description": "영상 5개를 시청했어요!",
+    "earnedAt": "2026-06-05T16:58:24.570Z"
+  },
+  {
+    "profileId": "1780384750187",
+    "badgeId": "kidsafe_master",
+    "name": "KidSafe 마스터",
+    "emoji": "🏆",
+    "description": "배지를 5개 이상 획득했어요!",
+    "earnedAt": "2026-06-05T16:58:54.064Z"
+  },
+  {
+    "profileId": "1780384750187",
+    "badgeId": "channel_regular",
+    "name": "단골손님",
+    "emoji": "📺",
+    "description": "같은 채널 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-05T16:58:54.064Z"
   }
 ]

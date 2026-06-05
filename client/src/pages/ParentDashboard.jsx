@@ -8,6 +8,10 @@ import {
   FaPlus,
   FaTrash,
   FaBan,
+  FaBell,
+  FaExclamationTriangle,
+  FaCheck,
+  FaSlidersH,
 } from "react-icons/fa";
 
 import {
@@ -20,7 +24,7 @@ import {
   Tooltip,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 
@@ -56,6 +60,9 @@ export default function ParentDashboard() {
   const [blockedKeywords, setBlockedKeywords] = useState({ system: [], custom: [] });
   const [newBlockedKeyword, setNewBlockedKeyword] = useState("");
   const [blockError, setBlockError] = useState("");
+  const [alerts, setAlerts] = useState([]);
+  const [alertSettings, setAlertSettings] = useState({ threshold: 70, lateNightAlert: true, lateNightHour: 22 });
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,6 +85,10 @@ export default function ParentDashboard() {
 
         const blockedData = await getBlockedKeywords();
         setBlockedKeywords(blockedData);
+
+        const [alertData, settingsData] = await Promise.all([getAlerts(), getAlertSettings()]);
+        setAlerts(alertData.alerts);
+        setAlertSettings(settingsData);
       } catch (err) {
         setError("데이터를 불러오지 못했어요.");
       } finally {
@@ -136,6 +147,34 @@ export default function ParentDashboard() {
       setEditingTimeLimitId(null);
     } catch (err) {
       alert("시청 시간 설정에 실패했어요.");
+    }
+  };
+
+  const unreadCount = alerts.filter(a => !a.read).length;
+
+  const handleMarkRead = async (id) => {
+    await markAlertRead(id);
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllAlertsRead();
+    setAlerts(prev => prev.map(a => ({ ...a, read: true })));
+  };
+
+  const handleSaveAlertSettings = async () => {
+    await saveAlertSettings(alertSettings);
+    setShowAlertSettings(false);
+  };
+
+  const handleBlockChannel = async (channelTitle) => {
+    if (!channelTitle) return;
+    try {
+      const data = await addBlocked(channelTitle);
+      setBlockedKeywords(prev => ({ ...prev, custom: data.custom }));
+      alert(`"${channelTitle}" 채널이 차단 키워드에 추가됐어요!`);
+    } catch (err) {
+      alert(err.response?.data?.error || "이미 등록된 키워드예요.");
     }
   };
 
@@ -523,6 +562,153 @@ export default function ParentDashboard() {
             </div>
           </section>
         )}
+
+        {/* 위험 영상 알림 */}
+        <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <FaBell className="text-orange-500 text-xl md:text-2xl" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">위험 영상 알림</h2>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAlertSettings(v => !v)}
+                className="flex items-center gap-2 rounded-2xl border-2 border-gray-200 px-3 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
+              >
+                <FaSlidersH /> 알림 설정
+              </button>
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="flex items-center gap-2 rounded-2xl bg-orange-100 px-3 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-200"
+                >
+                  <FaCheck /> 전체 읽음
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-sm md:text-base text-gray-500 mb-4">
+            안전도 {alertSettings.threshold}점 미만 영상을 시청하면 알림이 생성돼요.
+          </p>
+
+          {/* 알림 설정 패널 */}
+          {showAlertSettings && (
+            <div className="mb-6 rounded-2xl border-2 border-orange-100 bg-orange-50 p-4">
+              <p className="text-sm font-extrabold text-orange-700 mb-4">알림 기준 설정</p>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <label className="text-sm font-bold text-gray-700">위험 기준 점수</label>
+                    <span className="text-sm font-extrabold text-orange-600">{alertSettings.threshold}점 미만</span>
+                  </div>
+                  <input
+                    type="range" min={50} max={90} step={5}
+                    value={alertSettings.threshold}
+                    onChange={(e) => setAlertSettings(prev => ({ ...prev, threshold: Number(e.target.value) }))}
+                    className="w-full accent-orange-500"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>50점 (관대)</span><span>90점 (엄격)</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-gray-700">늦은 시간 시청 알림</p>
+                    <p className="text-xs text-gray-400">{alertSettings.lateNightHour}시 이후 시청 시 알림</p>
+                  </div>
+                  <button
+                    onClick={() => setAlertSettings(prev => ({ ...prev, lateNightAlert: !prev.lateNightAlert }))}
+                    className={`w-12 h-6 rounded-full transition-colors ${alertSettings.lateNightAlert ? "bg-orange-500" : "bg-gray-300"}`}
+                  >
+                    <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform mx-0.5 ${alertSettings.lateNightAlert ? "translate-x-6" : "translate-x-0"}`} />
+                  </button>
+                </div>
+                <button
+                  onClick={handleSaveAlertSettings}
+                  className="rounded-2xl bg-orange-500 py-2 text-sm font-bold text-white transition hover:bg-orange-600"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 알림 목록 */}
+          {alerts.length === 0 ? (
+            <div className="rounded-2xl bg-gray-50 px-6 py-8 text-center">
+              <p className="text-3xl mb-2">✅</p>
+              <p className="text-sm font-bold text-gray-500">위험 영상 알림이 없어요. 안전하게 시청 중이에요!</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {alerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`rounded-2xl border-2 p-4 transition ${
+                    alert.read ? "border-gray-100 bg-gray-50 opacity-60" :
+                    alert.severity === 'danger' ? "border-red-200 bg-red-50" : "border-yellow-200 bg-yellow-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* 썸네일 */}
+                    {alert.thumbnail && (
+                      <img src={alert.thumbnail} alt={alert.title} className="h-14 w-24 rounded-xl object-cover shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      {/* 심각도 배지 + 반복 */}
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
+                          alert.severity === 'danger' ? "bg-red-500 text-white" : "bg-yellow-400 text-white"
+                        }`}>
+                          {alert.severity === 'danger' ? "🔴 위험" : "🟡 주의"}
+                        </span>
+                        {alert.repeated && (
+                          <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs font-extrabold text-white">
+                            🔁 반복 시청 {alert.watchCount}회
+                          </span>
+                        )}
+                      </div>
+                      {/* 제목 */}
+                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{alert.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{alert.channelTitle}</p>
+                      {/* 이유 */}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {alert.reasons.map((r, i) => (
+                          <span key={i} className="rounded-full bg-white border border-gray-200 px-2 py-0.5 text-xs text-gray-600">{r}</span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{new Date(alert.watchedAt).toLocaleString("ko-KR")}</p>
+                    </div>
+                    {/* 액션 버튼 */}
+                    <div className="flex flex-col gap-1 shrink-0">
+                      {!alert.read && (
+                        <button
+                          onClick={() => handleMarkRead(alert.id)}
+                          className="rounded-xl bg-white border border-gray-200 px-2 py-1 text-xs font-bold text-gray-600 transition hover:bg-gray-100"
+                        >
+                          읽음
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleBlockChannel(alert.channelTitle)}
+                        className="rounded-xl bg-red-100 px-2 py-1 text-xs font-bold text-red-600 transition hover:bg-red-200"
+                      >
+                        채널 차단
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* 차단 키워드 관리 */}
         <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">

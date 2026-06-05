@@ -158,6 +158,32 @@ export const deleteBlockedKeyword = async (keyword) => {
   return response.data
 }
 
+// 위험 영상 알림
+export const getAlerts = async () => {
+  const response = await axios.get(`${BASE_URL}/alerts`)
+  return response.data
+}
+
+export const markAlertRead = async (id) => {
+  const response = await axios.patch(`${BASE_URL}/alerts/${id}/read`)
+  return response.data
+}
+
+export const markAllAlertsRead = async () => {
+  const response = await axios.patch(`${BASE_URL}/alerts/read-all`)
+  return response.data
+}
+
+export const getAlertSettings = async () => {
+  const response = await axios.get(`${BASE_URL}/alerts/settings`)
+  return response.data
+}
+
+export const saveAlertSettings = async (settings) => {
+  const response = await axios.put(`${BASE_URL}/alerts/settings`, settings)
+  return response.data
+}
+
 
 
 

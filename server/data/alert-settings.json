@@ -1,0 +1,5 @@
+{
+  "threshold": 90,
+  "lateNightAlert": true,
+  "lateNightHour": 22
+}

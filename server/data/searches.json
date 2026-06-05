@@ -196,5 +196,23 @@
     "profileId": "1780384750187",
     "keyword": "야사",
     "searchedAt": "2026-06-05T16:14:43.707Z"
+  },
+  {
+    "id": "95363959-e5d6-4df4-98e3-030ab2e35b1f",
+    "profileId": "1780363260564",
+    "keyword": "베이스",
+    "searchedAt": "2026-06-05T16:17:18.252Z"
+  },
+  {
+    "id": "118b708d-4fad-4ffb-a290-9f48a88e82f1",
+    "profileId": "1780384750187",
+    "keyword": "여자",
+    "searchedAt": "2026-06-05T16:51:23.399Z"
+  },
+  {
+    "id": "b147d0d2-6a22-4e41-8aca-7c31ff2f285b",
+    "profileId": "1780384750187",
+    "keyword": "미시",
+    "searchedAt": "2026-06-05T16:51:33.379Z"
   }
 ]
