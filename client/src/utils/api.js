@@ -137,6 +137,27 @@ export const sendChatMessage = async (messages, profileName, profileAge) => {
   return response.data
 }
 
+// 차단 키워드
+export const getBlockedKeywords = async () => {
+  const response = await axios.get(`${BASE_URL}/blocked-keywords`)
+  return response.data
+}
+
+export const checkBlockedKeyword = async (keyword) => {
+  const response = await axios.get(`${BASE_URL}/blocked-keywords/check`, { params: { keyword } })
+  return response.data
+}
+
+export const addBlockedKeyword = async (keyword) => {
+  const response = await axios.post(`${BASE_URL}/blocked-keywords/custom`, { keyword })
+  return response.data
+}
+
+export const deleteBlockedKeyword = async (keyword) => {
+  const response = await axios.delete(`${BASE_URL}/blocked-keywords/custom/${encodeURIComponent(keyword)}`)
+  return response.data
+}
+
 
 
 

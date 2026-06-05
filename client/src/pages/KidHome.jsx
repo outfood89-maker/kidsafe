@@ -10,6 +10,7 @@ import {
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
   getFavorites, addFavorite, removeFavorite, sendChatMessage,
+  checkBlockedKeyword,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
@@ -241,6 +242,12 @@ export default function KidHome() {
     const trimmedKeyword = (keyword || searchKeyword).trim();
     if (!trimmedKeyword) { alert("보고 싶은 영상을 입력해주세요!"); return; }
     try {
+      // 차단 키워드 체크
+      const blockCheck = await checkBlockedKeyword(trimmedKeyword);
+      if (blockCheck.blocked) {
+        setError(`🙈 앗! "${trimmedKeyword}"은(는) 검색할 수 없어요. 다른 키워드로 찾아봐요!`);
+        return;
+      }
       setLoading(true); setError(""); setVideos([]); setPlaylists([]); setShowSearchHistory(false); setVisibleCount(9);
       if (selectedProfile?.id) {
         await saveSearchHistory(selectedProfile.id, trimmedKeyword);

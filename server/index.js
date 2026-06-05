@@ -1,4 +1,5 @@
 import chatRouter from './routes/chat.js'
+import blockedKeywordsRouter from './routes/blocked-keywords.js'
 import searchRouter from './routes/search.js'
 import searchHistoryRouter from './routes/search-history.js'
 import historyRouter from './routes/history.js'
@@ -27,6 +28,7 @@ app.use('/badges', badgesRouter)
 app.use('/search-history', searchHistoryRouter)
 app.use('/favorites', favoritesRouter)
 app.use('/chat', chatRouter)
+app.use('/blocked-keywords', blockedKeywordsRouter)
 
 app.get('/test-env', (req, res) => {
   res.json({

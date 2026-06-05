@@ -7,6 +7,7 @@ import {
   FaChild,
   FaPlus,
   FaTrash,
+  FaBan,
 } from "react-icons/fa";
 
 import {
@@ -19,7 +20,7 @@ import {
   Tooltip,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 
@@ -52,6 +53,9 @@ export default function ParentDashboard() {
   const [createError, setCreateError] = useState("");
   const [editingTimeLimitId, setEditingTimeLimitId] = useState(null);
   const [customMinutes, setCustomMinutes] = useState("");
+  const [blockedKeywords, setBlockedKeywords] = useState({ system: [], custom: [] });
+  const [newBlockedKeyword, setNewBlockedKeyword] = useState("");
+  const [blockError, setBlockError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,6 +75,9 @@ export default function ParentDashboard() {
           })
         );
         setProfileBadges(badgesMap);
+
+        const blockedData = await getBlockedKeywords();
+        setBlockedKeywords(blockedData);
       } catch (err) {
         setError("데이터를 불러오지 못했어요.");
       } finally {
@@ -129,6 +136,28 @@ export default function ParentDashboard() {
       setEditingTimeLimitId(null);
     } catch (err) {
       alert("시청 시간 설정에 실패했어요.");
+    }
+  };
+
+  const handleAddBlockedKeyword = async () => {
+    const kw = newBlockedKeyword.trim();
+    if (!kw) { setBlockError("키워드를 입력해주세요."); return; }
+    try {
+      const data = await addBlockedKeyword(kw);
+      setBlockedKeywords(prev => ({ ...prev, custom: data.custom }));
+      setNewBlockedKeyword("");
+      setBlockError("");
+    } catch (err) {
+      setBlockError(err.response?.data?.error || "추가에 실패했어요.");
+    }
+  };
+
+  const handleDeleteBlockedKeyword = async (keyword) => {
+    try {
+      const data = await deleteBlockedKeyword(keyword);
+      setBlockedKeywords(prev => ({ ...prev, custom: data.custom }));
+    } catch {
+      alert("삭제에 실패했어요.");
     }
   };
 
@@ -494,6 +523,71 @@ export default function ParentDashboard() {
             </div>
           </section>
         )}
+
+        {/* 차단 키워드 관리 */}
+        <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+          <div className="flex items-center gap-3 mb-2">
+            <FaBan className="text-red-500 text-xl md:text-2xl" />
+            <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">차단 키워드 관리</h2>
+          </div>
+          <p className="text-sm md:text-base text-gray-500 mb-6">아이가 검색하면 안 되는 키워드를 설정해요. 검색 시 차단 메시지가 표시돼요.</p>
+
+          {/* 커스텀 키워드 추가 */}
+          <div className="mb-6">
+            <p className="text-sm font-bold text-gray-700 mb-2">커스텀 차단 키워드 추가</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newBlockedKeyword}
+                onChange={(e) => setNewBlockedKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddBlockedKeyword()}
+                placeholder="차단할 키워드 입력..."
+                className="flex-1 rounded-2xl border-2 border-red-200 px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-red-400 transition"
+              />
+              <button
+                onClick={handleAddBlockedKeyword}
+                className="flex items-center gap-2 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-600"
+              >
+                <FaPlus /> 추가
+              </button>
+            </div>
+            {blockError && <p className="mt-2 text-xs text-red-500 font-semibold">{blockError}</p>}
+          </div>
+
+          {/* 커스텀 키워드 목록 */}
+          <div className="mb-6">
+            <p className="text-sm font-bold text-gray-700 mb-3">내가 추가한 차단 키워드 ({blockedKeywords.custom.length}개)</p>
+            {blockedKeywords.custom.length === 0 ? (
+              <p className="text-sm text-gray-400 rounded-2xl bg-gray-50 px-4 py-3">아직 추가한 키워드가 없어요.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {blockedKeywords.custom.map((kw) => (
+                  <div key={kw} className="flex items-center gap-2 rounded-full bg-red-100 px-3 py-1.5">
+                    <span className="text-sm font-bold text-red-700">{kw}</span>
+                    <button
+                      onClick={() => handleDeleteBlockedKeyword(kw)}
+                      className="text-red-400 hover:text-red-600 transition"
+                    >
+                      <FaTrash className="text-xs" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 기본 차단 키워드 (시스템) */}
+          <div>
+            <p className="text-sm font-bold text-gray-700 mb-3">기본 차단 키워드 ({blockedKeywords.system.length}개) — 수정 불가</p>
+            <div className="flex flex-wrap gap-2">
+              {blockedKeywords.system.map((kw) => (
+                <span key={kw} className="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-500">
+                  {kw}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
 
       </div>
     </div>
