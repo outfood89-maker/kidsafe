@@ -9,12 +9,16 @@ const __dirname = dirname(__filename)
 
 const BADGES_PATH = path.join(__dirname, '../data/badges.json')
 const HISTORY_PATH = path.join(__dirname, '../data/history.json')
+const FAVORITES_PATH = path.join(__dirname, '../data/favorites.json')
+const SEARCHES_PATH = path.join(__dirname, '../data/searches.json')
 
 const router = express.Router()
 
 const readBadges = () => JSON.parse(fs.readFileSync(BADGES_PATH, 'utf-8'))
 const writeBadges = (data) => fs.writeFileSync(BADGES_PATH, JSON.stringify(data, null, 2), 'utf-8')
 const readHistory = () => JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'))
+const readFavorites = () => { try { return JSON.parse(fs.readFileSync(FAVORITES_PATH, 'utf-8')) } catch { return [] } }
+const readSearches = () => { try { return JSON.parse(fs.readFileSync(SEARCHES_PATH, 'utf-8')) } catch { return [] } }
 
 // 배지 정의 목록
 const BADGE_DEFINITIONS = [
@@ -135,10 +139,143 @@ const BADGE_DEFINITIONS = [
     emoji: '🏆',
     description: '배지를 5개 이상 획득했어요!',
     check: (history, profileId, earnedBadges) => {
-      // 현재까지 획득한 배지 수 체크 (kidsafe_master 제외)
       return earnedBadges.filter(b =>
         b.profileId === profileId && b.badgeId !== 'kidsafe_master'
       ).length >= 5
+    }
+  },
+
+  // ── 찜 기반 배지 ──────────────────────────────
+  {
+    id: 'fav_collector',
+    name: '찜 수집가',
+    emoji: '💝',
+    description: '영상이나 재생목록을 3개 이상 찜했어요!',
+    check: (history, profileId) => {
+      const favs = readFavorites()
+      return favs.filter(f => f.profileId === profileId).length >= 3
+    }
+  },
+  {
+    id: 'fav_master',
+    name: '찜 마스터',
+    emoji: '💖',
+    description: '영상이나 재생목록을 10개 이상 찜했어요!',
+    check: (history, profileId) => {
+      const favs = readFavorites()
+      return favs.filter(f => f.profileId === profileId).length >= 10
+    }
+  },
+  {
+    id: 'playlist_fan',
+    name: '재생목록 팬',
+    emoji: '🎬',
+    description: '재생목록을 3개 이상 찜했어요!',
+    check: (history, profileId) => {
+      const favs = readFavorites()
+      return favs.filter(f => f.profileId === profileId && f.type === 'playlist').length >= 3
+    }
+  },
+
+  // ── 검색 기반 배지 ──────────────────────────────
+  {
+    id: 'curious_explorer',
+    name: '호기심 탐험가',
+    emoji: '🔍',
+    description: '검색을 10번 이상 해봤어요!',
+    check: (history, profileId) => {
+      const searches = readSearches()
+      return searches.filter(s => s.profileId === profileId).length >= 10
+    }
+  },
+  {
+    id: 'genre_pioneer',
+    name: '장르 개척자',
+    emoji: '🗺️',
+    description: '5가지 이상 다양한 키워드로 검색했어요!',
+    check: (history, profileId) => {
+      const searches = readSearches()
+      const keywords = new Set(
+        searches.filter(s => s.profileId === profileId).map(s => s.keyword.trim().toLowerCase())
+      )
+      return keywords.size >= 5
+    }
+  },
+
+  // ── 시청 패턴 기반 배지 ──────────────────────────
+  {
+    id: 'channel_regular',
+    name: '단골손님',
+    emoji: '📺',
+    description: '같은 채널 영상을 3개 이상 시청했어요!',
+    check: (history, profileId) => {
+      const myHistory = history.filter(v => v.profileId === profileId)
+      const channelCount = {}
+      myHistory.forEach(v => {
+        if (v.channelTitle) channelCount[v.channelTitle] = (channelCount[v.channelTitle] || 0) + 1
+      })
+      return Object.values(channelCount).some(count => count >= 3)
+    }
+  },
+  {
+    id: 'evening_explorer',
+    name: '저녁 탐험가',
+    emoji: '🌙',
+    description: '저녁 6시~10시 사이에 영상을 5번 시청했어요!',
+    check: (history, profileId) => {
+      return history.filter(v => {
+        if (v.profileId !== profileId) return false
+        const hour = new Date(v.watchedAt).getHours()
+        return hour >= 18 && hour < 22
+      }).length >= 5
+    }
+  },
+  {
+    id: 'fairy_tale_lover',
+    name: '동화 왕국',
+    emoji: '📚',
+    description: '동화/동요 영상을 3개 이상 시청했어요!',
+    check: (history, profileId) => {
+      const keywords = ['동화', '동요', '자장가', '옛날이야기', '그림책']
+      return history.filter(v => {
+        if (v.profileId !== profileId) return false
+        return keywords.some(k => v.title?.includes(k))
+      }).length >= 3
+    }
+  },
+  {
+    id: 'dino_expert',
+    name: '공룡 박사',
+    emoji: '🦕',
+    description: '공룡 영상을 3개 이상 시청했어요!',
+    check: (history, profileId) => {
+      return history.filter(v =>
+        v.profileId === profileId && v.title?.includes('공룡')
+      ).length >= 3
+    }
+  },
+  {
+    id: 'science_sprout',
+    name: '과학 꿈나무',
+    emoji: '🔬',
+    description: '과학/실험 영상을 3개 이상 시청했어요!',
+    check: (history, profileId) => {
+      const keywords = ['과학', '실험', '탐구', '발견', '우주', '자연']
+      return history.filter(v => {
+        if (v.profileId !== profileId) return false
+        return keywords.some(k => v.title?.includes(k))
+      }).length >= 3
+    }
+  },
+  {
+    id: 'all_star',
+    name: '올스타',
+    emoji: '🌠',
+    description: '배지를 10개 이상 획득했어요!',
+    check: (history, profileId, earnedBadges) => {
+      return earnedBadges.filter(b =>
+        b.profileId === profileId && b.badgeId !== 'all_star'
+      ).length >= 10
     }
   },
 ]
@@ -169,10 +306,8 @@ router.post('/check/:profileId', (req, res) => {
     const newBadges = []
 
     for (const badge of BADGE_DEFINITIONS) {
-      // 이미 획득한 배지는 스킵
       if (earnedBadgeIds.includes(badge.id)) continue
 
-      // 조건 체크
       const earned = badge.check(history, profileId, badges)
 
       if (earned) {

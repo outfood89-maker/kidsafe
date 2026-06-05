@@ -4,6 +4,7 @@ import ParentDashboard from './pages/ParentDashboard'
 import KidHome from './pages/KidHome'
 import ProfileSelect from './pages/ProfileSelect'
 import Favorites from './pages/Favorites'
+import BadgeCollection from './pages/BadgeCollection'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/profiles" element={<ProfileSelect />} />
         <Route path="/kids" element={<KidHome />} />
         <Route path="/favorites" element={<Favorites />} />
+        <Route path="/badges" element={<BadgeCollection />} />
       </Routes>
     </BrowserRouter>
   )

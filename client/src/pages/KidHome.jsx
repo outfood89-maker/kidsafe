@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
-  FaExclamationTriangle, FaTimes, FaList, FaPlay,
+  FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
 } from "react-icons/fa";
 import {
   searchVideos, analyzeVideo, saveHistory, getHistory,
@@ -130,6 +130,14 @@ export default function KidHome() {
           totalScore: item.totalScore ?? null,
         });
         setFavorites((prev) => [newFav, ...prev]);
+        // 찜 추가 후 배지 체크
+        if (selectedProfile?.id) {
+          const result = await checkBadges(selectedProfile.id);
+          if (result.newBadges?.length > 0) {
+            setNewBadges(result.newBadges);
+            setEarnedBadges(result.allBadges);
+          }
+        }
       }
     } catch (err) {
       console.error("찜 처리 실패:", err);
@@ -204,6 +212,12 @@ export default function KidHome() {
       if (selectedProfile?.id) {
         await saveSearchHistory(selectedProfile.id, trimmedKeyword);
         await fetchSearchHistory(selectedProfile.id);
+        // 검색 후 배지 체크
+        const result = await checkBadges(selectedProfile.id);
+        if (result.newBadges?.length > 0) {
+          setNewBadges(result.newBadges);
+          setEarnedBadges(result.allBadges);
+        }
       }
       const { videos: results, playlists: playlistResults } = await searchVideos(trimmedKeyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
@@ -419,13 +433,25 @@ export default function KidHome() {
           {selectedProfile && <p className="mt-2 text-sm font-bold text-purple-500">{selectedProfile.age}세 기준으로 안전한 영상만 보여줄게요!</p>}
           {earnedBadges.length > 0 && (
             <div className="mt-4 flex flex-wrap justify-center gap-2 px-2">
-              {earnedBadges.map((badge) => (
+              {earnedBadges.slice(0, 5).map((badge) => (
                 <div key={badge.badgeId} title={badge.description} className="flex items-center gap-1 rounded-full bg-white px-3 py-1 shadow-md text-sm font-bold text-gray-700">
                   <span>{badge.emoji}</span><span>{badge.name}</span>
                 </div>
               ))}
+              {earnedBadges.length > 5 && (
+                <div className="flex items-center rounded-full bg-white px-3 py-1 shadow-md text-sm font-bold text-gray-400">
+                  +{earnedBadges.length - 5}개
+                </div>
+              )}
             </div>
           )}
+          <button
+            onClick={() => navigate("/badges")}
+            className="mt-4 flex items-center gap-2 rounded-2xl bg-yellow-400 px-5 py-2 text-sm font-extrabold text-white shadow-lg transition hover:bg-yellow-500 hover:scale-105 active:scale-95"
+          >
+            <FaMedal />
+            배지 컬렉션 보기 ({earnedBadges.length}/{21})
+          </button>
           <p className="mt-4 max-w-2xl text-base md:text-lg leading-relaxed text-gray-600 px-2">
             KidSafe AI 친구가 안전하고 재미있는 영상을 추천해줄게!
           </p>
