@@ -465,6 +465,35 @@ export default function ParentDashboard() {
                         </button>
                       )}
                     </div>
+
+                    {/* 안전도 기준 점수 슬라이더 */}
+                    <div className="mt-3 w-full">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs font-bold text-gray-500">허용 안전도 기준</span>
+                        <span className={`text-xs font-extrabold ${
+                          (profile.safetyThreshold || 70) >= 85 ? "text-green-500" :
+                          (profile.safetyThreshold || 70) >= 70 ? "text-yellow-500" : "text-red-500"
+                        }`}>
+                          {profile.safetyThreshold || 70}점 이상
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={50} max={95} step={5}
+                        value={profile.safetyThreshold || 70}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, safetyThreshold: val } : p));
+                        }}
+                        onMouseUp={(e) => updateProfile(profile.id, { safetyThreshold: Number(e.target.value) })}
+                        onTouchEnd={(e) => updateProfile(profile.id, { safetyThreshold: Number(e.target.value) })}
+                        className="w-full accent-green-500"
+                      />
+                      <div className="flex justify-between text-xs text-gray-300 mt-0.5">
+                        <span>50 (관대)</span><span>95 (엄격)</span>
+                      </div>
+                    </div>
+
                   </div>
                 ))}
               </div>

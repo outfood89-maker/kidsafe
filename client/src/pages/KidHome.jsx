@@ -173,7 +173,7 @@ export default function KidHome() {
         const safety = await analyzeVideo(video.title, video.description);
         return { ...video, ...safety };
       }));
-      setRecommendedVideos(applyAntiBias(filterByAge(analyzedVideos, age), watchHistory, age));
+      setRecommendedVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
     } catch (err) { console.error("추천 콘텐츠 불러오기 실패:", err); }
     finally { setRecommendLoading(false); }
   };
@@ -190,7 +190,7 @@ export default function KidHome() {
         const safety = await analyzeVideo(video.title, video.description);
         return { ...video, ...safety };
       }));
-      setHistoryVideos(applyAntiBias(filterByAge(analyzedVideos, age), watchHistory, age));
+      setHistoryVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
     } catch (err) { console.error("시청 기록 기반 추천 실패:", err); }
     finally { setHistoryLoading(false); }
   };
@@ -265,7 +265,7 @@ export default function KidHome() {
         return { ...video, ...safety };
       }));
       const age = selectedProfile?.age || null;
-      const filteredVideos = age ? filterByAge(analyzedVideos, age) : analyzedVideos;
+      const filteredVideos = age ? filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold) : analyzedVideos;
       if (filteredVideos.length === 0 && playlistResults.length === 0) {
         setError(`${age}세 기준에 맞는 영상이 없어요. 다른 키워드로 검색해봐요!`);
       } else {

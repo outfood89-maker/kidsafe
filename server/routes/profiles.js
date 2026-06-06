@@ -33,9 +33,12 @@ router.get('/', (req, res) => {
   }
 })
 
+// 나이별 기본 안전도 기준점수
+const DEFAULT_THRESHOLD = { 3: 90, 5: 85, 7: 80, 10: 70 }
+
 // 프로필 생성 (POST /profiles)
 router.post('/', (req, res) => {
-  const { name, age, gender, avatarSeed, timeLimit} = req.body
+  const { name, age, gender, avatarSeed, timeLimit } = req.body
 
   if (!name || !age || !gender || !avatarSeed) {
     return res.status(400).json({ error: '모든 항목을 입력해주세요' })
@@ -49,13 +52,15 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: '프로필은 최대 4개까지 만들 수 있어요' })
     }
 
+    const ageNum = Number(age)
     const newProfile = {
-      id: Date.now().toString(), // 고유 ID
+      id: Date.now().toString(),
       name,
-      age: Number(age),
+      age: ageNum,
       gender,
-      avatarSeed, // DiceBear 아바타 시드값 (이름 기반)
-      timeLimit: timeLimit ? Number(timeLimit) : null,  // ← 추가
+      avatarSeed,
+      timeLimit: timeLimit ? Number(timeLimit) : null,
+      safetyThreshold: DEFAULT_THRESHOLD[ageNum] || 70,
       createdAt: new Date().toISOString(),
     }
 
@@ -71,7 +76,7 @@ router.post('/', (req, res) => {
 // 프로필 수정 (PUT /profiles/:id)
 router.put('/:id', (req, res) => {
   const { id } = req.params
-  const { name, age, gender, avatarSeed , timeLimit } = req.body
+  const { name, age, gender, avatarSeed, timeLimit, safetyThreshold } = req.body
 
   try {
     const profiles = readProfiles()
@@ -81,7 +86,6 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ error: '프로필을 찾을 수 없어요' })
     }
 
-    // 기존 데이터에 수정된 내용 덮어쓰기
     profiles[index] = {
       ...profiles[index],
       name: name || profiles[index].name,
@@ -89,6 +93,7 @@ router.put('/:id', (req, res) => {
       gender: gender || profiles[index].gender,
       avatarSeed: avatarSeed || profiles[index].avatarSeed,
       timeLimit: timeLimit !== undefined ? Number(timeLimit) : profiles[index].timeLimit,
+      safetyThreshold: safetyThreshold !== undefined ? Number(safetyThreshold) : profiles[index].safetyThreshold,
     }
 
     writeProfiles(profiles)

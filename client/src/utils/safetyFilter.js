@@ -29,9 +29,9 @@ export const getSafetyGrade = (score) => {
   return { grade: '위험', color: 'red' }
 }
 
-// 연령 기준으로 콘텐츠 필터링
-export const filterByAge = (videos, age) => {
-  const threshold = AGE_THRESHOLD[age] || 70
+// 연령 기준으로 콘텐츠 필터링 (커스텀 threshold 우선 적용)
+export const filterByAge = (videos, age, customThreshold) => {
+  const threshold = customThreshold ?? AGE_THRESHOLD[age] ?? 70
   return videos.filter(video => video.totalScore >= threshold)
 }
 
