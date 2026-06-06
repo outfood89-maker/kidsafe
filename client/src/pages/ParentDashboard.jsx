@@ -12,16 +12,14 @@ import {
   FaExclamationTriangle,
   FaCheck,
   FaSlidersH,
+  FaChartBar,
 } from "react-icons/fa";
 
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
+  BarChart, Bar,
+  PieChart, Pie, Cell,
+  CartesianGrid, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
 
 import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked } from "../utils/api";
@@ -34,6 +32,18 @@ const TIME_OPTIONS = [
   { label: "30분", value: 30 },
   { label: "1시간", value: 60 },
 ];
+
+const truncateByDisplayWidth = (str, maxWidth) => {
+  let width = 0
+  let result = ''
+  for (const char of str) {
+    const charWidth = /[가-퟿ᄀ-ᇿ㄰-㆏]/.test(char) ? 2 : 1
+    if (width + charWidth > maxWidth) return result + '…'
+    width += charWidth
+    result += char
+  }
+  return result
+}
 
 const getAvatarUrl = (seed, gender) => {
   const hairStyle =
@@ -50,6 +60,7 @@ export default function ParentDashboard() {
   const [error, setError] = useState("");
   const [profileBadges, setProfileBadges] = useState({});
   const [activeTab, setActiveTab] = useState("전체");
+  const [chartTab, setChartTab] = useState("전체");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState(7);
@@ -240,11 +251,33 @@ export default function ParentDashboard() {
     },
   ];
 
-  const chartData = [
-    { category: "안전 (90+)", count: history.filter((v) => v.totalScore >= 90).length },
-    { category: "주의 (70-89)", count: history.filter((v) => v.totalScore >= 70 && v.totalScore < 90).length },
-    { category: "위험 (~69)", count: history.filter((v) => v.totalScore < 70).length },
-  ];
+  // 차트 전용 필터 (시청 기록 탭과 독립)
+  const chartFilteredHistory = chartTab === "전체"
+    ? history
+    : history.filter(item => item.profileId === chartTab);
+
+  // 안전도 분포 (PieChart)
+  const safetyDistData = [
+    { name: '안전 (90+)', value: chartFilteredHistory.filter(v => v.totalScore >= 90).length, color: '#22c55e' },
+    { name: '주의 (70~89)', value: chartFilteredHistory.filter(v => v.totalScore >= 70 && v.totalScore < 90).length, color: '#eab308' },
+    { name: '위험 (~69)', value: chartFilteredHistory.filter(v => v.totalScore < 70).length, color: '#ef4444' },
+  ].filter(d => d.value > 0);
+
+  // 시간대별 시청 분포
+  const hourChartData = Array.from({ length: 24 }, (_, i) => ({
+    hour: `${i}시`,
+    count: chartFilteredHistory.filter(v => new Date(v.watchedAt).getHours() === i).length,
+  })).filter(d => d.count > 0);
+
+  // 최다 시청 채널 TOP 5
+  const channelMap = {};
+  chartFilteredHistory.forEach(v => {
+    if (v.channelTitle) channelMap[v.channelTitle] = (channelMap[v.channelTitle] || 0) + 1;
+  });
+  const topChannelsData = Object.entries(channelMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -576,19 +609,137 @@ export default function ParentDashboard() {
 
         {!loading && history.length > 0 && (
           <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
-            <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">안전도 분포</h2>
-            <p className="mt-2 md:mt-3 text-sm md:text-base text-gray-500">시청한 영상의 안전도 구간별 개수입니다.</p>
-            <div className="mt-6 md:mt-10 h-[250px] md:h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" name="영상 수" radius={[12, 12, 0, 0]} fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex items-center gap-3 mb-4">
+              <FaChartBar className="text-xl md:text-2xl text-indigo-500" />
+              <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">시청 패턴 분석</h2>
             </div>
+
+            {/* 차트 전용 프로필 탭 */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button
+                onClick={() => setChartTab("전체")}
+                className={`rounded-2xl px-4 py-2 text-sm font-bold transition ${
+                  chartTab === "전체" ? "bg-indigo-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-indigo-50"
+                }`}
+              >
+                전체
+              </button>
+              {profiles.map(profile => (
+                <button
+                  key={profile.id}
+                  onClick={() => setChartTab(profile.id)}
+                  className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold transition ${
+                    chartTab === profile.id ? "bg-indigo-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-indigo-50"
+                  }`}
+                >
+                  <img
+                    src={getAvatarUrl(profile.avatarSeed, profile.gender)}
+                    alt={profile.name}
+                    className="h-5 w-5 rounded-full bg-white"
+                  />
+                  {profile.name}
+                </button>
+              ))}
+            </div>
+
+            {chartFilteredHistory.length === 0 ? (
+              <p className="py-10 text-center text-gray-400">시청 기록이 없어요.</p>
+            ) : (<>
+
+            {/* 안전도 분포 + 최다 시청 채널 — 2열 그리드 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+              {/* 안전도 분포 PieChart */}
+              <div>
+                <h3 className="text-base font-extrabold text-gray-700 mb-4">🛡️ 안전도 분포</h3>
+                <div className="h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={safetyDistData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {safetyDistData.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [`${value}개`, '영상 수']} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* 수치 요약 */}
+                <div className="flex gap-3 mt-3 justify-center flex-wrap">
+                  {[
+                    { label: '안전', color: 'bg-green-500', count: chartFilteredHistory.filter(v => v.totalScore >= 90).length },
+                    { label: '주의', color: 'bg-yellow-400', count: chartFilteredHistory.filter(v => v.totalScore >= 70 && v.totalScore < 90).length },
+                    { label: '위험', color: 'bg-red-500', count: chartFilteredHistory.filter(v => v.totalScore < 70).length },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-1.5">
+                      <span className={`h-3 w-3 rounded-full ${item.color}`} />
+                      <span className="text-sm font-bold text-gray-600">{item.label} {item.count}개</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 최다 시청 채널 TOP 5 */}
+              <div>
+                <h3 className="text-base font-extrabold text-gray-700 mb-4">📺 최다 시청 채널 TOP 5</h3>
+                {topChannelsData.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-10 text-center">데이터가 없어요.</p>
+                ) : (
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topChannelsData} layout="vertical" margin={{ left: 8, right: 24 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={140}
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(v) => truncateByDisplayWidth(v, 20)}
+                        />
+                        <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
+                        <Bar dataKey="count" name="시청 횟수" radius={[0, 8, 8, 0]} fill="#6366f1" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 시간대별 시청 분포 */}
+            <div>
+              <h3 className="text-base font-extrabold text-gray-700 mb-4">🕐 시간대별 시청 분포</h3>
+              {hourChartData.length === 0 ? (
+                <p className="text-sm text-gray-400 py-6 text-center">데이터가 없어요.</p>
+              ) : (
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={hourChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
+                      <Bar
+                        dataKey="count"
+                        name="시청 횟수"
+                        radius={[6, 6, 0, 0]}
+                        fill="#f59e0b"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-2 text-right">* 시청 기록이 있는 시간대만 표시돼요.</p>
+            </div>
+            </>)}
           </section>
         )}
 
