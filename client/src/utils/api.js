@@ -40,6 +40,22 @@ export const getHistory = async () => {
   return response.data.history
 }
 
+// 특정 시청 기록 삭제
+export const deleteHistoryItem = async (watchedAt, profileId) => {
+  const response = await axios.delete(`${BASE_URL}/history/item`, {
+    params: { watchedAt, profileId }
+  })
+  return response.data
+}
+
+// 전체 시청 기록 삭제 (profileId 없으면 전체 삭제)
+export const deleteAllHistory = async (profileId) => {
+  const response = await axios.delete(`${BASE_URL}/history/all`, {
+    params: profileId ? { profileId } : {}
+  })
+  return response.data
+}
+
 // 프로필 전체 조회
 export const getProfiles = async () => {
   const response = await axios.get(`${BASE_URL}/profiles`)

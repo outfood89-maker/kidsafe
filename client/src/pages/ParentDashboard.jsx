@@ -18,11 +18,13 @@ import {
 import {
   ResponsiveContainer,
   BarChart, Bar,
+  LineChart, Line,
   PieChart, Pie, Cell,
   CartesianGrid, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory } from "../utils/api";
+import VideoModal from "../components/VideoModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 
@@ -74,6 +76,8 @@ export default function ParentDashboard() {
   const [alerts, setAlerts] = useState([]);
   const [alertSettings, setAlertSettings] = useState({ threshold: 70, lateNightAlert: true, lateNightHour: 22 });
   const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [selectedVideo, setSelectedVideo] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -211,6 +215,28 @@ export default function ParentDashboard() {
     }
   };
 
+  const handleDeleteHistoryItem = async (item) => {
+    if (!window.confirm('이 시청 기록을 삭제할까요?')) return
+    try {
+      await deleteHistoryItem(item.watchedAt, item.profileId)
+      setHistory(prev => prev.filter(v => !(v.watchedAt === item.watchedAt && v.profileId === item.profileId)))
+    } catch {
+      alert('삭제에 실패했어요.')
+    }
+  }
+
+  const handleDeleteAllHistory = async () => {
+    const targetName = activeTab === '전체' ? '전체' : profiles.find(p => p.id === activeTab)?.name
+    if (!window.confirm(`${targetName} 시청 기록을 모두 삭제할까요?`)) return
+    try {
+      await deleteAllHistory(activeTab === '전체' ? null : activeTab)
+      setHistory(prev => activeTab === '전체' ? [] : prev.filter(v => v.profileId !== activeTab))
+      setVisibleCount(10)
+    } catch {
+      alert('삭제에 실패했어요.')
+    }
+  }
+
   const todayHistory = history.filter((v) => {
     const watchedDate = new Date(v.watchedAt).toDateString();
     const today = new Date().toDateString();
@@ -278,6 +304,16 @@ export default function ParentDashboard() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }));
+
+  // 최근 7일 날짜별 시청 추이
+  const weeklyChartData = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+    const dateKey = d.toDateString();
+    const count = chartFilteredHistory.filter(v => new Date(v.watchedAt).toDateString() === dateKey).length;
+    return { date: dateStr, count };
+  });
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -536,14 +572,26 @@ export default function ParentDashboard() {
 
         {!loading && (
           <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
-            <div className="mb-6 flex items-center gap-3">
-              <FaHistory className="text-xl md:text-2xl text-blue-600" />
-              <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
+            {/* 헤더 */}
+            <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <FaHistory className="text-xl md:text-2xl text-blue-600" />
+                <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
+              </div>
+              {filteredHistory.length > 0 && (
+                <button
+                  onClick={handleDeleteAllHistory}
+                  className="flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-2 text-sm font-bold text-red-500 transition hover:bg-red-100"
+                >
+                  <FaTrash className="text-xs" /> 전체 삭제
+                </button>
+              )}
             </div>
 
+            {/* 프로필 탭 */}
             <div className="mb-6 flex flex-wrap gap-2 md:gap-3">
               <button
-                onClick={() => setActiveTab("전체")}
+                onClick={() => { setActiveTab("전체"); setVisibleCount(10); }}
                 className={`rounded-2xl px-4 md:px-5 py-2 text-sm md:text-base font-bold transition ${
                   activeTab === "전체" ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                 }`}
@@ -553,7 +601,7 @@ export default function ParentDashboard() {
               {profiles.map((profile) => (
                 <button
                   key={profile.id}
-                  onClick={() => setActiveTab(profile.id)}
+                  onClick={() => { setActiveTab(profile.id); setVisibleCount(10); }}
                   className={`flex items-center gap-2 rounded-2xl px-4 md:px-5 py-2 text-sm md:text-base font-bold transition ${
                     activeTab === profile.id ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
                   }`}
@@ -573,36 +621,62 @@ export default function ParentDashboard() {
                 {activeTab === "전체" ? "아직 시청 기록이 없어요." : "이 프로필의 시청 기록이 없어요."}
               </p>
             ) : (
-              <div className="space-y-4 md:space-y-5">
-                {filteredHistory.map((item, index) => {
-                  const { grade, color } = getSafetyGrade(item.totalScore);
-                  const badgeColor =
-                    color === "green" ? "bg-green-500"
-                    : color === "yellow" ? "bg-yellow-500"
-                    : "bg-red-500";
+              <>
+                <div className="space-y-4 md:space-y-5">
+                  {filteredHistory.slice(0, visibleCount).map((item, index) => {
+                    const { grade, color } = getSafetyGrade(item.totalScore);
+                    const badgeColor =
+                      color === "green" ? "bg-green-500"
+                      : color === "yellow" ? "bg-yellow-500"
+                      : "bg-red-500";
 
-                  return (
-                    <div
-                      key={`${item.videoId}-${index}`}
-                      className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-slate-50 p-4 md:p-5 md:flex-row md:items-center md:justify-between"
-                    >
-                      <div className="flex items-center gap-3 md:gap-4">
-                        <img src={item.thumbnail} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0" />
-                        <div>
-                          <h3 className="line-clamp-1 text-base md:text-lg font-bold text-gray-900">{item.title}</h3>
-                          <p className="mt-1 text-xs md:text-sm text-gray-500">{item.channelTitle}</p>
-                          <p className="mt-1 text-xs text-gray-400">
-                            {new Date(item.watchedAt).toLocaleString("ko-KR")}
-                          </p>
+                    return (
+                      <div
+                        key={`${item.videoId}-${index}`}
+                        className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-slate-50 p-4 md:p-5 md:flex-row md:items-center md:justify-between"
+                      >
+                        {/* 썸네일 + 정보 — 클릭 시 모달 */}
+                        <button
+                          onClick={() => setSelectedVideo(item)}
+                          className="flex items-center gap-3 md:gap-4 text-left flex-1 min-w-0"
+                        >
+                          <img src={item.thumbnail} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0" />
+                          <div className="min-w-0">
+                            <h3 className="line-clamp-1 text-base md:text-lg font-bold text-gray-900 hover:text-blue-600 transition">{item.title}</h3>
+                            <p className="mt-1 text-xs md:text-sm text-gray-500">{item.channelTitle}</p>
+                            <p className="mt-1 text-xs text-gray-400">
+                              {new Date(item.watchedAt).toLocaleString("ko-KR")}
+                            </p>
+                          </div>
+                        </button>
+
+                        {/* 안전도 배지 + 삭제 */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className={`rounded-full px-4 py-2 text-xs md:text-sm font-bold text-white ${badgeColor}`}>
+                            {grade} {item.totalScore}점
+                          </div>
+                          <button
+                            onClick={() => handleDeleteHistoryItem(item)}
+                            className="rounded-full bg-gray-100 p-2 text-gray-400 transition hover:bg-red-100 hover:text-red-500"
+                          >
+                            <FaTrash className="text-xs" />
+                          </button>
                         </div>
                       </div>
-                      <div className={`w-fit rounded-full px-4 md:px-5 py-2 text-xs md:text-sm font-bold text-white ${badgeColor}`}>
-                        {grade} {item.totalScore}점
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+
+                {/* 더보기 */}
+                {visibleCount < filteredHistory.length && (
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 10)}
+                    className="mt-6 w-full rounded-2xl border-2 border-blue-200 py-3 text-sm font-bold text-blue-500 transition hover:bg-blue-50"
+                  >
+                    더보기 ({filteredHistory.length - visibleCount}개 남음)
+                  </button>
+                )}
+              </>
             )}
           </section>
         )}
@@ -738,6 +812,30 @@ export default function ParentDashboard() {
                 </div>
               )}
               <p className="text-xs text-gray-400 mt-2 text-right">* 시청 기록이 있는 시간대만 표시돼요.</p>
+            </div>
+
+            {/* 최근 7일 시청 추이 */}
+            <div className="mt-10">
+              <h3 className="text-base font-extrabold text-gray-700 mb-4">📅 최근 7일 시청 추이</h3>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weeklyChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      name="시청 횟수"
+                      stroke="#ec4899"
+                      strokeWidth={3}
+                      dot={{ r: 5, fill: "#ec4899" }}
+                      activeDot={{ r: 7 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
             </>)}
           </section>
@@ -956,6 +1054,18 @@ export default function ParentDashboard() {
         </section>
 
       </div>
+
+      {/* 영상 상세 모달 */}
+      {selectedVideo && (
+        <VideoModal
+          video={selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          onWatch={(v) => {
+            window.open(`https://www.youtube.com/watch?v=${v.videoId}`, '_blank')
+            setSelectedVideo(null)
+          }}
+        />
+      )}
     </div>
   );
 }

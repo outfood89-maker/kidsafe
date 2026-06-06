@@ -36,7 +36,7 @@ router.get('/', (req, res) => {
 
 // 시청 기록 저장 (POST /history)
 router.post('/', (req, res) => {
-  const { videoId, title, channelTitle, thumbnail, totalScore, summary, profileId, violence, language, sexual } = req.body
+  const { videoId, title, channelTitle, thumbnail, totalScore, summary, profileId, violence, language, sexual, educational } = req.body
 
   if (!videoId || !title) {
     return res.status(400).json({ error: '영상 정보가 부족해요' })
@@ -56,6 +56,7 @@ router.post('/', (req, res) => {
       violence,
       language,
       sexual,
+      educational,
       profileId: profileId || null,
       watchedAt: new Date().toISOString(),
     }
@@ -70,6 +71,39 @@ router.post('/', (req, res) => {
     res.json({ success: true, record: newRecord })
   } catch (error) {
     res.status(500).json({ error: '기록 저장 중 오류가 발생했어요' })
+  }
+})
+
+// 특정 시청 기록 삭제 (DELETE /history/item?watchedAt=&profileId=)
+router.delete('/item', (req, res) => {
+  const { watchedAt, profileId } = req.query
+  if (!watchedAt) return res.status(400).json({ error: '삭제할 기록 정보가 없어요' })
+
+  try {
+    const history = readHistory()
+    const filtered = history.filter(
+      item => !(item.watchedAt === watchedAt && item.profileId === profileId)
+    )
+    writeHistory(filtered)
+    res.json({ success: true })
+  } catch (error) {
+    res.status(500).json({ error: '기록 삭제 중 오류가 발생했어요' })
+  }
+})
+
+// 전체 시청 기록 삭제 (DELETE /history/all?profileId=)
+router.delete('/all', (req, res) => {
+  const { profileId } = req.query
+
+  try {
+    const history = readHistory()
+    const filtered = profileId
+      ? history.filter(item => item.profileId !== profileId)
+      : []
+    writeHistory(filtered)
+    res.json({ success: true })
+  } catch (error) {
+    res.status(500).json({ error: '기록 삭제 중 오류가 발생했어요' })
   }
 })
 

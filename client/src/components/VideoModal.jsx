@@ -22,7 +22,7 @@ export default function VideoModal({ video, onClose, onWatch }) {
     { label: "언어", icon: "💬", score: video.language },
     { label: "선정성", icon: "🔞", score: video.sexual },
     { label: "교육성", icon: "📚", score: video.educational },
-  ];
+  ].filter(item => item.score !== undefined);
 
   const handleOverlayClick = () => {
     try { onClose(); } catch (error) { console.error("모달 닫기 오류:", error); }
