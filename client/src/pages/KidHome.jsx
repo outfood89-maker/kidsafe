@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
@@ -51,8 +51,16 @@ export default function KidHome() {
   const chatBottomRef = useRef(null);
   const searchBoxRef = useRef(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // ?q= 파라미터 있으면 데모용 키워드로 표시 (랜딩 미리보기용)
+    const demoKeyword = searchParams.get("q");
+    if (demoKeyword) {
+      setSearchKeyword(demoKeyword);
+      return;
+    }
+
     // 이전 검색 결과 복원 (페이지 이탈 후 복귀 시)
     const savedSearch = sessionStorage.getItem("kidsafe_search");
     if (savedSearch) {
