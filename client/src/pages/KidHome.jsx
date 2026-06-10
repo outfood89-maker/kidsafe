@@ -218,7 +218,12 @@ export default function KidHome() {
     } catch (err) { console.error("시청 시간 체크 실패:", err); }
   };
 
-  const getAvatarUrl = (seed, gender) => {
+  const getAvatarUrl = (profile) => {
+    if (profile?.avatarId) {
+      return `/images/avatars/avatar_${String(profile.avatarId).padStart(2, "0")}.png`;
+    }
+    const seed = profile?.avatarSeed || "default";
+    const gender = profile?.gender || "남자";
     const hairStyle = gender === "여자"
       ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
       : "short01,short02,short03,short04,short05,short06,short07,short08";
@@ -479,7 +484,7 @@ export default function KidHome() {
                 style={{ width: "32px", height: "32px", border: "2px solid #E4EAE0" }}
               >
                 <img
-                  src={getAvatarUrl(selectedProfile.avatarSeed, selectedProfile.gender)}
+                  src={getAvatarUrl(selectedProfile)}
                   alt={selectedProfile.name}
                   className="h-full w-full object-cover"
                 />

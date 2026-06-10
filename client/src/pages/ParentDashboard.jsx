@@ -35,6 +35,20 @@ const TIME_OPTIONS = [
   { label: "1시간", value: 60 },
 ];
 
+const AVATAR_LIST = [1, 2, 3, 4, 5, 6, 7, 8];
+
+const getAvatarUrl = (profile) => {
+  if (profile?.avatarId) {
+    return `/images/avatars/avatar_${String(profile.avatarId).padStart(2, "0")}.png`;
+  }
+  const seed = profile?.avatarSeed || "default";
+  const gender = profile?.gender || "남자";
+  const hairStyle = gender === "여자"
+    ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
+    : "short01,short02,short03,short04,short05,short06,short07,short08";
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
+};
+
 const truncateByDisplayWidth = (str, maxWidth) => {
   let width = 0
   let result = ''
@@ -47,13 +61,6 @@ const truncateByDisplayWidth = (str, maxWidth) => {
   return result
 }
 
-const getAvatarUrl = (seed, gender) => {
-  const hairStyle =
-    gender === "여자"
-      ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
-      : "short01,short02,short03,short04,short05,short06,short07,short08";
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
-};
 
 export default function ParentDashboard() {
   const [history, setHistory] = useState([]);
@@ -67,6 +74,7 @@ export default function ParentDashboard() {
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState(7);
   const [newGender, setNewGender] = useState("남자");
+  const [newAvatarId, setNewAvatarId] = useState(1);
   const [createError, setCreateError] = useState("");
   const [editingTimeLimitId, setEditingTimeLimitId] = useState(null);
   const [customMinutes, setCustomMinutes] = useState("");
@@ -128,13 +136,14 @@ export default function ParentDashboard() {
         name: newName.trim(),
         age: newAge,
         gender: newGender,
-        avatarSeed: newName.trim(),
+        avatarId: newAvatarId,
         timeLimit: 60,
       });
       setProfiles((prev) => [...prev, created]);
       setNewName("");
       setNewAge(7);
       setNewGender("남자");
+      setNewAvatarId(1);
       setCreateError("");
       setShowCreateForm(false);
     } catch (err) {
@@ -401,20 +410,40 @@ export default function ParentDashboard() {
                       className="w-full rounded-[10px] px-4 py-2.5 text-sm outline-none transition"
                       style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
                     />
-                    {newName.trim() && (
-                      <div className="mt-4 flex items-center gap-4">
-                        <img
-                          src={getAvatarUrl(newName.trim(), newGender)}
-                          alt="미리보기"
-                          className="h-32 w-32 md:h-40 md:w-40 rounded-2xl bg-white shadow-lg"
-                        />
-                        <div>
-                          <p className="text-sm font-bold text-gray-500">캐릭터 미리보기</p>
-                          <p className="mt-1 text-base md:text-lg font-extrabold text-pink-500">{newName}의 캐릭터</p>
-                          <p className="mt-1 text-xs md:text-sm text-gray-400">성별을 바꾸면 캐릭터도 바뀌어요!</p>
-                        </div>
+                    <div className="mt-4">
+                      <p className="mb-2 text-sm font-bold" style={{ color: "#6B7A65" }}>캐릭터 선택</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {AVATAR_LIST.map((id) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => setNewAvatarId(id)}
+                            className="relative overflow-hidden transition"
+                            style={{
+                              borderRadius: "12px",
+                              border: newAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
+                              backgroundColor: "#F8F7F2",
+                              padding: "4px",
+                            }}
+                          >
+                            <img
+                              src={`/images/avatars/avatar_${String(id).padStart(2, "0")}.png`}
+                              alt={`캐릭터 ${id}`}
+                              className="w-full rounded-[8px]"
+                              style={{ aspectRatio: "1/1", objectFit: "cover" }}
+                            />
+                            {newAvatarId === id && (
+                              <div
+                                className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                                style={{ backgroundColor: "#6DAB60" }}
+                              >
+                                <span className="text-white font-bold" style={{ fontSize: "9px" }}>✓</span>
+                              </div>
+                            )}
+                          </button>
+                        ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-6">
                     <div>
@@ -492,7 +521,7 @@ export default function ParentDashboard() {
                       <FaTrash className="text-xs" />
                     </button>
                     <img
-                      src={getAvatarUrl(profile.avatarSeed, profile.gender)}
+                      src={getAvatarUrl(profile)}
                       alt={profile.name}
                       className="h-24 w-24 md:h-36 md:w-36 rounded-2xl bg-white shadow"
                     />
@@ -647,7 +676,7 @@ export default function ParentDashboard() {
                   }
                 >
                   <img
-                    src={getAvatarUrl(profile.avatarSeed, profile.gender)}
+                    src={getAvatarUrl(profile)}
                     alt={profile.name}
                     className="h-5 w-5 md:h-6 md:w-6 rounded-full bg-white"
                   />
@@ -756,7 +785,7 @@ export default function ParentDashboard() {
                   }
                 >
                   <img
-                    src={getAvatarUrl(profile.avatarSeed, profile.gender)}
+                    src={getAvatarUrl(profile)}
                     alt={profile.name}
                     className="h-5 w-5 rounded-full bg-white"
                   />
