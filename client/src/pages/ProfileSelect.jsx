@@ -178,9 +178,9 @@ export default function ProfileSelect() {
                           width: "100%",
                           height: "100%",
                           objectFit: "cover",
-                          objectPosition: "center 30%",
+                          objectPosition: "center 0%",
                           transform: "scale(1.35)",
-                          transformOrigin: "center 45%",
+                          transformOrigin: "center 5%",
                         }}
                       />
                     </div>
