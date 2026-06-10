@@ -9,7 +9,6 @@ export default function NavBar({
 }) {
   const navigate = useNavigate();
 
-  // 뒤로가기 버튼 클릭 처리
   const handleBackClick = () => {
     try {
       navigate(backTo);
@@ -19,18 +18,23 @@ export default function NavBar({
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-md shadow-sm">
-      <div className="mx-auto flex h-16 md:h-20 max-w-7xl items-center justify-between px-4 md:px-6">
+    <header
+      className="sticky top-0 z-50 bg-white"
+      style={{ borderBottom: "0.5px solid #E4EAE0" }}
+    >
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-6">
 
-        {/* 왼쪽 — 뒤로가기 버튼 */}
-        <div className="flex min-w-[120px] md:min-w-[160px] items-center">
+        {/* 왼쪽 — 뒤로가기 */}
+        <div className="flex min-w-[100px] items-center">
           {backTo ? (
             <button
               onClick={handleBackClick}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 md:px-5 md:py-3 text-sm md:text-lg font-bold text-gray-700 transition hover:bg-gray-100"
+              className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium transition"
+              style={{ color: "#6B7A65" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F0F5ED")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              {/* 아이콘 — PC에서 더 크게 */}
-              <FaArrowLeft className="text-sm md:text-xl" />
+              <FaArrowLeft className="text-xs" />
               <span>{backLabel}</span>
             </button>
           ) : (
@@ -38,29 +42,35 @@ export default function NavBar({
           )}
         </div>
 
-        {/* 가운데 타이틀 — 모바일에서만 표시 */}
-        <div className="flex-1 text-center md:hidden">
-          <h1 className="truncate text-lg font-extrabold text-gray-900">
+        {/* 가운데 타이틀 */}
+        <div className="flex-1 text-center">
+          <h1 className="truncate text-base font-medium" style={{ color: "#2C3528" }}>
             {title || "KidSafe"}
           </h1>
         </div>
 
-        {/* 오른쪽 — 찜 버튼(선택) + 로고 */}
-        <div className="flex min-w-[120px] md:min-w-[160px] justify-end items-center gap-3">
+        {/* 오른쪽 — 찜 버튼 + 로고 */}
+        <div className="flex min-w-[100px] justify-end items-center gap-2">
           {showFavorites && (
             <button
               onClick={() => navigate("/favorites")}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm md:text-base font-bold text-pink-500 transition hover:bg-pink-50"
+              className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition"
+              style={{ color: "#C84B47" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F0F5ED")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              <FaHeart className="text-base md:text-xl" />
+              <FaHeart className="text-sm" />
               <span className="hidden sm:block">찜 목록</span>
             </button>
           )}
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="flex h-9 w-9 md:h-12 md:w-12 items-center justify-center rounded-xl md:rounded-2xl bg-blue-600">
-              <FaShieldAlt className="text-white text-base md:text-xl" />
+          <div className="flex items-center gap-1.5">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-[10px]"
+              style={{ backgroundColor: "#6DAB60" }}
+            >
+              <FaShieldAlt className="text-white text-sm" />
             </div>
-            <span className="hidden text-lg md:text-2xl font-extrabold text-blue-600 sm:block">
+            <span className="hidden text-sm font-medium sm:block" style={{ color: "#2C3528" }}>
               KidSafe
             </span>
           </div>

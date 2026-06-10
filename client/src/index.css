@@ -1,1 +1,70 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ks-bg: #F8F7F2;
+  --color-ks-section: #F0F5ED;
+  --color-ks-green: #6DAB60;
+  --color-ks-green-light: #B8D8B2;
+  --color-ks-border: #E4EAE0;
+  --color-ks-red: #C84B47;
+  --color-ks-text: #2C3528;
+  --color-ks-sub: #6B7A65;
+  --color-ks-safe: #2E9E50;
+  --color-ks-caution: #C47A00;
+  --color-ks-gold: #EF9F27;
+}
+
+@keyframes badgeShimmer {
+  0%   { background-position: -250% center; }
+  100% { background-position: 250% center; }
+}
+
+/* 동 */
+.badge-bronze {
+  background: linear-gradient(105deg, #F5DEB3 0%, #CD7F32 35%, #F0E0A0 50%, #CD7F32 65%, #F5DEB3 100%);
+  background-size: 250% auto;
+  animation: badgeShimmer 4s linear infinite;
+  border: 1px solid #B8721A;
+  box-shadow: 0 2px 8px rgba(160, 90, 20, 0.3);
+  color: #7A4510;
+}
+
+/* 은 */
+.badge-silver {
+  background: linear-gradient(105deg, #ECECEC 0%, #B0B8C0 35%, #F4F4F4 50%, #B0B8C0 65%, #ECECEC 100%);
+  background-size: 250% auto;
+  animation: badgeShimmer 3.5s linear infinite;
+  border: 1px solid #9AAAB8;
+  box-shadow: 0 2px 8px rgba(100, 120, 140, 0.3);
+  color: #3A4A5A;
+}
+
+/* 골드 */
+.badge-gold {
+  background: linear-gradient(105deg, #FFF3CC 0%, #FFD700 35%, #FFF9E6 50%, #FFD700 65%, #FFF3CC 100%);
+  background-size: 250% auto;
+  animation: badgeShimmer 3s linear infinite;
+  border: 1px solid #E6B800;
+  box-shadow: 0 2px 10px rgba(220, 170, 0, 0.4), 0 0 0 2px rgba(255, 215, 0, 0.15);
+  color: #7A5800;
+}
+
+/* 에메랄드 */
+.badge-emerald {
+  background: linear-gradient(105deg, #C8F0D0 0%, #2ECC71 35%, #E8FFF0 50%, #2ECC71 65%, #C8F0D0 100%);
+  background-size: 250% auto;
+  animation: badgeShimmer 2.5s linear infinite;
+  border: 1px solid #1AAA58;
+  box-shadow: 0 2px 12px rgba(30, 180, 90, 0.4), 0 0 0 2px rgba(46, 204, 113, 0.15);
+  color: #0A5A28;
+}
+
+/* 다이아몬드 */
+.badge-diamond {
+  background: linear-gradient(105deg, #D8F0FF 0%, #60C8F8 25%, #FFFFFF 50%, #60C8F8 75%, #D8F0FF 100%);
+  background-size: 250% auto;
+  animation: badgeShimmer 2s linear infinite;
+  border: 1px solid #40A8E0;
+  box-shadow: 0 2px 14px rgba(60, 160, 230, 0.5), 0 0 0 3px rgba(96, 200, 248, 0.2);
+  color: #004A80;
+}

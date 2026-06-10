@@ -316,34 +316,44 @@ export default function ParentDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen" style={{ backgroundColor: "#F8F7F2" }}>
       {/* 상단 네비게이션 바 */}
       <NavBar backTo="/" backLabel="홈으로" title="부모 대시보드" />
 
-      <div className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-10">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-8">
 
-        <section className="mb-12 md:mb-16">
-          <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900">부모 대시보드</h1>
-          <p className="mt-2 md:mt-3 text-base md:text-lg text-gray-600">아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
+        <section className="mb-8 md:mb-10">
+          <h1 className="text-xl md:text-2xl font-medium" style={{ color: "#2C3528" }}>부모 대시보드</h1>
+          <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
         </section>
 
-        {loading && <p className="text-center text-gray-500">불러오는 중...</p>}
+        {loading && <p className="text-center text-sm" style={{ color: "#6B7A65" }}>불러오는 중...</p>}
         {error && (
-          <div className="mb-8 rounded-2xl bg-red-100 px-6 py-4 text-center text-red-600 font-semibold">
+          <div
+            className="mb-6 px-4 py-3 text-center text-sm"
+            style={{ borderRadius: "14px", backgroundColor: "#FFF0EF", color: "#C84B47" }}
+          >
             {error}
           </div>
         )}
 
         {!loading && (
-          <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-3">
+          <section className="grid gap-3 grid-cols-1 md:grid-cols-3 mb-5">
             {todaySummaryData.map((item) => (
-              <div key={item.id} className="rounded-3xl bg-white p-5 md:p-7 shadow-xl">
+              <div
+                key={item.id}
+                className="bg-white p-4 md:p-5"
+                style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm md:text-base font-semibold text-gray-500">{item.title}</p>
-                    <h2 className="mt-2 md:mt-3 text-2xl md:text-4xl font-extrabold text-gray-900">{item.value}</h2>
+                    <p className="text-xs font-medium" style={{ color: "#6B7A65" }}>{item.title}</p>
+                    <h2 className="mt-1.5 text-2xl md:text-3xl font-medium" style={{ color: "#2C3528" }}>{item.value}</h2>
                   </div>
-                  <div className={`flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-3xl ${item.bgColor}`}>
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-[10px]"
+                    style={{ backgroundColor: "#F0F5ED" }}
+                  >
                     {item.icon}
                   </div>
                 </div>
@@ -353,26 +363,33 @@ export default function ParentDashboard() {
         )}
 
         {!loading && (
-          <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
-            <div className="mb-6 md:mb-8 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FaChild className="text-xl md:text-2xl text-pink-500" />
-                <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">자녀 프로필</h2>
+          <section
+            className="bg-white p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FaChild className="text-lg" style={{ color: "#6DAB60" }} />
+                <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>자녀 프로필</h2>
               </div>
               {profiles.length < 4 && (
                 <button
                   onClick={() => setShowCreateForm(!showCreateForm)}
-                  className="flex items-center gap-2 rounded-2xl bg-pink-500 px-4 md:px-5 py-2 md:py-3 text-sm md:text-base font-bold text-white transition hover:bg-pink-600"
+                  className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-white transition"
+                  style={{ backgroundColor: "#6DAB60" }}
                 >
-                  <FaPlus />
+                  <FaPlus className="text-xs" />
                   프로필 추가
                 </button>
               )}
             </div>
 
             {showCreateForm && (
-              <div className="mb-8 rounded-2xl border border-pink-200 bg-slate-50 p-5 md:p-6">
-                <h3 className="mb-6 text-lg md:text-xl font-bold text-gray-800">새 프로필 만들기</h3>
+              <div
+                className="mb-6 p-4"
+                style={{ borderRadius: "14px", backgroundColor: "#F0F5ED", border: "0.5px solid #E4EAE0" }}
+              >
+                <h3 className="mb-5 text-base font-medium" style={{ color: "#2C3528" }}>새 프로필 만들기</h3>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-bold text-gray-600">이름</label>
@@ -381,7 +398,8 @@ export default function ParentDashboard() {
                       placeholder="아이 이름 입력"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="w-full rounded-2xl border-2 border-gray-200 px-4 py-3 font-semibold text-gray-700 outline-none focus:border-pink-400"
+                      className="w-full rounded-[10px] px-4 py-2.5 text-sm outline-none transition"
+                      style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
                     />
                     {newName.trim() && (
                       <div className="mt-4 flex items-center gap-4">
@@ -406,9 +424,11 @@ export default function ParentDashboard() {
                           <button
                             key={age}
                             onClick={() => setNewAge(age)}
-                            className={`rounded-2xl px-3 md:px-4 py-2 md:py-3 text-sm md:text-base font-bold transition ${
-                              newAge === age ? "bg-pink-500 text-white" : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
-                            }`}
+                            className="rounded-[10px] px-3 py-2 text-sm font-medium transition"
+                            style={newAge === age
+                              ? { backgroundColor: "#6DAB60", color: "white" }
+                              : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                            }
                           >
                             {age}세
                           </button>
@@ -422,9 +442,11 @@ export default function ParentDashboard() {
                           <button
                             key={g}
                             onClick={() => setNewGender(g)}
-                            className={`rounded-2xl px-5 md:px-6 py-2 md:py-3 text-sm md:text-base font-bold transition ${
-                              newGender === g ? "bg-pink-500 text-white" : "border-2 border-gray-200 bg-white text-gray-600 hover:border-pink-300"
-                            }`}
+                            className="rounded-[10px] px-4 py-2 text-sm font-medium transition"
+                            style={newGender === g
+                              ? { backgroundColor: "#6DAB60", color: "white" }
+                              : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                            }
                           >
                             {g}
                           </button>
@@ -434,13 +456,18 @@ export default function ParentDashboard() {
                   </div>
                 </div>
                 {createError && <p className="mt-4 text-sm font-bold text-red-500">{createError}</p>}
-                <div className="mt-6 flex gap-3">
-                  <button onClick={handleCreateProfile} className="rounded-2xl bg-pink-500 px-6 py-3 font-bold text-white transition hover:bg-pink-600">
+                <div className="mt-5 flex gap-2">
+                  <button
+                    onClick={handleCreateProfile}
+                    className="rounded-[10px] px-5 py-2.5 text-sm font-medium text-white transition"
+                    style={{ backgroundColor: "#6DAB60" }}
+                  >
                     저장하기
                   </button>
                   <button
                     onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }}
-                    className="rounded-2xl bg-gray-200 px-6 py-3 font-bold text-gray-600 transition hover:bg-gray-300"
+                    className="rounded-[10px] px-5 py-2.5 text-sm font-medium transition"
+                    style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
                   >
                     취소
                   </button>
@@ -449,11 +476,15 @@ export default function ParentDashboard() {
             )}
 
             {profiles.length === 0 ? (
-              <p className="py-10 text-center text-gray-400">아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
+              <p className="py-8 text-center text-sm" style={{ color: "#6B7A65" }}>아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+              <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                 {profiles.map((profile) => (
-                  <div key={profile.id} className="relative flex flex-col items-center rounded-3xl bg-slate-50 p-4 md:p-5 shadow-md">
+                  <div
+                    key={profile.id}
+                    className="relative flex flex-col items-center bg-white p-4"
+                    style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+                  >
                     <button
                       onClick={() => handleDeleteProfile(profile.id)}
                       className="absolute right-3 top-3 rounded-full bg-red-100 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
@@ -527,7 +558,8 @@ export default function ParentDashboard() {
                       ) : (
                         <button
                           onClick={() => setEditingTimeLimitId(profile.id)}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 py-2 text-xs md:text-sm font-bold text-blue-500 transition hover:bg-blue-100"
+                          className="flex w-full items-center justify-center gap-1.5 rounded-[10px] py-2 text-xs font-medium transition"
+                          style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
                         >
                           <FaClock />
                           {profile.timeLimit ? `${profile.timeLimit}분 제한` : "시청 시간 설정"}
@@ -571,17 +603,21 @@ export default function ParentDashboard() {
         )}
 
         {!loading && (
-          <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+          <section
+            className="bg-white p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          >
             {/* 헤더 */}
-            <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <FaHistory className="text-xl md:text-2xl text-blue-600" />
-                <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">최근 시청 기록</h2>
+            <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <FaHistory className="text-base" style={{ color: "#6DAB60" }} />
+                <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>최근 시청 기록</h2>
               </div>
               {filteredHistory.length > 0 && (
                 <button
                   onClick={handleDeleteAllHistory}
-                  className="flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-2 text-sm font-bold text-red-500 transition hover:bg-red-100"
+                  className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                  style={{ backgroundColor: "#FFF0EF", color: "#C84B47" }}
                 >
                   <FaTrash className="text-xs" /> 전체 삭제
                 </button>
@@ -589,12 +625,14 @@ export default function ParentDashboard() {
             </div>
 
             {/* 프로필 탭 */}
-            <div className="mb-6 flex flex-wrap gap-2 md:gap-3">
+            <div className="mb-5 flex flex-wrap gap-2">
               <button
                 onClick={() => { setActiveTab("전체"); setVisibleCount(10); }}
-                className={`rounded-2xl px-4 md:px-5 py-2 text-sm md:text-base font-bold transition ${
-                  activeTab === "전체" ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
-                }`}
+                className="rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                style={activeTab === "전체"
+                  ? { backgroundColor: "#6DAB60", color: "white" }
+                  : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                }
               >
                 전체
               </button>
@@ -602,9 +640,11 @@ export default function ParentDashboard() {
                 <button
                   key={profile.id}
                   onClick={() => { setActiveTab(profile.id); setVisibleCount(10); }}
-                  className={`flex items-center gap-2 rounded-2xl px-4 md:px-5 py-2 text-sm md:text-base font-bold transition ${
-                    activeTab === profile.id ? "bg-blue-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-blue-100"
-                  }`}
+                  className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                  style={activeTab === profile.id
+                    ? { backgroundColor: "#6DAB60", color: "white" }
+                    : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                  }
                 >
                   <img
                     src={getAvatarUrl(profile.avatarSeed, profile.gender)}
@@ -617,23 +657,21 @@ export default function ParentDashboard() {
             </div>
 
             {filteredHistory.length === 0 ? (
-              <p className="py-10 text-center text-gray-400">
+              <p className="py-8 text-center text-sm" style={{ color: "#6B7A65" }}>
                 {activeTab === "전체" ? "아직 시청 기록이 없어요." : "이 프로필의 시청 기록이 없어요."}
               </p>
             ) : (
               <>
-                <div className="space-y-4 md:space-y-5">
+                <div className="space-y-2.5">
                   {filteredHistory.slice(0, visibleCount).map((item, index) => {
                     const { grade, color } = getSafetyGrade(item.totalScore);
-                    const badgeColor =
-                      color === "green" ? "bg-green-500"
-                      : color === "yellow" ? "bg-yellow-500"
-                      : "bg-red-500";
+                    const badgeBg = color === "green" ? "#2E9E50" : color === "yellow" ? "#C47A00" : "#C84B47";
 
                     return (
                       <div
                         key={`${item.videoId}-${index}`}
-                        className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-slate-50 p-4 md:p-5 md:flex-row md:items-center md:justify-between"
+                        className="flex flex-col gap-2 p-3 md:flex-row md:items-center md:justify-between"
+                        style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0", backgroundColor: "#F8F7F2" }}
                       >
                         {/* 썸네일 + 정보 — 클릭 시 모달 */}
                         <button
@@ -642,9 +680,9 @@ export default function ParentDashboard() {
                         >
                           <img src={item.thumbnail} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0" />
                           <div className="min-w-0">
-                            <h3 className="line-clamp-1 text-base md:text-lg font-bold text-gray-900 hover:text-blue-600 transition">{item.title}</h3>
-                            <p className="mt-1 text-xs md:text-sm text-gray-500">{item.channelTitle}</p>
-                            <p className="mt-1 text-xs text-gray-400">
+                            <h3 className="line-clamp-1 text-sm font-medium transition" style={{ color: "#2C3528" }}>{item.title}</h3>
+                            <p className="mt-0.5 text-xs" style={{ color: "#6B7A65" }}>{item.channelTitle}</p>
+                            <p className="mt-0.5 text-xs" style={{ color: "#9BA89A" }}>
                               {new Date(item.watchedAt).toLocaleString("ko-KR")}
                             </p>
                           </div>
@@ -652,7 +690,10 @@ export default function ParentDashboard() {
 
                         {/* 안전도 배지 + 삭제 */}
                         <div className="flex items-center gap-2 shrink-0">
-                          <div className={`rounded-full px-4 py-2 text-xs md:text-sm font-bold text-white ${badgeColor}`}>
+                          <div
+                            className="rounded-full px-3 py-1 text-xs font-medium text-white"
+                            style={{ backgroundColor: badgeBg }}
+                          >
                             {grade} {item.totalScore}점
                           </div>
                           <button
@@ -671,7 +712,8 @@ export default function ParentDashboard() {
                 {visibleCount < filteredHistory.length && (
                   <button
                     onClick={() => setVisibleCount(prev => prev + 10)}
-                    className="mt-6 w-full rounded-2xl border-2 border-blue-200 py-3 text-sm font-bold text-blue-500 transition hover:bg-blue-50"
+                    className="mt-4 w-full rounded-[10px] py-2.5 text-sm font-medium transition"
+                    style={{ border: "0.5px solid #E4EAE0", color: "#6B7A65", backgroundColor: "white" }}
                   >
                     더보기 ({filteredHistory.length - visibleCount}개 남음)
                   </button>
@@ -682,19 +724,24 @@ export default function ParentDashboard() {
         )}
 
         {!loading && history.length > 0 && (
-          <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <FaChartBar className="text-xl md:text-2xl text-indigo-500" />
-              <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">시청 패턴 분석</h2>
+          <section
+            className="bg-white p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <FaChartBar className="text-base" style={{ color: "#6DAB60" }} />
+              <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>시청 패턴 분석</h2>
             </div>
 
             {/* 차트 전용 프로필 탭 */}
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-5">
               <button
                 onClick={() => setChartTab("전체")}
-                className={`rounded-2xl px-4 py-2 text-sm font-bold transition ${
-                  chartTab === "전체" ? "bg-indigo-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-indigo-50"
-                }`}
+                className="rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                style={chartTab === "전체"
+                  ? { backgroundColor: "#6DAB60", color: "white" }
+                  : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                }
               >
                 전체
               </button>
@@ -702,9 +749,11 @@ export default function ParentDashboard() {
                 <button
                   key={profile.id}
                   onClick={() => setChartTab(profile.id)}
-                  className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold transition ${
-                    chartTab === profile.id ? "bg-indigo-500 text-white" : "bg-slate-100 text-gray-600 hover:bg-indigo-50"
-                  }`}
+                  className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                  style={chartTab === profile.id
+                    ? { backgroundColor: "#6DAB60", color: "white" }
+                    : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                  }
                 >
                   <img
                     src={getAvatarUrl(profile.avatarSeed, profile.gender)}
@@ -717,7 +766,7 @@ export default function ParentDashboard() {
             </div>
 
             {chartFilteredHistory.length === 0 ? (
-              <p className="py-10 text-center text-gray-400">시청 기록이 없어요.</p>
+              <p className="py-8 text-center text-sm" style={{ color: "#6B7A65" }}>시청 기록이 없어요.</p>
             ) : (<>
 
             {/* 안전도 분포 + 최다 시청 채널 — 2열 그리드 */}
@@ -726,7 +775,7 @@ export default function ParentDashboard() {
               <div>
                 <h3 className="text-base font-extrabold text-gray-700 mb-4">🛡️ 안전도 분포</h3>
                 <div className="h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={220} debounce={50}>
                     <PieChart>
                       <Pie
                         data={safetyDistData}
@@ -767,8 +816,8 @@ export default function ParentDashboard() {
                 {topChannelsData.length === 0 ? (
                   <p className="text-sm text-gray-400 py-10 text-center">데이터가 없어요.</p>
                 ) : (
-                  <div className="h-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div>
+                    <ResponsiveContainer width="100%" height={220} debounce={50}>
                       <BarChart data={topChannelsData} layout="vertical" margin={{ left: 8, right: 24 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                         <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
@@ -780,7 +829,7 @@ export default function ParentDashboard() {
                           tickFormatter={(v) => truncateByDisplayWidth(v, 20)}
                         />
                         <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
-                        <Bar dataKey="count" name="시청 횟수" radius={[0, 8, 8, 0]} fill="#6366f1" />
+                        <Bar dataKey="count" name="시청 횟수" radius={[0, 8, 8, 0]} fill="#6DAB60" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -794,8 +843,8 @@ export default function ParentDashboard() {
               {hourChartData.length === 0 ? (
                 <p className="text-sm text-gray-400 py-6 text-center">데이터가 없어요.</p>
               ) : (
-                <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div>
+                  <ResponsiveContainer width="100%" height={200} debounce={50}>
                     <BarChart data={hourChartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
@@ -805,7 +854,7 @@ export default function ParentDashboard() {
                         dataKey="count"
                         name="시청 횟수"
                         radius={[6, 6, 0, 0]}
-                        fill="#f59e0b"
+                        fill="#B8D8B2"
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -817,8 +866,8 @@ export default function ParentDashboard() {
             {/* 최근 7일 시청 추이 */}
             <div className="mt-10">
               <h3 className="text-base font-extrabold text-gray-700 mb-4">📅 최근 7일 시청 추이</h3>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div>
+                <ResponsiveContainer width="100%" height={200} debounce={50}>
                   <LineChart data={weeklyChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -828,9 +877,9 @@ export default function ParentDashboard() {
                       type="monotone"
                       dataKey="count"
                       name="시청 횟수"
-                      stroke="#ec4899"
+                      stroke="#6DAB60"
                       strokeWidth={3}
-                      dot={{ r: 5, fill: "#ec4899" }}
+                      dot={{ r: 5, fill: "#6DAB60" }}
                       activeDot={{ r: 7 }}
                     />
                   </LineChart>
@@ -842,7 +891,10 @@ export default function ParentDashboard() {
         )}
 
         {/* 위험 영상 알림 */}
-        <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+        <section
+          className="bg-white p-4 md:p-6 mb-5"
+          style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+        >
           <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -989,7 +1041,10 @@ export default function ParentDashboard() {
         </section>
 
         {/* 차단 키워드 관리 */}
-        <section className="mt-10 md:mt-14 rounded-3xl bg-white p-5 md:p-8 shadow-xl">
+        <section
+          className="bg-white p-4 md:p-6 mb-5"
+          style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+        >
           <div className="flex items-center gap-3 mb-2">
             <FaBan className="text-red-500 text-xl md:text-2xl" />
             <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">차단 키워드 관리</h2>
