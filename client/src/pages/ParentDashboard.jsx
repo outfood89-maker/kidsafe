@@ -562,7 +562,7 @@ export default function ParentDashboard() {
                           height: "100%",
                           objectFit: "cover",
                           objectPosition: "center 0%",
-                          transform: "scale(1.35) translateY(12%)",
+                          transform: "scale(1.35) translateY(5%)",
                           transformOrigin: "center top",
                         }}
                       />
