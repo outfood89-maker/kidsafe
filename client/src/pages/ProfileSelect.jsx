@@ -174,7 +174,14 @@ export default function ProfileSelect() {
                       <img
                         src={getAvatarUrl(profile)}
                         alt={profile.name}
-                        className="h-full w-full object-cover"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "center 8%",
+                          transform: "scale(1.35)",
+                          transformOrigin: "center 20%",
+                        }}
                       />
                     </div>
                     {/* 이름 */}
