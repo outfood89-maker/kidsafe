@@ -4,7 +4,7 @@
     "name": "호떡",
     "age": 7,
     "gender": "남자",
-    "avatarSeed": "호떡",
+    "avatarId": 5,
     "createdAt": "2026-05-27T13:29:54.335Z",
     "timeLimit": 10,
     "safetyThreshold": 75
@@ -14,7 +14,7 @@
     "name": "해준",
     "age": 5,
     "gender": "남자",
-    "avatarSeed": "해준",
+    "avatarId": 7,
     "createdAt": "2026-05-27T13:30:08.658Z",
     "safetyThreshold": 85
   },
@@ -23,7 +23,7 @@
     "name": "지현",
     "age": 10,
     "gender": "여자",
-    "avatarSeed": "지현",
+    "avatarId": 6,
     "timeLimit": 60,
     "createdAt": "2026-06-02T01:21:00.564Z",
     "safetyThreshold": 90
@@ -33,7 +33,7 @@
     "name": "준석",
     "age": 7,
     "gender": "남자",
-    "avatarSeed": "준석",
+    "avatarId": 1,
     "timeLimit": 10,
     "createdAt": "2026-06-02T07:19:10.187Z",
     "safetyThreshold": 80

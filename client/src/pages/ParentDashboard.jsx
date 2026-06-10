@@ -37,17 +37,8 @@ const TIME_OPTIONS = [
 
 const AVATAR_LIST = [1, 2, 3, 4, 5, 6, 7, 8];
 
-const getAvatarUrl = (profile) => {
-  if (profile?.avatarId) {
-    return `/images/avatars/avatar_${String(profile.avatarId).padStart(2, "0")}.png`;
-  }
-  const seed = profile?.avatarSeed || "default";
-  const gender = profile?.gender || "남자";
-  const hairStyle = gender === "여자"
-    ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
-    : "short01,short02,short03,short04,short05,short06,short07,short08";
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
-};
+const getAvatarUrl = (profile) =>
+  `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
 const truncateByDisplayWidth = (str, maxWidth) => {
   let width = 0
