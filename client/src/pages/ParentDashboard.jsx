@@ -13,6 +13,8 @@ import {
   FaCheck,
   FaSlidersH,
   FaChartBar,
+  FaPen,
+  FaTimes,
 } from "react-icons/fa";
 
 import {
@@ -77,6 +79,12 @@ export default function ParentDashboard() {
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [editingProfile, setEditingProfile] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editAge, setEditAge] = useState(7);
+  const [editGender, setEditGender] = useState("남자");
+  const [editAvatarId, setEditAvatarId] = useState(1);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -150,6 +158,27 @@ export default function ParentDashboard() {
       if (activeTab === profileId) setActiveTab("전체");
     } catch (err) {
       alert("프로필 삭제에 실패했어요.");
+    }
+  };
+
+  const openEditModal = (profile) => {
+    setEditingProfile(profile);
+    setEditName(profile.name);
+    setEditAge(profile.age);
+    setEditGender(profile.gender);
+    setEditAvatarId(profile.avatarId || 1);
+    setEditError("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) { setEditError("이름을 입력해주세요!"); return; }
+    const patch = { name: editName.trim(), age: editAge, gender: editGender, avatarId: editAvatarId };
+    try {
+      await updateProfile(editingProfile.id, patch);
+      setProfiles((prev) => prev.map((p) => p.id === editingProfile.id ? { ...p, ...patch } : p));
+      setEditingProfile(null);
+    } catch (err) {
+      setEditError(err.response?.data?.error || "수정에 실패했어요.");
     }
   };
 
@@ -505,17 +534,32 @@ export default function ParentDashboard() {
                     className="relative flex flex-col items-center bg-white p-4"
                     style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
                   >
+                    {/* 편집 버튼 */}
+                    <button
+                      onClick={() => openEditModal(profile)}
+                      className="absolute left-3 top-3 rounded-full p-2 transition"
+                      style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                    >
+                      <FaPen className="text-xs" />
+                    </button>
+                    {/* 삭제 버튼 */}
                     <button
                       onClick={() => handleDeleteProfile(profile.id)}
                       className="absolute right-3 top-3 rounded-full bg-red-100 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
                     >
                       <FaTrash className="text-xs" />
                     </button>
-                    <img
-                      src={getAvatarUrl(profile)}
-                      alt={profile.name}
-                      className="h-24 w-24 md:h-36 md:w-36 rounded-2xl bg-white shadow"
-                    />
+                    {/* 아바타 이미지 */}
+                    <div
+                      className="flex items-center justify-center rounded-2xl bg-white shadow overflow-hidden"
+                      style={{ width: "96px", height: "96px" }}
+                    >
+                      <img
+                        src={getAvatarUrl(profile)}
+                        alt={profile.name}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
                     <p className="mt-3 text-base md:text-lg font-extrabold text-gray-800">{profile.name}</p>
                     <p className="text-xs md:text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
 
@@ -1129,6 +1173,124 @@ export default function ParentDashboard() {
         </section>
 
       </div>
+
+      {/* 프로필 편집 모달 */}
+      {editingProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
+          <div className="bg-white w-full max-w-md p-6" style={{ borderRadius: "20px" }}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-semibold" style={{ color: "#2C3528" }}>프로필 수정</h3>
+              <button onClick={() => setEditingProfile(null)} style={{ color: "#6B7A65" }}>
+                <FaTimes />
+              </button>
+            </div>
+
+            {/* 아바타 선택 */}
+            <div className="mb-5">
+              <p className="mb-2 text-sm font-medium" style={{ color: "#6B7A65" }}>캐릭터</p>
+              <div className="grid grid-cols-4 gap-2">
+                {AVATAR_LIST.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setEditAvatarId(id)}
+                    className="relative overflow-hidden transition"
+                    style={{
+                      borderRadius: "12px",
+                      border: editAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
+                      backgroundColor: "#F8F7F2",
+                      padding: "4px",
+                    }}
+                  >
+                    <img
+                      src={`/images/avatars/avatar_${String(id).padStart(2, "0")}.png`}
+                      alt={`캐릭터 ${id}`}
+                      className="w-full rounded-[8px]"
+                      style={{ aspectRatio: "1/1", objectFit: "contain" }}
+                    />
+                    {editAvatarId === id && (
+                      <div className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full" style={{ backgroundColor: "#6DAB60" }}>
+                        <span className="text-white font-bold" style={{ fontSize: "9px" }}>✓</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 이름 */}
+            <div className="mb-4">
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#6B7A65" }}>이름</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full rounded-[10px] px-4 py-2.5 text-sm outline-none"
+                style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
+              />
+            </div>
+
+            {/* 나이 */}
+            <div className="mb-4">
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#6B7A65" }}>나이</label>
+              <div className="flex gap-2">
+                {AGE_OPTIONS.map((age) => (
+                  <button
+                    key={age}
+                    onClick={() => setEditAge(age)}
+                    className="rounded-[10px] px-3 py-2 text-sm font-medium transition"
+                    style={editAge === age
+                      ? { backgroundColor: "#6DAB60", color: "white" }
+                      : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                    }
+                  >
+                    {age}세
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 성별 */}
+            <div className="mb-5">
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#6B7A65" }}>성별</label>
+              <div className="flex gap-2">
+                {["남자", "여자"].map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setEditGender(g)}
+                    className="rounded-[10px] px-4 py-2 text-sm font-medium transition"
+                    style={editGender === g
+                      ? { backgroundColor: "#6DAB60", color: "white" }
+                      : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                    }
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {editError && <p className="mb-3 text-sm" style={{ color: "#C84B47" }}>{editError}</p>}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveEdit}
+                className="flex-1 rounded-[10px] py-2.5 text-sm font-medium text-white"
+                style={{ backgroundColor: "#6DAB60" }}
+              >
+                저장
+              </button>
+              <button
+                onClick={() => setEditingProfile(null)}
+                className="rounded-[10px] px-5 py-2.5 text-sm font-medium"
+                style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 영상 상세 모달 */}
       {selectedVideo && (
