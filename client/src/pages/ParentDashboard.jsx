@@ -551,13 +551,20 @@ export default function ParentDashboard() {
                     </button>
                     {/* 아바타 이미지 */}
                     <div
-                      className="flex items-center justify-center rounded-2xl bg-white shadow overflow-hidden"
-                      style={{ width: "96px", height: "96px" }}
+                      className="rounded-2xl bg-white shadow overflow-hidden"
+                      style={{ width: "130px", height: "130px" }}
                     >
                       <img
                         src={getAvatarUrl(profile)}
                         alt={profile.name}
-                        className="w-full h-full object-contain"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "center 8%",
+                          transform: "scale(1.35)",
+                          transformOrigin: "center 20%",
+                        }}
                       />
                     </div>
                     <p className="mt-3 text-base md:text-lg font-extrabold text-gray-800">{profile.name}</p>
