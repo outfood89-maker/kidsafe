@@ -192,27 +192,165 @@
     "searchedAt": "2026-06-05T16:06:16.610Z"
   },
   {
-    "id": "0450ad6d-6fe8-4acc-b9d0-a47f301a7cf1",
-    "profileId": "1780384750187",
-    "keyword": "야사",
-    "searchedAt": "2026-06-05T16:14:43.707Z"
-  },
-  {
     "id": "95363959-e5d6-4df4-98e3-030ab2e35b1f",
     "profileId": "1780363260564",
     "keyword": "베이스",
     "searchedAt": "2026-06-05T16:17:18.252Z"
   },
   {
-    "id": "118b708d-4fad-4ffb-a290-9f48a88e82f1",
+    "id": "bb457175-3892-4bbc-902e-3a24e48da660",
     "profileId": "1780384750187",
-    "keyword": "여자",
-    "searchedAt": "2026-06-05T16:51:23.399Z"
+    "keyword": "로보카폴리",
+    "searchedAt": "2026-06-06T15:48:31.546Z"
   },
   {
-    "id": "b147d0d2-6a22-4e41-8aca-7c31ff2f285b",
+    "id": "4985e397-0a13-44ce-a33e-a2c26f56aa92",
     "profileId": "1780384750187",
-    "keyword": "미시",
-    "searchedAt": "2026-06-05T16:51:33.379Z"
+    "keyword": "로보카폴리",
+    "searchedAt": "2026-06-09T03:37:51.887Z"
+  },
+  {
+    "id": "1220cf40-e7eb-440c-a693-a6b871d07da3",
+    "profileId": "1780384750187",
+    "keyword": "뽀로로",
+    "searchedAt": "2026-06-09T03:38:02.068Z"
+  },
+  {
+    "id": "930721b6-f992-402f-b062-b15096d0a31c",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-09T03:41:14.861Z"
+  },
+  {
+    "id": "f89f02de-01b9-4ec4-b041-7e79c329638f",
+    "profileId": "1780384750187",
+    "keyword": "뽀로로",
+    "searchedAt": "2026-06-09T03:41:22.011Z"
+  },
+  {
+    "id": "a95e6ec0-3b78-4d85-8787-af7c820278cf",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T03:41:29.840Z"
+  },
+  {
+    "id": "79a3ac63-5bf7-464d-9acf-93db84d0c5ad",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T03:47:09.220Z"
+  },
+  {
+    "id": "99b6acb1-d512-4cf1-bb7a-87cfccec86e4",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T03:47:10.866Z"
+  },
+  {
+    "id": "d7be7793-b228-404f-8ac4-6aac92d57112",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T03:47:12.508Z"
+  },
+  {
+    "id": "8e523732-68a4-4a41-9d31-a56926d08a5c",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T03:48:06.592Z"
+  },
+  {
+    "id": "17dfa3c7-0f64-4889-9f03-2c3861c96335",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T03:51:55.372Z"
+  },
+  {
+    "id": "22f35b3f-73cc-45f0-a1e8-d05eb015110e",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T04:00:35.446Z"
+  },
+  {
+    "id": "5cd8b9e7-594b-49e1-862a-9abf165fda85",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T04:00:38.304Z"
+  },
+  {
+    "id": "05d2bd68-bed2-4209-bc18-c85508b74f43",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T04:00:42.196Z"
+  },
+  {
+    "id": "422e0d15-42ba-42b6-9508-d98959ca38ac",
+    "profileId": "1780384750187",
+    "keyword": "자동차",
+    "searchedAt": "2026-06-09T09:03:23.495Z"
+  },
+  {
+    "id": "c9d299de-39ed-4823-b775-e4ca424925df",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-09T09:03:36.644Z"
+  },
+  {
+    "id": "76df6447-732b-4241-8723-2be089d9953a",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-09T09:07:21.546Z"
+  },
+  {
+    "id": "3cdb583e-736d-4fa8-8eff-95e81e35ceb9",
+    "profileId": "1781080145523",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T08:41:01.157Z"
+  },
+  {
+    "id": "3eb520e3-2774-4ebe-876c-101fd5e767fc",
+    "profileId": "1779888594335",
+    "keyword": "뽀로로",
+    "searchedAt": "2026-06-10T14:14:46.148Z"
+  },
+  {
+    "id": "bc46ad02-207e-44d3-87f4-caf744a676b7",
+    "profileId": "1779888594335",
+    "keyword": "뽀로로",
+    "searchedAt": "2026-06-10T14:14:48.505Z"
+  },
+  {
+    "id": "0939d840-1b7b-4688-a2d3-e7c7b76e3f85",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T16:05:03.683Z"
+  },
+  {
+    "id": "cbd8a2e5-9985-457e-80de-8d7525aed264",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T16:05:04.609Z"
+  },
+  {
+    "id": "fb32e43c-a552-4a9c-96e1-39a73ee213d0",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T16:05:05.395Z"
+  },
+  {
+    "id": "4fab9eab-bdf9-4a77-bdd6-017228a901a0",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T16:05:06.137Z"
+  },
+  {
+    "id": "53541d1f-e5ef-4319-bc7f-4c582e660f17",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T16:05:06.864Z"
+  },
+  {
+    "id": "3ee99eb3-7c05-42d5-b456-70a635ddea80",
+    "profileId": "1780384750187",
+    "keyword": "공룡",
+    "searchedAt": "2026-06-10T16:05:07.826Z"
   }
 ]

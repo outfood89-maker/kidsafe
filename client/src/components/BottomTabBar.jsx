@@ -4,11 +4,13 @@ import { FaHome, FaHeart, FaMedal, FaCommentDots } from "react-icons/fa";
 export default function BottomTabBar({ activeTab = "home", chatOpen = false, onChatToggle }) {
   const navigate = useNavigate();
 
+  const closeChat = () => { if (chatOpen && onChatToggle) onChatToggle(); };
+
   const tabs = [
-    { id: "home",      label: "홈",   icon: <FaHome />,       action: () => navigate("/kids") },
-    { id: "favorites", label: "찜",   icon: <FaHeart />,      action: () => navigate("/favorites") },
-    { id: "badges",    label: "배지", icon: <FaMedal />,      action: () => navigate("/badges") },
-    { id: "chat",      label: "키디", icon: <FaCommentDots />, action: onChatToggle },
+    { id: "home",      label: "홈",   icon: <FaHome />,        action: () => { closeChat(); navigate("/kids"); } },
+    { id: "favorites", label: "찜",   icon: <FaHeart />,       action: () => { closeChat(); navigate("/favorites"); } },
+    { id: "badges",    label: "배지", icon: <FaMedal />,       action: () => { closeChat(); navigate("/badges"); } },
+    { id: "chat",      label: "키디", icon: <FaCommentDots />, action: onChatToggle ?? (() => navigate("/kids")) },
   ];
 
   return (

@@ -3,14 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
-  FaCommentDots, FaPaperPlane, FaChevronDown, FaShieldAlt,
+  FaCommentDots, FaPaperPlane, FaChevronDown, FaShieldAlt, FaSignOutAlt,
 } from "react-icons/fa";
 import {
   searchVideos, analyzeVideo, saveHistory, getHistory,
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
   getFavorites, addFavorite, removeFavorite, sendChatMessage,
-  checkBlockedKeyword,
+  checkBlockedKeyword, getProfiles,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
@@ -61,30 +61,38 @@ export default function KidHome() {
       return;
     }
 
-    const savedSearch = sessionStorage.getItem("kidsafe_search");
-    if (savedSearch) {
-      try {
-        const { keyword, videos: sv, playlists: sp } = JSON.parse(savedSearch);
-        setSearchKeyword(keyword);
-        setVideos(sv);
-        setPlaylists(sp);
-      } catch {
-        sessionStorage.removeItem("kidsafe_search");
-      }
-    }
-
     const stored = localStorage.getItem("selectedProfile");
     if (stored) {
-      const profile = JSON.parse(stored);
-      setSelectedProfile(profile);
-      if (profile.timeLimit) checkTimeLimit(profile);
-      fetchBadges(profile.id);
-      fetchSearchHistory(profile.id);
-      fetchFavorites(profile.id);
+      const cached = JSON.parse(stored);
+      setSelectedProfile(cached);
+      if (cached.timeLimit) checkTimeLimit(cached);
+      fetchBadges(cached.id);
+      fetchSearchHistory(cached.id);
+      fetchFavorites(cached.id);
+      // 이 프로필의 검색 결과만 복원
+      const savedSearch = sessionStorage.getItem(`kidsafe_search_${cached.id}`);
+      if (savedSearch) {
+        try {
+          const { keyword, videos: sv, playlists: sp } = JSON.parse(savedSearch);
+          setSearchKeyword(keyword);
+          setVideos(sv);
+          setPlaylists(sp);
+        } catch {
+          sessionStorage.removeItem(`kidsafe_search_${cached.id}`);
+        }
+      }
       getHistory().then(history => {
-        fetchRecommendedVideos(profile.age, history);
-        fetchHistoryRecommendedVideos(history, profile.age);
+        fetchRecommendedVideos(cached.age, history);
+        fetchHistoryRecommendedVideos(history, cached.age);
       });
+      // 서버에서 최신 프로필 데이터로 갱신 (avatarId 등 업데이트 반영)
+      getProfiles().then((profiles) => {
+        const fresh = profiles.find((p) => p.id === cached.id);
+        if (fresh) {
+          setSelectedProfile(fresh);
+          localStorage.setItem("selectedProfile", JSON.stringify(fresh));
+        }
+      }).catch(() => {});
     } else {
       fetchRecommendedVideos(7, []);
     }
@@ -220,6 +228,7 @@ export default function KidHome() {
 
   const getAvatarUrl = (profile) =>
     `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
+  const AVATAR_OFFSET_X = { 5: "43%" };
 
   const handleChatSendWithText = async (text) => {
     if (!text || chatLoading) return;
@@ -271,7 +280,8 @@ export default function KidHome() {
       } else {
         setVideos(filteredVideos);
         setPlaylists(playlistResults || []);
-        sessionStorage.setItem("kidsafe_search", JSON.stringify({
+        const profileId = JSON.parse(localStorage.getItem("selectedProfile") || "{}").id;
+        sessionStorage.setItem(`kidsafe_search_${profileId}`, JSON.stringify({
           keyword: trimmedKeyword,
           videos: filteredVideos,
           playlists: playlistResults || [],
@@ -438,7 +448,7 @@ export default function KidHome() {
   };
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#F8F7F2" }}>
+    <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#F8F7F2" }}>
 
       {/* 커스텀 NavBar */}
       <header
@@ -446,15 +456,30 @@ export default function KidHome() {
         style={{ borderBottom: "0.5px solid #E4EAE0" }}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-          {/* 로고 */}
-          <div className="flex items-center gap-1.5">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-              style={{ backgroundColor: "#6DAB60" }}
-            >
-              <FaShieldAlt className="text-white text-sm" />
+          {/* 로고 + 로그아웃 */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-[10px]"
+                style={{ backgroundColor: "#6DAB60" }}
+              >
+                <FaShieldAlt className="text-white text-sm" />
+              </div>
+              <span className="text-sm font-medium" style={{ color: "#2C3528" }}>KidSafe</span>
             </div>
-            <span className="text-sm font-medium" style={{ color: "#2C3528" }}>KidSafe</span>
+            <button
+              onClick={() => {
+  const p = JSON.parse(localStorage.getItem("selectedProfile") || "{}");
+  if (p.id) sessionStorage.removeItem(`kidsafe_search_${p.id}`);
+  localStorage.removeItem("selectedProfile");
+  navigate("/");
+}}
+              className="flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium transition"
+              style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+            >
+              <FaSignOutAlt style={{ color: "#6DAB60" }} />
+              <span className="hidden sm:block">나가기</span>
+            </button>
           </div>
           {/* 오른쪽: 배지 pill + 아바타 */}
           <div className="flex items-center gap-2">
@@ -477,7 +502,13 @@ export default function KidHome() {
                 <img
                   src={getAvatarUrl(selectedProfile)}
                   alt={selectedProfile.name}
-                  className="h-full w-full object-cover"
+                  style={{
+                    width: "100%", height: "100%",
+                    objectFit: "cover",
+                    objectPosition: `${AVATAR_OFFSET_X[selectedProfile?.avatarId] ?? "center"} 0%`,
+                    transform: "scale(1.35) translateY(5%)",
+                    transformOrigin: "center top",
+                  }}
                 />
               </button>
             ) : (
@@ -549,257 +580,201 @@ export default function KidHome() {
           </div>
         )}
 
-        {/* 키디 중앙 영역 — 인사 ↔ 로딩 통합 */}
-        <section className="flex flex-col items-center text-center mb-6 pt-2">
-            <KiddyImg pose={loading ? "search" : "hello"} size={400} />
 
-            {loading ? (
-              <div className="mt-3 flex flex-col items-center gap-2">
-                <p className="text-sm font-medium" style={{ color: "#6B7A65" }}>
-                  AI가 영상을 검수하는 중이에요...
-                </p>
-                <div className="flex gap-2 mt-1">
-                  <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#6DAB60", animationDelay: "0ms" }} />
-                  <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#6DAB60", animationDelay: "150ms" }} />
-                  <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#6DAB60", animationDelay: "300ms" }} />
-                </div>
-              </div>
-            ) : (
-              <div className="mt-3 flex flex-col items-center gap-2">
-                <div
-                  className="relative rounded-[14px] px-5 py-3"
-                  style={{ backgroundColor: "#F0F5ED", maxWidth: "280px" }}
-                >
-                  <div
-                    className="absolute -top-2 left-1/2 -translate-x-1/2"
-                    style={{ width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "8px solid #F0F5ED" }}
-                  />
-                  <p className="text-2xl font-extrabold leading-snug" style={{ color: "#2C3528" }}>
-                    {selectedProfile
-                      ? `안녕 ${selectedProfile.name}아! 오늘도 안전한 영상 같이 찾아봐요! 🎬`
-                      : "안녕 친구야! 안전한 영상 함께 찾아볼게요! 🎬"}
-                  </p>
-                </div>
-                <p className="text-base font-medium mt-1" style={{ color: "#6B7A65" }}>
-                  {selectedProfile
-                    ? `${selectedProfile.age}세 기준 안전 영상만 보여줄게요`
-                    : "KidSafe AI가 안전한 영상을 골라줘요"}
-                </p>
-              </div>
-            )}
-        </section>
-
-        {/* 검색창 */}
-        <section className="mb-6">
-          <div ref={searchBoxRef} className="relative">
-            <div
-              className="flex items-center gap-2 p-2 bg-white"
-              style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
-            >
-              <input
-                type="text"
-                placeholder="어떤 영상 볼까?"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex-1 min-w-0 rounded-[10px] px-4 py-2.5 text-sm font-medium outline-none transition"
-                style={{
-                  backgroundColor: "#F8F7F2",
-                  border: "2px solid #B8D8B2",
-                  color: "#2C3528",
-                }}
-              />
-              <button
-                onClick={() => handleSearch()}
-                disabled={loading}
-                className="flex items-center gap-1.5 rounded-[10px] px-4 py-2.5 text-sm font-medium text-white transition disabled:opacity-50 shrink-0"
-                style={{ backgroundColor: "#6DAB60" }}
-              >
-                <FaSearch className="text-xs" />
-                검색
-              </button>
-            </div>
-
-            {/* 검색 히스토리 드롭다운 */}
-            {showSearchHistory && searchHistory.length > 0 && (
-              <div
-                className="absolute left-0 right-0 top-full z-10 mt-1.5 bg-white overflow-hidden"
-                style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
-              >
-                <div
-                  className="flex items-center justify-between px-4 py-2.5"
-                  style={{ borderBottom: "0.5px solid #E4EAE0" }}
-                >
-                  <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
-                  <button
-                    onClick={handleDeleteAllSearchHistory}
-                    className="text-xs"
-                    style={{ color: "#C84B47" }}
-                  >
-                    전체 삭제
-                  </button>
-                </div>
-                <ul>
-                  {searchHistory.map((item) => (
-                    <li
-                      key={item.id}
-                      onClick={() => handleHistoryKeywordClick(item.keyword)}
-                      className="flex items-center justify-between px-4 py-2.5 cursor-pointer transition"
-                      style={{ borderBottom: "0.5px solid #E4EAE0" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
-                        <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteSearchHistory(e, item.id)}
-                        style={{ color: "#B8D8B2" }}
-                      >
-                        <FaTimes className="text-xs" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </section>
-
-
-        {/* 에러 */}
-        {error && (
-          <div
-            className="mb-5 px-4 py-3 text-center text-sm font-medium"
-            style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", color: "#C84B47" }}
-          >
-            {error}
-          </div>
-        )}
-
-        {/* 검색 결과 — 영상 */}
-        {videos.length > 0 && (
-          <section className="mt-4 mb-6">
-            <div className="mb-4 flex items-center gap-2">
-              <FaSearch style={{ color: "#6DAB60", fontSize: "14px" }} />
-              <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>검색 결과</h2>
-              <span
-                className="rounded-full px-2.5 py-0.5 text-xs"
-                style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
-              >
-                {videos.length}개
-              </span>
-            </div>
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-              {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
-            </div>
-            {visibleCount < videos.length && (
-              <div className="mt-6 flex justify-center">
-                <button
-                  onClick={() => setVisibleCount((prev) => prev + 9)}
-                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-white transition"
-                  style={{ borderRadius: "10px", border: "0.5px solid #E4EAE0", color: "#6B7A65" }}
-                >
-                  더보기 ({videos.length - visibleCount}개 남음) ↓
-                </button>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* 검색 결과 — 재생목록 */}
-        {playlists.length > 0 && (
-          <section className="mb-6">
-            <div className="mb-4 flex items-center gap-2">
-              <FaList style={{ color: "#6DAB60", fontSize: "14px" }} />
-              <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>관련 재생목록</h2>
-            </div>
-            <div className="flex flex-nowrap gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
-              {playlists.map((playlist) => <PlaylistCard key={playlist.playlistId} playlist={playlist} />)}
-            </div>
-          </section>
-        )}
-
-        {/* 추천 섹션 (검색 결과 없을 때) */}
+        {/* ── 검색 결과 없을 때: B안 (넷플릭스식) ── */}
         {videos.length === 0 && playlists.length === 0 && !loading && (
           <>
-            {/* 오늘의 추천 */}
-            <section className="mb-6">
-              <div className="mb-4 flex items-center gap-2">
-                <FaStar style={{ color: "#EF9F27", fontSize: "14px" }} />
-                <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>오늘의 추천</h2>
-                {recommendKeyword && (
-                  <span className="text-xs" style={{ color: "#6DAB60" }}>#{recommendKeyword}</span>
-                )}
-              </div>
-              {recommendLoading && (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <KiddyImg pose="search" size={320} />
-                  <p className="text-sm" style={{ color: "#6B7A65" }}>AI가 추천 영상을 찾는 중이에요...</p>
-                </div>
-              )}
-              {!recommendLoading && recommendedVideos.length > 0 && (
-                <>
-                  <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-                    {recommendedVideos.slice(0, visibleRecommendCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+            {/* 다크 히어로 배너 */}
+            <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
+              style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)", borderRadius: "24px", minHeight: "220px" }}>
+              <div className="flex-1 z-10">
+                <p className="text-base font-bold mb-1" style={{ color: "#B8D8B2" }}>
+                  {selectedProfile ? `${selectedProfile.name}아, 안녕! 👋` : "안녕 친구야~ 👋"}
+                </p>
+                <p className="text-2xl font-extrabold mb-5" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
+                <div ref={searchBoxRef} className="relative">
+                  <div className="flex items-center gap-2"
+                    style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
+                    <FaSearch style={{ color: "#B8D8B2", flexShrink: 0 }} />
+                    <input type="text" placeholder="영상 검색..." value={searchKeyword}
+                      onChange={(e) => setSearchKeyword(e.target.value)}
+                      onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      className="flex-1 bg-transparent outline-none font-semibold"
+                      style={{ color: "#fff", fontSize: "16px" }}
+                    />
+                    <button onClick={() => handleSearch()} disabled={loading}
+                      className="rounded-[10px] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                      style={{ backgroundColor: "#6DAB60" }}>검색</button>
                   </div>
-                  {visibleRecommendCount < recommendedVideos.length && (
-                    <div className="mt-6 flex justify-center">
-                      <button
-                        onClick={() => setVisibleRecommendCount((prev) => prev + 6)}
-                        className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-white transition"
-                        style={{ borderRadius: "10px", border: "0.5px solid #E4EAE0", color: "#6B7A65" }}
-                      >
-                        더보기 ({recommendedVideos.length - visibleRecommendCount}개 남음) ↓
-                      </button>
+                  {showSearchHistory && searchHistory.length > 0 && (
+                    <div className="absolute left-0 right-0 z-20 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
+                      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "0.5px solid #E4EAE0" }}>
+                        <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
+                        <button onClick={handleDeleteAllSearchHistory} className="text-xs" style={{ color: "#C84B47" }}>전체 삭제</button>
+                      </div>
+                      <ul>
+                        {searchHistory.map((item) => (
+                          <li key={item.id} onClick={() => handleHistoryKeywordClick(item.keyword)}
+                            className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
+                            style={{ borderBottom: "0.5px solid #E4EAE0" }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+                            <div className="flex items-center gap-2.5">
+                              <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
+                              <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
+                            </div>
+                            <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#B8D8B2" }}>
+                              <FaTimes className="text-xs" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
-                </>
-              )}
-              {!recommendLoading && recommendedVideos.length === 0 && (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <KiddyImg pose="help" size={80} bg="#D4EAD0" />
-                  <p className="text-sm" style={{ color: "#6B7A65" }}>추천 영상을 불러오지 못했어요.</p>
                 </div>
-              )}
-            </section>
+              </div>
+              {/* 우측 키디 — 웹만 표시 */}
+              <div className="shrink-0 hidden md:block">
+                <KiddyImg pose="hello" size={220} />
+              </div>
+            </div>
 
-            {/* 내가 좋아할 것 같아요 */}
+            {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
+            {(recommendLoading || recommendedVideos.length > 0) && (
+              <section className="mb-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <FaStar style={{ color: "#EF9F27", fontSize: "14px" }} />
+                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>오늘의 추천</h2>
+                  {recommendKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{recommendKeyword}</span>}
+                </div>
+                {recommendLoading ? (
+                  <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                    {recommendedVideos.map((v) => (
+                      <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
+                        <VideoCard video={v} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* 내가 좋아할 것 같아요 — 가로 스크롤 캐러셀 */}
             {(historyLoading || historyVideos.length > 0) && (
               <section className="mb-6">
-                <div className="mb-4 flex items-center gap-2">
+                <div className="mb-3 flex items-center gap-2">
                   <FaHeart style={{ color: "#C84B47", fontSize: "14px" }} />
                   <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>내가 좋아할 것 같아요</h2>
-                  {historyKeyword && (
-                    <span className="text-xs" style={{ color: "#6DAB60" }}>#{historyKeyword} 기반</span>
-                  )}
+                  {historyKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{historyKeyword} 기반</span>}
                 </div>
-                {historyLoading && (
-                  <div className="flex flex-col items-center gap-3 py-8">
-                    <KiddyImg pose="search" size={320} />
-                    <p className="text-sm" style={{ color: "#6B7A65" }}>시청 기록을 분석하는 중이에요...</p>
+                {historyLoading ? (
+                  <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                    {historyVideos.map((v) => (
+                      <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
+                        <VideoCard video={v} />
+                      </div>
+                    ))}
                   </div>
                 )}
-                {!historyLoading && historyVideos.length > 0 && (
-                  <>
-                    <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-                      {historyVideos.slice(0, visibleHistoryCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+              </section>
+            )}
+          </>
+        )}
+
+        {/* ── 로딩 중 ── */}
+        {loading && (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <KiddyImg pose="search" size={160} />
+            <p className="text-sm" style={{ color: "#6B7A65" }}>검색 중이에요...</p>
+          </div>
+        )}
+
+        {/* ── 검색 결과 있을 때 ── */}
+        {(videos.length > 0 || playlists.length > 0) && (
+          <>
+            <section className="mb-8 flex justify-center">
+              <div ref={searchBoxRef} className="relative w-full max-w-2xl">
+                <div className="flex items-center gap-3 p-3 bg-white"
+                  style={{ borderRadius: "18px", border: "2px solid #E4EAE0", boxShadow: "0 4px 16px rgba(44,53,40,0.08)" }}>
+                  <input type="text" placeholder="어떤 영상 볼까?" value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.target.value)}
+                    onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="flex-1 min-w-0 rounded-[12px] outline-none font-semibold"
+                    style={{ backgroundColor: "#F8F7F2", border: "2px solid #B8D8B2", color: "#2C3528", fontSize: "20px", padding: "14px 20px" }} />
+                  <button onClick={() => handleSearch()} disabled={loading}
+                    className="flex items-center gap-2 rounded-[12px] font-semibold text-white disabled:opacity-50 shrink-0"
+                    style={{ backgroundColor: "#6DAB60", fontSize: "18px", padding: "14px 24px" }}>
+                    <FaSearch /> 검색
+                  </button>
+                </div>
+                {showSearchHistory && searchHistory.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
+                    <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "0.5px solid #E4EAE0" }}>
+                      <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
+                      <button onClick={handleDeleteAllSearchHistory} className="text-xs" style={{ color: "#C84B47" }}>전체 삭제</button>
                     </div>
-                    {visibleHistoryCount < historyVideos.length && (
-                      <div className="mt-6 flex justify-center">
-                        <button
-                          onClick={() => setVisibleHistoryCount((prev) => prev + 6)}
-                          className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-white transition"
-                          style={{ borderRadius: "10px", border: "0.5px solid #E4EAE0", color: "#6B7A65" }}
-                        >
-                          더보기 ({historyVideos.length - visibleHistoryCount}개 남음) ↓
-                        </button>
-                      </div>
-                    )}
-                  </>
+                    <ul>
+                      {searchHistory.map((item) => (
+                        <li key={item.id} onClick={() => handleHistoryKeywordClick(item.keyword)}
+                          className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
+                          style={{ borderBottom: "0.5px solid #E4EAE0" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+                          <div className="flex items-center gap-2.5">
+                            <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
+                            <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
+                          </div>
+                          <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#B8D8B2" }}>
+                            <FaTimes className="text-xs" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
+              </div>
+            </section>
+            {error && (
+              <div className="mb-5 px-4 py-3 text-center text-sm font-medium" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", color: "#C84B47" }}>
+                {error}
+              </div>
+            )}
+            {videos.length > 0 && (
+              <section className="mt-4 mb-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <FaSearch style={{ color: "#6DAB60", fontSize: "14px" }} />
+                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>검색 결과</h2>
+                  <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}>{videos.length}개</span>
+                </div>
+                <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+                  {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+                </div>
+                {visibleCount < videos.length && (
+                  <div className="mt-6 flex justify-center">
+                    <button onClick={() => setVisibleCount((p) => p + 9)}
+                      className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-white"
+                      style={{ borderRadius: "10px", border: "0.5px solid #E4EAE0", color: "#6B7A65" }}>
+                      더보기 ({videos.length - visibleCount}개 남음) ↓
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
+            {playlists.length > 0 && (
+              <section className="mb-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <FaList style={{ color: "#6DAB60", fontSize: "14px" }} />
+                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>관련 재생목록</h2>
+                </div>
+                <div className="flex flex-nowrap gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                  {playlists.map((playlist) => <PlaylistCard key={playlist.playlistId} playlist={playlist} />)}
+                </div>
               </section>
             )}
           </>
@@ -887,17 +862,16 @@ export default function KidHome() {
 
       </div>
 
-      {/* 키디 챗봇 창 (탭바 위) */}
+      {/* 키디 챗봇 창 */}
       {chatOpen && (
         <div
-          className="fixed right-4 z-50 flex flex-col overflow-hidden bg-white"
+          className="fixed z-50 flex flex-col overflow-hidden bg-white
+            bottom-[70px] right-2 w-[calc(100vw-16px)] h-[calc(100vh-140px)]
+            md:bottom-6 md:right-20 md:w-[520px] md:h-[700px]"
           style={{
-            bottom: "70px",
-            width: "320px",
-            height: "460px",
-            borderRadius: "20px",
+            borderRadius: "24px",
             border: "0.5px solid #E4EAE0",
-            boxShadow: "0 8px 32px rgba(44,53,40,0.12)",
+            boxShadow: "0 12px 48px rgba(44,53,40,0.16)",
           }}
         >
           {/* 채팅 헤더 */}
@@ -1004,12 +978,48 @@ export default function KidHome() {
         </div>
       )}
 
-      {/* 하단 탭바 */}
-      <BottomTabBar
-        activeTab="home"
-        chatOpen={chatOpen}
-        onChatToggle={() => setChatOpen((prev) => !prev)}
-      />
+      {/* 우측 플로팅 독 — 웹 전용 */}
+      <div
+        className="hidden md:fixed md:flex flex-col gap-2 z-40"
+        style={{ right: "12px", top: "50%", transform: "translateY(-50%)" }}
+      >
+        {[
+          { id: "home",      label: "홈",   icon: <FaShieldAlt />, action: () => navigate("/kids") },
+          { id: "favorites", label: "찜",   icon: <FaHeart />,     action: () => navigate("/favorites") },
+          { id: "badges",    label: "배지", icon: <FaMedal />,     action: () => navigate("/badges") },
+          { id: "chat",      label: "키디", icon: <FaCommentDots />, action: () => setChatOpen((prev) => !prev) },
+        ].map((tab) => {
+          const isActive = tab.id === "home" || (tab.id === "chat" && chatOpen);
+          return (
+            <button
+              key={tab.id}
+              onClick={tab.action}
+              className="flex flex-col items-center gap-1 transition-all"
+              style={{
+                width: "56px",
+                padding: "10px 0",
+                borderRadius: "16px",
+                backgroundColor: isActive ? "#6DAB60" : "white",
+                color: isActive ? "white" : "#6B7A65",
+                boxShadow: "0 4px 16px rgba(44,53,40,0.12)",
+                border: isActive ? "none" : "1px solid #E4EAE0",
+              }}
+            >
+              <span className="text-xl">{tab.icon}</span>
+              <span style={{ fontSize: "10px", fontWeight: 600 }}>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 하단 탭바 — 모바일 전용 */}
+      <div className="md:hidden">
+        <BottomTabBar
+          activeTab="home"
+          chatOpen={chatOpen}
+          onChatToggle={() => setChatOpen((prev) => !prev)}
+        />
+      </div>
 
     </div>
   );

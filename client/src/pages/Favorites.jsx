@@ -3,9 +3,12 @@ import { FaHeart, FaList, FaPlay, FaTrash, FaSpinner } from "react-icons/fa";
 import { getFavorites, removeFavorite } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
+import BottomTabBar from "../components/BottomTabBar";
+import ChatWidget from "../components/ChatWidget";
 
 export default function Favorites() {
   const [favorites, setFavorites] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState(null);
 
@@ -111,7 +114,7 @@ export default function Favorites() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
+    <div className="min-h-screen pb-24 md:pb-0 bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
       <NavBar backTo="/kids" backLabel="홈으로" title="내 찜 목록" />
 
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
@@ -176,6 +179,10 @@ export default function Favorites() {
           </section>
         )}
 
+      </div>
+      {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
+      <div className="md:hidden">
+        <BottomTabBar activeTab="favorites" chatOpen={chatOpen} onChatToggle={() => setChatOpen((p) => !p)} />
       </div>
     </div>
   );

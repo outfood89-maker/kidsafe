@@ -86,6 +86,16 @@ export default function ProfileSelect() {
   const getAvatarUrl = (profile) =>
     `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
+  const AVATAR_OFFSET_X = { 5: "43%" };
+  const getAvatarStyle = (profile) => ({
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
+    transform: "scale(1.35) translateY(5%)",
+    transformOrigin: "center top",
+  });
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#F8F7F2" }}>
 
@@ -129,15 +139,50 @@ export default function ProfileSelect() {
 
         {/* 상단 인사 */}
         <div className="mb-8 flex flex-col items-center gap-2">
-          <KiddyImg pose="hello" size={300} animate />
-          <h1 className="text-3xl font-medium" style={{ color: "#2C3528" }}>
-            누가 볼 건가요? 👀
-          </h1>
+          {/* 키디 + 말풍선 */}
+          <div className="relative inline-block">
+            <KiddyImg pose="search" size={300} />
+            {/* 말풍선 */}
+            <div
+              className="absolute"
+              style={{ top: "10px", right: "-140px" }}
+            >
+              <div
+                className="relative rounded-2xl px-5 py-3 text-xl font-bold whitespace-nowrap"
+                style={{
+                  backgroundColor: "#ffffff",
+                  color: "#2C3528",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+                  border: "2px solid #E4EAE0",
+                }}
+              >
+                반가워! 누구야? 👀
+                {/* 말풍선 꼬리 */}
+                <span
+                  className="absolute"
+                  style={{
+                    left: "-12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 0,
+                    height: 0,
+                    borderTop: "8px solid transparent",
+                    borderBottom: "8px solid transparent",
+                    borderRight: "12px solid #ffffff",
+                    filter: "drop-shadow(-2px 0px 1px rgba(0,0,0,0.07))",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
           <div
-            className="rounded-[14px] px-5 py-2.5 text-base"
-            style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+            className="flex flex-col items-center gap-1 rounded-2xl px-8 py-4 mt-2"
+            style={{ backgroundColor: "#ffffff", border: "1.5px solid #E4EAE0", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
           >
-            반가워! 누구야?
+            <h1 className="text-3xl font-bold" style={{ color: "#2C3528" }}>
+              누가 볼 건가요? 👀
+            </h1>
+            <p className="text-sm" style={{ color: "#6B7A65" }}>프로필을 선택해주세요</p>
           </div>
         </div>
 
@@ -174,14 +219,7 @@ export default function ProfileSelect() {
                       <img
                         src={getAvatarUrl(profile)}
                         alt={profile.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          objectPosition: "center 0%",
-                          transform: "scale(1.35) translateY(5%)",
-                          transformOrigin: "center top",
-                        }}
+                        style={getAvatarStyle(profile)}
                       />
                     </div>
                     {/* 이름 */}

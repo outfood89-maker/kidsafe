@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getBadges } from "../utils/api";
+import { getBadges, getProfiles } from "../utils/api";
 import NavBar from "../components/NavBar";
+import BottomTabBar from "../components/BottomTabBar";
+import ChatWidget from "../components/ChatWidget";
 
 const ALL_BADGES = [
   // 시청 기반
@@ -46,6 +48,7 @@ const CATEGORY_COLORS = {
 
 export default function BadgeCollection() {
   const navigate = useNavigate();
+  const [chatOpen, setChatOpen] = useState(false);
   const [earnedBadgeIds, setEarnedBadgeIds] = useState([]);
   const [earnedMap, setEarnedMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -55,9 +58,9 @@ export default function BadgeCollection() {
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
     if (!stored) { navigate("/profiles"); return; }
-    const p = JSON.parse(stored);
-    setProfile(p);
-    getBadges(p.id)
+    const cached = JSON.parse(stored);
+    setProfile(cached);
+    getBadges(cached.id)
       .then((badges) => {
         const ids = badges.map((b) => b.badgeId);
         const map = {};
@@ -67,6 +70,14 @@ export default function BadgeCollection() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    // 서버에서 최신 프로필 데이터로 갱신
+    getProfiles().then((profiles) => {
+      const fresh = profiles.find((p) => p.id === cached.id);
+      if (fresh) {
+        setProfile(fresh);
+        localStorage.setItem("selectedProfile", JSON.stringify(fresh));
+      }
+    }).catch(() => {});
   }, []);
 
   const earnedCount = earnedBadgeIds.length;
@@ -79,16 +90,12 @@ export default function BadgeCollection() {
       ? ALL_BADGES
       : ALL_BADGES.filter((b) => b.category === selectedCategory);
 
-  const getAvatarUrl = (seed, gender) => {
-    const hairStyle =
-      gender === "여자"
-        ? "long01,long02,long03,long04,long05,long06,long07,long08,long09,long10"
-        : "short01,short02,short03,short04,short05,short06,short07,short08";
-    return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed)}&hair=${hairStyle}&backgroundColor=ffdfbf,ffd5dc,d1d4f9,c0aede,b6e3f4`;
-  };
+  const AVATAR_OFFSET_X = { 5: "43%" };
+  const getAvatarUrl = (profile) =>
+    `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50">
+    <div className="min-h-screen pb-24 md:pb-0 bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50">
       <NavBar backTo="/kids" backLabel="홈으로" title="배지 컬렉션" />
 
       <div className="mx-auto max-w-4xl px-4 py-10">
@@ -97,11 +104,17 @@ export default function BadgeCollection() {
         <div className="mb-10 rounded-3xl bg-white p-6 shadow-xl text-center">
           {profile && (
             <div className="flex flex-col items-center gap-3">
-              <div className="h-20 w-20 overflow-hidden rounded-full shadow-lg">
+              <div className="overflow-hidden rounded-full shadow-lg" style={{ width: "80px", height: "80px" }}>
                 <img
-                  src={getAvatarUrl(profile.avatarSeed, profile.gender)}
+                  src={getAvatarUrl(profile)}
                   alt={profile.name}
-                  className="h-full w-full object-cover"
+                  style={{
+                    width: "100%", height: "100%",
+                    objectFit: "cover",
+                    objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
+                    transform: "scale(1.35) translateY(5%)",
+                    transformOrigin: "center top",
+                  }}
                 />
               </div>
               <p className="text-xl font-extrabold text-gray-800">{profile.name}의 배지 컬렉션</p>
@@ -208,6 +221,10 @@ export default function BadgeCollection() {
             })}
           </div>
         )}
+      </div>
+      {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
+      <div className="md:hidden">
+        <BottomTabBar activeTab="badges" chatOpen={chatOpen} onChatToggle={() => setChatOpen((p) => !p)} />
       </div>
     </div>
   );

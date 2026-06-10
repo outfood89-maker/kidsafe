@@ -7,7 +7,7 @@
     "avatarId": 5,
     "createdAt": "2026-05-27T13:29:54.335Z",
     "timeLimit": 10,
-    "safetyThreshold": 75
+    "safetyThreshold": 80
   },
   {
     "id": "1779888608658",
@@ -19,16 +19,6 @@
     "safetyThreshold": 85
   },
   {
-    "id": "1780363260564",
-    "name": "지현",
-    "age": 10,
-    "gender": "여자",
-    "avatarId": 6,
-    "timeLimit": 60,
-    "createdAt": "2026-06-02T01:21:00.564Z",
-    "safetyThreshold": 90
-  },
-  {
     "id": "1780384750187",
     "name": "준석",
     "age": 7,
@@ -37,5 +27,15 @@
     "timeLimit": 10,
     "createdAt": "2026-06-02T07:19:10.187Z",
     "safetyThreshold": 80
+  },
+  {
+    "id": "1781080145523",
+    "name": "지현",
+    "age": 10,
+    "gender": "여자",
+    "avatarId": 8,
+    "timeLimit": 60,
+    "safetyThreshold": 70,
+    "createdAt": "2026-06-10T08:29:05.523Z"
   }
 ]

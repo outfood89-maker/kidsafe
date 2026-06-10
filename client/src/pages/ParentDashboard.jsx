@@ -42,6 +42,24 @@ const AVATAR_LIST = [1, 2, 3, 4, 5, 6, 7, 8];
 const getAvatarUrl = (profile) =>
   `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
+const AVATAR_OFFSET_X = { 5: "43%" };
+const getAvatarStyle = (profile) => ({
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
+  transform: "scale(1.35) translateY(5%)",
+  transformOrigin: "center top",
+});
+const getAvatarStyleById = (id) => ({
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  objectPosition: `${AVATAR_OFFSET_X[id] ?? "center"} 0%`,
+  transform: "scale(1.35) translateY(5%)",
+  transformOrigin: "center top",
+});
+
 const truncateByDisplayWidth = (str, maxWidth) => {
   let width = 0
   let result = ''
@@ -414,112 +432,149 @@ export default function ParentDashboard() {
             </div>
 
             {showCreateForm && (
-              <div
-                className="mb-6 p-4"
-                style={{ borderRadius: "14px", backgroundColor: "#F0F5ED", border: "0.5px solid #E4EAE0" }}
-              >
-                <h3 className="mb-5 text-base font-medium" style={{ color: "#2C3528" }}>새 프로필 만들기</h3>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-gray-600">이름</label>
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
+                <div className="bg-white w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden" }}>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold" style={{ color: "#2C3528" }}>새 프로필 만들기</h3>
+                    <button onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }} className="text-xl" style={{ color: "#6B7A65" }}>
+                      <FaTimes />
+                    </button>
+                  </div>
+
+                  {/* 아바타 선택 */}
+                  <div className="mb-6">
+                    <p className="mb-3 text-base font-semibold" style={{ color: "#6B7A65" }}>캐릭터</p>
+                    {/* 큰 미리보기 */}
+                    <div className="flex justify-center mb-5">
+                      <div
+                        className="overflow-hidden"
+                        style={{
+                          width: "260px", height: "260px",
+                          borderRadius: "28px",
+                          border: "4px solid #6DAB60",
+                          backgroundColor: "#F8F7F2",
+                        }}
+                      >
+                        <img
+                          src={`/images/avatars/avatar_${String(newAvatarId).padStart(2, "0")}.png`}
+                          alt="선택된 캐릭터"
+                          style={getAvatarStyleById(newAvatarId)}
+                        />
+                      </div>
+                    </div>
+                    {/* 가로 스크롤 선택 */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                        overflowX: "scroll",
+                        overflowY: "visible",
+                        paddingBottom: "8px",
+                        width: "100%",
+                        WebkitOverflowScrolling: "touch",
+                        scrollbarWidth: "thin",
+                        scrollbarColor: "#B8D8B2 transparent",
+                      }}
+                    >
+                      {AVATAR_LIST.map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setNewAvatarId(id)}
+                          className="relative flex-shrink-0 overflow-hidden transition"
+                          style={{
+                            width: "90px", height: "90px",
+                            borderRadius: "16px",
+                            border: newAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
+                            backgroundColor: "#F8F7F2",
+                          }}
+                        >
+                          <img
+                            src={`/images/avatars/avatar_${String(id).padStart(2, "0")}.png`}
+                            alt={`캐릭터 ${id}`}
+                            style={getAvatarStyleById(id)}
+                          />
+                          {newAvatarId === id && (
+                            <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: "#6DAB60" }}>
+                              <span className="text-white font-bold" style={{ fontSize: "10px" }}>✓</span>
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 이름 */}
+                  <div className="mb-5">
+                    <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>이름</label>
                     <input
                       type="text"
                       placeholder="아이 이름 입력"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="w-full rounded-[10px] px-4 py-2.5 text-sm outline-none transition"
+                      className="w-full rounded-[12px] px-4 py-3 text-base outline-none"
                       style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
                     />
-                    <div className="mt-4">
-                      <p className="mb-2 text-sm font-bold" style={{ color: "#6B7A65" }}>캐릭터 선택</p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {AVATAR_LIST.map((id) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => setNewAvatarId(id)}
-                            className="relative overflow-hidden transition"
-                            style={{
-                              borderRadius: "12px",
-                              border: newAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
-                              backgroundColor: "#F8F7F2",
-                              padding: "4px",
-                            }}
-                          >
-                            <img
-                              src={`/images/avatars/avatar_${String(id).padStart(2, "0")}.png`}
-                              alt={`캐릭터 ${id}`}
-                              className="w-full rounded-[8px]"
-                              style={{ aspectRatio: "1/1", objectFit: "cover" }}
-                            />
-                            {newAvatarId === id && (
-                              <div
-                                className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
-                                style={{ backgroundColor: "#6DAB60" }}
-                              >
-                                <span className="text-white font-bold" style={{ fontSize: "9px" }}>✓</span>
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                  </div>
+
+                  {/* 나이 */}
+                  <div className="mb-5">
+                    <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>나이</label>
+                    <div className="flex gap-2">
+                      {AGE_OPTIONS.map((age) => (
+                        <button
+                          key={age}
+                          onClick={() => setNewAge(age)}
+                          className="rounded-[10px] px-5 py-2.5 text-base font-medium transition"
+                          style={newAge === age
+                            ? { backgroundColor: "#6DAB60", color: "white" }
+                            : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                          }
+                        >
+                          {age}세
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-gray-600">나이</label>
-                      <div className="flex gap-2">
-                        {AGE_OPTIONS.map((age) => (
-                          <button
-                            key={age}
-                            onClick={() => setNewAge(age)}
-                            className="rounded-[10px] px-3 py-2 text-sm font-medium transition"
-                            style={newAge === age
-                              ? { backgroundColor: "#6DAB60", color: "white" }
-                              : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
-                            }
-                          >
-                            {age}세
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-gray-600">성별</label>
-                      <div className="flex gap-3">
-                        {["남자", "여자"].map((g) => (
-                          <button
-                            key={g}
-                            onClick={() => setNewGender(g)}
-                            className="rounded-[10px] px-4 py-2 text-sm font-medium transition"
-                            style={newGender === g
-                              ? { backgroundColor: "#6DAB60", color: "white" }
-                              : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
-                            }
-                          >
-                            {g}
-                          </button>
-                        ))}
-                      </div>
+
+                  {/* 성별 */}
+                  <div className="mb-6">
+                    <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>성별</label>
+                    <div className="flex gap-2">
+                      {["남자", "여자"].map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => setNewGender(g)}
+                          className="rounded-[10px] px-6 py-2.5 text-base font-medium transition"
+                          style={newGender === g
+                            ? { backgroundColor: "#6DAB60", color: "white" }
+                            : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                          }
+                        >
+                          {g}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
-                {createError && <p className="mt-4 text-sm font-bold text-red-500">{createError}</p>}
-                <div className="mt-5 flex gap-2">
-                  <button
-                    onClick={handleCreateProfile}
-                    className="rounded-[10px] px-5 py-2.5 text-sm font-medium text-white transition"
-                    style={{ backgroundColor: "#6DAB60" }}
-                  >
-                    저장하기
-                  </button>
-                  <button
-                    onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }}
-                    className="rounded-[10px] px-5 py-2.5 text-sm font-medium transition"
-                    style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
-                  >
-                    취소
-                  </button>
+
+                  {createError && <p className="mb-3 text-base" style={{ color: "#C84B47" }}>{createError}</p>}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCreateProfile}
+                      className="flex-1 rounded-[12px] py-3 text-base font-semibold text-white"
+                      style={{ backgroundColor: "#6DAB60" }}
+                    >
+                      저장하기
+                    </button>
+                    <button
+                      onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }}
+                      className="rounded-[12px] px-6 py-3 text-base font-medium"
+                      style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+                    >
+                      취소
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -557,14 +612,7 @@ export default function ParentDashboard() {
                       <img
                         src={getAvatarUrl(profile)}
                         alt={profile.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          objectPosition: "center 0%",
-                          transform: "scale(1.35) translateY(5%)",
-                          transformOrigin: "center top",
-                        }}
+                        style={getAvatarStyle(profile)}
                       />
                     </div>
                     <p className="mt-3 text-base md:text-lg font-extrabold text-gray-800">{profile.name}</p>
@@ -1184,40 +1232,70 @@ export default function ParentDashboard() {
       {/* 프로필 편집 모달 */}
       {editingProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
-          <div className="bg-white w-full max-w-md p-6" style={{ borderRadius: "20px" }}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold" style={{ color: "#2C3528" }}>프로필 수정</h3>
-              <button onClick={() => setEditingProfile(null)} style={{ color: "#6B7A65" }}>
+          <div className="bg-white w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden" }}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold" style={{ color: "#2C3528" }}>프로필 수정</h3>
+              <button onClick={() => setEditingProfile(null)} className="text-xl" style={{ color: "#6B7A65" }}>
                 <FaTimes />
               </button>
             </div>
 
             {/* 아바타 선택 */}
-            <div className="mb-5">
-              <p className="mb-2 text-sm font-medium" style={{ color: "#6B7A65" }}>캐릭터</p>
-              <div className="grid grid-cols-4 gap-2">
+            <div className="mb-6">
+              <p className="mb-3 text-base font-semibold" style={{ color: "#6B7A65" }}>캐릭터</p>
+              {/* 선택된 아바타 크게 미리보기 */}
+              <div className="flex justify-center mb-5">
+                <div
+                  className="overflow-hidden"
+                  style={{
+                    width: "260px", height: "260px",
+                    borderRadius: "28px",
+                    border: "4px solid #6DAB60",
+                    backgroundColor: "#F8F7F2",
+                  }}
+                >
+                  <img
+                    src={`/images/avatars/avatar_${String(editAvatarId).padStart(2, "0")}.png`}
+                    alt="선택된 캐릭터"
+                    style={getAvatarStyleById(editAvatarId)}
+                  />
+                </div>
+              </div>
+              {/* 가로 스크롤 선택 */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  overflowX: "scroll",
+                  overflowY: "visible",
+                  paddingBottom: "8px",
+                  width: "100%",
+                  WebkitOverflowScrolling: "touch",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#B8D8B2 transparent",
+                }}
+              >
                 {AVATAR_LIST.map((id) => (
                   <button
                     key={id}
                     type="button"
                     onClick={() => setEditAvatarId(id)}
-                    className="relative overflow-hidden transition"
+                    className="relative flex-shrink-0 overflow-hidden transition"
                     style={{
-                      borderRadius: "12px",
+                      width: "90px", height: "90px",
+                      borderRadius: "16px",
                       border: editAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
                       backgroundColor: "#F8F7F2",
-                      padding: "4px",
                     }}
                   >
                     <img
                       src={`/images/avatars/avatar_${String(id).padStart(2, "0")}.png`}
                       alt={`캐릭터 ${id}`}
-                      className="w-full rounded-[8px]"
-                      style={{ aspectRatio: "1/1", objectFit: "contain" }}
+                      style={getAvatarStyleById(id)}
                     />
                     {editAvatarId === id && (
-                      <div className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full" style={{ backgroundColor: "#6DAB60" }}>
-                        <span className="text-white font-bold" style={{ fontSize: "9px" }}>✓</span>
+                      <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: "#6DAB60" }}>
+                        <span className="text-white font-bold" style={{ fontSize: "10px" }}>✓</span>
                       </div>
                     )}
                   </button>
@@ -1226,26 +1304,26 @@ export default function ParentDashboard() {
             </div>
 
             {/* 이름 */}
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#6B7A65" }}>이름</label>
+            <div className="mb-5">
+              <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>이름</label>
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full rounded-[10px] px-4 py-2.5 text-sm outline-none"
+                className="w-full rounded-[12px] px-4 py-3 text-base outline-none"
                 style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
               />
             </div>
 
             {/* 나이 */}
-            <div className="mb-4">
-              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#6B7A65" }}>나이</label>
+            <div className="mb-5">
+              <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>나이</label>
               <div className="flex gap-2">
                 {AGE_OPTIONS.map((age) => (
                   <button
                     key={age}
                     onClick={() => setEditAge(age)}
-                    className="rounded-[10px] px-3 py-2 text-sm font-medium transition"
+                    className="rounded-[10px] px-5 py-2.5 text-base font-medium transition"
                     style={editAge === age
                       ? { backgroundColor: "#6DAB60", color: "white" }
                       : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
@@ -1258,14 +1336,14 @@ export default function ParentDashboard() {
             </div>
 
             {/* 성별 */}
-            <div className="mb-5">
-              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#6B7A65" }}>성별</label>
+            <div className="mb-6">
+              <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>성별</label>
               <div className="flex gap-2">
                 {["남자", "여자"].map((g) => (
                   <button
                     key={g}
                     onClick={() => setEditGender(g)}
-                    className="rounded-[10px] px-4 py-2 text-sm font-medium transition"
+                    className="rounded-[10px] px-6 py-2.5 text-base font-medium transition"
                     style={editGender === g
                       ? { backgroundColor: "#6DAB60", color: "white" }
                       : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
@@ -1277,19 +1355,19 @@ export default function ParentDashboard() {
               </div>
             </div>
 
-            {editError && <p className="mb-3 text-sm" style={{ color: "#C84B47" }}>{editError}</p>}
+            {editError && <p className="mb-3 text-base" style={{ color: "#C84B47" }}>{editError}</p>}
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 rounded-[10px] py-2.5 text-sm font-medium text-white"
+                className="flex-1 rounded-[12px] py-3 text-base font-semibold text-white"
                 style={{ backgroundColor: "#6DAB60" }}
               >
                 저장
               </button>
               <button
                 onClick={() => setEditingProfile(null)}
-                className="rounded-[10px] px-5 py-2.5 text-sm font-medium"
+                className="rounded-[12px] px-6 py-3 text-base font-medium"
                 style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
               >
                 취소

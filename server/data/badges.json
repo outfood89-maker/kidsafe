@@ -94,5 +94,21 @@
     "emoji": "📺",
     "description": "같은 채널 영상을 3개 이상 시청했어요!",
     "earnedAt": "2026-06-05T16:58:54.064Z"
+  },
+  {
+    "profileId": "1779888594335",
+    "badgeId": "dino_expert",
+    "name": "공룡 박사",
+    "emoji": "🦕",
+    "description": "공룡 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-10T14:14:46.162Z"
+  },
+  {
+    "profileId": "1779888594335",
+    "badgeId": "science_sprout",
+    "name": "과학 꿈나무",
+    "emoji": "🔬",
+    "description": "과학/실험 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-10T14:14:46.162Z"
   }
 ]

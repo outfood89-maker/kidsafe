@@ -38,9 +38,9 @@ const DEFAULT_THRESHOLD = { 3: 90, 5: 85, 7: 80, 10: 70 }
 
 // 프로필 생성 (POST /profiles)
 router.post('/', (req, res) => {
-  const { name, age, gender, avatarSeed, timeLimit } = req.body
+  const { name, age, gender, avatarId, timeLimit } = req.body
 
-  if (!name || !age || !gender || !avatarSeed) {
+  if (!name || !age || !gender || !avatarId) {
     return res.status(400).json({ error: '모든 항목을 입력해주세요' })
   }
 
@@ -58,7 +58,7 @@ router.post('/', (req, res) => {
       name,
       age: ageNum,
       gender,
-      avatarSeed,
+      avatarId: Number(avatarId),
       timeLimit: timeLimit ? Number(timeLimit) : null,
       safetyThreshold: DEFAULT_THRESHOLD[ageNum] || 70,
       createdAt: new Date().toISOString(),
