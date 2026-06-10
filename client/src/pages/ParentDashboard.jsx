@@ -561,9 +561,9 @@ export default function ParentDashboard() {
                           width: "100%",
                           height: "100%",
                           objectFit: "cover",
-                          objectPosition: "center 8%",
+                          objectPosition: "center 15%",
                           transform: "scale(1.35)",
-                          transformOrigin: "center 20%",
+                          transformOrigin: "center 27%",
                         }}
                       />
                     </div>
