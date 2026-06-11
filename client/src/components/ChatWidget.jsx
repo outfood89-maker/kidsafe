@@ -3,13 +3,34 @@ import { FaChevronDown, FaPaperPlane } from "react-icons/fa";
 import { sendChatMessage } from "../utils/api";
 import KiddyImg from "./KiddyImg";
 
-export default function ChatWidget({ onClose, mobileClass = "", desktopClass = "" }) {
+export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", desktopClass = "" }) {
   const [chatMessages, setChatMessages] = useState([
     { role: "assistant", content: "안녕! 나는 키디야~ 궁금한 게 있으면 뭐든지 물어봐! 😊" }
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [visible, setVisible] = useState(false);
   const chatBottomRef = useRef(null);
+
+  // 마운트 시 열림 애니메이션
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  // 외부(탭바 등)에서 닫힘 요청 시 애니메이션 후 onClose 호출
+  useEffect(() => {
+    if (!isOpen) {
+      setVisible(false);
+      const t = setTimeout(onClose, 260);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
+
+  // 내부 닫기 버튼 (같은 애니메이션)
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 260);
+  };
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -18,12 +39,13 @@ export default function ChatWidget({ onClose, mobileClass = "", desktopClass = "
   const sendMessage = async (text) => {
     const msg = text.trim();
     if (!msg || chatLoading) return;
-    setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
+    const newMessages = [...chatMessages, { role: "user", content: msg }];
+    setChatMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
     try {
-      const reply = await sendChatMessage(msg);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      const data = await sendChatMessage(newMessages, null, null);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
     } catch {
       setChatMessages((prev) => [...prev, { role: "assistant", content: "앗, 오류가 생겼어. 다시 말해줘! 😅" }]);
     } finally {
@@ -40,6 +62,8 @@ export default function ChatWidget({ onClose, mobileClass = "", desktopClass = "
         borderRadius: "24px",
         border: "0.5px solid #E4EAE0",
         boxShadow: "0 12px 48px rgba(44,53,40,0.16)",
+        transform: visible ? "translateY(0)" : "translateY(110%)",
+        transition: "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1)",
       }}
     >
       {/* 헤더 */}
@@ -53,7 +77,7 @@ export default function ChatWidget({ onClose, mobileClass = "", desktopClass = "
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>AI 친구</p>
           </div>
         </div>
-        <button onClick={onClose} className="text-white">
+        <button onClick={handleClose} className="text-white">
           <FaChevronDown />
         </button>
       </div>
