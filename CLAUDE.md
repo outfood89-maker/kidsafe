@@ -11,7 +11,7 @@
 - 백엔드: Node.js + Express 5 (ES Module 방식)
 - AI: Anthropic API — 키디 챗봇 전용 (claude-haiku-4-5-20251001)
 - 영상: YouTube Data API v3
-- 아바타: DiceBear API
+- 아바타: 로컬 PNG (avatar_01~08.png) — DiceBear 제거
 - 배포 예정: Vercel (프론트) + Railway (백엔드)
 
 ## 라우터 (App.jsx)
@@ -50,23 +50,26 @@
 ## 구현 완료 기능
 - 나이별 YouTube 영상 검색 + 안전도 필터링
 - Anti-Bias 편식 방지 로직
-- 오늘의 추천 + 시청 기록 기반 추천
+- 오늘의 추천 + 시청 기록 기반 추천 (가로 스크롤 캐러셀)
 - 재생목록 검색 + 모달
 - 더보기 기능 (검색 9개씩, 추천 6개씩)
-- 검색 결과 sessionStorage 유지
+- 프로필별 sessionStorage 검색 캐시 분리 (`kidsafe_search_${profileId}`)
 - 찜(하트) 버튼 시각 피드백
 - 검색 히스토리
 - 차단 키워드 (검색 차단 + 부모 커스텀 관리)
 - 배지 시스템 21개 (시청/안전/장르/찜/검색/마스터)
 - 배지 컬렉션 페이지 (카테고리 탭, 진행도 바)
-- 키디 AI 챗봇 (플로팅 버튼, 빠른 질문 3개)
+- 키디 AI 챗봇 (ChatWidget 독립 컴포넌트, 모든 키즈 페이지 적용)
 - 위험 영상 알림 (심각도 2단계, 반복 시청 감지, 채널 차단 연동)
 - 부모 대시보드 (프로필 관리, 시청 기록, 안전도 차트, 알림, 차단 키워드)
+- 로컬 PNG 아바타 시스템 (face-zoom CSS, AVATAR_OFFSET_X 보정)
+- KidHome B안 레이아웃: 넷플릭스식 다크 배너 + 검색창 + 가로 캐러셀
+- 웹 전용 우측 플로팅 독, 모바일 전용 BottomTabBar
 
 ## 남은 작업 우선순위
-1. 시청 패턴 분석 (시청 기록 통계 시각화)
-2. 주간/시간 리포트 (부모용)
-3. UI 전체 개선
+1. UI 전체 개선 (KidHome 배너 디테일 다듬기 등)
+2. 시청 패턴 분석 (시청 기록 통계 시각화)
+3. 주간/시간 리포트 (부모용)
 4. Vercel 배포 + README 작성
 
 ## 중요 설정
@@ -108,12 +111,20 @@ git push origin master
 ### YouTube API
 - 과도한 호출 시 429 오류 (할당량 초과) 주의
 - 검색 1회에 영상 + 재생목록 + 안전도 분석 동시 발생 → 호출 최소화
+- 쿼터 초기화: 매일 오후 4시 (한국 기준)
+- 429 발생 시 서버가 500 반환 — 프론트에서 "오늘 검색 횟수를 초과했어요" 안내 필요 (미구현)
 
 ### UI / Tailwind
 - `line-clamp` 안 먹힐 경우 인라인 스타일 사용:
   `style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}`
 - 카드 고정 크기는 인라인 `style={{ width, height }}`가 안정적
 - 가로 스크롤 컨테이너는 반드시 `flex-nowrap` 추가
+
+### 아바타 시스템
+- 경로: `client/public/images/avatars/avatar_01~08.png`
+- 렌더링: `objectFit: cover`, `objectPosition: center 0%`, `transform: scale(1.35) translateY(5%)`
+- avatar_05(호떡)만 X축 보정 필요: `AVATAR_OFFSET_X = { 5: "43%" }`
+- `handleSearch`처럼 파라미터 있는 함수는 onClick에서 반드시 `() => fn()` 래퍼 사용 — 이벤트 객체가 인자로 넘어가는 버그 방지
 
 ### 안전도 점수 기준
 - 90점 이상 → 안전 (green)

@@ -1,6 +1,6 @@
 import { FaTimes } from "react-icons/fa";
 
-export default function VideoModal({ video, onClose, onWatch }) {
+export default function VideoModal({ video, onClose, onPlayInApp }) {
   if (!video) return null;
 
   const getSafetyBadge = (score) => {
@@ -31,7 +31,7 @@ export default function VideoModal({ video, onClose, onWatch }) {
   const handleModalClick = (event) => { event.stopPropagation(); };
 
   const handleWatchClick = () => {
-    try { onWatch(video); } catch (error) { console.error("영상 보기 처리 오류:", error); }
+    try { onPlayInApp(video); } catch (error) { console.error("영상 재생 처리 오류:", error); }
   };
 
   return (
@@ -75,7 +75,7 @@ export default function VideoModal({ video, onClose, onWatch }) {
           </div>
 
           <button onClick={handleWatchClick} className="mt-8 w-full rounded-2xl bg-sky-500 px-6 py-4 text-lg font-bold text-white transition hover:bg-sky-600">
-            🎬 영상 보러가기
+            ▶ KidSafe에서 보기
           </button>
         </div>
       </div>

@@ -14,6 +14,7 @@ import {
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
+import VideoPlayer from "../components/VideoPlayer";
 import PlaylistModal from "../components/PlaylistModal";
 import BottomTabBar from "../components/BottomTabBar";
 import KiddyImg from "../components/KiddyImg";
@@ -26,10 +27,12 @@ export default function KidHome() {
   const [error, setError] = useState("");
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
+  const [timeLimitModalDismissed, setTimeLimitModalDismissed] = useState(false);
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [newBadges, setNewBadges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [recommendedVideos, setRecommendedVideos] = useState([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
@@ -291,26 +294,10 @@ export default function KidHome() {
     finally { setLoading(false); }
   };
 
-  const handleVideoClick = async (video) => {
-    try {
-      await saveHistory({
-        videoId: video.videoId, title: video.title, channelTitle: video.channelTitle,
-        thumbnail: video.thumbnail, totalScore: video.totalScore, summary: video.summary,
-        violence: video.violence, language: video.language, sexual: video.sexual,
-        educational: video.educational, profileId: selectedProfile?.id || null,
-      });
-      if (selectedProfile?.timeLimit) await checkTimeLimit(selectedProfile);
-      if (selectedProfile?.id) {
-        const result = await checkBadges(selectedProfile.id);
-        if (result.newBadges && result.newBadges.length > 0) {
-          setNewBadges(result.newBadges);
-          setEarnedBadges(result.allBadges);
-          setTimeout(() => { setNewBadges([]); window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank"); }, 3000);
-          return;
-        }
-      }
-    } catch (err) { console.error("시청 기록 저장 실패:", err); }
-    window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank");
+  const handlePlayInApp = async (video) => {
+    // VideoPlayer로 재생 — 시청 기록은 VideoPlayer의 handleEnd에서 저장
+    const videoWithProfile = { ...video, profileId: selectedProfile?.id || null };
+    setPlayingVideo(videoWithProfile);
   };
 
   const getSafetyBadgeStyle = (color) => {
@@ -528,11 +515,35 @@ export default function KidHome() {
 
         {/* 모달 */}
         {selectedVideo && (
-          <VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)}
-            onWatch={(video) => { setSelectedVideo(null); handleVideoClick(video); }} />
+          <VideoModal
+            video={selectedVideo}
+            onClose={() => setSelectedVideo(null)}
+            onPlayInApp={(video) => { setSelectedVideo(null); handlePlayInApp(video); }}
+          />
         )}
         {selectedPlaylist && (
           <PlaylistModal playlist={selectedPlaylist} onClose={() => setSelectedPlaylist(null)} />
+        )}
+
+        {/* VideoPlayer — IFrame 재생 */}
+        {playingVideo && (
+          <VideoPlayer
+            video={playingVideo}
+            timeLimit={selectedProfile?.timeLimit || null}
+            usedMinutes={todayMinutes}
+            onClose={() => setPlayingVideo(null)}
+            onWatchComplete={async (seconds) => {
+              if (selectedProfile?.timeLimit) await checkTimeLimit(selectedProfile);
+              if (selectedProfile?.id) {
+                const result = await checkBadges(selectedProfile.id);
+                if (result.newBadges?.length > 0) {
+                  setNewBadges(result.newBadges);
+                  setEarnedBadges(result.allBadges);
+                }
+              }
+              setPlayingVideo(null);
+            }}
+          />
         )}
 
         {/* 새 배지 알림 */}
@@ -564,81 +575,201 @@ export default function KidHome() {
           </div>
         )}
 
-        {/* 시청 시간 초과 경고 */}
-        {timeLimitReached && (
-          <div
-            className="mb-5 flex items-center gap-3 px-4 py-4"
-            style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", border: "0.5px solid #C84B47" }}
-          >
-            <FaExclamationTriangle style={{ color: "#C84B47", fontSize: "18px", flexShrink: 0 }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: "#C84B47" }}>오늘 시청 시간이 꽉 찼어요! ⏰</p>
-              <p className="text-xs mt-0.5" style={{ color: "#6B7A65" }}>
-                오늘 약 {todayMinutes}분 봤어요. 부모님이 설정한 {selectedProfile?.timeLimit}분을 넘었어요.
+        {/* 시청 시간 초과 — 전체 오버레이 모달 */}
+        {timeLimitReached && !timeLimitModalDismissed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+            <div
+              className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8 bg-white"
+              style={{ borderRadius: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}
+            >
+              {/* 키디 + 말풍선 */}
+              <div className="relative inline-block">
+                <KiddyImg pose="sleep" size={160} />
+                {/* 말풍선 — 우측 상단 */}
+                <div
+                  className="absolute"
+                  style={{ top: "-12px", right: "-72px" }}
+                >
+                  <div
+                    className="relative rounded-2xl px-3 py-2 text-sm font-bold whitespace-nowrap"
+                    style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                  >
+                    다음에 봐요! 👋
+                    {/* 말풍선 꼬리 — 왼쪽 하단 */}
+                    <div
+                      className="absolute"
+                      style={{
+                        bottom: "-9px", left: "14px",
+                        width: 0, height: 0,
+                        borderLeft: "8px solid transparent",
+                        borderRight: "8px solid transparent",
+                        borderTop: "10px solid #E4EAE0",
+                      }}
+                    />
+                    <div
+                      className="absolute"
+                      style={{
+                        bottom: "-6px", left: "16px",
+                        width: 0, height: 0,
+                        borderLeft: "6px solid transparent",
+                        borderRight: "6px solid transparent",
+                        borderTop: "8px solid #fff",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="mt-6 text-2xl font-extrabold" style={{ color: "#2C3528" }}>
+                오늘 시청 시간이 끝났어요!
               </p>
+              <p className="mt-3 text-base font-medium" style={{ color: "#C84B47" }}>
+                오늘 {todayMinutes}분을 다 봤어요 ⏰
+              </p>
+              <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>
+                부모님이 설정한 {selectedProfile?.timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
+              </p>
+              <button
+                onClick={() => setTimeLimitModalDismissed(true)}
+                className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white"
+                style={{ backgroundColor: "#6DAB60" }}
+              >
+                확인
+              </button>
             </div>
           </div>
         )}
+
 
 
         {/* ── 검색 결과 없을 때: B안 (넷플릭스식) ── */}
         {videos.length === 0 && playlists.length === 0 && !loading && (
           <>
             {/* 다크 히어로 배너 */}
-            <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)", borderRadius: "24px", minHeight: "220px" }}>
-              <div className="flex-1 z-10">
-                <p className="text-base font-bold mb-1" style={{ color: "#B8D8B2" }}>
-                  {selectedProfile ? `${selectedProfile.name}아, 안녕! 👋` : "안녕 친구야~ 👋"}
-                </p>
-                <p className="text-2xl font-extrabold mb-5" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
-                <div ref={searchBoxRef} className="relative">
-                  <div className="flex items-center gap-2"
-                    style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
-                    <FaSearch style={{ color: "#B8D8B2", flexShrink: 0 }} />
-                    <input type="text" placeholder="영상 검색..." value={searchKeyword}
-                      onChange={(e) => setSearchKeyword(e.target.value)}
-                      onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                      className="flex-1 bg-transparent outline-none font-semibold"
-                      style={{ color: "#fff", fontSize: "16px" }}
-                    />
-                    <button onClick={() => handleSearch()} disabled={loading}
-                      className="rounded-[10px] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                      style={{ backgroundColor: "#6DAB60" }}>검색</button>
-                  </div>
-                  {showSearchHistory && searchHistory.length > 0 && (
-                    <div className="absolute left-0 right-0 z-20 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
-                      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "0.5px solid #E4EAE0" }}>
-                        <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
-                        <button onClick={handleDeleteAllSearchHistory} className="text-xs" style={{ color: "#C84B47" }}>전체 삭제</button>
+            {(() => {
+              const tl = selectedProfile?.timeLimit;
+              const remaining = tl ? Math.max(0, tl - todayMinutes) : null;
+              const usedPct = tl ? Math.min(100, (todayMinutes / tl) * 100) : 0;
+              const glowColor = timeLimitReached ? "#C84B47" : remaining !== null && remaining / tl <= 0.2 ? "#EF9F27" : "#6DAB60";
+              return (
+                <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8"
+                  style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)", borderRadius: "24px", minHeight: "220px" }}>
+
+                  {/* 좌: 인사 + 검색창 */}
+                  <div className="z-10" style={{ flex: "57", minWidth: 0 }}>
+                    <p className="text-base font-bold mb-1" style={{ color: "#B8D8B2" }}>
+                      {selectedProfile ? `${selectedProfile.name}아, 안녕! 👋` : "안녕 친구야~ 👋"}
+                    </p>
+                    <p className="text-2xl font-extrabold mb-5" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
+                    <div ref={searchBoxRef} className="relative">
+                      <div className="flex items-center gap-2"
+                        style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
+                        <FaSearch style={{ color: "#B8D8B2", flexShrink: 0 }} />
+                        <input type="text" placeholder="영상 검색..." value={searchKeyword}
+                          onChange={(e) => setSearchKeyword(e.target.value)}
+                          onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
+                          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                          className="flex-1 bg-transparent outline-none font-semibold"
+                          style={{ color: "#fff", fontSize: "16px" }}
+                        />
+                        <button onClick={() => handleSearch()} disabled={loading}
+                          className="rounded-[10px] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                          style={{ backgroundColor: "#6DAB60" }}>검색</button>
                       </div>
-                      <ul>
-                        {searchHistory.map((item) => (
-                          <li key={item.id} onClick={() => handleHistoryKeywordClick(item.keyword)}
-                            className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
-                            style={{ borderBottom: "0.5px solid #E4EAE0" }}
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
-                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-                            <div className="flex items-center gap-2.5">
-                              <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
-                              <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
-                            </div>
-                            <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#B8D8B2" }}>
-                              <FaTimes className="text-xs" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                      {showSearchHistory && searchHistory.length > 0 && (
+                        <div className="absolute left-0 right-0 z-20 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
+                          <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "0.5px solid #E4EAE0" }}>
+                            <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
+                            <button onClick={handleDeleteAllSearchHistory} className="text-xs" style={{ color: "#C84B47" }}>전체 삭제</button>
+                          </div>
+                          <ul>
+                            {searchHistory.map((item) => (
+                              <li key={item.id} onClick={() => handleHistoryKeywordClick(item.keyword)}
+                                className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
+                                style={{ borderBottom: "0.5px solid #E4EAE0" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+                                <div className="flex items-center gap-2.5">
+                                  <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
+                                  <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
+                                </div>
+                                <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#B8D8B2" }}>
+                                  <FaTimes className="text-xs" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 중: 디지털 타이머 */}
+                  {tl && (
+                    <div className="hidden md:flex flex-col items-center justify-center"
+                      style={{ flex: "21", padding: "20px 16px", borderRadius: "20px", backgroundColor: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)", minHeight: "140px", minWidth: 0, marginLeft: "88px" }}>
+                      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>
+                        {timeLimitReached ? "시간 초과" : "남은 시간"}
+                      </p>
+                      {/* 디지털 숫자 */}
+                      <div style={{ textAlign: "center", lineHeight: 1 }}>
+                        <span style={{
+                          fontFamily: "'Courier New', Courier, monospace",
+                          fontSize: "64px",
+                          fontWeight: "900",
+                          fontVariantNumeric: "tabular-nums",
+                          color: glowColor,
+                          textShadow: `0 0 20px ${glowColor}CC, 0 0 40px ${glowColor}55`,
+                          letterSpacing: "-3px",
+                        }}>
+                          {timeLimitReached ? "00" : String(remaining).padStart(2, "0")}
+                        </span>
+                        <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "20px", fontWeight: "700", marginLeft: "6px" }}>분</span>
+                      </div>
+                      {/* 진행 바 */}
+                      <div style={{ width: "80%", height: "5px", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: "3px", marginTop: "16px" }}>
+                        <div style={{ height: "100%", width: `${usedPct}%`, backgroundColor: glowColor, borderRadius: "3px", transition: "width 0.5s ease", boxShadow: `0 0 8px ${glowColor}` }} />
+                      </div>
+                      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "8px" }}>
+                        {tl}분 중 {todayMinutes}분 사용
+                      </p>
                     </div>
                   )}
+
+                  {/* 우: 키디 + 말풍선 */}
+                  <div className="hidden md:flex justify-center items-center" style={{ flex: "27", minWidth: 0 }}>
+                    {/* relative 래퍼: 말풍선을 키디 기준 우측 상단 대각선으로 */}
+                    <div className="relative" style={{ marginLeft: "-50px" }}>
+                      <KiddyImg pose="hello" size={220} />
+                      {/* 말풍선 — 키디 우측 상단 대각선 */}
+                      <div className="absolute" style={{ top: "0px", left: "148px" }}>
+                        <div className="rounded-xl px-3 py-1.5"
+                          style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", lineHeight: "1.6", position: "relative", fontSize: "12px", fontWeight: "700", width: "120px", wordBreak: "keep-all" }}>
+                          {timeLimitReached ? (
+                            <>오늘은 여기까지야~<br />내일 또 봐요! 😴</>
+                          ) : tl && remaining !== null && remaining / tl <= 0.2 ? (
+                            <>조금만 더~<br />{remaining}분 남았어! 🕐</>
+                          ) : tl ? (
+                            <>{remaining}분 남았어!<br />골라봐~ 🎬</>
+                          ) : (
+                            <>오늘도 왔구나~<br />마음껏 골라봐! 🎉</>
+                          )}
+                          {/* 꼬리 — 왼쪽 하단 대각선 (키디 입 방향) */}
+                          <div style={{
+                            position: "absolute", bottom: "-10px", left: "10px",
+                            width: "14px", height: "14px",
+                            backgroundColor: "#fff",
+                            border: "2px solid #E4EAE0",
+                            borderTop: "none", borderRight: "none",
+                            transform: "rotate(-45deg)",
+                            borderRadius: "0 0 0 4px",
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              {/* 우측 키디 — 웹만 표시 */}
-              <div className="shrink-0 hidden md:block">
-                <KiddyImg pose="hello" size={220} />
-              </div>
-            </div>
+              );
+            })()}
 
             {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
             {(recommendLoading || recommendedVideos.length > 0) && (
