@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+html {
+  background-color: #2C3528;
+  scrollbar-gutter: stable;
+}
+
+body, #root {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #2C3528;
+}
+
 @theme {
   --color-ks-bg: #F8F7F2;
   --color-ks-section: #F0F5ED;

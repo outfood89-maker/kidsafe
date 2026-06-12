@@ -152,9 +152,9 @@ export default function KidHome() {
     return () => clearTimeout(t);
   }, []);
 
-  // 진입 시 float 자동 시작 (300ms 후)
+  // 진입 시 float 자동 시작 (300ms 후, 무한 반복)
   useEffect(() => {
-    const t = setTimeout(() => startMobileFloat(2), 300);
+    const t = setTimeout(() => startMobileFloat("infinite"), 300);
     return () => clearTimeout(t);
   }, []);
 
@@ -179,6 +179,8 @@ export default function KidHome() {
     setGreetingIndex((prev) => (prev + 1) % GREETING_DIALOGUES.length);
     if (!kiddyClicked) setKiddyClicked(true);
     jumpMobile();
+    // 점프(0.55s) 끝난 후 float 재시작
+    setTimeout(() => startMobileFloat("infinite"), 650);
   };
 
   const openChat = () => { setChatMounted(true); setChatOpen(true); };
@@ -493,6 +495,26 @@ export default function KidHome() {
   return (
     <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#F8F7F2" }}>
 
+      {/* 임시 테스트 버튼 — 플레이어 UI 확인용 (API 쿼터 소진 시) */}
+      <div className="flex justify-center py-2" style={{ backgroundColor: "#fff3cd" }}>
+        <button
+          onClick={() => setPlayingVideo({
+            videoId: "LneN7ZWY9es",
+            title: "[테스트] 뽀로로와 펭귄의 날",
+            channelTitle: "PORORO the Little Penguin",
+            thumbnail: "",
+            totalScore: 95,
+            summary: "테스트용 영상입니다.",
+            violence: 0, language: 0, sexual: 0, educational: 10,
+            profileId: selectedProfile?.id || null,
+          })}
+          className="text-xs font-bold px-4 py-1.5 rounded-full"
+          style={{ backgroundColor: "#f0a500", color: "#fff" }}
+        >
+          🎬 플레이어 테스트 열기 (임시)
+        </button>
+      </div>
+
       {/* 커스텀 NavBar */}
       <header
         className="sticky top-0 z-50 bg-white"
@@ -517,11 +539,11 @@ export default function KidHome() {
   localStorage.removeItem("selectedProfile");
   navigate("/");
 }}
-              className="flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium transition"
-              style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+              className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-semibold transition"
+              style={{ backgroundColor: "#F0F5ED", color: "#2C3528", border: "1.5px solid #6DAB60" }}
             >
               <FaSignOutAlt style={{ color: "#6DAB60" }} />
-              <span className="hidden sm:block">나가기</span>
+              나가기
             </button>
           </div>
           {/* 오른쪽: 배지 pill + 아바타 */}
@@ -529,10 +551,10 @@ export default function KidHome() {
             {earnedBadges.length > 0 && (
               <button
                 onClick={() => navigate("/badges")}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
-                style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold"
+                style={{ backgroundColor: "#6DAB60", color: "#ffffff" }}
               >
-                <FaMedal className="text-xs" />
+                <FaMedal />
                 {earnedBadges.length}/{21}
               </button>
             )}
@@ -540,7 +562,7 @@ export default function KidHome() {
               <button
                 onClick={() => navigate("/profiles")}
                 className="overflow-hidden rounded-full"
-                style={{ width: "32px", height: "32px", border: "2px solid #E4EAE0" }}
+                style={{ width: "36px", height: "36px", border: "2.5px solid #6DAB60" }}
               >
                 <img
                   src={getAvatarUrl(selectedProfile)}
@@ -605,7 +627,7 @@ export default function KidHome() {
                   setEarnedBadges(result.allBadges);
                 }
               }
-              setPlayingVideo(null);
+              // 영상 종료 후 VideoPlayer 유지 — 완료 화면 표시 (onClose에서만 닫힘)
             }}
           />
         )}

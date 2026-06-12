@@ -139,53 +139,9 @@ export default function ProfileSelect() {
 
         {/* 상단 인사 */}
         <div className="mb-8 flex flex-col items-center gap-2">
-          {/* 키디 + 말풍선 */}
+          {/* 키디 */}
           <div className="relative inline-block">
             <KiddyImg pose="search" size={300} />
-            {/* 데스크탑용 말풍선 — 키디 우측 */}
-            <div
-              className="hidden md:block absolute"
-              style={{ top: "10px", right: "-140px" }}
-            >
-              <div
-                className="relative rounded-2xl px-5 py-3 text-xl font-bold whitespace-nowrap"
-                style={{
-                  backgroundColor: "#ffffff",
-                  color: "#2C3528",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
-                  border: "2px solid #E4EAE0",
-                }}
-              >
-                반가워! 누구야? 👀
-                <span
-                  className="absolute"
-                  style={{
-                    left: "-12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: 0,
-                    height: 0,
-                    borderTop: "8px solid transparent",
-                    borderBottom: "8px solid transparent",
-                    borderRight: "12px solid #ffffff",
-                    filter: "drop-shadow(-2px 0px 1px rgba(0,0,0,0.07))",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-          {/* 모바일용 말풍선 — 키디 아래 */}
-          <div
-            className="block md:hidden rounded-2xl px-5 py-3 text-lg font-bold"
-            style={{
-              backgroundColor: "#ffffff",
-              color: "#2C3528",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
-              border: "2px solid #E4EAE0",
-              marginTop: "-8px",
-            }}
-          >
-            반가워! 누구야? 👀
           </div>
           <div
             className="flex flex-col items-center gap-1 rounded-2xl px-8 py-4 mt-2"
@@ -247,9 +203,9 @@ export default function ProfileSelect() {
                     </span>
                     {/* 대표 배지 */}
                     {topBadge ? (
-                      <div className={`${getBadgeTierClass(topBadge.badgeId)} flex items-center gap-2 rounded-full px-4 py-1.5`}>
-                        <span className="text-xl leading-none">{topBadge.emoji}</span>
-                        <span className="text-sm font-bold">{topBadge.name}</span>
+                      <div className={`${getBadgeTierClass(topBadge.badgeId)} flex items-center gap-1.5 rounded-full px-3 py-1.5 max-w-full overflow-hidden`}>
+                        <span className="text-base leading-none shrink-0">{topBadge.emoji}</span>
+                        <span className="text-xs font-bold whitespace-nowrap overflow-hidden text-ellipsis">{topBadge.name}</span>
                       </div>
                     ) : (
                       <div

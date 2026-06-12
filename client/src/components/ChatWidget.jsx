@@ -10,11 +10,43 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const chatBottomRef = useRef(null);
+  const inputRef = useRef(null);
+  const backdropRef = useRef(null);
+  const containerRef = useRef(null);
 
   // 마운트 시 열림 애니메이션
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  // 배경 스크롤 완전 차단 — 채팅창 외부 touchmove를 document 레벨에서 차단
+  useEffect(() => {
+    const prevent = (e) => {
+      if (containerRef.current?.contains(e.target)) return; // 채팅창 내부는 허용
+      e.preventDefault();
+    };
+    document.addEventListener("touchmove", prevent, { passive: false });
+    return () => document.removeEventListener("touchmove", prevent);
+  }, []);
+
+  // 키보드 높이 감지 (Visual Viewport API)
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    const handleVP = () => {
+      // offsetTop 제거 — 배경 스크롤에 영향받지 않게 height 차이만 사용
+      const offset = Math.max(0, window.innerHeight - window.visualViewport.height);
+      setKeyboardOffset(offset);
+      if (offset > 0) {
+        setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+      }
+    };
+    window.visualViewport.addEventListener("resize", handleVP);
+    // scroll 이벤트 제거 — 배경 스크롤 시 위젯 위치 흔들림 방지
+    return () => {
+      window.visualViewport.removeEventListener("resize", handleVP);
+    };
   }, []);
 
   // 외부(탭바 등)에서 닫힘 요청 시 애니메이션 후 onClose 호출
@@ -39,6 +71,8 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
   const sendMessage = async (text) => {
     const msg = text.trim();
     if (!msg || chatLoading) return;
+    // 전송 후 키보드 닫기
+    inputRef.current?.blur();
     const newMessages = [...chatMessages, { role: "user", content: msg }];
     setChatMessages(newMessages);
     setChatInput("");
@@ -54,16 +88,28 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
   };
 
   return (
+    <>
+    {/* 배경 스크롤/터치 차단 backdrop */}
     <div
+      ref={backdropRef}
+      className="fixed inset-0 z-40 md:hidden"
+      style={{ touchAction: "none" }}
+    />
+    <div
+      ref={containerRef}
       className={`fixed z-50 flex flex-col overflow-hidden bg-white
-        bottom-[70px] right-2 w-[calc(100vw-16px)] h-[calc(100vh-140px)]
+        right-2 w-[calc(100vw-16px)]
         md:bottom-6 md:right-20 md:w-[520px] md:h-[700px]`}
       style={{
+        bottom: `${70 + keyboardOffset}px`,
+        height: `calc(85vh - ${140 + keyboardOffset}px)`,
         borderRadius: "24px",
         border: "0.5px solid #E4EAE0",
         boxShadow: "0 12px 48px rgba(44,53,40,0.16)",
         transform: visible ? "translateY(0)" : "translateY(110%)",
-        transition: "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1)",
+        transition: keyboardOffset > 0
+          ? "bottom 0.15s ease, height 0.15s ease"
+          : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1)",
       }}
     >
       {/* 헤더 */}
@@ -83,7 +129,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" style={{ backgroundColor: "#F8F7F2" }}>
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" style={{ backgroundColor: "#F8F7F2", overscrollBehavior: "contain" }}>
         {chatMessages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
             {msg.role === "assistant" && (
@@ -139,13 +185,14 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       {/* 입력창 */}
       <div className="flex items-center gap-2 px-3 py-2.5 bg-white" style={{ borderTop: "0.5px solid #E4EAE0" }}>
         <input
+          ref={inputRef}
           type="text"
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage(chatInput)}
           placeholder="키디한테 물어봐!"
-          className="flex-1 rounded-[10px] px-3 py-2 text-sm outline-none transition"
-          style={{ border: "2px solid #B8D8B2", color: "#2C3528", backgroundColor: "#F8F7F2" }}
+          className="flex-1 rounded-[10px] px-3 py-2 outline-none transition"
+          style={{ fontSize: "16px", border: "2px solid #B8D8B2", color: "#2C3528", backgroundColor: "#F8F7F2" }}
         />
         <button
           onClick={() => sendMessage(chatInput)}
@@ -157,5 +204,6 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
         </button>
       </div>
     </div>
+    </>
   );
 }

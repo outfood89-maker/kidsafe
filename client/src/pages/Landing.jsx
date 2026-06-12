@@ -7,7 +7,7 @@ import {
 import KiddyImg from "../components/KiddyImg"
 
 // 브라우저 프레임 모형
-const BrowserMockup = ({ src, urlLabel }) => (
+const BrowserMockup = ({ src, urlLabel, scale = 0.48, contentHeight = 360, offsetY = 0 }) => (
   <div
     className="w-full overflow-hidden bg-white"
     style={{ borderRadius: "16px", border: "0.5px solid #E4EAE0", boxShadow: "0 4px 24px rgba(44,53,40,0.08)" }}
@@ -28,50 +28,168 @@ const BrowserMockup = ({ src, urlLabel }) => (
         kidsafe.app/{urlLabel}
       </div>
     </div>
-    <div className="relative overflow-hidden" style={{ height: "360px" }}>
-      <iframe
-        src={src}
-        loading="lazy"
-        title={urlLabel}
-        style={{
-          width: "1200px", height: "800px",
-          transform: "scale(0.48)", transformOrigin: "top left",
-          pointerEvents: "none", border: "none",
-        }}
-      />
+    <div className="relative overflow-hidden" style={{ height: `${contentHeight}px` }}>
+      <div style={{
+        position: "absolute",
+        top: `${-offsetY}px`,
+        left: 0,
+        transform: `scale(${scale})`,
+        transformOrigin: "top left",
+        width: "1200px",
+      }}>
+        <iframe
+          src={src}
+          loading="lazy"
+          title={urlLabel}
+          style={{ width: "1200px", height: "900px", display: "block", pointerEvents: "none", border: "none" }}
+        />
+      </div>
     </div>
   </div>
 )
 
-// 모바일 폰 프레임 모형
-const PhoneMockup = ({ src }) => (
-  <div className="relative mx-auto" style={{ width: "240px" }}>
-    <div
-      className="relative overflow-hidden"
-      style={{ borderRadius: "36px", border: "6px solid #2C3528", height: "500px", backgroundColor: "#2C3528" }}
-    >
-      <div className="absolute top-0 left-0 right-0 z-10 flex justify-center" style={{ paddingTop: "6px" }}>
-        <div className="h-4 w-20 rounded-full" style={{ backgroundColor: "#2C3528" }} />
+// 아이 화면 정적 목업 (API 불필요)
+const KidsMockup = () => {
+  const videoCards = [
+    { title: "공룡과 떠나는 우주여행", channel: "키즈사이언스", score: 97, thumb: "#4a7c59" },
+    { title: "신기한 공룡 백과사전", channel: "어린이TV", score: 92, thumb: "#5a8f6a" },
+    { title: "공룡이 살던 시대 탐험", channel: "탐험대", score: 88, thumb: "#3d6b4f" },
+  ]
+  return (
+    <div className="relative mx-auto" style={{ width: "252px" }}>
+      <div className="relative overflow-hidden" style={{ borderRadius: "36px", border: "6px solid #2C3528", height: "580px", backgroundColor: "#2C3528" }}>
+        {/* 노치 */}
+        <div className="absolute top-0 left-0 right-0 z-10 flex justify-center" style={{ paddingTop: "6px" }}>
+          <div className="h-4 w-20 rounded-full" style={{ backgroundColor: "#2C3528" }} />
+        </div>
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* 다크 배너 */}
+          <div className="shrink-0 flex flex-col items-center px-4 pt-8 pb-4"
+            style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)" }}>
+            <p className="text-white font-extrabold mb-2" style={{ fontSize: "11px" }}>오늘은 어떤 영상 볼까? 🎬</p>
+            {/* 검색창 */}
+            <div className="flex items-center gap-1.5 w-full rounded-xl px-3 py-2 mb-3"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <span style={{ color: "#B8D8B2", fontSize: "9px" }}>🔍</span>
+              <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "9px", flex: 1 }}>공룡과 떠나는 우주여행</span>
+              <span className="rounded-lg px-2 py-0.5 font-bold text-white" style={{ backgroundColor: "#6DAB60", fontSize: "8px" }}>검색</span>
+            </div>
+            {/* 키디 + 말풍선 */}
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="rounded-2xl px-3 py-2 relative" style={{ backgroundColor: "rgba(255,255,255,0.95)", maxWidth: "160px" }}>
+                <p className="text-center font-bold" style={{ color: "#2C3528", fontSize: "9px", lineHeight: 1.4 }}>
+                  공룡 영상 찾았어! 같이 볼까? 🦕
+                </p>
+                <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: "-6px", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "7px solid rgba(255,255,255,0.95)" }} />
+              </div>
+              <KiddyImg pose="search" size={80} />
+            </div>
+          </div>
+
+          {/* 검색 결과 */}
+          <div className="flex-1 overflow-hidden px-3 py-3" style={{ backgroundColor: "#F8F7F2" }}>
+            <p className="font-bold mb-2" style={{ color: "#2C3528", fontSize: "10px" }}>
+              🔍 &quot;공룡&quot; 검색 결과
+            </p>
+            <div className="flex flex-col gap-2">
+              {videoCards.map((v, i) => (
+                <div key={i} className="flex gap-2 bg-white rounded-xl overflow-hidden"
+                  style={{ border: "0.5px solid #E4EAE0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                  {/* 썸네일 */}
+                  <div className="shrink-0 flex items-center justify-center" style={{ width: "68px", height: "48px", backgroundColor: v.thumb, borderRadius: "10px 0 0 10px" }}>
+                    <span style={{ fontSize: "18px" }}>🦕</span>
+                  </div>
+                  {/* 정보 */}
+                  <div className="flex flex-col justify-center py-1.5 pr-2 min-w-0">
+                    <p className="font-semibold truncate" style={{ color: "#2C3528", fontSize: "8.5px" }}>{v.title}</p>
+                    <p className="truncate mt-0.5" style={{ color: "#9BA89A", fontSize: "7.5px" }}>{v.channel}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="rounded-full px-1.5 py-0.5 font-bold text-white" style={{ backgroundColor: "#6DAB60", fontSize: "7px" }}>안전 {v.score}점</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="overflow-hidden" style={{ height: "500px" }}>
-        <iframe
-          src={src}
-          loading="lazy"
-          title="mobile-kids"
-          style={{
-            width: "390px", height: "844px",
-            transform: "scale(0.615)", transformOrigin: "top left",
-            pointerEvents: "none", border: "none",
-          }}
-        />
-      </div>
+      <div className="absolute rounded-l" style={{ left: "-8px", top: "80px",  width: "5px", height: "28px", backgroundColor: "#2C3528" }} />
+      <div className="absolute rounded-l" style={{ left: "-8px", top: "118px", width: "5px", height: "44px", backgroundColor: "#2C3528" }} />
+      <div className="absolute rounded-l" style={{ left: "-8px", top: "172px", width: "5px", height: "44px", backgroundColor: "#2C3528" }} />
+      <div className="absolute rounded-r" style={{ right: "-8px", top: "110px", width: "5px", height: "56px", backgroundColor: "#2C3528" }} />
     </div>
-    <div className="absolute rounded-l" style={{ left: "-8px", top: "80px", width: "5px", height: "28px", backgroundColor: "#2C3528" }} />
-    <div className="absolute rounded-l" style={{ left: "-8px", top: "118px", width: "5px", height: "44px", backgroundColor: "#2C3528" }} />
-    <div className="absolute rounded-l" style={{ left: "-8px", top: "172px", width: "5px", height: "44px", backgroundColor: "#2C3528" }} />
-    <div className="absolute rounded-r" style={{ right: "-8px", top: "110px", width: "5px", height: "56px", backgroundColor: "#2C3528" }} />
-  </div>
-)
+  )
+}
+
+// 키디 AI 채팅 미리보기 (정적 대화 시뮬레이션)
+const ChatPreview = () => {
+  const messages = [
+    { role: "kiddy", text: "안녕! 나는 키디야~ 뭐든지 물어봐! 😊" },
+    { role: "user",  text: "오늘 공룡 영상 봤어!" },
+    { role: "kiddy", text: "와, 공룡 진짜 재미있지? 🦕 티라노사우루스 좋아해?" },
+    { role: "user",  text: "응! 티라노사우루스!" },
+    { role: "kiddy", text: "티라노 이빨이 20cm나 된대! 진짜 엄청 세지? 😮" },
+  ]
+  return (
+    <div className="relative mx-auto" style={{ width: "252px" }}>
+      <div className="relative overflow-hidden" style={{ borderRadius: "36px", border: "6px solid #2C3528", height: "500px", backgroundColor: "#2C3528" }}>
+        {/* 노치 */}
+        <div className="absolute top-0 left-0 right-0 z-10 flex justify-center" style={{ paddingTop: "6px" }}>
+          <div className="h-4 w-20 rounded-full" style={{ backgroundColor: "#2C3528" }} />
+        </div>
+        <div className="flex flex-col h-full" style={{ backgroundColor: "#F8F7F2" }}>
+          {/* 채팅 헤더 */}
+          <div className="flex items-center gap-2.5 px-4 shrink-0" style={{ backgroundColor: "#2C3528", paddingTop: "30px", paddingBottom: "12px" }}>
+            <div className="flex items-center justify-center rounded-full shrink-0" style={{ width: "32px", height: "32px", backgroundColor: "#3D4D38", overflow: "hidden" }}>
+              <KiddyImg pose="chat" size={32} />
+            </div>
+            <div>
+              <p className="font-bold text-white" style={{ fontSize: "11px" }}>키디</p>
+              <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)" }}>AI 친구 · 항상 대기 중 🟢</p>
+            </div>
+          </div>
+          {/* 메시지 목록 */}
+          <div className="flex-1 overflow-hidden flex flex-col justify-end gap-2 px-3 py-3">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex items-end gap-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "kiddy" && (
+                  <div className="shrink-0 rounded-full overflow-hidden" style={{ width: "22px", height: "22px", backgroundColor: "#3D4D38" }}>
+                    <KiddyImg pose="chat" size={22} />
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: "72%",
+                  padding: "6px 10px",
+                  borderRadius: msg.role === "kiddy" ? "4px 10px 10px 10px" : "10px 4px 10px 10px",
+                  backgroundColor: msg.role === "kiddy" ? "#ffffff" : "#6DAB60",
+                  color: msg.role === "kiddy" ? "#2C3528" : "#ffffff",
+                  fontSize: "10px",
+                  lineHeight: 1.5,
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* 입력창 */}
+          <div className="flex items-center gap-2 px-3 shrink-0" style={{ backgroundColor: "#ffffff", borderTop: "1px solid #E4EAE0", paddingTop: "10px", paddingBottom: "10px" }}>
+            <div className="flex-1 rounded-full px-3" style={{ backgroundColor: "#F0F5ED", fontSize: "9px", color: "#9BA89A", paddingTop: "7px", paddingBottom: "7px" }}>
+              키디에게 물어봐! 🤔
+            </div>
+            <div className="flex items-center justify-center rounded-full shrink-0" style={{ width: "26px", height: "26px", backgroundColor: "#6DAB60" }}>
+              <span style={{ color: "white", fontSize: "12px", lineHeight: 1 }}>↑</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute rounded-l" style={{ left: "-8px", top: "80px",  width: "5px", height: "28px", backgroundColor: "#2C3528" }} />
+      <div className="absolute rounded-l" style={{ left: "-8px", top: "118px", width: "5px", height: "44px", backgroundColor: "#2C3528" }} />
+      <div className="absolute rounded-l" style={{ left: "-8px", top: "172px", width: "5px", height: "44px", backgroundColor: "#2C3528" }} />
+      <div className="absolute rounded-r" style={{ right: "-8px", top: "110px", width: "5px", height: "56px", backgroundColor: "#2C3528" }} />
+    </div>
+  )
+}
 
 // 스크롤 진입 감지 훅
 const useInView = (threshold = 0.15) => {
@@ -198,11 +316,11 @@ export default function Landing() {
   ]
 
   return (
-    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "#F8F7F2" }}>
+    <div className="min-h-screen w-full overflow-x-hidden" style={{ backgroundColor: "#F8F7F2" }}>
 
       {/* ① Hero 섹션 */}
       <section
-        className="relative flex min-h-screen flex-col items-center justify-center px-4 text-center overflow-hidden"
+        className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 text-center overflow-hidden"
         style={{ backgroundColor: "#2C3528" }}
       >
         {/* 배경 장식 */}
@@ -230,7 +348,7 @@ export default function Landing() {
         <div className="relative z-10 flex flex-col items-center">
           {/* 키디 이미지 */}
           <div className="mb-4">
-            <KiddyImg pose="hello" size={260} animate={true} />
+            <KiddyImg pose="hello" size={200} animate={true} />
           </div>
 
           {/* 말풍선 */}
@@ -306,8 +424,27 @@ export default function Landing() {
             <p className="mt-3 text-base" style={{ color: "#6B7A65" }}>아이의 안전한 미디어 환경을 위한 모든 것을 담았어요.</p>
           </div>
 
-          {/* 슬라이더 + 키디 레이아웃 */}
-          <div className={`flex flex-col md:flex-row items-center gap-8 transition-all duration-700 ${featInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
+          {/* 모바일 전용: 카드 목록 */}
+          <div className={`md:hidden flex flex-col gap-4 transition-all duration-700 ${featInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
+            {features.map((feat) => (
+              <div key={feat.title} className="bg-white p-5" style={{ borderRadius: "20px", border: "1px solid #D4E8D0" }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center rounded-[12px] shrink-0" style={{ width: "44px", height: "44px", backgroundColor: feat.iconBg }}>
+                    {feat.icon}
+                  </div>
+                  <h3 className="text-xl font-semibold" style={{ color: "#1A2518" }}>{feat.title}</h3>
+                </div>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: "#3D4D38" }}>{feat.desc}</p>
+                <div className="pt-3" style={{ borderTop: "1px solid #E4EAE0" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "#6DAB60" }}>📌 왜 필요한가요?</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "#6B7A65" }}>{feat.why}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 데스크탑 전용: 슬라이더 + 키디 레이아웃 */}
+          <div className={`hidden md:flex md:flex-row items-center gap-8 transition-all duration-700 ${featInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
 
             {/* 왼쪽: 키디 고정 */}
             <div className="flex flex-col items-center gap-4 shrink-0" style={{ width: "260px" }}>
@@ -369,8 +506,8 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* 네비게이션 */}
-          <div className="flex items-center justify-center gap-3 mt-8">
+          {/* 네비게이션 (데스크탑 전용) */}
+          <div className="hidden md:flex items-center justify-center gap-3 mt-8">
             <button
               onClick={() => setActiveFeat(p => (p - 1 + features.length) % features.length)}
               className="flex items-center justify-center rounded-full transition hover:opacity-80"
@@ -407,24 +544,24 @@ export default function Landing() {
           <div className={`text-center mb-14 transition-all duration-700 ${previewInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
             <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6DAB60" }}>Live Preview</p>
             <h2 className="text-3xl md:text-4xl font-medium" style={{ color: "#2C3528" }}>직접 확인해보세요</h2>
-            <p className="mt-3 text-base" style={{ color: "#6B7A65" }}>아이 화면과 부모 화면, 이렇게 생겼어요.</p>
+            <p className="mt-3 text-base" style={{ color: "#6B7A65" }}>아이 화면, 부모 화면, 키디 채팅, 이렇게 생겼어요.</p>
           </div>
 
           {/* 아이 화면 */}
           <div className={`flex flex-col md:flex-row gap-10 md:gap-16 mb-20 md:mb-24 transition-all duration-700 delay-100 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
-            <div className="w-full md:w-1/2">
+            <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <span
                 className="inline-block rounded-full px-4 py-1.5 text-sm font-medium mb-5"
                 style={{ backgroundColor: "#D4EAD0", color: "#2C3528" }}
               >
                 👧 아이 화면
               </span>
-              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight" style={{ color: "#2C3528" }}>
+              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight text-center md:text-left" style={{ color: "#2C3528" }}>
                 아이가 직접<br />탐색하는 공간
               </h3>
-              <ul className="space-y-3">
+              <ul className="space-y-3 w-full max-w-xs">
                 {["나이에 맞는 안전한 영상만 추천", "AI 친구 키디와 언제든 대화", "배지를 모으며 성장하는 재미", "차단 키워드 검색 자동 방지"].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm" style={{ color: "#6B7A65" }}>
+                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#6B7A65" }}>
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ backgroundColor: "#6DAB60" }}>✓</span>
                     {item}
                   </li>
@@ -432,32 +569,63 @@ export default function Landing() {
               </ul>
             </div>
             <div className="w-full md:w-1/2 flex justify-center">
-              <PhoneMockup src="/kids?q=공룡과+떠나는+우주여행" />
+              <KidsMockup />
             </div>
           </div>
 
-          {/* 부모 화면 */}
-          <div className={`flex flex-col md:flex-row-reverse gap-10 md:gap-16 transition-all duration-700 delay-200 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
-            <div className="w-full md:w-1/2">
+          {/* 키디 AI 채팅 */}
+          <div className={`flex flex-col md:flex-row-reverse gap-10 md:gap-16 mb-20 md:mb-24 transition-all duration-700 delay-200 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
+            <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <span
                 className="inline-block rounded-full px-4 py-1.5 text-sm font-medium mb-5"
                 style={{ backgroundColor: "#D4EAD0", color: "#2C3528" }}
               >
-                👨‍👩‍👧 부모 화면
+                🤖 키디 AI 채팅
               </span>
-              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight" style={{ color: "#2C3528" }}>
-                부모님이 한눈에<br />확인하는 공간
+              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight text-center md:text-left" style={{ color: "#2C3528" }}>
+                언제든 키디에게<br />물어보세요
               </h3>
-              <ul className="space-y-3">
-                {["시청 패턴 차트로 한눈에 파악", "위험 영상 알림 실시간 수신", "프로필별 안전도 기준 커스텀", "차단 키워드 직접 관리"].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm" style={{ color: "#6B7A65" }}>
+              <ul className="space-y-3 w-full max-w-xs">
+                {["모르는 것 뭐든지 키디에게 질문", "영상 소감·감정 대화 가능", "아이 눈높이 맞춤 친절한 답변", "24시간 항상 대기 중"].map(item => (
+                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#6B7A65" }}>
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ backgroundColor: "#6DAB60" }}>✓</span>
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="w-full md:w-1/2">
+            <div className="w-full md:w-1/2 flex justify-center">
+              <ChatPreview />
+            </div>
+          </div>
+
+          {/* 부모 화면 */}
+          <div className={`flex flex-col md:flex-row gap-10 md:gap-16 transition-all duration-700 delay-300 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+            <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
+              <span
+                className="inline-block rounded-full px-4 py-1.5 text-sm font-medium mb-5"
+                style={{ backgroundColor: "#D4EAD0", color: "#2C3528" }}
+              >
+                👨‍👩‍👧 부모 화면
+              </span>
+              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight text-center md:text-left" style={{ color: "#2C3528" }}>
+                부모님이 한눈에<br />확인하는 공간
+              </h3>
+              <ul className="space-y-3 w-full max-w-xs">
+                {["시청 패턴 차트로 한눈에 파악", "위험 영상 알림 실시간 수신", "프로필별 안전도 기준 커스텀", "차단 키워드 직접 관리"].map(item => (
+                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#6B7A65" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ backgroundColor: "#6DAB60" }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* 모바일: 헤더 스킵 후 핵심 대시보드 영역 확대 표시 */}
+            <div className="block md:hidden w-full">
+              <BrowserMockup src="/parent" urlLabel="parent" scale={0.55} contentHeight={280} offsetY={40} />
+            </div>
+            {/* 데스크탑: 원래 스케일 */}
+            <div className="hidden md:block md:w-1/2">
               <BrowserMockup src="/parent" urlLabel="parent" />
             </div>
           </div>
