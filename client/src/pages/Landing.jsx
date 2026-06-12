@@ -348,7 +348,7 @@ export default function Landing() {
                     pointerEvents: activeFeat === i ? "auto" : "none",
                   }}
                 >
-                  <div className="h-full bg-white p-8" style={{ borderRadius: "20px", border: "1px solid #D4E8D0" }}>
+                  <div className="h-full bg-white p-5 md:p-8" style={{ borderRadius: "20px", border: "1px solid #D4E8D0" }}>
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex items-center justify-center rounded-[12px] shrink-0" style={{ width: "52px", height: "52px", backgroundColor: feat.iconBg }}>
                         {feat.icon}
@@ -357,8 +357,8 @@ export default function Landing() {
                         {i + 1} / {features.length}
                       </span>
                     </div>
-                    <h3 className="text-4xl font-semibold mb-4" style={{ color: "#1A2518" }}>{feat.title}</h3>
-                    <p className="text-2xl leading-relaxed mb-6" style={{ color: "#3D4D38" }}>{feat.desc}</p>
+                    <h3 className="text-2xl md:text-4xl font-semibold mb-4" style={{ color: "#1A2518" }}>{feat.title}</h3>
+                    <p className="text-base md:text-2xl leading-relaxed mb-6" style={{ color: "#3D4D38" }}>{feat.desc}</p>
                     <div className="pt-5" style={{ borderTop: "1px solid #E4EAE0" }}>
                       <p className="text-base font-semibold mb-2.5" style={{ color: "#6DAB60" }}>📌 왜 필요한가요?</p>
                       <p className="text-base leading-relaxed" style={{ color: "#3D4D38" }}>{feat.why}</p>

@@ -20,6 +20,41 @@ import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
 import KiddyImg from "../components/KiddyImg";
 
+// 깡총 점프 키프레임 주입 (한 번만)
+if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {
+  const s = document.createElement("style");
+  s.id = "kiddy-jump-style";
+  s.textContent = `
+    @keyframes kiddyJump {
+      0%   { transform: translateY(0px) scaleY(1) scaleX(1); }
+      15%  { transform: translateY(6px) scaleY(0.8) scaleX(1.15); }
+      40%  { transform: translateY(-32px) scaleY(1.1) scaleX(0.95); }
+      65%  { transform: translateY(0px) scaleY(0.9) scaleX(1.08); }
+      80%  { transform: translateY(-10px) scaleY(1.05) scaleX(0.97); }
+      100% { transform: translateY(0px) scaleY(1) scaleX(1); }
+    }
+  `;
+  document.head.appendChild(s);
+}
+
+const GREETING_DIALOGUES = [
+  { pose: "hello",   text: "안녕 {name}야! 오늘도 만나서 반가워~ 😊" },
+  { pose: "chat",    text: "오늘 기분은 어때? 키디는 너 만나서 너무 좋아! 🌟" },
+  { pose: "think",   text: "오늘은 어떤 영상이 보고 싶어? 같이 찾아볼까? 🤔" },
+  { pose: "point",   text: "키디가 아주 안전한 영상만 골라줄게, 믿지? 😉" },
+  { pose: "jump",    text: "와! {name}야 오늘도 왔구나! 키디 완전 신난다! 🎉" },
+  { pose: "help",    text: "오늘도 재미있는 영상 같이 찾아보자! 키디가 도와줄게 💪" },
+  { pose: "search",  text: "공룡 영상 볼래? 키디가 제일 좋아하는 거야! 🦕" },
+  { pose: "success", text: "나쁜 영상은 키디가 다 막아줄게! 걱정 마~ 🦸" },
+  { pose: "chat",    text: "모르는 게 있으면 뭐든지 키디한테 물어봐! 😄" },
+  { pose: "think",   text: "{name}야, 오늘 밥은 맛있게 먹었어? 키디도 배고프다~ 🍚" },
+  { pose: "reading", text: "어제 본 영상 재미있었어? 오늘은 또 뭐 볼까? 🎬" },
+  { pose: "success", text: "키디랑 같이라면 어떤 영상도 안전하게 볼 수 있어! ✨" },
+  { pose: "jump",    text: "오늘 하루도 행복하게 보내자! 키디가 응원해~ 🌈" },
+  { pose: "hello",   text: "{name}야, 너는 키디의 제일 소중한 친구야! 😍" },
+  { pose: "search",  text: "새로운 영상이 잔뜩 기다리고 있어! 빨리 찾아보자 🚀" },
+];
+
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [videos, setVideos] = useState([]);
@@ -47,9 +82,14 @@ export default function KidHome() {
   const [visibleCount, setVisibleCount] = useState(9);
   const [visibleRecommendCount, setVisibleRecommendCount] = useState(6);
   const [visibleHistoryCount, setVisibleHistoryCount] = useState(6);
+  const [quotaError, setQuotaError] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMounted, setChatMounted] = useState(false);
+  const [greetingIndex, setGreetingIndex] = useState(0);
+  const [kiddyBounce, setKiddyBounce] = useState(true);
+  const [kiddyClicked, setKiddyClicked] = useState(false);
   const searchBoxRef = useRef(null);
+  const kiddyMobileRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -106,6 +146,40 @@ export default function KidHome() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setKiddyBounce(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  // 진입 시 float 자동 시작 (300ms 후)
+  useEffect(() => {
+    const t = setTimeout(() => startMobileFloat(2), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  const startMobileFloat = (count = 2) => {
+    const el = kiddyMobileRef.current;
+    if (!el) return;
+    el.style.animation = "none";
+    el.offsetHeight;
+    el.style.animation = `kiddyFloat 1.8s ease-in-out ${count}`;
+  };
+
+  // 클릭 시 깡총 점프 효과
+  const jumpMobile = () => {
+    const el = kiddyMobileRef.current;
+    if (!el) return;
+    el.style.animation = "none";
+    el.offsetHeight;
+    el.style.animation = "kiddyJump 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1";
+  };
+
+  const handleKiddyClick = () => {
+    setGreetingIndex((prev) => (prev + 1) % GREETING_DIALOGUES.length);
+    if (!kiddyClicked) setKiddyClicked(true);
+    jumpMobile();
+  };
 
   const openChat = () => { setChatMounted(true); setChatOpen(true); };
   const closeChat = () => { setChatOpen(false); };
@@ -185,8 +259,10 @@ export default function KidHome() {
         return { ...video, ...safety };
       }));
       setRecommendedVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
-    } catch (err) { console.error("추천 콘텐츠 불러오기 실패:", err); }
-    finally { setRecommendLoading(false); }
+    } catch (err) {
+      if (err.response?.status === 500) setQuotaError(true);
+      console.error("추천 콘텐츠 불러오기 실패:", err);
+    } finally { setRecommendLoading(false); }
   };
 
   const fetchHistoryRecommendedVideos = async (watchHistory, age) => {
@@ -202,8 +278,10 @@ export default function KidHome() {
         return { ...video, ...safety };
       }));
       setHistoryVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
-    } catch (err) { console.error("시청 기록 기반 추천 실패:", err); }
-    finally { setHistoryLoading(false); }
+    } catch (err) {
+      if (err.response?.status === 500) setQuotaError(true);
+      console.error("시청 기록 기반 추천 실패:", err);
+    } finally { setHistoryLoading(false); }
   };
 
   const fetchBadges = async (profileId) => {
@@ -237,7 +315,7 @@ export default function KidHome() {
         setError(`🙈 앗! "${trimmedKeyword}"은(는) 검색할 수 없어요. 다른 키워드로 찾아봐요!`);
         return;
       }
-      setLoading(true); setError(""); setVideos([]); setPlaylists([]); setShowSearchHistory(false); setVisibleCount(9);
+      setLoading(true); setError(""); setQuotaError(false); setVideos([]); setPlaylists([]); setShowSearchHistory(false); setVisibleCount(9);
       if (selectedProfile?.id) {
         await saveSearchHistory(selectedProfile.id, trimmedKeyword);
         await fetchSearchHistory(selectedProfile.id);
@@ -266,8 +344,10 @@ export default function KidHome() {
           playlists: playlistResults || [],
         }));
       }
-    } catch (err) { setError("검색 중 오류가 발생했어요. 다시 시도해줘요!"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      if (err.response?.status === 500) setQuotaError(true);
+      else setError("검색 중 오류가 발생했어요. 다시 시도해줘요!");
+    } finally { setLoading(false); }
   };
 
   const handlePlayInApp = async (video) => {
@@ -501,6 +581,14 @@ export default function KidHome() {
           <PlaylistModal playlist={selectedPlaylist} onClose={() => setSelectedPlaylist(null)} />
         )}
 
+        {/* YouTube API 할당량 초과 안내 */}
+        {quotaError && (
+          <div className="mb-4 px-4 py-4 text-center" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", border: "1px solid #F5C6C5" }}>
+            <p className="text-base font-bold" style={{ color: "#C84B47" }}>😢 오늘 검색 횟수를 초과했어요</p>
+            <p className="text-sm mt-1" style={{ color: "#6B7A65" }}>매일 오후 4시에 초기화돼요!</p>
+          </div>
+        )}
+
         {/* VideoPlayer — IFrame 재생 */}
         {playingVideo && (
           <VideoPlayer
@@ -679,6 +767,52 @@ export default function KidHome() {
                     </div>
                   </div>
 
+                  {/* 모바일 전용: 키디 중앙 + 말풍선 위 */}
+                  <div className="flex md:hidden flex-col items-center justify-between cursor-pointer select-none mt-4"
+                    style={{ height: "300px" }}
+                    onClick={handleKiddyClick}>
+                    {/* 말풍선 — 높이 고정 (2줄 고정) */}
+                    <div className="relative rounded-3xl px-5 py-3 w-full"
+                      style={{ backgroundColor: "rgba(255,255,255,0.96)", color: "#2C3528", maxWidth: "280px", height: "68px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <p className="text-sm font-bold text-center leading-snug"
+                        style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구")}
+                      </p>
+                      {/* 꼬리 — 아래 방향 */}
+                      <div className="absolute left-1/2 -translate-x-1/2" style={{
+                        bottom: "-10px",
+                        width: 0, height: 0,
+                        borderLeft: "10px solid transparent",
+                        borderRight: "10px solid transparent",
+                        borderTop: "11px solid rgba(255,255,255,0.96)",
+                      }} />
+                    </div>
+                    {/* 키디 — float 애니메이션 ref 연결 */}
+                    <div ref={kiddyMobileRef}>
+                      <KiddyImg pose={GREETING_DIALOGUES[greetingIndex].pose} size={200} />
+                    </div>
+                    {/* 시간 pill + 힌트 */}
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
+                      {tl && (
+                        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
+                          style={{
+                            backgroundColor: timeLimitReached ? "#C84B47" : "rgba(0,0,0,0.5)",
+                            border: `1.5px solid ${glowColor}`,
+                          }}>
+                          <span className="text-xs font-extrabold"
+                            style={{ color: timeLimitReached ? "#fff" : glowColor }}>
+                            {timeLimitReached ? "⏰ 시간 종료" : `⏱ ${remaining}분 남음`}
+                          </span>
+                        </div>
+                      )}
+                      {!kiddyClicked && (
+                        <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>
+                          👆 눌러봐!
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* 중: 디지털 타이머 */}
                   {tl && (
                     <div className="hidden md:flex flex-col items-center justify-center"
@@ -711,25 +845,18 @@ export default function KidHome() {
                     </div>
                   )}
 
-                  {/* 우: 키디 + 말풍선 */}
+                  {/* 우: 키디 + 말풍선 (클릭 시 대사 순환) */}
                   <div className="hidden md:flex justify-center items-center" style={{ flex: "27", minWidth: 0 }}>
-                    {/* relative 래퍼: 말풍선을 키디 기준 우측 상단 대각선으로 */}
-                    <div className="relative" style={{ marginLeft: "-50px" }}>
-                      <KiddyImg pose="hello" size={220} />
-                      {/* 말풍선 — 키디 우측 상단 대각선 */}
+                    <div className="relative cursor-pointer select-none" style={{ marginLeft: "-50px" }} onClick={handleKiddyClick}>
+                      {/* bounce는 진입 후 1.5초 동안만 */}
+                      <div className={kiddyBounce ? "animate-bounce" : ""}>
+                        <KiddyImg pose={GREETING_DIALOGUES[greetingIndex].pose} size={220} />
+                      </div>
+                      {/* 말풍선 — 키디 우측 상단 */}
                       <div className="absolute" style={{ top: "0px", left: "148px" }}>
                         <div className="rounded-xl px-3 py-1.5"
                           style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", lineHeight: "1.6", position: "relative", fontSize: "12px", fontWeight: "700", width: "120px", wordBreak: "keep-all" }}>
-                          {timeLimitReached ? (
-                            <>오늘은 여기까지야~<br />내일 또 봐요! 😴</>
-                          ) : tl && remaining !== null && remaining / tl <= 0.2 ? (
-                            <>조금만 더~<br />{remaining}분 남았어! 🕐</>
-                          ) : tl ? (
-                            <>{remaining}분 남았어!<br />골라봐~ 🎬</>
-                          ) : (
-                            <>오늘도 왔구나~<br />마음껏 골라봐! 🎉</>
-                          )}
-                          {/* 꼬리 — 왼쪽 하단 대각선 (키디 입 방향) */}
+                          {GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구")}
                           <div style={{
                             position: "absolute", bottom: "-10px", left: "10px",
                             width: "14px", height: "14px",
@@ -740,6 +867,12 @@ export default function KidHome() {
                             borderRadius: "0 0 0 4px",
                           }} />
                         </div>
+                        {/* 첫 클릭 전에만 힌트 표시 */}
+                        {!kiddyClicked && (
+                          <p className="mt-2 text-center text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>
+                            👆 눌러봐!
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

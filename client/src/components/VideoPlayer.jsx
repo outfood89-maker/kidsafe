@@ -3,6 +3,7 @@ import YouTube from "react-youtube";
 import { FaTimes, FaShieldAlt } from "react-icons/fa";
 import { saveHistory } from "../utils/api";
 import KiddyImg from "./KiddyImg";
+import ChatWidget from "./ChatWidget";
 
 const HEADER_H = 52;
 const FOOTER_H = 80;
@@ -18,6 +19,8 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, on
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [embedError, setEmbedError] = useState(false);
+  const [chatMounted, setChatMounted] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const timerRef = useRef(null);
   const playerRef = useRef(null);
 
@@ -78,6 +81,11 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, on
     return "#C84B47";
   };
 
+  const handleKiddyChat = () => {
+    setChatMounted(true);
+    setChatOpen(true);
+  };
+
   // 시간 초과 화면
   if (timeLimitReached) {
     return (
@@ -85,11 +93,11 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, on
         <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8 bg-white" style={{ borderRadius: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
           {/* 키디 + 말풍선 */}
           <div className="relative inline-block">
-            <KiddyImg pose="sleep" size={160} />
+            <KiddyImg pose="help" size={160} />
             <div className="absolute" style={{ top: "-12px", right: "-72px" }}>
-              <div className="relative rounded-2xl px-3 py-2 text-sm font-bold whitespace-nowrap"
-                style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-                다음에 봐요! 👋
+              <div className="relative rounded-2xl px-3 py-2 text-sm font-bold"
+                style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", width: "88px", wordBreak: "keep-all" }}>
+                오늘 시청 시간이 끝났어! 영상 재미있었어? 😄
                 <div className="absolute" style={{ bottom: "-9px", left: "14px", width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid #E4EAE0" }} />
                 <div className="absolute" style={{ bottom: "-6px", left: "16px", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #fff" }} />
               </div>
@@ -102,10 +110,25 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, on
           <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>
             부모님이 설정한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
           </p>
-          <button onClick={onClose} className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white" style={{ backgroundColor: "#6DAB60" }}>
+          <button
+            onClick={handleKiddyChat}
+            className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white"
+            style={{ backgroundColor: "#6DAB60" }}
+          >
+            💬 키디에게 소감 말해보자~!
+          </button>
+          <button onClick={onClose} className="mt-3 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}>
             확인
           </button>
         </div>
+        {/* 시간 초과 화면 위로 ChatWidget 슬라이드업 */}
+        {chatMounted && (
+          <ChatWidget
+            isOpen={chatOpen}
+            initialMessage={`아까 [${video.title}] 봤지? 어땠어? 키디한테 소감 말해봐! 😊`}
+            onClose={() => { setChatMounted(false); setChatOpen(false); }}
+          />
+        )}
       </div>
     );
   }

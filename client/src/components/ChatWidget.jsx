@@ -3,9 +3,9 @@ import { FaChevronDown, FaPaperPlane } from "react-icons/fa";
 import { sendChatMessage } from "../utils/api";
 import KiddyImg from "./KiddyImg";
 
-export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", desktopClass = "" }) {
+export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", desktopClass = "", initialMessage = null }) {
   const [chatMessages, setChatMessages] = useState([
-    { role: "assistant", content: "안녕! 나는 키디야~ 궁금한 게 있으면 뭐든지 물어봐! 😊" }
+    { role: "assistant", content: initialMessage ?? "안녕! 나는 키디야~ 궁금한 게 있으면 뭐든지 물어봐! 😊" }
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);

@@ -142,9 +142,9 @@ export default function ProfileSelect() {
           {/* 키디 + 말풍선 */}
           <div className="relative inline-block">
             <KiddyImg pose="search" size={300} />
-            {/* 말풍선 */}
+            {/* 데스크탑용 말풍선 — 키디 우측 */}
             <div
-              className="absolute"
+              className="hidden md:block absolute"
               style={{ top: "10px", right: "-140px" }}
             >
               <div
@@ -157,7 +157,6 @@ export default function ProfileSelect() {
                 }}
               >
                 반가워! 누구야? 👀
-                {/* 말풍선 꼬리 */}
                 <span
                   className="absolute"
                   style={{
@@ -174,6 +173,19 @@ export default function ProfileSelect() {
                 />
               </div>
             </div>
+          </div>
+          {/* 모바일용 말풍선 — 키디 아래 */}
+          <div
+            className="block md:hidden rounded-2xl px-5 py-3 text-lg font-bold"
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#2C3528",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+              border: "2px solid #E4EAE0",
+              marginTop: "-8px",
+            }}
+          >
+            반가워! 누구야? 👀
           </div>
           <div
             className="flex flex-col items-center gap-1 rounded-2xl px-8 py-4 mt-2"
