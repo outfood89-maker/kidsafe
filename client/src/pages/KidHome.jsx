@@ -390,13 +390,18 @@ export default function KidHome() {
           {/* 찜 버튼 */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
-            className="absolute right-3 top-3 rounded-full p-2 transition-all duration-200 active:scale-125"
+            className="absolute right-3 top-3 rounded-full transition-all duration-200 active:scale-110 flex items-center gap-1.5"
             style={{
-              backgroundColor: isFavorited ? "#C84B47" : "rgba(255,255,255,0.85)",
-              color: isFavorited ? "#fff" : "#9BA89A",
+              backgroundColor: isFavorited ? "#C84B47" : "rgba(255,255,255,0.95)",
+              color: isFavorited ? "#fff" : "#C84B47",
+              padding: "6px 10px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              fontSize: "13px",
+              fontWeight: 600,
             }}
           >
-            {isFavorited ? <FaHeart className="text-sm" /> : <FaRegHeart className="text-sm" />}
+            {isFavorited ? <FaHeart style={{ fontSize: "14px" }} /> : <FaRegHeart style={{ fontSize: "14px" }} />}
+            <span>{isFavorited ? "찜됨" : "찜"}</span>
           </button>
         </div>
         {/* 텍스트 */}
@@ -455,13 +460,18 @@ export default function KidHome() {
           {/* 찜 버튼 */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleFavorite(playlist, "playlist"); }}
-            className="absolute right-3 top-3 rounded-full p-2 transition-all duration-200 active:scale-125"
+            className="absolute right-3 top-3 rounded-full transition-all duration-200 active:scale-110 flex items-center gap-1.5"
             style={{
-              backgroundColor: isFavorited ? "#C84B47" : "rgba(255,255,255,0.85)",
-              color: isFavorited ? "#fff" : "#9BA89A",
+              backgroundColor: isFavorited ? "#C84B47" : "rgba(255,255,255,0.95)",
+              color: isFavorited ? "#fff" : "#C84B47",
+              padding: "6px 10px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              fontSize: "13px",
+              fontWeight: 600,
             }}
           >
-            {isFavorited ? <FaHeart className="text-sm" /> : <FaRegHeart className="text-sm" />}
+            {isFavorited ? <FaHeart style={{ fontSize: "14px" }} /> : <FaRegHeart style={{ fontSize: "14px" }} />}
+            <span>{isFavorited ? "찜됨" : "찜"}</span>
           </button>
           {/* 하단 그라데이션 */}
           <div
