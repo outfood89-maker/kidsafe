@@ -2,16 +2,72 @@ import { useState } from "react";
 import KiddyImg from "../KiddyImg";
 
 const OX_QUESTIONS = [
+  // 🌍 과학 · 자연
   { q: "지구는 태양 주위를 돌아요", answer: true },
-  { q: "고래는 물고기예요", answer: false },
-  { q: "사과는 과일이에요", answer: true },
   { q: "달은 스스로 빛을 내요", answer: false },
   { q: "식물은 햇빛으로 음식을 만들어요", answer: true },
-  { q: "펭귄은 날 수 있어요", answer: false },
   { q: "물은 100도에서 끓어요", answer: true },
-  { q: "곰은 겨울에 잠을 자요", answer: true },
   { q: "무지개는 7가지 색이에요", answer: true },
+  { q: "지구는 태양계에서 세 번째 행성이에요", answer: true },
+  { q: "번개는 소리보다 빠르게 이동해요", answer: true },
+  { q: "눈(雪)은 소금물로 만들어져요", answer: false },
+  { q: "공기는 눈에 보이지 않아요", answer: true },
+  { q: "지구에서 가장 큰 바다는 태평양이에요", answer: true },
+  { q: "달은 지구보다 훨씬 커요", answer: false },
+  { q: "비는 구름에서 내려와요", answer: true },
+  { q: "태양은 별이에요", answer: true },
+  { q: "화성은 파란색 행성이에요", answer: false },
+  { q: "물은 얼면 부피가 커져요", answer: true },
+
+  // 🐾 동물
+  { q: "고래는 물고기예요", answer: false },
+  { q: "펭귄은 날 수 있어요", answer: false },
+  { q: "곰은 겨울에 잠을 자요", answer: true },
   { q: "박쥐는 눈으로 길을 찾아요", answer: false },
+  { q: "사과는 과일이에요", answer: true },
+  { q: "개구리는 물속과 땅 위 모두에서 살 수 있어요", answer: true },
+  { q: "문어는 다리가 8개예요", answer: true },
+  { q: "타조는 날 수 없는 새예요", answer: true },
+  { q: "나비는 어릴 때 애벌레예요", answer: true },
+  { q: "상어는 포유류예요", answer: false },
+  { q: "돌고래는 물속에서 숨을 쉬어요", answer: false },
+  { q: "거미는 다리가 6개예요", answer: false },
+  { q: "치타는 육지에서 가장 빠른 동물이에요", answer: true },
+  { q: "달팽이는 집을 등에 지고 다녀요", answer: true },
+  { q: "뱀은 다리가 있어요", answer: false },
+  { q: "독수리는 눈이 아주 좋아요", answer: true },
+  { q: "금붕어는 포유류예요", answer: false },
+  { q: "코끼리는 코로 물을 마셔요", answer: true },
+  { q: "기린은 세상에서 가장 키가 큰 동물이에요", answer: true },
+
+  // 🍎 음식 · 건강
+  { q: "당근은 눈 건강에 좋아요", answer: true },
+  { q: "우유에는 칼슘이 많이 들어있어요", answer: true },
+  { q: "밥은 쌀로 만들어요", answer: true },
+  { q: "두부는 콩으로 만들어요", answer: true },
+  { q: "피자는 한국 전통 음식이에요", answer: false },
+  { q: "초콜릿은 채소로 만들어요", answer: false },
+  { q: "물을 많이 마시면 건강에 좋아요", answer: true },
+  { q: "아침밥을 먹으면 집중이 잘 돼요", answer: true },
+
+  // 🌏 세계 · 상식
+  { q: "우리나라 수도는 서울이에요", answer: true },
+  { q: "지구는 둥글어요", answer: true },
+  { q: "한글을 만든 사람은 세종대왕이에요", answer: true },
+  { q: "올림픽은 2년마다 열려요", answer: false },
+  { q: "1년은 365일이에요", answer: true },
+  { q: "1주일은 7일이에요", answer: true },
+  { q: "지구에서 사람이 달에 간 적이 있어요", answer: true },
+  { q: "피아노는 현악기예요", answer: false },
+  { q: "빨간색과 파란색을 섞으면 보라색이 돼요", answer: true },
+  { q: "바나나는 나무에서 자라요", answer: true },
+
+  // 🧩 수학 · 논리
+  { q: "삼각형의 변은 3개예요", answer: true },
+  { q: "10보다 9가 더 커요", answer: false },
+  { q: "5 + 5 = 11이에요", answer: false },
+  { q: "정사각형의 네 변의 길이는 모두 같아요", answer: true },
+  { q: "짝수는 2로 나누어 떨어져요", answer: true },
 ];
 
 const TOTAL = 5;
