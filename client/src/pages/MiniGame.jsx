@@ -106,21 +106,20 @@ export default function MiniGame() {
     }
   };
 
-  const handleGameComplete = async (correctCount) => {
-    setSelectedGame(null); // 먼저 허브로 돌아오기
-    try {
-      if (!profile) return;
-      const result = await saveGameBonus({
-        profileId: profile.id,
-        game: selectedGame,
-        correctCount,
-      });
-      // POST 응답으로 직접 상태 업데이트 (GET 재호출 없이)
-      setTodayBonus(result.todayTotal ?? 0);
-      setAlreadyPlayed(true);
-      setBonusMessage({ earned: result.bonusMinutes ?? 0, total: result.todayTotal ?? 0 });
-    } catch (err) {
-      console.error("보너스 저장 실패:", err);
+  const handleGameComplete = (correctCount) => {
+    // 보너스 즉시 계산 (API 대기 없이 UI 먼저 업데이트)
+    const earnedNow = alreadyPlayed ? 0 : (correctCount >= 5 ? 7 : correctCount >= 3 ? 3 : 0);
+    const newTotal = todayBonus + earnedNow;
+
+    setSelectedGame(null);
+    setTodayBonus(newTotal);
+    if (earnedNow > 0) setAlreadyPlayed(true);
+    setBonusMessage({ earned: earnedNow, total: newTotal });
+
+    // 백엔드 저장은 백그라운드 처리
+    if (profile) {
+      saveGameBonus({ profileId: profile.id, game: selectedGame, correctCount })
+        .catch((err) => console.error("보너스 저장 실패:", err));
     }
   };
 
