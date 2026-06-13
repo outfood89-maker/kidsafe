@@ -32,8 +32,9 @@ router.get('/', (req, res) => {
     const all = readBonus()
     const todayRecords = all.filter((r) => r.profileId === profileId && r.date === today)
     const bonusMinutes = todayRecords.reduce((sum, r) => sum + r.bonusMinutes, 0)
+    const alreadyPlayed = todayRecords.length > 0
 
-    res.json({ bonusMinutes, records: todayRecords })
+    res.json({ bonusMinutes, alreadyPlayed, records: todayRecords })
   } catch (err) {
     res.status(500).json({ error: '보너스 조회 실패', detail: err.message })
   }
@@ -51,20 +52,19 @@ router.post('/', (req, res) => {
     if (correctCount >= 5) bonusMinutes = 7
     else if (correctCount >= 3) bonusMinutes = 3
 
-    // 오늘 누적 보너스 확인 (상한선 체크)
     const today = new Date().toISOString().slice(0, 10)
     const all = readBonus()
-    const todayTotal = all
-      .filter((r) => r.profileId === profileId && r.date === today)
-      .reduce((sum, r) => sum + r.bonusMinutes, 0)
+    const todayRecords = all.filter((r) => r.profileId === profileId && r.date === today)
+    const todayTotal = todayRecords.reduce((sum, r) => sum + r.bonusMinutes, 0)
 
-    // 프로필 maxBonusMinutes 조회 (기본 20분)
+    // 오늘 이미 한 게임이 있으면 보너스 미지급 (첫 게임만 보너스)
+    const alreadyPlayed = todayRecords.length > 0
+    const actualBonus = alreadyPlayed ? 0 : bonusMinutes
+
+    // maxBonus는 UI 표시용으로만 유지
     const profiles = readProfiles()
     const profile = profiles.find((p) => p.id === profileId)
     const maxBonus = profile?.maxBonusMinutes ?? 20
-
-    // 상한 초과분 잘라내기
-    const actualBonus = Math.max(0, Math.min(bonusMinutes, maxBonus - todayTotal))
 
     const record = {
       id: `bonus_${Date.now()}`,

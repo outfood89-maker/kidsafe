@@ -46,6 +46,7 @@ export default function MiniGame() {
   const [profile, setProfile] = useState(null);
   const [todayBonus, setTodayBonus] = useState(0);
   const [maxBonus, setMaxBonus] = useState(20);
+  const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [bonusMessage, setBonusMessage] = useState(null); // 완료 후 결과 메시지
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function MiniGame() {
       const data = await getGameBonus(profileId);
       setTodayBonus(data.bonusMinutes);
       setMaxBonus(data.maxBonus ?? 20);
+      setAlreadyPlayed(data.alreadyPlayed ?? false);
     } catch (err) {
       console.error("보너스 조회 실패:", err);
     }
@@ -77,6 +79,7 @@ export default function MiniGame() {
         correctCount,
       });
       setTodayBonus(result.todayTotal);
+      setAlreadyPlayed(true);
       setBonusMessage({
         earned: result.bonusMinutes,
         total: result.todayTotal,
@@ -142,14 +145,30 @@ export default function MiniGame() {
           className="flex items-center gap-4 rounded-3xl p-5 mb-5"
           style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}
         >
-          <KiddyImg pose="default" size={80} bg="transparent" />
+          <KiddyImg pose={alreadyPlayed ? "success" : "default"} size={80} bg="transparent" />
           <div className="flex-1">
-            <p className="text-base font-bold" style={{ color: "#2C3528" }}>
-              퀴즈 풀고 시청 시간 더 받자! 🎯
-            </p>
-            <p className="text-sm mt-0.5" style={{ color: "#6B7A65" }}>
-              오늘 보너스: <span style={{ color: "#2E9E50", fontWeight: 700 }}>{todayBonus}분</span> / {maxBonus}분
-            </p>
+            {alreadyPlayed ? (
+              <>
+                <p className="text-base font-bold" style={{ color: "#2C3528" }}>
+                  오늘 보너스 완료! ✅
+                </p>
+                <p className="text-sm mt-0.5" style={{ color: "#6B7A65" }}>
+                  획득한 보너스: <span style={{ color: "#2E9E50", fontWeight: 700 }}>{todayBonus}분</span>
+                </p>
+                <p className="text-xs mt-1" style={{ color: "#9BA89A" }}>
+                  게임은 계속 즐길 수 있어요 😊
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-bold" style={{ color: "#2C3528" }}>
+                  퀴즈 풀고 시청 시간 더 받자! 🎯
+                </p>
+                <p className="text-sm mt-0.5" style={{ color: "#6B7A65" }}>
+                  오늘 첫 게임 보너스 대기 중!
+                </p>
+              </>
+            )}
             {/* 보너스 프로그레스 바 */}
             <div className="mt-2 w-full rounded-full" style={{ backgroundColor: "#E4EAE0", height: "8px" }}>
               <div
@@ -180,11 +199,13 @@ export default function MiniGame() {
           >
             {bonusMessage.earned > 0 ? (
               <p className="font-bold" style={{ color: "#2E9E50" }}>
-                🎉 +{bonusMessage.earned}분 획득! 오늘 총 {bonusMessage.total}분 보너스
+                🎉 +{bonusMessage.earned}분 획득! 오늘 보너스 {bonusMessage.total}분
               </p>
             ) : (
               <p className="font-bold" style={{ color: "#C84B47" }}>
-                아쉽지만 이번엔 보너스가 없어요. 다시 도전해봐요!
+                {alreadyPlayed && bonusMessage.earned === 0
+                  ? "오늘 보너스는 이미 받았어요! 게임은 계속 즐길 수 있어요 😊"
+                  : "3문제 이상 맞혀야 시간을 얻을 수 있어요!"}
               </p>
             )}
             <button
