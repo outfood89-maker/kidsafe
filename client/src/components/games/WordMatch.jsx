@@ -136,7 +136,7 @@ const WORD_DATA = [
 ];
 
 const BADGE_COLORS = ["#FF5C5C", "#4A9EFF", "#58CC02", "#FF9600"];
-const TOTAL = 5;
+const TOTAL = 10;
 
 // 잘못된 보기 3개 뽑기 (같은 카테고리 우선)
 const getOptions = (correct, category, data) => {
@@ -191,7 +191,7 @@ export default function WordMatch({ onComplete }) {
 
   // ── 결과 화면 ──
   if (showResult) {
-    const bonusMinutes = correctCount >= 5 ? 7 : correctCount >= 3 ? 3 : 0;
+    const bonusMinutes = correctCount >= 10 ? 7 : correctCount >= 6 ? 3 : 0;
     return (
       <div
         className="flex flex-col items-center justify-center min-h-full px-6 py-10 text-center"

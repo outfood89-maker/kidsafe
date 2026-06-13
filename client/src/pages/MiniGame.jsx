@@ -107,9 +107,15 @@ export default function MiniGame() {
     }
   };
 
+  // 게임별 보너스 기준
+  const BONUS_THRESHOLDS = {
+    "ox-quiz":    { full: 5,  partial: 3 },
+    "word-match": { full: 10, partial: 6 },
+  };
+
   const handleGameComplete = (correctCount) => {
-    // 보너스 즉시 계산 (API 대기 없이 UI 먼저 업데이트)
-    const earnedNow = alreadyPlayed ? 0 : (correctCount >= 5 ? 7 : correctCount >= 3 ? 3 : 0);
+    const { full, partial } = BONUS_THRESHOLDS[selectedGame] || { full: 5, partial: 3 };
+    const earnedNow = alreadyPlayed ? 0 : (correctCount >= full ? 7 : correctCount >= partial ? 3 : 0);
     const newTotal = todayBonus + earnedNow;
 
     setSelectedGame(null);
@@ -335,24 +341,42 @@ export default function MiniGame() {
         ))}
       </div>
 
-      {/* 하단 보상 안내 — 듀오링고 스타일 박스 */}
-      <div className="mx-5 mt-5 rounded-2xl overflow-hidden"
-        style={{ border: "2px solid #E5E5E5" }}>
+      {/* 하단 보상 안내 */}
+      <div className="mx-5 mt-5 rounded-2xl overflow-hidden" style={{ border: "2px solid #E5E5E5" }}>
         <div className="px-4 py-3" style={{ backgroundColor: "#F7F7F7" }}>
           <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#AFAFAF" }}>
             🏆 보상 기준
           </p>
         </div>
-        <div className="flex divide-x" style={{ borderTop: "2px solid #E5E5E5" }}>
-          {[
-            { label: "3~4개 정답", value: "+3분", color: "#58CC02" },
-            { label: "5개 전부 정답", value: "+7분", color: "#FFD700" },
-          ].map((item) => (
-            <div key={item.label} className="flex-1 px-4 py-3 text-center">
-              <p className="text-lg font-extrabold" style={{ color: item.color }}>{item.value}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#AFAFAF" }}>{item.label}</p>
+        <div style={{ borderTop: "2px solid #E5E5E5" }}>
+          {/* OX 퀴즈 */}
+          <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #F0F0F0" }}>
+            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#AFAFAF" }}>🧠 OX 퀴즈 (5문제)</p>
+            <div className="flex gap-3">
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#F0FBE8" }}>
+                <p className="text-sm font-extrabold" style={{ color: "#58CC02" }}>+3분</p>
+                <p className="text-xs" style={{ color: "#AFAFAF" }}>3~4개 정답</p>
+              </div>
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFFBE8" }}>
+                <p className="text-sm font-extrabold" style={{ color: "#FFD700" }}>+7분</p>
+                <p className="text-xs" style={{ color: "#AFAFAF" }}>5개 전부</p>
+              </div>
             </div>
-          ))}
+          </div>
+          {/* 단어 맞추기 */}
+          <div className="px-4 py-2.5">
+            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#AFAFAF" }}>🔤 단어 맞추기 (10문제)</p>
+            <div className="flex gap-3">
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFF8ED" }}>
+                <p className="text-sm font-extrabold" style={{ color: "#FF9600" }}>+3분</p>
+                <p className="text-xs" style={{ color: "#AFAFAF" }}>6~9개 정답</p>
+              </div>
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFF8ED" }}>
+                <p className="text-sm font-extrabold" style={{ color: "#FF9600" }}>+7분</p>
+                <p className="text-xs" style={{ color: "#AFAFAF" }}>10개 전부</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

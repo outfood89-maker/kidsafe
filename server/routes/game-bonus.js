@@ -47,10 +47,15 @@ router.post('/', (req, res) => {
     if (!profileId || !game || correctCount == null)
       return res.status(400).json({ error: 'profileId, game, correctCount 필요' })
 
-    // 보너스 분 계산 (3문제: +3분, 5문제: +7분)
+    // 게임별 보너스 기준
+    const THRESHOLDS = {
+      'ox-quiz':    { full: 5,  partial: 3 },
+      'word-match': { full: 10, partial: 6 },
+    }
+    const { full, partial } = THRESHOLDS[game] || { full: 5, partial: 3 }
     let bonusMinutes = 0
-    if (correctCount >= 5) bonusMinutes = 7
-    else if (correctCount >= 3) bonusMinutes = 3
+    if (correctCount >= full) bonusMinutes = 7
+    else if (correctCount >= partial) bonusMinutes = 3
 
     const today = new Date().toISOString().slice(0, 10)
     const all = readBonus()
