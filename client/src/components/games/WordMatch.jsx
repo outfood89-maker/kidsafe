@@ -84,7 +84,7 @@ const WORD_DATA = [
   { emoji: "🍩", answer: "도넛",       category: "음식" },
   { emoji: "🍪", answer: "쿠키",       category: "음식" },
   { emoji: "🥪", answer: "샌드위치",   category: "음식" },
-  { emoji: "🍦", answer: "소프트아이스크림", category: "음식" },
+  { emoji: "🍧", answer: "빙수",       category: "음식" },
   { emoji: "🍱", answer: "도시락",     category: "음식" },
   { emoji: "🥐", answer: "크루아상",   category: "음식" },
   { emoji: "🍰", answer: "조각케이크", category: "음식" },
@@ -106,7 +106,7 @@ const WORD_DATA = [
   { emoji: "🛸", answer: "UFO",      category: "탈것" },
   { emoji: "🏍️", answer: "오토바이", category: "탈것" },
   { emoji: "🚜", answer: "트랙터",   category: "탈것" },
-  { emoji: "🛶", answer: "작은 배",  category: "탈것" },
+  { emoji: "🛥️", answer: "모터보트", category: "탈것" },
 
   // 👮 직업
   { emoji: "👨‍⚕️", answer: "의사",     category: "직업" },
@@ -115,7 +115,7 @@ const WORD_DATA = [
   { emoji: "👮",   answer: "경찰관",   category: "직업" },
   { emoji: "👨‍🏫", answer: "선생님",   category: "직업" },
   { emoji: "👨‍✈️", answer: "조종사",   category: "직업" },
-  { emoji: "👷",   answer: "건축가",   category: "직업" },
+  { emoji: "👷",   answer: "건설노동자", category: "직업" },
   { emoji: "🎨",   answer: "화가",     category: "직업" },
   { emoji: "👨‍🔬", answer: "과학자",   category: "직업" },
   { emoji: "🎤",   answer: "가수",     category: "직업" },
