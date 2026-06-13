@@ -10,7 +10,7 @@ import {
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
   getFavorites, addFavorite, removeFavorite,
-  checkBlockedKeyword, getProfiles,
+  checkBlockedKeyword, getProfiles, getGameBonus,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
@@ -65,6 +65,7 @@ export default function KidHome() {
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [timeLimitModalDismissed, setTimeLimitModalDismissed] = useState(false);
   const [todayMinutes, setTodayMinutes] = useState(0);
+  const [bonusMinutes, setBonusMinutes] = useState(0);
   const [newBadges, setNewBadges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -108,6 +109,7 @@ export default function KidHome() {
       fetchBadges(cached.id);
       fetchSearchHistory(cached.id);
       fetchFavorites(cached.id);
+      getGameBonus(cached.id).then((data) => setBonusMinutes(data.bonusMinutes)).catch(() => {});
       // 이 프로필의 검색 결과만 복원
       const savedSearch = sessionStorage.getItem(`kidsafe_search_${cached.id}`);
       if (savedSearch) {
@@ -627,7 +629,7 @@ export default function KidHome() {
           <VideoPlayer
             video={playingVideo}
             timeLimit={selectedProfile?.timeLimit || null}
-            usedMinutes={todayMinutes}
+            usedMinutes={Math.max(0, todayMinutes - bonusMinutes)}
             onClose={(seconds) => {
               if (seconds > 0) setTodayMinutes((prev) => prev + Math.floor(seconds / 60));
               setPlayingVideo(null);
@@ -747,8 +749,10 @@ export default function KidHome() {
             {/* 다크 히어로 배너 */}
             {(() => {
               const tl = selectedProfile?.timeLimit;
-              const remaining = tl ? Math.max(0, tl - todayMinutes) : null;
-              const usedPct = tl ? Math.min(100, (todayMinutes / tl) * 100) : 0;
+              // 실제 사용 = 시청 시간 - 게임 보너스
+              const effectiveUsed = Math.max(0, todayMinutes - bonusMinutes);
+              const remaining = tl ? Math.max(0, tl - effectiveUsed) : null;
+              const usedPct = tl ? Math.min(100, (effectiveUsed / tl) * 100) : 0;
               const glowColor = timeLimitReached ? "#C84B47" : remaining !== null && remaining / tl <= 0.2 ? "#EF9F27" : "#6DAB60";
               return (
                 <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8"

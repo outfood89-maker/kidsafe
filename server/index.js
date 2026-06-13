@@ -1,3 +1,4 @@
+import gameBonusRouter from './routes/game-bonus.js'
 import chatRouter from './routes/chat.js'
 import blockedKeywordsRouter from './routes/blocked-keywords.js'
 import alertsRouter from './routes/alerts.js'
@@ -36,6 +37,7 @@ app.use('/favorites', favoritesRouter)
 app.use('/chat', chatRouter)
 app.use('/blocked-keywords', blockedKeywordsRouter)
 app.use('/alerts', alertsRouter)
+app.use('/game-bonus', gameBonusRouter)
 
 app.get('/test-env', (req, res) => {
   res.json({

@@ -200,6 +200,18 @@ export const saveAlertSettings = async (settings) => {
   return response.data
 }
 
+// 게임 보너스 조회
+export const getGameBonus = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/game-bonus`, { params: { profileId } })
+  return response.data
+}
+
+// 게임 보너스 저장
+export const saveGameBonus = async ({ profileId, game, correctCount }) => {
+  const response = await axios.post(`${BASE_URL}/game-bonus`, { profileId, game, correctCount })
+  return response.data
+}
+
 
 
 

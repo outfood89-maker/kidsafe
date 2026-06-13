@@ -118,5 +118,21 @@
     "emoji": "🌟",
     "description": "첫 번째 영상을 시청했어요!",
     "earnedAt": "2026-06-11T07:56:03.555Z"
+  },
+  {
+    "profileId": "1781080145523",
+    "badgeId": "sprout_explorer",
+    "name": "새싹 탐험가",
+    "emoji": "🌱",
+    "description": "영상 5개를 시청했어요!",
+    "earnedAt": "2026-06-12T17:18:38.506Z"
+  },
+  {
+    "profileId": "1781080145523",
+    "badgeId": "channel_regular",
+    "name": "단골손님",
+    "emoji": "📺",
+    "description": "같은 채널 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-12T17:18:38.507Z"
   }
 ]

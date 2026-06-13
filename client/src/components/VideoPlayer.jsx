@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import YouTube from "react-youtube";
 import { FaTimes } from "react-icons/fa";
 import { saveHistory } from "../utils/api";
@@ -13,6 +14,7 @@ const formatTime = (seconds) => {
 };
 
 export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _onClose, onWatchComplete }) {
+  const navigate = useNavigate();
   const [watchSeconds, setWatchSeconds] = useState(0);
   const watchSecondsRef = useRef(0);
   const videoEndedRef = useRef(false);
@@ -140,10 +142,17 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
           <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>
             부모님이 설정한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
           </p>
-          <button onClick={handleKiddyChat} className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white" style={{ backgroundColor: "#6DAB60" }}>
+          <button
+            onClick={() => { onClose(); navigate("/games"); }}
+            className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white"
+            style={{ backgroundColor: "#6DAB60" }}
+          >
+            🎮 퀴즈 풀고 시간 더 받기!
+          </button>
+          <button onClick={handleKiddyChat} className="mt-3 w-full rounded-2xl py-3 text-sm font-bold" style={{ backgroundColor: "#EEF7EC", color: "#2E9E50" }}>
             💬 키디에게 소감 말해보자~!
           </button>
-          <button onClick={onClose} className="mt-3 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}>
+          <button onClick={onClose} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}>
             확인
           </button>
         </div>

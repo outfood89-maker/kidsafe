@@ -6,6 +6,7 @@ import KidHome from './pages/KidHome'
 import ProfileSelect from './pages/ProfileSelect'
 import Favorites from './pages/Favorites'
 import BadgeCollection from './pages/BadgeCollection'
+import MiniGame from './pages/MiniGame'
 
 // 앱 전역 세로 고정 헬퍼 (VideoPlayer에서도 사용)
 export const lockPortrait = () => {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/kids" element={<KidHome />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/badges" element={<BadgeCollection />} />
+        <Route path="/games" element={<MiniGame />} />
       </Routes>
     </BrowserRouter>
   )

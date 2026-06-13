@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { FaHome, FaHeart, FaMedal, FaCommentDots } from "react-icons/fa";
+import { FaHome, FaHeart, FaMedal, FaCommentDots, FaGamepad } from "react-icons/fa";
 
 export default function BottomTabBar({ activeTab = "home", chatOpen = false, onChatToggle }) {
   const navigate = useNavigate();
@@ -7,10 +7,11 @@ export default function BottomTabBar({ activeTab = "home", chatOpen = false, onC
   const closeChat = () => { if (chatOpen && onChatToggle) onChatToggle(); };
 
   const tabs = [
-    { id: "home",      label: "홈",   icon: <FaHome />,        action: () => { closeChat(); navigate("/kids"); } },
-    { id: "favorites", label: "찜",   icon: <FaHeart />,       action: () => { closeChat(); navigate("/favorites"); } },
-    { id: "badges",    label: "배지", icon: <FaMedal />,       action: () => { closeChat(); navigate("/badges"); } },
-    { id: "chat",      label: "키디", icon: <FaCommentDots />, action: onChatToggle ?? (() => navigate("/kids")) },
+    { id: "home",      label: "홈",     icon: <FaHome />,        action: () => { closeChat(); navigate("/kids"); } },
+    { id: "favorites", label: "찜",     icon: <FaHeart />,       action: () => { closeChat(); navigate("/favorites"); } },
+    { id: "games",     label: "게임",   icon: <FaGamepad />,     action: () => { closeChat(); navigate("/games"); } },
+    { id: "badges",    label: "배지",   icon: <FaMedal />,       action: () => { closeChat(); navigate("/badges"); } },
+    { id: "chat",      label: "키디",   icon: <FaCommentDots />, action: onChatToggle ?? (() => navigate("/kids")) },
   ];
 
   return (
