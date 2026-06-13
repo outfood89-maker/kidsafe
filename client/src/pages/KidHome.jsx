@@ -627,7 +627,10 @@ export default function KidHome() {
             video={playingVideo}
             timeLimit={selectedProfile?.timeLimit || null}
             usedMinutes={todayMinutes}
-            onClose={() => setPlayingVideo(null)}
+            onClose={(seconds) => {
+              if (seconds > 0) setTodayMinutes((prev) => prev + Math.floor(seconds / 60));
+              setPlayingVideo(null);
+            }}
             onWatchComplete={async (seconds) => {
               if (selectedProfile?.timeLimit) await checkTimeLimit(selectedProfile);
               if (selectedProfile?.id) {

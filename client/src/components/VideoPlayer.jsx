@@ -12,8 +12,10 @@ const formatTime = (seconds) => {
   return `${m}:${s}`;
 };
 
-export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, onWatchComplete }) {
+export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _onClose, onWatchComplete }) {
   const [watchSeconds, setWatchSeconds] = useState(0);
+  const watchSecondsRef = useRef(0);
+  const onClose = () => _onClose(watchSecondsRef.current);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [embedError, setEmbedError] = useState(false);
@@ -66,7 +68,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, on
   const handlePlay = () => {
     setIsPlaying(true);
     clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setWatchSeconds((p) => p + 1), 1000);
+    timerRef.current = setInterval(() => setWatchSeconds((p) => { watchSecondsRef.current = p + 1; return p + 1; }), 1000);
   };
 
   const handlePause = () => {
