@@ -156,19 +156,19 @@ export default function MiniGame() {
 
   if (selectedGame === "ox-quiz") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#fff" }}>
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(160deg, #1a2e1a 0%, #2C3528 100%)" }}>
         <div
           className="flex items-center gap-3 px-4 shrink-0"
-          style={{ backgroundColor: "#fff", borderBottom: "3px solid #E5E5E5", height: "56px" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.3)", height: "56px" }}
         >
           <button
             onClick={() => setSelectedGame(null)}
             className="p-2 rounded-full transition-colors"
-            style={{ color: "#AFAFAF" }}
+            style={{ color: "rgba(255,255,255,0.6)" }}
           >
             <FaArrowLeft style={{ fontSize: "18px" }} />
           </button>
-          {/* 진행바 자리 — OXQuiz 내부에서 관리 */}
+          <span className="font-extrabold text-base" style={{ color: "rgba(255,255,255,0.7)" }}>🧠 OX 퀴즈</span>
         </div>
         <div className="flex-1 overflow-y-auto">
           <OXQuiz onComplete={handleGameComplete} />

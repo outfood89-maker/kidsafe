@@ -705,8 +705,7 @@ export default function OXQuiz({ onComplete }) {
 
       {/* 상단 진행바 */}
       <div style={{ backgroundColor: "rgba(0,0,0,0.3)", padding: "14px 20px 10px" }}>
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>🧠 OX 퀴즈</span>
+        <div className="flex justify-end items-center mb-2">
           <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>{current + 1} / {TOTAL}</span>
         </div>
         <div className="w-full rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.15)", height: "10px" }}>
