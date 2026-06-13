@@ -87,7 +87,7 @@ export default function MiniGame() {
   const [bonusMessage, setBonusMessage] = useState(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("kidsafe_profile");
+    const stored = localStorage.getItem("selectedProfile");
     if (stored) {
       const p = JSON.parse(stored);
       setProfile(p);
