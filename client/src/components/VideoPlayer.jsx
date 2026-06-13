@@ -15,7 +15,8 @@ const formatTime = (seconds) => {
 export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _onClose, onWatchComplete }) {
   const [watchSeconds, setWatchSeconds] = useState(0);
   const watchSecondsRef = useRef(0);
-  const onClose = () => _onClose(watchSecondsRef.current);
+  const videoEndedRef = useRef(false);
+  const onClose = () => _onClose(videoEndedRef.current ? 0 : watchSecondsRef.current);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [embedError, setEmbedError] = useState(false);
@@ -89,6 +90,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       });
     } catch (err) { console.error("시청 기록 저장 실패:", err); }
     if (onWatchComplete) onWatchComplete(watchSeconds);
+    videoEndedRef.current = true;
     setVideoEnded(true);
   };
 
