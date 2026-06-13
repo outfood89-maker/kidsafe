@@ -213,6 +213,34 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose, on
           <FaTimes className="text-white text-sm" />
           {isLandscape && <span>닫기</span>}
         </button>
+
+        {/* 타이머 오버레이 — landscape(웹) 전용 */}
+        {isLandscape && (
+          <div
+            className="absolute bottom-14 left-4 flex items-center gap-3 rounded-2xl px-4 py-2"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", zIndex: 10 }}
+          >
+            <span
+              className="text-xl font-bold"
+              style={{ color: isPlaying ? "#6DAB60" : "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums" }}
+            >
+              ⏱ {formatTime(watchSeconds)}
+            </span>
+            {timeLimit && (
+              <span className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                남은 {Math.max(0, timeLimit - usedMinutes - Math.floor(watchSeconds / 60))}분
+              </span>
+            )}
+            {video.totalScore != null && (
+              <div
+                className="rounded-xl px-3 py-1 text-sm font-bold text-white"
+                style={{ backgroundColor: getSafetyColor(video.totalScore) }}
+              >
+                {video.totalScore}점
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── 정보 패널 — portrait 전용 ── */}
