@@ -65,12 +65,17 @@
 - 로컬 PNG 아바타 시스템 (face-zoom CSS, AVATAR_OFFSET_X 보정)
 - KidHome B안 레이아웃: 넷플릭스식 다크 배너 + 검색창 + 가로 캐러셀
 - 웹 전용 우측 플로팅 독, 모바일 전용 BottomTabBar
+- VideoPlayer: react-youtube 기반, 세로/가로 전환, 자동재생, 시청 완료 화면
+- 시청 패턴 분석 차트 (안전도 분포, 채널 TOP5, 시간대별, 7일 추이) — 부모 대시보드
+- 모바일 UX: ChatWidget 키보드 대응, VideoPlayer 세로/가로 레이아웃
 
 ## 남은 작업 우선순위
-1. UI 전체 개선 (KidHome 배너 디테일 다듬기 등)
-2. 시청 패턴 분석 (시청 기록 통계 시각화)
-3. 주간/시간 리포트 (부모용)
-4. Vercel 배포 + README 작성
+1. 미니게임 시스템 — `KidSafe_미니게임_작업지침서.md` 참고
+2. KidHome 테스트 버튼 제거 (노란 배너) — 모든 테스트 완료 후
+3. Vercel + Railway 배포
+   - `api.js` BASE_URL → 환경변수(`import.meta.env.VITE_API_URL`)로 교체
+   - Railway 백엔드 배포 → Vercel 프론트 배포
+4. README 작성
 
 ## 중요 설정
 
