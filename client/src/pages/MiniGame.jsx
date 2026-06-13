@@ -121,6 +121,8 @@ export default function MiniGame() {
       console.error("보너스 저장 실패:", err);
     } finally {
       setSelectedGame(null);
+      // 성공/실패 무관하게 최신 보너스 값 다시 불러오기
+      if (profile) loadBonus(profile.id);
     }
   };
 
