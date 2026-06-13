@@ -297,7 +297,8 @@ export default function KidHome() {
       const todayHistory = history.filter((v) =>
         new Date(v.watchedAt).toDateString() === new Date().toDateString() && v.profileId === profile.id
       );
-      const minutes = todayHistory.length * 10;
+      const totalSeconds = todayHistory.reduce((sum, v) => sum + (v.watchSeconds || 0), 0);
+      const minutes = Math.floor(totalSeconds / 60);
       setTodayMinutes(minutes);
       if (minutes >= profile.timeLimit) setTimeLimitReached(true);
     } catch (err) { console.error("시청 시간 체크 실패:", err); }
