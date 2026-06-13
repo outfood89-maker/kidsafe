@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaFire, FaStar } from "react-icons/fa";
 import OXQuiz from "../components/games/OXQuiz";
+import WordMatch from "../components/games/WordMatch";
 import KiddyImg from "../components/KiddyImg";
 import { getGameBonus, saveGameBonus } from "../utils/api";
 
@@ -58,11 +59,11 @@ const GAMES = [
     name: "단어 맞추기",
     emoji: "🔤",
     description: "그림 보고 단어 맞추기!",
-    reward: "곧 출시",
+    reward: "최대 +7분",
     difficulty: "보통",
     color: "#FF9600",
     bg: "#FFF8ED",
-    available: false,
+    available: true,
   },
   {
     id: "memory-card",
@@ -123,7 +124,30 @@ export default function MiniGame() {
     }
   };
 
-  // 게임 플레이 화면 — 헤더만 듀오링고 스타일로
+  // 게임 플레이 화면
+  if (selectedGame === "word-match") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#FFF8E7" }}>
+        <div
+          className="flex items-center gap-3 px-4 shrink-0"
+          style={{ backgroundColor: "#FFF8E7", borderBottom: "3px solid #FFD97D", height: "56px" }}
+        >
+          <button
+            onClick={() => setSelectedGame(null)}
+            className="p-2 rounded-full transition-colors"
+            style={{ color: "#AFAFAF" }}
+          >
+            <FaArrowLeft style={{ fontSize: "18px" }} />
+          </button>
+          <span className="font-extrabold text-base" style={{ color: "#FF9600" }}>🔤 단어 맞추기</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <WordMatch onComplete={handleGameComplete} />
+        </div>
+      </div>
+    );
+  }
+
   if (selectedGame === "ox-quiz") {
     return (
       <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#fff" }}>
