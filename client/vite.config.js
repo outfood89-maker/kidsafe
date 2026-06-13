@@ -10,5 +10,7 @@ export default defineConfig({
   server: {
     host: true,
   },
-
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
 })
