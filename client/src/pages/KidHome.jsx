@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
-  FaCommentDots, FaShieldAlt, FaSignOutAlt,
+  FaCommentDots, FaShieldAlt, FaSignOutAlt, FaGamepad,
 } from "react-icons/fa";
 import {
   searchVideos, analyzeVideo, saveHistory, getHistory,
@@ -1153,6 +1153,7 @@ export default function KidHome() {
         {[
           { id: "home",      label: "홈",   icon: <FaShieldAlt />, action: () => navigate("/kids") },
           { id: "favorites", label: "찜",   icon: <FaHeart />,     action: () => navigate("/favorites") },
+          { id: "games",     label: "게임", icon: <FaGamepad />,   action: () => navigate("/games") },
           { id: "badges",    label: "배지", icon: <FaMedal />,     action: () => navigate("/badges") },
           { id: "chat",      label: "키디", icon: <FaCommentDots />, action: () => chatOpen ? closeChat() : openChat() },
         ].map((tab) => {
