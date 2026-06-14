@@ -36,7 +36,7 @@ router.get('/', (req, res) => {
 
 // 시청 기록 저장 (POST /history)
 router.post('/', (req, res) => {
-  const { videoId, title, channelTitle, thumbnail, totalScore, summary, profileId, violence, language, sexual, educational } = req.body
+  const { videoId, title, channelTitle, thumbnail, totalScore, summary, profileId, violence, language, sexual, educational, watchSeconds } = req.body
 
   if (!videoId || !title) {
     return res.status(400).json({ error: '영상 정보가 부족해요' })
@@ -58,6 +58,7 @@ router.post('/', (req, res) => {
       sexual,
       educational,
       profileId: profileId || null,
+      watchSeconds: watchSeconds || 0,
       watchedAt: new Date().toISOString(),
     }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import KiddyImg from "../KiddyImg";
+import confettiLib from "canvas-confetti";
 
 // 애니메이션 주입
 if (typeof document !== "undefined" && !document.getElementById("wordmatch-style")) {
@@ -42,6 +43,11 @@ if (typeof document !== "undefined" && !document.getElementById("wordmatch-style
     @keyframes wmStreakFade {
       0%   { opacity: 1; transform: scale(1) translateY(0); }
       100% { opacity: 0; transform: scale(0.85) translateY(-24px); }
+    }
+    @keyframes wmCompletePop {
+      0%   { transform: scale(0.3) rotate(-12deg); opacity: 0; }
+      65%  { transform: scale(1.1) rotate(3deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); }
     }
     .wm-slide       { animation: wmSlideUp 0.3s ease both; }
     .wm-pop         { animation: wmPop 0.35s ease both; }
@@ -228,7 +234,7 @@ const getOptions = (correct, category, data) => {
 };
 
 export default function WordMatch({ onComplete }) {
-  const [questions] = useState(() => {
+  const makeQuestions = () => {
     const unique = [];
     const seen = new Set();
     const shuffled = [...WORD_DATA].sort(() => Math.random() - 0.5);
@@ -237,7 +243,8 @@ export default function WordMatch({ onComplete }) {
       if (unique.length === TOTAL) break;
     }
     return unique.map((q) => ({ ...q, options: getOptions(q.answer, q.category, WORD_DATA) }));
-  });
+  };
+  const [questions, setQuestions] = useState(makeQuestions);
 
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -248,6 +255,12 @@ export default function WordMatch({ onComplete }) {
   const [streak, setStreak] = useState(0);
   const [streakVisible, setStreakVisible] = useState(false);
   const [streakFading, setStreakFading] = useState(false);
+
+  const handleRestart = () => {
+    setQuestions(makeQuestions());
+    setCurrent(0); setCorrectCount(0); setSelected(null);
+    setShowResult(false); setStreak(0); setStreakVisible(false); setStreakFading(false);
+  };
 
   const question = questions[current];
   const answered = selected !== null;
@@ -300,72 +313,62 @@ export default function WordMatch({ onComplete }) {
 
   const kiddiePose = !answered ? "hello" : (selected === "TIMEOUT" || !isCorrect) ? "sad" : "success";
 
+  // 결과 화면 진입 시 confetti
+  useEffect(() => {
+    if (!showResult || correctCount < 3) return;
+    const end = Date.now() + 2500;
+    const burst = () => {
+      confettiLib({ particleCount: 5, angle: 60,  spread: 55, origin: { x: 0, y: 0.6 } });
+      confettiLib({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1, y: 0.6 } });
+      if (Date.now() < end) requestAnimationFrame(burst);
+    };
+    burst();
+  }, [showResult]);
+
   // ── 결과 화면 ──
   if (showResult) {
     const bonusMinutes = correctCount >= 10 ? 7 : correctCount >= 6 ? 3 : 0;
+    const isWin = bonusMinutes > 0;
     return (
-      <div
-        className="flex flex-col items-center justify-center min-h-full px-6 py-10 text-center"
-        style={{ background: "linear-gradient(180deg, #4FC3F7 0%, #81D4FA 30%, #C8F0A0 75%, #8BC34A 100%)", minHeight: "100%", position: "relative" }}
-      >
+      <div style={{ position: "fixed", inset: 0, background: "linear-gradient(180deg, #4FC3F7 0%, #81D4FA 30%, #C8F0A0 75%, #8BC34A 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, overflow: "hidden", zIndex: 20 }}>
         <Clouds />
-        {/* 별점 */}
-        <div className="flex gap-2 mb-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <span
-              key={i}
-              className={i < correctCount ? "wm-star" : ""}
-              style={{
-                fontSize: "36px",
-                filter: i < correctCount ? "none" : "grayscale(1) opacity(0.25)",
-                animationDelay: `${i * 0.08}s`,
-              }}
-            >⭐</span>
-          ))}
+        <div style={{ background: "white", borderRadius: 28, padding: "28px 28px 32px", textAlign: "center", maxWidth: 320, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)", position: "relative", zIndex: 10, animation: "wmCompletePop 0.6s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+            <KiddyImg pose={isWin ? "success" : "sad"} size={120} bg="transparent" />
+          </div>
+          <div style={{ fontSize: 36, margin: "4px 0 6px" }}>{isWin ? "🎉" : "😢"}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#2C3528", marginBottom: 4 }}>
+            {correctCount >= 10 ? "완벽해요!" : correctCount >= 6 ? "잘했어요!" : "아쉬워요~"}
+          </div>
+          <div style={{ fontSize: 14, color: "#AAA", marginBottom: 14 }}>
+            {TOTAL}문제 중 {correctCount}문제 정답
+          </div>
+          <div style={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "nowrap", marginBottom: 18 }}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <span key={i} style={{ fontSize: "17px", filter: i < correctCount ? "none" : "grayscale(1) opacity(0.3)" }}>⭐</span>
+            ))}
+          </div>
+          {bonusMinutes > 0 ? (
+            <div style={{ background: "linear-gradient(90deg, #FF9600, #FFD700)", borderRadius: 16, padding: "14px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "white", fontWeight: 700 }}>보너스 시간 획득!</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "white" }}>+{bonusMinutes}분 ⏰</div>
+            </div>
+          ) : (
+            <div style={{ background: "#FFF0F0", border: "2px solid #FFCCCC", borderRadius: 16, padding: "12px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "#FF5C5C", fontWeight: 700 }}>6문제 이상 맞혀야 보너스를 얻어요!</div>
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", width: "100%" }}>
+            <button onClick={handleRestart}
+              style={{ background: "linear-gradient(90deg, #a8edea, #b8d4ff)", border: "none", borderRadius: 14, padding: "12px 0", fontSize: 14, fontWeight: 800, color: "#5C3D9E", cursor: "pointer", width: "100%" }}>
+              다시 하기
+            </button>
+            <button onClick={() => onComplete(correctCount)}
+              style={{ background: "none", border: "none", fontSize: 13, fontWeight: 700, color: "#888", cursor: "pointer", textDecoration: "underline" }}>
+              게임 허브로 돌아가기
+            </button>
+          </div>
         </div>
-
-        <KiddyImg pose={correctCount >= 3 ? "success" : "sad"} size={120} bg="transparent" />
-
-        <p className="mt-4 text-3xl font-extrabold" style={{ color: "#333" }}>
-          {correctCount >= 5 ? "완벽해! 🎉" : correctCount >= 3 ? "잘했어! 👏" : "조금 더 연습해봐~ 💪"}
-        </p>
-        <p className="mt-2 text-lg" style={{ color: "#888" }}>
-          {TOTAL}문제 중{" "}
-          <span style={{ color: "#FF9600", fontWeight: 800, fontSize: "22px" }}>{correctCount}문제</span> 정답!
-        </p>
-
-        {bonusMinutes > 0 ? (
-          <div
-            className="mt-6 w-full rounded-3xl px-6 py-5"
-            style={{
-              background: "linear-gradient(135deg, #FF9600, #FFD700)",
-              boxShadow: "0 8px 24px rgba(255,150,0,0.35)",
-            }}
-          >
-            <p className="text-2xl font-black text-white">+{bonusMinutes}분 획득! ⏰</p>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.85)" }}>영상을 더 볼 수 있어요~</p>
-          </div>
-        ) : (
-          <div
-            className="mt-6 w-full rounded-3xl px-6 py-4"
-            style={{ background: "#FFF0F0", border: "2px solid #FFCCCC" }}
-          >
-            <p className="text-base font-bold" style={{ color: "#FF5C5C" }}>
-              3문제 이상 맞혀야 시간을 얻을 수 있어요!
-            </p>
-          </div>
-        )}
-
-        <button
-          onClick={() => onComplete(correctCount)}
-          className="mt-5 w-full rounded-2xl py-4 text-lg font-black text-white"
-          style={{
-            background: bonusMinutes > 0 ? "linear-gradient(90deg, #FF9600, #FFD700)" : "#aaa",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-          }}
-        >
-          {bonusMinutes > 0 ? "🎬 영상 보러 가기" : "💪 다시 도전하기"}
-        </button>
       </div>
     );
   }

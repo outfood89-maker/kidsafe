@@ -49,27 +49,29 @@ router.post('/', (req, res) => {
 
     // 게임별 보너스 기준
     const THRESHOLDS = {
-      'ox-quiz':    { full: 5,  partial: 3 },
-      'word-match': { full: 10, partial: 6 },
+      'ox-quiz':     { full: 8,  partial: 0,  fullBonus: 3, partialBonus: 0 },
+      'word-match':  { full: 10, partial: 6,  fullBonus: 7, partialBonus: 3 },
+      'puzzle':      { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
+      'memory-card': { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
     }
-    const { full, partial } = THRESHOLDS[game] || { full: 5, partial: 3 }
+    const { full, partial, fullBonus = 7, partialBonus = 3 } = THRESHOLDS[game] || { full: 5, partial: 3, fullBonus: 7, partialBonus: 3 }
     let bonusMinutes = 0
-    if (correctCount >= full) bonusMinutes = 7
-    else if (correctCount >= partial) bonusMinutes = 3
+    if (correctCount >= full) bonusMinutes = fullBonus
+    else if (correctCount >= partial) bonusMinutes = partialBonus
 
     const today = new Date().toISOString().slice(0, 10)
     const all = readBonus()
     const todayRecords = all.filter((r) => r.profileId === profileId && r.date === today)
     const todayTotal = todayRecords.reduce((sum, r) => sum + r.bonusMinutes, 0)
 
-    // 오늘 이미 한 게임이 있으면 보너스 미지급 (첫 게임만 보너스)
-    const alreadyPlayed = todayRecords.length > 0
-    const actualBonus = alreadyPlayed ? 0 : bonusMinutes
-
-    // maxBonus는 UI 표시용으로만 유지
     const profiles = readProfiles()
     const profile = profiles.find((p) => p.id === profileId)
     const maxBonus = profile?.maxBonusMinutes ?? 20
+
+    // 오늘 누적 한도(maxBonus) 내에서만 지급
+    const remaining = Math.max(0, maxBonus - todayTotal)
+    const actualBonus = Math.min(bonusMinutes, remaining)
+    const alreadyPlayed = todayRecords.length > 0
 
     const record = {
       id: `bonus_${Date.now()}`,

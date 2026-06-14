@@ -122,10 +122,6 @@ export default function KidHome() {
           sessionStorage.removeItem(`kidsafe_search_${cached.id}`);
         }
       }
-      getHistory().then(history => {
-        fetchRecommendedVideos(cached.age, history);
-        fetchHistoryRecommendedVideos(history, cached.age);
-      });
       // 서버에서 최신 프로필 데이터로 갱신 (avatarId 등 업데이트 반영)
       getProfiles().then((profiles) => {
         const fresh = profiles.find((p) => p.id === cached.id);
@@ -134,9 +130,14 @@ export default function KidHome() {
           localStorage.setItem("selectedProfile", JSON.stringify(fresh));
         }
       }).catch(() => {});
-    } else {
-      fetchRecommendedVideos(7, []);
+      // 자동 추천 비활성화 (YouTube API 쿼터 절약) — 배포 후 필요 시 주석 해제
+      // getHistory().then(history => {
+      //   fetchRecommendedVideos(cached.age, history);
+      //   fetchHistoryRecommendedVideos(history, cached.age);
+      // });
     }
+    // 비로그인 시도 자동 추천도 비활성화
+    // else { fetchRecommendedVideos(7, []); }
   }, []);
 
   useEffect(() => {
@@ -295,14 +296,20 @@ export default function KidHome() {
 
   const checkTimeLimit = async (profile) => {
     try {
-      const history = await getHistory();
+      const [history, bonusData] = await Promise.all([
+        getHistory(),
+        getGameBonus(profile.id).catch(() => ({ bonusMinutes: 0 })),
+      ]);
       const todayHistory = history.filter((v) =>
         new Date(v.watchedAt).toDateString() === new Date().toDateString() && v.profileId === profile.id
       );
       const totalSeconds = todayHistory.reduce((sum, v) => sum + (v.watchSeconds || 0), 0);
       const minutes = Math.floor(totalSeconds / 60);
+      const bonus = bonusData.bonusMinutes ?? 0;
       setTodayMinutes(minutes);
-      if (minutes >= profile.timeLimit) setTimeLimitReached(true);
+      setBonusMinutes(bonus);
+      const effectiveMinutes = minutes - bonus;
+      if (profile.timeLimit && effectiveMinutes >= profile.timeLimit) setTimeLimitReached(true);
     } catch (err) { console.error("시청 시간 체크 실패:", err); }
   };
 
@@ -508,25 +515,7 @@ export default function KidHome() {
   return (
     <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#F8F7F2" }}>
 
-      {/* 임시 테스트 버튼 — 플레이어 UI 확인용 (API 쿼터 소진 시) */}
-      <div className="flex justify-center py-2" style={{ backgroundColor: "#fff3cd" }}>
-        <button
-          onClick={() => setPlayingVideo({
-            videoId: "LneN7ZWY9es",
-            title: "[테스트] 뽀로로와 펭귄의 날",
-            channelTitle: "PORORO the Little Penguin",
-            thumbnail: "",
-            totalScore: 95,
-            summary: "테스트용 영상입니다.",
-            violence: 0, language: 0, sexual: 0, educational: 10,
-            profileId: selectedProfile?.id || null,
-          })}
-          className="text-xs font-bold px-4 py-1.5 rounded-full"
-          style={{ backgroundColor: "#f0a500", color: "#fff" }}
-        >
-          🎬 플레이어 테스트 열기 (임시)
-        </button>
-      </div>
+
 
       {/* 커스텀 NavBar */}
       <header
@@ -559,8 +548,9 @@ export default function KidHome() {
               나가기
             </button>
           </div>
-          {/* 오른쪽: 배지 pill + 아바타 */}
+          {/* 오른쪽: 시간 pill + 배지 pill + 아바타 */}
           <div className="flex items-center gap-2">
+            {/* 남은 시간 — timeLimit 설정된 프로필만 표시 */}
             {earnedBadges.length > 0 && (
               <button
                 onClick={() => navigate("/badges")}
@@ -629,7 +619,7 @@ export default function KidHome() {
           <VideoPlayer
             video={playingVideo}
             timeLimit={selectedProfile?.timeLimit || null}
-            usedMinutes={Math.max(0, todayMinutes - bonusMinutes)}
+            usedMinutes={todayMinutes - bonusMinutes}
             onClose={(seconds) => {
               if (seconds > 0) setTodayMinutes((prev) => prev + Math.floor(seconds / 60));
               setPlayingVideo(null);
@@ -743,17 +733,17 @@ export default function KidHome() {
 
 
 
-        {/* ── 검색 결과 없을 때: B안 (넷플릭스식) ── */}
-        {videos.length === 0 && playlists.length === 0 && !loading && (
+        {/* ── 히어로 배너 (항상 표시, 로딩 중 제외) ── */}
+        {!loading && (
           <>
             {/* 다크 히어로 배너 */}
             {(() => {
               const tl = selectedProfile?.timeLimit;
               // 실제 사용 = 시청 시간 - 게임 보너스
-              const effectiveUsed = Math.max(0, todayMinutes - bonusMinutes);
+              const effectiveUsed = todayMinutes - bonusMinutes;
               const remaining = tl ? Math.max(0, tl - effectiveUsed) : null;
-              const usedPct = tl ? Math.min(100, (effectiveUsed / tl) * 100) : 0;
-              const glowColor = timeLimitReached ? "#C84B47" : remaining !== null && remaining / tl <= 0.2 ? "#EF9F27" : "#6DAB60";
+              const usedPct = tl ? Math.min(100, Math.max(0, (effectiveUsed / tl) * 100)) : 0;
+              const timerColor = timeLimitReached ? "#C84B47" : remaining !== null && remaining / tl <= 0.2 ? "#E8900A" : "#6DAB60";
               return (
                 <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8"
                   style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)", borderRadius: "24px", minHeight: "220px" }}>
@@ -807,80 +797,90 @@ export default function KidHome() {
                     </div>
                   </div>
 
-                  {/* 모바일 전용: 키디 중앙 + 말풍선 위 */}
-                  <div className="flex md:hidden flex-col items-center justify-between cursor-pointer select-none mt-4"
-                    style={{ height: "300px" }}
+                  {/* 모바일 전용: 검색창 아래 타이머 */}
+                  {tl && (
+                    <div className="md:hidden mt-3" style={{
+                      background: "white",
+                      borderRadius: 50,
+                      padding: "9px 18px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      boxShadow: "0 2px 16px rgba(0,0,0,0.13)",
+                    }}>
+                      <span style={{ fontSize: 16 }}>🌿</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#6B7A65", whiteSpace: "nowrap" }}>
+                        {timeLimitReached ? "시간 종료" : "남은 시간"}
+                      </span>
+                      <div style={{ flex: 1, background: "#E8F5E4", borderRadius: 4, height: 6 }}>
+                        <div style={{ height: "100%", width: `${Math.max(0, 100 - usedPct)}%`, background: timerColor, borderRadius: 4, transition: "width 0.5s ease" }} />
+                      </div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
+                        <span style={{ fontSize: 26, fontWeight: 900, color: timerColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                          {timeLimitReached ? "0" : remaining}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#6B7A65" }}>분</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 모바일 전용: 키디 중앙 + 말풍선 */}
+                  <div className="flex md:hidden flex-col items-center gap-3 cursor-pointer select-none mt-2"
                     onClick={handleKiddyClick}>
-                    {/* 말풍선 — 높이 고정 (2줄 고정) */}
+                    {/* 말풍선 */}
                     <div className="relative rounded-3xl px-5 py-3 w-full"
                       style={{ backgroundColor: "rgba(255,255,255,0.96)", color: "#2C3528", maxWidth: "280px", height: "68px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <p className="text-sm font-bold text-center leading-snug"
                         style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구")}
                       </p>
-                      {/* 꼬리 — 아래 방향 */}
                       <div className="absolute left-1/2 -translate-x-1/2" style={{
-                        bottom: "-10px",
-                        width: 0, height: 0,
-                        borderLeft: "10px solid transparent",
-                        borderRight: "10px solid transparent",
+                        bottom: "-10px", width: 0, height: 0,
+                        borderLeft: "10px solid transparent", borderRight: "10px solid transparent",
                         borderTop: "11px solid rgba(255,255,255,0.96)",
                       }} />
                     </div>
-                    {/* 키디 — float 애니메이션 ref 연결 */}
+                    {/* 키디 */}
                     <div ref={kiddyMobileRef}>
-                      <KiddyImg pose={GREETING_DIALOGUES[greetingIndex].pose} size={200} />
+                      <KiddyImg pose={GREETING_DIALOGUES[greetingIndex].pose} size={190} />
                     </div>
-                    {/* 시간 pill + 힌트 */}
-                    <div className="flex items-center gap-2 flex-wrap justify-center">
-                      {tl && (
-                        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
-                          style={{
-                            backgroundColor: timeLimitReached ? "#C84B47" : "rgba(0,0,0,0.5)",
-                            border: `1.5px solid ${glowColor}`,
-                          }}>
-                          <span className="text-xs font-extrabold"
-                            style={{ color: timeLimitReached ? "#fff" : glowColor }}>
-                            {timeLimitReached ? "⏰ 시간 종료" : `⏱ ${remaining}분 남음`}
-                          </span>
-                        </div>
-                      )}
-                      {!kiddyClicked && (
-                        <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>
-                          👆 눌러봐!
-                        </span>
-                      )}
-                    </div>
+                    {!kiddyClicked && (
+                      <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                        👆 눌러봐!
+                      </span>
+                    )}
                   </div>
 
-                  {/* 중: 디지털 타이머 */}
+                  {/* 중: 타이머 카드 (웹) */}
                   {tl && (
                     <div className="hidden md:flex flex-col items-center justify-center"
-                      style={{ flex: "21", padding: "20px 16px", borderRadius: "20px", backgroundColor: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)", minHeight: "140px", minWidth: 0, marginLeft: "88px" }}>
-                      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>
-                        {timeLimitReached ? "시간 초과" : "남은 시간"}
+                      style={{
+                        flex: "21", minWidth: 0, marginLeft: "88px",
+                        padding: "24px 20px", borderRadius: "20px",
+                        background: "white",
+                        boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+                        minHeight: "160px",
+                      }}>
+                      <p style={{ color: "#6B7A65", fontSize: "12px", letterSpacing: "1px", marginBottom: "10px" }}>
+                        {timeLimitReached ? "⏰ 시간 초과" : "🌿 남은 시간"}
                       </p>
-                      {/* 디지털 숫자 */}
-                      <div style={{ textAlign: "center", lineHeight: 1 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4, lineHeight: 1 }}>
                         <span style={{
-                          fontFamily: "'Courier New', Courier, monospace",
-                          fontSize: "64px",
+                          fontSize: "72px",
                           fontWeight: "900",
                           fontVariantNumeric: "tabular-nums",
-                          color: glowColor,
-                          textShadow: `0 0 20px ${glowColor}CC, 0 0 40px ${glowColor}55`,
-                          letterSpacing: "-3px",
+                          color: timerColor,
+                          letterSpacing: "-2px",
                         }}>
-                          {timeLimitReached ? "00" : String(remaining).padStart(2, "0")}
+                          {timeLimitReached ? "0" : remaining}
                         </span>
-                        <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "20px", fontWeight: "700", marginLeft: "6px" }}>분</span>
+                        <span style={{ color: "#6B7A65", fontSize: "22px", fontWeight: "700" }}>분</span>
                       </div>
-                      {/* 진행 바 */}
-                      <div style={{ width: "80%", height: "5px", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: "3px", marginTop: "16px" }}>
-                        <div style={{ height: "100%", width: `${usedPct}%`, backgroundColor: glowColor, borderRadius: "3px", transition: "width 0.5s ease", boxShadow: `0 0 8px ${glowColor}` }} />
+                      <div style={{ width: "80%", height: "8px", backgroundColor: "#E8F5E4", borderRadius: "6px", marginTop: "16px" }}>
+                        <div style={{ height: "100%", width: `${Math.max(0, 100 - usedPct)}%`, backgroundColor: timerColor, borderRadius: "6px", transition: "width 0.5s ease" }} />
                       </div>
-                      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "8px" }}>
-                        {tl}분 중 {todayMinutes}분 사용
+                      <p style={{ color: "#9BA89A", fontSize: "12px", marginTop: "8px" }}>
+                        {tl}분 중 {Math.max(0, todayMinutes - bonusMinutes)}분 사용
                       </p>
                     </div>
                   )}
@@ -920,48 +920,53 @@ export default function KidHome() {
               );
             })()}
 
-            {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
-            {(recommendLoading || recommendedVideos.length > 0) && (
-              <section className="mb-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <FaStar style={{ color: "#EF9F27", fontSize: "14px" }} />
-                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>오늘의 추천</h2>
-                  {recommendKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{recommendKeyword}</span>}
-                </div>
-                {recommendLoading ? (
-                  <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
-                ) : (
-                  <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
-                    {recommendedVideos.map((v) => (
-                      <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
-                        <VideoCard video={v} />
+            {/* 추천 섹션 — 검색 결과 없을 때만 */}
+            {videos.length === 0 && playlists.length === 0 && (
+              <>
+                {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
+                {(recommendLoading || recommendedVideos.length > 0) && (
+                  <section className="mb-6">
+                    <div className="mb-3 flex items-center gap-2">
+                      <FaStar style={{ color: "#EF9F27", fontSize: "14px" }} />
+                      <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>오늘의 추천</h2>
+                      {recommendKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{recommendKeyword}</span>}
+                    </div>
+                    {recommendLoading ? (
+                      <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+                    ) : (
+                      <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                        {recommendedVideos.map((v) => (
+                          <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
+                            <VideoCard video={v} />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </section>
                 )}
-              </section>
-            )}
 
-            {/* 내가 좋아할 것 같아요 — 가로 스크롤 캐러셀 */}
-            {(historyLoading || historyVideos.length > 0) && (
-              <section className="mb-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <FaHeart style={{ color: "#C84B47", fontSize: "14px" }} />
-                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>내가 좋아할 것 같아요</h2>
-                  {historyKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{historyKeyword} 기반</span>}
-                </div>
-                {historyLoading ? (
-                  <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
-                ) : (
-                  <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
-                    {historyVideos.map((v) => (
-                      <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
-                        <VideoCard video={v} />
+                {/* 내가 좋아할 것 같아요 — 가로 스크롤 캐러셀 */}
+                {(historyLoading || historyVideos.length > 0) && (
+                  <section className="mb-6">
+                    <div className="mb-3 flex items-center gap-2">
+                      <FaHeart style={{ color: "#C84B47", fontSize: "14px" }} />
+                      <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>내가 좋아할 것 같아요</h2>
+                      {historyKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{historyKeyword} 기반</span>}
+                    </div>
+                    {historyLoading ? (
+                      <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+                    ) : (
+                      <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                        {historyVideos.map((v) => (
+                          <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
+                            <VideoCard video={v} />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </section>
                 )}
-              </section>
+              </>
             )}
           </>
         )}
@@ -977,49 +982,6 @@ export default function KidHome() {
         {/* ── 검색 결과 있을 때 ── */}
         {(videos.length > 0 || playlists.length > 0) && (
           <>
-            <section className="mb-8 flex justify-center">
-              <div ref={searchBoxRef} className="relative w-full max-w-2xl">
-                <div className="flex items-center gap-3 p-3 bg-white"
-                  style={{ borderRadius: "18px", border: "2px solid #E4EAE0", boxShadow: "0 4px 16px rgba(44,53,40,0.08)" }}>
-                  <input type="text" placeholder="어떤 영상 볼까?" value={searchKeyword}
-                    onChange={(e) => setSearchKeyword(e.target.value)}
-                    onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="flex-1 min-w-0 rounded-[12px] outline-none font-semibold"
-                    style={{ backgroundColor: "#F8F7F2", border: "2px solid #B8D8B2", color: "#2C3528", fontSize: "20px", padding: "14px 20px" }} />
-                  <button onClick={() => handleSearch()} disabled={loading}
-                    className="flex items-center gap-2 rounded-[12px] font-semibold text-white disabled:opacity-50 shrink-0"
-                    style={{ backgroundColor: "#6DAB60", fontSize: "18px", padding: "14px 24px" }}>
-                    <FaSearch /> 검색
-                  </button>
-                </div>
-                {showSearchHistory && searchHistory.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
-                    <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "0.5px solid #E4EAE0" }}>
-                      <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
-                      <button onClick={handleDeleteAllSearchHistory} className="text-xs" style={{ color: "#C84B47" }}>전체 삭제</button>
-                    </div>
-                    <ul>
-                      {searchHistory.map((item) => (
-                        <li key={item.id} onClick={() => handleHistoryKeywordClick(item.keyword)}
-                          className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
-                          style={{ borderBottom: "0.5px solid #E4EAE0" }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-                          <div className="flex items-center gap-2.5">
-                            <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
-                            <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
-                          </div>
-                          <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#B8D8B2" }}>
-                            <FaTimes className="text-xs" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </section>
             {error && (
               <div className="mb-5 px-4 py-3 text-center text-sm font-medium" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", color: "#C84B47" }}>
                 {error}

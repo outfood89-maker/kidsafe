@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaFire, FaStar } from "react-icons/fa";
 import OXQuiz from "../components/games/OXQuiz";
 import WordMatch from "../components/games/WordMatch";
+import PuzzleGame from "../components/games/PuzzleGame";
+import MemoryGame from "../components/games/MemoryGame";
 import KiddyImg from "../components/KiddyImg";
 import { getGameBonus, saveGameBonus } from "../utils/api";
 
@@ -36,8 +38,8 @@ const GAMES = [
     id: "ox-quiz",
     name: "OX 퀴즈",
     emoji: "🧠",
-    description: "상식 문제 5개에 도전!",
-    reward: "최대 +7분",
+    description: "상식 문제 10개에 도전!",
+    reward: "최대 +3분",
     difficulty: "쉬움",
     color: "#58CC02",
     bg: "#F0FBE8",
@@ -66,15 +68,26 @@ const GAMES = [
     available: true,
   },
   {
+    id: "puzzle",
+    name: "이모지 퍼즐",
+    emoji: "🧩",
+    description: "조각을 드래그해서 맞춰봐요!",
+    reward: "완성 시 +7분",
+    difficulty: "쉬움~어려움",
+    color: "#A855F7",
+    bg: "#F5F0FF",
+    available: true,
+  },
+  {
     id: "memory-card",
     name: "기억력 카드",
     emoji: "🃏",
-    description: "카드를 뒤집어 짝 찾기!",
-    reward: "곧 출시",
-    difficulty: "보통",
-    color: "#CE82FF",
-    bg: "#F8F0FF",
-    available: false,
+    description: "바다 생물 카드를 뒤집어 짝 찾기!",
+    reward: "완성 시 +7분",
+    difficulty: "쉬움~어려움",
+    color: "#0077B6",
+    bg: "#E8F4FF",
+    available: true,
   },
 ];
 
@@ -109,13 +122,16 @@ export default function MiniGame() {
 
   // 게임별 보너스 기준
   const BONUS_THRESHOLDS = {
-    "ox-quiz":    { full: 5,  partial: 3 },
-    "word-match": { full: 10, partial: 6 },
+    "ox-quiz":     { full: 8,  partial: 0,  fullBonus: 3, partialBonus: 0 },
+    "word-match":  { full: 10, partial: 6,  fullBonus: 7, partialBonus: 3 },
+    "puzzle":      { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
+    "memory-card": { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
   };
 
   const handleGameComplete = (correctCount) => {
-    const { full, partial } = BONUS_THRESHOLDS[selectedGame] || { full: 5, partial: 3 };
-    const earnedNow = alreadyPlayed ? 0 : (correctCount >= full ? 7 : correctCount >= partial ? 3 : 0);
+    const { full, partial, fullBonus = 7, partialBonus = 3 } = BONUS_THRESHOLDS[selectedGame] || { full: 5, partial: 3, fullBonus: 7, partialBonus: 3 };
+    const rawBonus = correctCount >= full ? fullBonus : correctCount >= partial ? partialBonus : 0;
+    const earnedNow = Math.min(rawBonus, Math.max(0, maxBonus - todayBonus));
     const newTotal = todayBonus + earnedNow;
 
     setSelectedGame(null);
@@ -149,6 +165,40 @@ export default function MiniGame() {
         </div>
         <div className="flex-1 overflow-y-auto">
           <WordMatch onComplete={handleGameComplete} />
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === "puzzle") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(160deg, #a8edea 0%, #fed6e3 100%)" }}>
+        <div className="flex items-center gap-3 px-4 shrink-0"
+          style={{ backgroundColor: "rgba(255,255,255,0.4)", backdropFilter: "blur(8px)", borderBottom: "2px solid rgba(200,160,255,0.3)", height: "56px" }}>
+          <button onClick={() => setSelectedGame(null)} className="p-2 rounded-full" style={{ color: "#8060B0" }}>
+            <FaArrowLeft style={{ fontSize: "18px" }} />
+          </button>
+          <span className="font-extrabold text-base" style={{ color: "#5C3D9E" }}>🧩 이모지 퍼즐</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <PuzzleGame onComplete={handleGameComplete} profileId={profile?.id} />
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === "memory-card") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(160deg, #023E8A 0%, #0077B6 40%, #48CAE4 80%, #ADE8F4 100%)" }}>
+        <div className="flex items-center gap-3 px-4 shrink-0"
+          style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,255,255,0.15)", height: "56px" }}>
+          <button onClick={() => setSelectedGame(null)} className="p-2 rounded-full" style={{ color: "rgba(255,255,255,0.8)" }}>
+            <FaArrowLeft style={{ fontSize: "18px" }} />
+          </button>
+          <span className="font-extrabold text-base" style={{ color: "white" }}>🃏 기억력 카드</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <MemoryGame onComplete={handleGameComplete} />
         </div>
       </div>
     );
@@ -199,7 +249,7 @@ export default function MiniGame() {
           style={{ backgroundColor: "#FFF0D6" }}>
           <FaFire style={{ color: "#FF9600", fontSize: "14px" }} />
           <span className="text-sm font-extrabold" style={{ color: "#FF9600" }}>
-            {alreadyPlayed ? "오늘 완료!" : "도전 중"}
+            {todayBonus >= maxBonus ? "오늘 완료!" : "도전 중"}
           </span>
         </div>
       </div>
@@ -207,15 +257,15 @@ export default function MiniGame() {
       {/* 키디 + 메시지 */}
       <div className="flex flex-col items-center pt-6 pb-2 px-5">
         <div className="duo-pop">
-          <KiddyImg pose={alreadyPlayed ? "success" : "hello"} size={100} bg="transparent" />
+          <KiddyImg pose={todayBonus >= maxBonus ? "success" : "hello"} size={100} bg="transparent" />
         </div>
         <p className="mt-3 text-xl font-extrabold text-center" style={{ color: "#3C3C3C" }}>
-          {alreadyPlayed
-            ? "오늘 보너스 획득 완료! 🎉"
+          {todayBonus >= maxBonus
+            ? "오늘 최대 보너스 달성! 🎉"
             : `${profile?.name || "친구"}야, 퀴즈 도전해볼까?`}
         </p>
         <p className="mt-1 text-sm text-center" style={{ color: "#AFAFAF" }}>
-          {alreadyPlayed
+          {todayBonus >= maxBonus
             ? "게임은 계속 즐길 수 있어요 😊"
             : "맞힐수록 영상 시간이 늘어나요!"}
         </p>
@@ -351,15 +401,11 @@ export default function MiniGame() {
         <div style={{ borderTop: "2px solid #E5E5E5" }}>
           {/* OX 퀴즈 */}
           <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #F0F0F0" }}>
-            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#AFAFAF" }}>🧠 OX 퀴즈 (5문제)</p>
+            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#AFAFAF" }}>🧠 OX 퀴즈 (10문제)</p>
             <div className="flex gap-3">
               <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#F0FBE8" }}>
                 <p className="text-sm font-extrabold" style={{ color: "#58CC02" }}>+3분</p>
-                <p className="text-xs" style={{ color: "#AFAFAF" }}>3~4개 정답</p>
-              </div>
-              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFFBE8" }}>
-                <p className="text-sm font-extrabold" style={{ color: "#FFD700" }}>+7분</p>
-                <p className="text-xs" style={{ color: "#AFAFAF" }}>5개 전부</p>
+                <p className="text-xs" style={{ color: "#AFAFAF" }}>8개 이상 정답</p>
               </div>
             </div>
           </div>

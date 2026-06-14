@@ -18,7 +18,22 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   const [watchSeconds, setWatchSeconds] = useState(0);
   const watchSecondsRef = useRef(0);
   const videoEndedRef = useRef(false);
-  const onClose = () => _onClose(videoEndedRef.current ? 0 : watchSecondsRef.current);
+  const onClose = async () => {
+    const seconds = watchSecondsRef.current;
+    // 영상을 끝까지 보지 않고 닫아도 일정 시간 이상이면 서버에 저장
+    if (!videoEndedRef.current && seconds >= 10) {
+      try {
+        await saveHistory({
+          videoId: video.videoId, title: video.title, channelTitle: video.channelTitle,
+          thumbnail: video.thumbnail, totalScore: video.totalScore, summary: video.summary,
+          violence: video.violence, language: video.language, sexual: video.sexual,
+          educational: video.educational, profileId: video.profileId || null,
+          watchSeconds: seconds,
+        });
+      } catch (err) { console.error("시청 기록 저장 실패(닫기):", err); }
+    }
+    _onClose(videoEndedRef.current ? 0 : seconds);
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [embedError, setEmbedError] = useState(false);

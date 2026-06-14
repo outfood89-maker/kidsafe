@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import KiddyImg from "../KiddyImg";
+import confettiLib from "canvas-confetti";
 
 // 카테고리별 문제 (자동으로 category 필드 부여)
 const QUESTION_BANK = {
@@ -511,7 +512,7 @@ const OX_QUESTIONS = Object.entries(QUESTION_BANK).flatMap(
   ([category, qs]) => qs.map((q) => ({ ...q, category }))
 );
 
-const TOTAL = 5;
+const TOTAL = 10;
 const TIMER_SEC = 10;
 
 // 애니메이션 주입
@@ -556,6 +557,11 @@ if (typeof document !== "undefined" && !document.getElementById("ox-quiz-style")
     @keyframes oxStreakFade {
       0%   { opacity: 1; transform: scale(1) translateY(0); }
       100% { opacity: 0; transform: scale(0.85) translateY(-24px); }
+    }
+    @keyframes oxCompletePop {
+      0%   { transform: scale(0.3) rotate(-12deg); opacity: 0; }
+      65%  { transform: scale(1.1) rotate(3deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); }
     }
     .ox-slide-down { animation: oxSlideDown 0.35s ease both; }
     .ox-bounce     { animation: oxBounceIn 0.4s ease both; }
@@ -661,7 +667,7 @@ function TimerCircle({ timeLeft }) {
 }
 
 export default function OXQuiz({ onComplete }) {
-  const [questions] = useState(() => pickRandom(OX_QUESTIONS, TOTAL));
+  const [questions, setQuestions] = useState(() => pickRandom(OX_QUESTIONS, TOTAL));
   const [current, setCurrent] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [selected, setSelected] = useState(null); // true | false | "TIMEOUT" | null
@@ -671,6 +677,12 @@ export default function OXQuiz({ onComplete }) {
   const [streak, setStreak] = useState(0);
   const [streakVisible, setStreakVisible] = useState(false);
   const [streakFading, setStreakFading] = useState(false);
+
+  const handleRestart = () => {
+    setQuestions(pickRandom(OX_QUESTIONS, TOTAL));
+    setCurrent(0); setCorrectCount(0); setSelected(null);
+    setShowResult(false); setStreak(0); setStreakVisible(false); setStreakFading(false);
+  };
 
   const question = questions[current];
   const answered = selected !== null;
@@ -727,44 +739,62 @@ export default function OXQuiz({ onComplete }) {
     }
   };
 
+  // 결과 화면 진입 시 confetti
+  useEffect(() => {
+    if (!showResult || correctCount < 8) return;
+    const end = Date.now() + 2500;
+    const burst = () => {
+      confettiLib({ particleCount: 5, angle: 60,  spread: 55, origin: { x: 0, y: 0.6 } });
+      confettiLib({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1, y: 0.6 } });
+      if (Date.now() < end) requestAnimationFrame(burst);
+    };
+    burst();
+  }, [showResult]);
+
   // ── 결과 화면 ──
   if (showResult) {
-    let bonusMinutes = 0;
-    if (correctCount >= 5) bonusMinutes = 7;
-    else if (correctCount >= 3) bonusMinutes = 3;
+    const bonusMinutes = correctCount >= 8 ? 3 : 0;
+    const isWin = bonusMinutes > 0;
     return (
-      <div className="flex flex-col items-center justify-center min-h-full px-6 py-10 text-center"
-        style={{ background: "linear-gradient(160deg, #060618 0%, #130826 50%, #0a1535 100%)", minHeight: "100%", position: "relative" }}>
+      <div style={{ position: "fixed", inset: 0, background: "linear-gradient(160deg, #060618 0%, #130826 50%, #0a1535 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, overflow: "hidden", zIndex: 20 }}>
         <FloatingParticles />
-        <div className="flex gap-2 mb-4" style={{ position: "relative", zIndex: 1 }}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <span key={i} style={{ fontSize: "32px", filter: i < correctCount ? "none" : "grayscale(1) opacity(0.3)" }}>⭐</span>
-          ))}
-        </div>
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <KiddyImg pose={correctCount >= 3 ? "success" : "sad"} size={130} bg="transparent" />
-        </div>
-        <p className="mt-4 text-3xl font-extrabold text-white" style={{ position: "relative", zIndex: 1 }}>
-          {correctCount >= 5 ? "완벽해! 🎉" : correctCount >= 3 ? "대단해! 👏" : "아쉬워~ 💪"}
-        </p>
-        <p className="mt-2 text-lg" style={{ color: "rgba(255,255,255,0.7)", position: "relative", zIndex: 1 }}>
-          {TOTAL}문제 중 <span style={{ color: "#6DAB60", fontWeight: 800, fontSize: "22px" }}>{correctCount}문제</span> 정답!
-        </p>
-        {bonusMinutes > 0 ? (
-          <div className="mt-6 w-full rounded-3xl px-6 py-5" style={{ background: "linear-gradient(135deg,#2E9E50,#6DAB60)", boxShadow: "0 8px 24px rgba(109,171,96,0.4)", position: "relative", zIndex: 1 }}>
-            <p className="text-2xl font-black text-white">+{bonusMinutes}분 획득! ⏰</p>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.8)" }}>영상을 더 볼 수 있어요~</p>
+        <div style={{ background: "white", borderRadius: 28, padding: "28px 28px 32px", textAlign: "center", maxWidth: 320, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.35)", position: "relative", zIndex: 10, animation: "oxCompletePop 0.6s ease-out" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+            <KiddyImg pose={isWin ? "success" : "sad"} size={120} bg="transparent" />
           </div>
-        ) : (
-          <div className="mt-6 w-full rounded-3xl px-6 py-4" style={{ backgroundColor: "rgba(200,75,71,0.2)", border: "2px solid #C84B47", position: "relative", zIndex: 1 }}>
-            <p className="text-base font-bold" style={{ color: "#FF7070" }}>3문제 이상 맞혀야 시간을 얻을 수 있어요!</p>
+          <div style={{ fontSize: 36, margin: "4px 0 6px" }}>{isWin ? "🎉" : "😢"}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#2C3528", marginBottom: 4 }}>
+            {correctCount >= 10 ? "완벽해요!" : isWin ? "잘했어요!" : "아쉬워요~"}
           </div>
-        )}
-        <button onClick={() => onComplete(correctCount)}
-          className="mt-5 w-full rounded-2xl py-4 text-lg font-black text-white"
-          style={{ background: bonusMinutes > 0 ? "linear-gradient(90deg,#2E9E50,#6DAB60)" : "#555", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", position: "relative", zIndex: 1 }}>
-          {bonusMinutes > 0 ? "🎬 영상 보러 가기" : "💪 다시 도전하기"}
-        </button>
+          <div style={{ fontSize: 14, color: "#AAA", marginBottom: 14 }}>
+            {TOTAL}문제 중 {correctCount}문제 정답
+          </div>
+          <div style={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "nowrap", marginBottom: 18 }}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <span key={i} style={{ fontSize: "17px", filter: i < correctCount ? "none" : "grayscale(1) opacity(0.3)" }}>⭐</span>
+            ))}
+          </div>
+          {bonusMinutes > 0 ? (
+            <div style={{ background: "linear-gradient(90deg, #2E9E50, #6DAB60)", borderRadius: 16, padding: "14px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "white", fontWeight: 700 }}>보너스 시간 획득!</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "white" }}>+{bonusMinutes}분 ⏰</div>
+            </div>
+          ) : (
+            <div style={{ background: "#FFF0F0", border: "2px solid #FFCCCC", borderRadius: 16, padding: "12px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "#FF5C5C", fontWeight: 700 }}>8문제 이상 맞혀야 보너스를 얻어요!</div>
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", width: "100%" }}>
+            <button onClick={handleRestart}
+              style={{ background: "linear-gradient(90deg, #a8edea, #b8d4ff)", border: "none", borderRadius: 14, padding: "12px 0", fontSize: 14, fontWeight: 800, color: "#5C3D9E", cursor: "pointer", width: "100%" }}>
+              다시 하기
+            </button>
+            <button onClick={() => onComplete(correctCount)}
+              style={{ background: "none", border: "none", fontSize: 13, fontWeight: 700, color: "#B0B0B0", cursor: "pointer", textDecoration: "underline" }}>
+              게임 허브로 돌아가기
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
