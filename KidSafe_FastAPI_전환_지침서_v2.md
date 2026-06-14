@@ -74,6 +74,7 @@ uvicorn==0.30.0
 httpx==0.27.0
 python-dotenv==1.0.0
 anthropic==0.34.0
+youtube-transcript-api==0.6.2   # ⚠️ 검수 자막 분석용 (검수설계 문서 기준 추가)
 ```
 
 ---
@@ -143,7 +144,10 @@ def ensure_data_files():
         "blocked-keywords.json": {"system": [], "custom": []},
         "alerts.json": [],
         "alert-settings.json": {"minScore": 69, "repeatThreshold": 3},
-        "game-bonus.json": []
+        "game-bonus.json": [],
+        # ⚠️ 검수설계 문서 기준 추가 — Railway 재시작 시 캐시 보존 필수
+        "analysis-cache.json": {},
+        "trusted-channels.json": []
     }
     for filename, default in defaults.items():
         path = os.path.join("data", filename)
@@ -205,7 +209,9 @@ async def test_env():
 
 ### routers/chat.py (chat.js 대체) — 제일 중요
 
-Anthropic API 실제 사용하는 유일한 라우터.
+> ⚠️ "Anthropic 쓰는 유일한 라우터"는 **옛 기준**. 검수 고도화 이후 **analyze.py(Tier 2)도 Claude Haiku 사용**함.
+> 단, chat.py 코드 패턴(AsyncAnthropic 사용법)은 그대로 유효.
+
 claude-haiku-4-5-20251001 모델 사용.
 
 ```python
@@ -271,6 +277,10 @@ async def chat_with_kiddy(data: ChatRequest):
 ---
 
 ### routers/analyze.py (analyze.js 대체)
+
+> ⚠️ **이 부분은 `KidSafe_검수아키텍처_핵심설계.md` 기준으로 대체됨.**
+> analyze.py는 단순 포팅이 아니라 **계층형+캐싱 파이프라인 오케스트레이터**로 신규 설계함.
+> 아래 키워드 로직은 그 설계의 **Tier 0 일부로 흡수**됨. 반드시 검수설계 문서 먼저 볼 것.
 
 현재 키워드 기반 분석 (Anthropic 미사용).
 기존 로직 그대로 Python으로 변환.
@@ -458,7 +468,7 @@ pip install -r requirements.txt
 1. `requirements.txt`
 2. `Procfile`
 3. `routers/__init__.py` (빈 파일)
-4. `routers/analyze.py` (단순 키워드 기반, 빠르게 완성)
+4. `routers/analyze.py` (⚠️ 단순 포팅 아님 → `검수아키텍처_핵심설계.md`의 파이프라인으로 구현)
 5. `routers/chat.py` (Anthropic API — 핵심)
 6. `routers/history.py`
 7. `routers/profiles.py`

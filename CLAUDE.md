@@ -41,6 +41,7 @@
 ### 안전도 분석
 - 현재: 키워드 기반 (Anthropic 크레딧 절약 목적) — `analyze.js`
 - chat.js만 Anthropic API 사용 (claude-haiku-4-5-20251001)
+  > ⚠️ FastAPI 전환 후엔 검수 고도화로 analyze도 Claude 사용 예정 — `KidSafe_검수아키텍처_핵심설계.md` 참고
 
 ### 모바일 테스트
 - `api.js` BASE_URL을 PC의 로컬 IP로 변경 (예: `http://172.30.1.56:3000`)

@@ -69,6 +69,7 @@ uvicorn==0.30.0
 httpx==0.27.0
 python-dotenv==1.0.0
 anthropic==0.34.0
+youtube-transcript-api==0.6.2   # 검수 자막 분석용
 ```
 
 **`server/Procfile`**
