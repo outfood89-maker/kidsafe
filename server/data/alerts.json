@@ -1,5 +1,66 @@
 [
   {
+    "id": "e5d319b5-31c3-4f54-a894-faebddfec1eb",
+    "profileId": "1781080145523",
+    "videoId": "Bxx9-9MwNK4",
+    "title": "공룡이 사라진 이유 | 공룡동요 | 핑크퐁! 인기동요",
+    "channelTitle": "핑크퐁 (인기 동요・동화)",
+    "thumbnail": "https://i.ytimg.com/vi/Bxx9-9MwNK4/mqdefault.jpg",
+    "totalScore": 82,
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "종합 점수 82점"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-15T12:59:43.373923+00:00",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
+    "id": "b2116883-649b-404a-aa38-6db3a2fc26b0",
+    "profileId": "1781080145523",
+    "videoId": "7yxYwljRQZ0",
+    "title": "공룡이 사라진 이유",
+    "channelTitle": "Pinkfong - Topic",
+    "thumbnail": "https://i.ytimg.com/vi/7yxYwljRQZ0/mqdefault.jpg",
+    "totalScore": 82,
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "종합 점수 82점"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-15T12:58:09.868978+00:00",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
+    "id": "6ea0bd78-650d-47af-aa76-5035e6c0540d",
+    "profileId": "1781080145523",
+    "videoId": "O-8HyWSUAZE",
+    "title": "🦕공룡은 왜 멸종했을까? | 사라진 공룡들에게 무슨 일이 있었을까?🌋☄ | 공룡 멸종 | 공룡동요 | 호기심동요 | 주니토니 | JunyTony",
+    "channelTitle": "주니토니 - 인기 동요・동화",
+    "thumbnail": "https://i.ytimg.com/vi/O-8HyWSUAZE/mqdefault.jpg",
+    "totalScore": 82,
+    "violence": 85,
+    "language": 95,
+    "sexual": 100,
+    "reasons": [
+      "종합 점수 82점",
+      "폭력성 85점"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-15T12:46:38.330144+00:00",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
     "id": "eb0e790c-ff1b-42cc-8e78-008b5082e6c6",
     "profileId": "1779888608658",
     "videoId": "Nelj8Ym-NoY",

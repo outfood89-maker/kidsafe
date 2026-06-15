@@ -260,7 +260,7 @@ export default function KidHome() {
       const { videos: results, keyword } = await getRecommendedVideos(age);
       setRecommendKeyword(keyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video.title, video.description, video.videoId, video.channelId);
+        const safety = await analyzeVideo(video);
         return { ...video, ...safety };
       }));
       setRecommendedVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
@@ -279,7 +279,7 @@ export default function KidHome() {
       setHistoryKeyword(topKeyword);
       const { videos: results } = await getHistoryRecommendedVideos(topKeyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video.title, video.description, video.videoId, video.channelId);
+        const safety = await analyzeVideo(video);
         return { ...video, ...safety };
       }));
       setHistoryVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
@@ -339,7 +339,7 @@ export default function KidHome() {
       }
       const { videos: results, playlists: playlistResults } = await searchVideos(trimmedKeyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video.title, video.description, video.videoId, video.channelId);
+        const safety = await analyzeVideo(video);
         return { ...video, ...safety };
       }));
       const age = selectedProfile?.age || null;
@@ -375,12 +375,74 @@ export default function KidHome() {
   };
 
   // ─── 영상 카드 ───────────────────────────────────────────
-  const VideoCard = ({ video }) => {
+  // listOnMobile=true면 모바일에서 가로형 리스트(검색 결과용), false면 항상 세로형(가로 스크롤 캐러셀용)
+  const VideoCard = ({ video, listOnMobile = false }) => {
     const { grade, color } = getSafetyGrade(video.totalScore);
     const isFavorited = favorites.some((f) => f.itemId === video.videoId);
     return (
+      <>
+      {/* ─ 모바일: 가로형 리스트 카드 (listOnMobile일 때만) ─ */}
       <div
-        className="overflow-hidden bg-white transition duration-200 hover:-translate-y-0.5"
+        className={`${listOnMobile ? "flex lg:hidden" : "hidden"} bg-white overflow-hidden`}
+        style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+      >
+        {/* 썸네일 (좌측) */}
+        <div
+          className="relative shrink-0 cursor-pointer overflow-hidden"
+          style={{ width: "150px", height: "100px" }}
+          onClick={() => setSelectedVideo(video)}
+        >
+          <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
+          <div
+            className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-white flex items-baseline gap-1"
+            style={getSafetyBadgeStyle(color)}
+          >
+            <span style={{ fontSize: "12px", fontWeight: 700 }}>{grade}</span>
+            <span style={{ fontSize: "9px", fontWeight: 600, opacity: 0.85 }}>{video.totalScore}</span>
+          </div>
+        </div>
+        {/* 정보 (우측) */}
+        <div className="flex-1 min-w-0 p-2.5 flex flex-col">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="text-xs font-medium truncate" style={{ color: "#6DAB60" }}>
+              {video.channelTitle}
+            </p>
+            {video.educational >= 80 && (
+              <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 600, backgroundColor: "#FFF3E0", color: "#E07B00" }}>📚 교육적</span>
+            )}
+          </div>
+          <h3
+            className="text-sm font-medium cursor-pointer"
+            style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            onClick={() => setSelectedVideo(video)}
+          >
+            {video.title}
+          </h3>
+          <div className="mt-auto flex items-center justify-between gap-2 pt-1.5">
+            {video.madeForKids ? (
+              <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: "#EAF3F9", color: "#1D6FAA" }}>
+                ✅ YouTube 인증
+              </span>
+            ) : <span />}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
+              className="rounded-full transition-all active:scale-110 flex items-center gap-1 shrink-0"
+              style={{
+                backgroundColor: isFavorited ? "#C84B47" : "#F8F7F2",
+                color: isFavorited ? "#fff" : "#C84B47",
+                padding: "4px 9px", fontSize: "12px", fontWeight: 600,
+              }}
+            >
+              {isFavorited ? <FaHeart style={{ fontSize: "12px" }} /> : <FaRegHeart style={{ fontSize: "12px" }} />}
+              <span>{isFavorited ? "찜됨" : "찜"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─ 세로형 카드 (기존) — 데스크톱 + 캐러셀 ─ */}
+      <div
+        className={`${listOnMobile ? "hidden lg:block" : "block"} overflow-hidden bg-white transition duration-200 hover:-translate-y-0.5`}
         style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
       >
         {/* 썸네일 */}
@@ -392,11 +454,21 @@ export default function KidHome() {
           <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
           {/* 안전 배지 */}
           <div
-            className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium text-white"
+            className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-white flex items-baseline gap-1"
             style={getSafetyBadgeStyle(color)}
           >
-            {grade} {video.totalScore}점
+            <span style={{ fontSize: "13px", fontWeight: 700 }}>{grade}</span>
+            <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.85 }}>{video.totalScore}</span>
           </div>
+          {/* YouTube 공식 아동용 인증 뱃지 */}
+          {video.madeForKids && (
+            <div
+              className="absolute left-3 top-10 rounded-full px-2.5 py-1 text-xs font-medium"
+              style={{ backgroundColor: "rgba(255,255,255,0.92)", color: "#1D6FAA" }}
+            >
+              ✅ YouTube 인증
+            </div>
+          )}
           {/* 찜 버튼 */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
@@ -416,9 +488,14 @@ export default function KidHome() {
         </div>
         {/* 텍스트 */}
         <div className="p-3.5">
-          <p className="text-xs font-medium mb-1" style={{ color: "#6DAB60" }}>
-            {video.channelTitle}
-          </p>
+          <div className="flex items-center gap-1.5 mb-1">
+            <p className="text-xs font-medium truncate" style={{ color: "#6DAB60" }}>
+              {video.channelTitle}
+            </p>
+            {video.educational >= 80 && (
+              <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "10px", fontWeight: 600, backgroundColor: "#FFF3E0", color: "#E07B00" }}>📚 교육적</span>
+            )}
+          </div>
           <h3
             className="text-sm font-medium cursor-pointer mb-1.5"
             style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
@@ -434,6 +511,7 @@ export default function KidHome() {
           </p>
         </div>
       </div>
+      </>
     );
   };
 
@@ -994,8 +1072,8 @@ export default function KidHome() {
                   <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>검색 결과</h2>
                   <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}>{videos.length}개</span>
                 </div>
-                <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-                  {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} />)}
+                <div className="grid gap-3 grid-cols-1 lg:grid-cols-3">
+                  {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} listOnMobile />)}
                 </div>
                 {visibleCount < videos.length && (
                   <div className="mt-6 flex justify-center">

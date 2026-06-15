@@ -1,10 +1,370 @@
 {
-  "abc123": {
+  "Z5_NmTx0m34": {
     "violence": 100,
     "language": 100,
     "sexual": 100,
-    "educational": 40,
-    "totalScore": 85,
-    "summary": "\"?????\"은(는) 어린이에게 안전한 콘텐츠예요."
+    "educational": 85,
+    "totalScore": 100,
+    "summary": "핑크퐁의 '만두송'은 만두라는 친숙한 음식을 주제로 한 밝고 즐거운 아동용 노래로, 폭력성, 선정성, 공포 요소가 전혀 없어 매우 안전합니다. 3세 이상 모든 어린이가 즐길 수 있는 교육적이고 재미있는 콘텐츠입니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 98,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없는 순수 아동용 노래입니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설이나 비속어 없이 아이들을 위한 순수한 언어만 사용합니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소가 전혀 없습니다."
+      },
+      "scary": {
+        "score": 98,
+        "note": "만두 먹기라는 긍정적이고 재미있는 주제로 무섭거나 자극적인 요소가 없습니다."
+      },
+      "educational": {
+        "score": 85,
+        "note": "식재료 인식, 식문화 학습, 리듬감각 발달에 도움이 되는 노래입니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T13:41:53.832117+00:00"
+  },
+  "XMXpbQMhqDI": {
+    "violence": 100,
+    "language": 95,
+    "sexual": 100,
+    "educational": 85,
+    "totalScore": 98,
+    "summary": "호기 캐릭터와 함께하는 색깔 손가락 놀이로, 유아의 색채 인식과 신체 발달을 자극하는 안전하고 교육적인 콘텐츠입니다. 3세 이상 영유아에게 매우 적합합니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없으며 순수한 손가락 놀이와 색깔 활동만 다룸."
+      },
+      "language": {
+        "score": 95,
+        "note": "동요와 교육적 내용만 포함되어 있으며 욕설이나 비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 없는 유아 교육 콘텐츠."
+      },
+      "scary": {
+        "score": 95,
+        "note": "밝고 긍정적인 색깔놀이와 동요로 구성되어 무서운 요소가 없음."
+      },
+      "educational": {
+        "score": 85,
+        "note": "색깔 인식, 손가락 협응 발달, 음악 감상 등 유아 발달에 도움이 되는 교육적 콘텐츠."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T14:01:34.382070+00:00"
+  },
+  "761ae_KDg_Q": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 85,
+    "totalScore": 99,
+    "summary": "핑크퐁의 '아기상어'는 세계적으로 인기 있는 유아 동요로, 폭력·욕설·선정성이 전혀 없는 매우 안전한 콘텐츠입니다. 3세 이상 모든 어린이가 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없으며, 상어가족의 일상적인 모습을 다룬 순수한 아동 콘텐츠입니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "동요로 구성되어 있으며 비속어나 부적절한 언어가 전혀 없습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 포함되지 않은 순수 어린이 동요입니다."
+      },
+      "scary": {
+        "score": 95,
+        "note": "상어라는 동물이 등장하지만 아기상어는 친근하고 귀여운 캐릭터로 표현되어 무섭지 않습니다."
+      },
+      "educational": {
+        "score": 85,
+        "note": "동물 이름, 가족 관계 등 기초 개념을 학습할 수 있는 교육적 가치가 있습니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T05:11:38.400925+00:00"
+  },
+  "Bxx9-9MwNK4": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 85,
+    "totalScore": 95,
+    "summary": "핑크퐁의 대표 동요로, 공룡 멸종을 주제로 한 교육적 콘텐츠입니다. 폭력성이 없고 어린이 친화적으로 제작되어 매우 안전합니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 85,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "공룡 멸종이라는 과학 주제를 다루지만, 동요 형식으로 교육적이고 폭력적 요소 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "핑크퐁의 인기 동요로 어린이 대상 콘텐츠이므로 욕설이나 비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 85,
+        "note": "공룡 멸종이라는 다소 무거운 주제이지만, 동요 형식으로 순화되어 공포감은 최소화됨."
+      },
+      "educational": {
+        "score": 85,
+        "note": "공룡 멸종이라는 역사・과학 개념을 음악과 함께 배우는 교육적 콘텐츠."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T12:45:49.796210+00:00"
+  },
+  "rrkKzQ0wB5c": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 85,
+    "totalScore": 100,
+    "summary": "핑크퐁의 인기 아기상어 동요에 아역배우 노노카가 함께하는 즐거운 어린이 콘텐츠입니다. 폭력성, 부적절한 언어, 선정성, 공포 요소가 모두 없으며 매우 안전합니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 100,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력적 요소가 전혀 없으며 동요와 체조로만 구성되어 있습니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "아동용 인기 동요 채널로 고운 말과 신나는 가사만 사용됩니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 없는 순수 어린이 콘텐츠입니다."
+      },
+      "scary": {
+        "score": 100,
+        "note": "귀여운 캐릭터와 밝은 분위기의 체조로 무섭거나 자극적인 요소가 없습니다."
+      },
+      "educational": {
+        "score": 85,
+        "note": "리듬감 있는 동요와 체조를 통해 신체활동, 음악감각, 언어 발달에 도움이 됩니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T16:45:00.484636+00:00"
+  },
+  "JPlAAmaS6zM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"라이브🎂 생일 축하해! 6월은 아기상어의 생일이에요🎉 | 핑크퐁 아기상어 BEST 인기동요 24시간 연속재생 | 가족동요 상어가족 자동차 한글 동물 공룡 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "F0lYrTJ9HyU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"[NEW⭐️] 튼튼쌤 호이와 둥글게 둥글게~👏 | 인기율동동요 | Round and Round | #체조친구 | 핑크퐁! 인기체조\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "M2cgndHuG04": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"동물의 왕 사자 | 동물동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "PcIIqlO6d9w": {
+    "violence": 100,
+    "language": 95,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 98,
+    "summary": "핑크퐁 공식 채널의 유아용 세차 동요 영상으로, 폭력·욕설·공포 요소가 없고 매우 안전합니다. 3세 이상의 영유아가 즐길 수 있는 순수한 교육 오락 콘텐츠입니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없는 순수한 아동용 콘텐츠입니다."
+      },
+      "language": {
+        "score": 95,
+        "note": "고운 말만 사용하며, 아동 친화적인 표현으로 구성되어 있습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 없습니다."
+      },
+      "scary": {
+        "score": 95,
+        "note": "밝고 긍정적인 톤의 세차 놀이 주제로, 무서운 요소가 없습니다."
+      },
+      "educational": {
+        "score": 75,
+        "note": "청소·위생 습관과 색상 인지 등 기초적 교육 가치가 있으며, 동요를 통한 음악 활동도 포함됩니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T16:45:13.128302+00:00"
+  },
+  "gIecPYRLknE": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"아기 자동차 | 부릉부릉 빵빵 신나는 자동차송 | 자동차 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Z0Ux_-J6UiA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"의사 선생님 출동!! 🩺 | 아야 아야🥲 아플 땐 병원에 가요! | 생활습관 동요 | 유아 교육 | 유치원 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "pOiX3U0Vp-s": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"경찰차 | 경찰차송 | 요이요이 경찰차 출동! | 자동차 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "CPr4pu38fro": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"디스코 아기상어 | 상어가족 | 동물동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Bl_PylYAMts": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"정글 붐붐 | 동물동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "F2ORcoBoEe4": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 85,
+    "totalScore": 100,
+    "summary": "핑크퐁의 검증된 공식 키즈 채널에서 제공하는 아기상어 체조 영상으로, 폭력·욕설·선정성·공포 요소가 없어 매우 안전합니다. 어린이의 신체 활동과 음악 감각 발달에 도움이 되는 우수한 콘텐츠입니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 100,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없는 순수 체조 및 동요 콘텐츠입니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "아동용 동요이므로 부적절한 언어 사용이 없습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 없는 건전한 어린이 콘텐츠입니다."
+      },
+      "scary": {
+        "score": 100,
+        "note": "밝고 즐거운 체조 곡으로 공포나 자극적 요소가 없습니다."
+      },
+      "educational": {
+        "score": 85,
+        "note": "신체 활동 촉진과 리듬감 발달에 도움이 되며, 아기상어 캐릭터를 통한 친숙한 학습입니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T16:45:32.796111+00:00"
+  },
+  "uasbxEnCMxQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"티라노사우루스 렉스 | 티렉스 동요 | 최고 사냥꾼, 폭군 도마뱀! | 공룡동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "RXDVqrMvhdc": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"상어 가족 (상어 가족)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "5bOWgaHi_IU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"농장 동물 댄스ㅣ동물 동요ㅣ젖소, 돼지, 오리, 닭, 양을 따라 춤춰요!ㅣ전래 동요ㅣ숫자송ㅣ페파페페와 노래해요ㅣ핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "ykYDjfE4a14": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 96,
+    "summary": "핑크퐁 공식 채널의 건강 위생 교육 동요로, 배탈세균을 귀엽게 의인화하여 상한 음식의 위험성을 재미있게 가르칩니다. 3세 이상 어린이가 안전하게 시청할 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 90,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "폭력 요소 없음. 의사 역할극과 세균 캐릭터가 교육 목적으로 의인화되어 있음."
+      },
+      "language": {
+        "score": 100,
+        "note": "공식 키즈 채널의 동요 형식이므로 고운 말만 사용될 것으로 예상됨."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 90,
+        "note": "배탈세균이 의인화되어 등장하지만 교육 목적의 건강 위생 콘텐츠로 실제 공포를 유발하지 않음."
+      },
+      "educational": {
+        "score": 95,
+        "note": "상한 음식 섭취의 위험성과 위생 교육, 병원 방문 시 긍정적 태도 형성에 매우 교육적임."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T17:11:47.751698+00:00"
   }
 }

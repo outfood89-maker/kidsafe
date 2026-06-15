@@ -31,7 +31,8 @@ def parse_duration(duration: str) -> int:
     return hours * 3600 + minutes * 60 + seconds
 
 
-async def get_video_durations(video_ids: list) -> dict:
+async def get_video_details(video_ids: list) -> dict:
+    """videos.list 단일 호출로 길이 + 안전 메타데이터 동시 수집 (쿼터 추가 없음)"""
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
@@ -39,14 +40,23 @@ async def get_video_durations(video_ids: list) -> dict:
                 params={
                     "key": os.getenv("YOUTUBE_API_KEY"),
                     "id": ",".join(video_ids),
-                    "part": "contentDetails",
+                    "part": "contentDetails,status,snippet,topicDetails",
                 },
                 timeout=10.0,
             )
             resp.raise_for_status()
-            return {item["id"]: parse_duration(item["contentDetails"]["duration"]) for item in resp.json().get("items", [])}
+            result = {}
+            for item in resp.json().get("items", []):
+                vid = item.get("id", "")
+                result[vid] = {
+                    "duration": parse_duration(item.get("contentDetails", {}).get("duration", "")),
+                    "madeForKids": item.get("status", {}).get("madeForKids", False),
+                    "categoryId": item.get("snippet", {}).get("categoryId", ""),
+                    "topicCategories": item.get("topicDetails", {}).get("topicCategories", []),
+                }
+            return result
     except Exception as e:
-        print(f"영상 길이 조회 실패: {e}")
+        print(f"영상 상세 조회 실패: {e}")
         return {}
 
 
@@ -79,7 +89,7 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
         and not is_game_content(item.get("snippet", {}).get("title", ""))
     ]
     video_ids = [item["id"]["videoId"] for item in filtered]
-    duration_map = await get_video_durations(video_ids)
+    detail_map = await get_video_details(video_ids)
 
     results = [
         {
@@ -89,9 +99,13 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
             "thumbnail": item["snippet"].get("thumbnails", {}).get("medium", {}).get("url", ""),
             "channelTitle": item["snippet"].get("channelTitle", ""),
             "channelId": item["snippet"].get("channelId", ""),
+            # YouTube 안전 메타데이터 — analyze.py Tier 0+1에서 활용
+            "madeForKids": detail_map.get(item["id"]["videoId"], {}).get("madeForKids", False),
+            "categoryId": detail_map.get(item["id"]["videoId"], {}).get("categoryId", ""),
+            "topicCategories": detail_map.get(item["id"]["videoId"], {}).get("topicCategories", []),
         }
         for item in filtered
-        if (duration_map.get(item["id"]["videoId"]) or 999) > 60
+        if (detail_map.get(item["id"]["videoId"], {}).get("duration") or 999) > 60
     ]
 
     return results[:max_results]

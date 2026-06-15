@@ -81,6 +81,7 @@ export default function ParentDashboard() {
   const [profileBadges, setProfileBadges] = useState({});
   const [activeTab, setActiveTab] = useState("전체");
   const [chartTab, setChartTab] = useState("전체");
+  const [reportTab, setReportTab] = useState("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState(7);
@@ -362,6 +363,40 @@ export default function ParentDashboard() {
     return { date: dateStr, count };
   });
 
+  // 이번 주 리포트 계산
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+  const reportHistory = reportTab === "all"
+    ? history.filter(v => new Date(v.watchedAt) >= weekAgo)
+    : history.filter(v => v.profileId === reportTab && new Date(v.watchedAt) >= weekAgo);
+  const reportWatchSeconds = reportHistory.reduce((sum, v) => sum + (v.watchSeconds || 0), 0);
+  const reportAvgScore = reportHistory.length > 0
+    ? Math.round(reportHistory.reduce((sum, v) => sum + (v.totalScore || 0), 0) / reportHistory.length)
+    : null;
+  const reportCategoryData = [
+    { label: "폭력성", key: "violence",    color: "#EF9F27" },
+    { label: "언어",   key: "language",    color: "#6DAB60" },
+    { label: "선정성", key: "sexual",      color: "#C84B47" },
+    { label: "교육성", key: "educational", color: "#1D6FAA" },
+  ].map(cat => ({
+    ...cat,
+    score: reportHistory.length > 0
+      ? Math.round(reportHistory.reduce((sum, v) => sum + (v[cat.key] || 0), 0) / reportHistory.length)
+      : 0,
+  }));
+  const reportBadges = reportTab === "all"
+    ? Object.entries(profileBadges).flatMap(([, badges]) =>
+        (badges || []).filter(b => new Date(b.earnedAt) >= weekAgo)
+      )
+    : (profileBadges[reportTab] || []).filter(b => new Date(b.earnedAt) >= weekAgo);
+  const formatWatchTime = (secs) => {
+    if (!secs) return "0초";
+    if (secs < 60) return `${secs}초`;
+    const m = Math.floor(secs / 60);
+    if (m < 60) return `${m}분`;
+    const h = Math.floor(m / 60), rm = m % 60;
+    return rm > 0 ? `${h}시간 ${rm}분` : `${h}시간`;
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#F8F7F2" }}>
       {/* 상단 네비게이션 바 */}
@@ -406,6 +441,98 @@ export default function ParentDashboard() {
                 </div>
               </div>
             ))}
+          </section>
+        )}
+
+        {/* 이번 주 리포트 */}
+        {!loading && (
+          <section
+            className="bg-white p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">📋</span>
+              <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>이번 주 리포트</h2>
+              <span className="ml-auto text-xs" style={{ color: "#9BA89A" }}>최근 7일 기준</span>
+            </div>
+
+            {/* 아이 선택 탭 */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={() => setReportTab("all")}
+                className="rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                style={reportTab === "all"
+                  ? { backgroundColor: "#6DAB60", color: "white" }
+                  : { backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+              >전체</button>
+              {profiles.map(profile => (
+                <button
+                  key={profile.id}
+                  onClick={() => setReportTab(profile.id)}
+                  className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                  style={reportTab === profile.id
+                    ? { backgroundColor: "#6DAB60", color: "white" }
+                    : { backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+                >
+                  <img src={getAvatarUrl(profile)} alt={profile.name} className="h-5 w-5 rounded-full bg-white" />
+                  {profile.name}
+                </button>
+              ))}
+            </div>
+
+            {reportHistory.length === 0 ? (
+              <p className="py-8 text-center text-sm" style={{ color: "#9BA89A" }}>이번 주 시청 기록이 없어요.</p>
+            ) : (<>
+              {/* 요약 카드 3개 */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[
+                  { label: "시청 영상", value: `${reportHistory.length}개`, icon: "🎬" },
+                  { label: "시청 시간", value: formatWatchTime(reportWatchSeconds), icon: "⏱️" },
+                  { label: "평균 안전도", value: reportAvgScore !== null ? `${reportAvgScore}점` : "-", icon: "🛡️" },
+                ].map(item => (
+                  <div key={item.label} className="rounded-xl px-2 py-3 text-center" style={{ backgroundColor: "#F8F7F2" }}>
+                    <p className="text-lg mb-1">{item.icon}</p>
+                    <p className="text-sm font-bold" style={{ color: "#2C3528" }}>{item.value}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#9BA89A" }}>{item.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 항목별 평균 점수 */}
+              <div className="mb-4">
+                <p className="text-xs font-medium mb-2" style={{ color: "#6B7A65" }}>항목별 평균 점수</p>
+                <div className="flex flex-col gap-2">
+                  {reportCategoryData.map(cat => (
+                    <div key={cat.label} className="flex items-center gap-2">
+                      <span className="text-xs w-14 shrink-0" style={{ color: "#6B7A65" }}>{cat.label}</span>
+                      <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: "#E4EAE0" }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${cat.score}%`, backgroundColor: cat.color }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold w-8 text-right" style={{ color: "#2C3528" }}>{cat.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 이번 주 획득 배지 */}
+              {reportBadges.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium mb-2" style={{ color: "#6B7A65" }}>이번 주 획득 배지</p>
+                  <div className="flex flex-wrap gap-2">
+                    {reportBadges.map((badge, i) => (
+                      <div key={i} className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
+                        style={{ backgroundColor: "#FFF4E5", border: "1px solid #FDDCAA" }}>
+                        <span>{badge.emoji}</span>
+                        <span className="text-xs font-medium" style={{ color: "#C47A00" }}>{badge.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>)}
           </section>
         )}
 

@@ -12,24 +12,22 @@
 - AI: Anthropic API — 키디 챗봇 전용 (claude-haiku-4-5-20251001)
 - 영상: YouTube Data API v3
 - 아바타: 로컬 PNG (avatar_01~08.png) — DiceBear 제거
-- 배포 예정: Vercel (프론트) + Railway (백엔드)
+- 배포: Vercel (프론트 `https://kidsafe-eight.vercel.app`) + Railway (백엔드 `https://kidsafe-production.up.railway.app`)
 
 ## 남은 작업 우선순위
-1. 미니게임 2개 추가 제작
-2. KidHome 테스트 버튼 제거 (노란 배너) — 모든 테스트 완료 후
-3. Vercel + Railway 배포 — `api.js` BASE_URL → 환경변수(`import.meta.env.VITE_API_URL`)로 교체
-4. README 작성
-5. FastAPI 전환 (위 항목 모두 완료 후)
+1. 검수 고도화 (Tier1/Tier2 — `KidSafe_검수아키텍처_핵심설계.md` 참고)
 
-## FastAPI 전환 계획
-> 상세 지침서: `KidSafe_FastAPI_전환_지침서_v2.md`(포팅 명세) / `KidSafe_검수아키텍처_핵심설계.md`(검수 고도화 설계) / `KidSafe_FastAPI_세션시작_지침서.md`(작업 순서·모델 가이드)
+## 완료된 작업
+- ✅ 미니게임 2개 추가
+- ✅ KidHome 테스트 버튼 제거
+- ✅ Vercel + Railway 배포 완료
+- ✅ README 작성
+- ✅ FastAPI 전환 완료 + 배포
 
-### 전환 전 체크리스트
-- [ ] 미니게임 2개 완성
-- [ ] KidHome 테스트 버튼 제거
-- [ ] Vercel + Railway 배포 완료 (Node.js 버전으로 먼저)
+## FastAPI 전환 (완료)
+> 참고 문서: `KidSafe_FastAPI_전환_지침서_v2.md` / `KidSafe_검수아키텍처_핵심설계.md` / `KidSafe_FastAPI_세션시작_지침서.md`
 
-### ⚠️ 전환 시 핵심 주의사항
+### ⚠️ FastAPI 핵심 주의사항
 - `server/` → `server_backup/` 복사 후 작업 시작 (삭제 금지)
 - Railway 재시작 시 JSON 초기화됨 → `main.py`의 `ensure_data_files()`로 해결
 - JSON 읽기/쓰기 시 반드시 `encoding="utf-8"` 명시
@@ -43,9 +41,9 @@
 ## 중요 설정
 
 ### 안전도 분석
-- 현재: 키워드 기반 (Anthropic 크레딧 절약 목적) — `analyze.js`
-- chat.js만 Anthropic API 사용 (claude-haiku-4-5-20251001)
-  > ⚠️ FastAPI 전환 후엔 검수 고도화로 analyze도 Claude 사용 예정 — `KidSafe_검수아키텍처_핵심설계.md` 참고
+- 현재: 키워드 기반 (Anthropic 크레딧 절약 목적) — `server/routers/analyze.py`
+- `server/routers/chat.py`만 Anthropic API 사용 (claude-haiku-4-5-20251001)
+  > ⚠️ 검수 고도화 시 analyze도 Claude 사용 예정 — `KidSafe_검수아키텍처_핵심설계.md` 참고
 
 ### 모바일 테스트
 - `api.js` BASE_URL을 PC의 로컬 IP로 변경 (예: `http://172.30.1.56:3000`)
@@ -64,7 +62,8 @@ git push origin master
 - Axios만 사용 (fetch 금지)
 - Tailwind CSS만 사용 (인라인 style은 불가피한 경우만)
 - try-catch 필수
-- 백엔드는 항상 ES Module 방식 (`import/export`) — `require()` 절대 금지
+- 백엔드(FastAPI)는 Python — `import/from` 방식, `require()` 없음
+- 백엔드 라우터 추가 시 반드시 `server/main.py`에 import + `include_router` 등록
 
 ## ⚠️ 과거 실수 — 반드시 지킬 것
 

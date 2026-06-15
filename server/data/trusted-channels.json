@@ -1,10 +1,52 @@
 [
-  { "channelId": "UCddiUEpeqJcYeBxX1IVBKvQ", "name": "핑크퐁 (PinkFong Korea)", "trust": "verified" },
-  { "channelId": "UCR4cMBJRdZFQGLw64XKKbzA", "name": "뽀로로 (Pororo)", "trust": "verified" },
-  { "channelId": "UCN_6-v-q9RFBWJP4xt_G25g", "name": "타요 버스 (Tayo)", "trust": "verified" },
-  { "channelId": "UCiKnDlNKk7Xo3DzMc1K1yHg", "name": "라바 (LARVA)", "trust": "verified" },
-  { "channelId": "UCHsE7-HQDQ_qkHGEhZfaH6g", "name": "에그박사 (Egg Doctor)", "trust": "verified" },
-  { "channelId": "UCIIq6jHrIEHFwzIpMU-Hmvg", "name": "EBS 키즈", "trust": "verified" },
-  { "channelId": "UC6107grRI4m0o2-emgoDnAA", "name": "세이펜 (Saypen)", "trust": "verified" },
-  { "channelId": "UCbCmjCuTUZos6Inko4u57EA", "name": "Cocomelon", "trust": "verified" }
+  {
+    "channelId": "UCddiUEpeqJcYeBxX1IVBKvQ",
+    "name": "핑크퐁 (PinkFong Korea)",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCR4cMBJRdZFQGLw64XKKbzA",
+    "name": "뽀로로 (Pororo)",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCN_6-v-q9RFBWJP4xt_G25g",
+    "name": "타요 버스 (Tayo)",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCiKnDlNKk7Xo3DzMc1K1yHg",
+    "name": "라바 (LARVA)",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCHsE7-HQDQ_qkHGEhZfaH6g",
+    "name": "에그박사 (Egg Doctor)",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCIIq6jHrIEHFwzIpMU-Hmvg",
+    "name": "EBS 키즈",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UC6107grRI4m0o2-emgoDnAA",
+    "name": "세이펜 (Saypen)",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCbCmjCuTUZos6Inko4u57EA",
+    "name": "Cocomelon",
+    "trust": "verified"
+  },
+  {
+    "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
+    "channelTitle": "핑크퐁 (인기 동요・동화)",
+    "autoAdded": true
+  },
+  {
+    "channelId": "UC-9Tn-iH6W_187YwCOf7CGw",
+    "channelTitle": "핑크퐁! 아기상어 올리",
+    "autoAdded": true
+  }
 ]

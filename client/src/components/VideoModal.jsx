@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { FaTimes } from "react-icons/fa";
-import { analyzeVideoDeep } from "../utils/api";
+import { analyzeVideoDeep, submitFeedbackPipeline } from "../utils/api";
 
 export default function VideoModal({ video, onClose, onPlayInApp }) {
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState("scary");
+  const [feedbackReason, setFeedbackReason] = useState("");
+  // "idle" | "loading" | "done" | "error"
+  const [feedbackStatus, setFeedbackStatus] = useState("idle");
 
   useEffect(() => {
     if (video) requestAnimationFrame(() => setVisible(true));
@@ -27,6 +32,43 @@ export default function VideoModal({ video, onClose, onPlayInApp }) {
   const handleClose = () => {
     setVisible(false);
     setTimeout(onClose, 260);
+  };
+
+  const handleFeedbackSubmit = async () => {
+    try {
+      setFeedbackStatus("loading");
+      const cur = deepResult ? { ...video, ...deepResult } : video;
+      const scoreMap = { scary: cur.scary, violence: cur.violence, language: cur.language, sexual: cur.sexual, imitation_risk: cur.imitationRisk, educational: cur.educational, commercialism: cur.commercialism };
+      await submitFeedbackPipeline({
+        videoId: video.videoId,
+        title: video.title,
+        channelTitle: video.channelTitle || "",
+        category: feedbackCategory,
+        currentScore: scoreMap[feedbackCategory] ?? cur.totalScore,
+        reason: feedbackReason,
+      });
+      setFeedbackStatus("done");
+      // 룰이 즉시 반영됐으니 Tier 2 재분석 자동 트리거
+      setTimeout(async () => {
+        setFeedbackOpen(false);
+        setFeedbackStatus("idle");
+        setFeedbackReason("");
+        setDeepResult(null);
+        setDeepLoading(true);
+        try {
+          const result = await analyzeVideoDeep(video);
+          setDeepResult(result);
+        } catch (e) {
+          console.error("재분석 실패:", e);
+        } finally {
+          setDeepLoading(false);
+        }
+      }, 1800);
+    } catch (e) {
+      console.error("피드백 전송 실패:", e);
+      setFeedbackStatus("error");
+      setTimeout(() => setFeedbackStatus("idle"), 2000);
+    }
   };
 
   if (!video) return null;
@@ -54,7 +96,9 @@ export default function VideoModal({ video, onClose, onPlayInApp }) {
     { label: "언어",   icon: "💬", score: v.language },
     { label: "선정성", icon: "🔞", score: v.sexual },
     { label: "공포",   icon: "👻", score: v.scary },
+    { label: "모방위험", icon: "⚠️", score: v.imitationRisk },
     { label: "교육성", icon: "📚", score: v.educational },
+    { label: "상업성", icon: "🛒", score: v.commercialism },
   ].filter(item => item.score !== undefined);
 
   const handleWatchClick = () => {
@@ -168,6 +212,78 @@ export default function VideoModal({ video, onClose, onPlayInApp }) {
               </div>
             ))}
           </div>
+
+          {/* 점수 피드백 */}
+          {isDeep && (
+            <div className="mb-3">
+              {!feedbackOpen ? (
+                <button
+                  onClick={() => setFeedbackOpen(true)}
+                  className="w-full text-xs font-medium py-2 rounded-xl"
+                  style={{ color: "#9BA89A", backgroundColor: "#F8F7F2" }}
+                >
+                  🤔 이 점수가 이상한 것 같아요
+                </button>
+              ) : feedbackStatus === "done" ? (
+                <div className="text-center text-sm font-medium py-3" style={{ color: "#2E9E50" }}>
+                  ✅ 룰이 추가됐어요! 지금 바로 재분석 중...
+                </div>
+              ) : (
+                <div className="rounded-xl p-3" style={{ backgroundColor: "#F8F7F2" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "#2C3528" }}>어떤 점수가 이상한가요?</p>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {[
+                      { key: "scary", label: "공포" },
+                      { key: "violence", label: "폭력성" },
+                      { key: "language", label: "언어" },
+                      { key: "sexual", label: "선정성" },
+                      { key: "imitation_risk", label: "모방위험" },
+                      { key: "educational", label: "교육성" },
+                      { key: "commercialism", label: "상업성" },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setFeedbackCategory(key)}
+                        className="rounded-full px-3 py-1 text-xs font-medium"
+                        style={{
+                          backgroundColor: feedbackCategory === key ? "#6DAB60" : "#fff",
+                          color: feedbackCategory === key ? "#fff" : "#6B7A65",
+                          border: feedbackCategory === key ? "none" : "1px solid #E4EAE0",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    placeholder="왜 이상한지 짧게 써주세요 (선택)"
+                    value={feedbackReason}
+                    onChange={(e) => setFeedbackReason(e.target.value)}
+                    rows={2}
+                    className="w-full text-xs rounded-lg p-2 resize-none outline-none"
+                    style={{ border: "1px solid #E4EAE0", color: "#2C3528" }}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => setFeedbackOpen(false)}
+                      className="flex-1 rounded-lg py-1.5 text-xs font-medium"
+                      style={{ backgroundColor: "#fff", color: "#9BA89A", border: "1px solid #E4EAE0" }}
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleFeedbackSubmit}
+                      disabled={feedbackStatus === "loading"}
+                      className="flex-1 rounded-lg py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                      style={{ backgroundColor: "#6DAB60" }}
+                    >
+                      {feedbackStatus === "loading" ? "분석 중..." : feedbackStatus === "error" ? "오류 발생" : "보내기"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 재생 버튼 */}
           <button

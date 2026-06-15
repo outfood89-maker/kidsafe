@@ -174,5 +174,37 @@
     "emoji": "🏆",
     "description": "배지를 5개 이상 획득했어요!",
     "earnedAt": "2026-06-14T15:10:00.023Z"
+  },
+  {
+    "profileId": "1779888594335",
+    "badgeId": "early_bird",
+    "name": "얼리버드",
+    "emoji": "🌙",
+    "description": "오전 시간대에 영상을 5번 시청했어요!",
+    "earnedAt": "2026-06-15T04:31:32.304261+00:00"
+  },
+  {
+    "profileId": "1779888594335",
+    "badgeId": "kidsafe_master",
+    "name": "KidSafe 마스터",
+    "emoji": "🏆",
+    "description": "배지를 5개 이상 획득했어요!",
+    "earnedAt": "2026-06-15T04:33:32.178604+00:00"
+  },
+  {
+    "profileId": "1779888594335",
+    "badgeId": "curious_explorer",
+    "name": "호기심 탐험가",
+    "emoji": "🔍",
+    "description": "검색을 10번 이상 해봤어요!",
+    "earnedAt": "2026-06-15T04:33:32.179604+00:00"
+  },
+  {
+    "profileId": "1779888608658",
+    "badgeId": "curious_explorer",
+    "name": "호기심 탐험가",
+    "emoji": "🔍",
+    "description": "검색을 10번 이상 해봤어요!",
+    "earnedAt": "2026-06-15T16:43:44.034949+00:00"
   }
 ]

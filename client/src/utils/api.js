@@ -18,13 +18,16 @@ export const getRecommendedVideos = async (age) => {
   return response.data
 }
 
-// 영상 안전도 검수 (Tier 0~1 — 빠른 키워드/채널 분석, 검색 목록용)
-export const analyzeVideo = async (title, description, videoId = "", channelId = "") => {
+// 영상 안전도 검수 (Tier 0~1 — 키워드+채널+YouTube 메타데이터, 검색 목록용)
+export const analyzeVideo = async (video) => {
   const response = await axios.post(`${BASE_URL}/analyze`, {
-    title,
-    description,
-    videoId,
-    channelId,
+    title: video.title,
+    description: video.description || "",
+    videoId: video.videoId || "",
+    channelId: video.channelId || "",
+    madeForKids: video.madeForKids || false,
+    categoryId: video.categoryId || "",
+    topicCategories: video.topicCategories || [],
   })
   return response.data
 }
@@ -222,6 +225,18 @@ export const getGameBonus = async (profileId) => {
 // 게임 보너스 저장
 export const saveGameBonus = async ({ profileId, game, correctCount }) => {
   const response = await axios.post(`${BASE_URL}/game-bonus`, { profileId, game, correctCount })
+  return response.data
+}
+
+// 점수 피드백 제출 (단순 수집)
+export const submitFeedback = async (data) => {
+  const response = await axios.post(`${BASE_URL}/feedback`, data)
+  return response.data
+}
+
+// 점수 피드백 자동화 파이프라인 (룰 추가 + 캐시 삭제 한 방에)
+export const submitFeedbackPipeline = async (data) => {
+  const response = await axios.post(`${BASE_URL}/feedback/pipeline`, data)
   return response.data
 }
 
