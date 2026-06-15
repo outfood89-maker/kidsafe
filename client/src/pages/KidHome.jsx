@@ -260,7 +260,7 @@ export default function KidHome() {
       const { videos: results, keyword } = await getRecommendedVideos(age);
       setRecommendKeyword(keyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video.title, video.description);
+        const safety = await analyzeVideo(video.title, video.description, video.videoId, video.channelId);
         return { ...video, ...safety };
       }));
       setRecommendedVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
@@ -279,7 +279,7 @@ export default function KidHome() {
       setHistoryKeyword(topKeyword);
       const { videos: results } = await getHistoryRecommendedVideos(topKeyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video.title, video.description);
+        const safety = await analyzeVideo(video.title, video.description, video.videoId, video.channelId);
         return { ...video, ...safety };
       }));
       setHistoryVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
@@ -339,7 +339,7 @@ export default function KidHome() {
       }
       const { videos: results, playlists: playlistResults } = await searchVideos(trimmedKeyword);
       const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video.title, video.description);
+        const safety = await analyzeVideo(video.title, video.description, video.videoId, video.channelId);
         return { ...video, ...safety };
       }));
       const age = selectedProfile?.age || null;

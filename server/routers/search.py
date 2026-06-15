@@ -88,6 +88,7 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
             "description": item["snippet"].get("description", ""),
             "thumbnail": item["snippet"].get("thumbnails", {}).get("medium", {}).get("url", ""),
             "channelTitle": item["snippet"].get("channelTitle", ""),
+            "channelId": item["snippet"].get("channelId", ""),
         }
         for item in filtered
         if (duration_map.get(item["id"]["videoId"]) or 999) > 60

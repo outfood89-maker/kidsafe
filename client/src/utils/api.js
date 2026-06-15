@@ -19,10 +19,12 @@ export const getRecommendedVideos = async (age) => {
 }
 
 // 영상 안전도 검수
-export const analyzeVideo = async (title, description) => {
+export const analyzeVideo = async (title, description, videoId = "", channelId = "") => {
   const response = await axios.post(`${BASE_URL}/analyze`, {
     title,
-    description
+    description,
+    videoId,
+    channelId,
   })
   return response.data
 }
