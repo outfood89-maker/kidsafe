@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { FaTimes } from "react-icons/fa";
 import { analyzeVideoDeep, submitFeedbackPipeline } from "../utils/api";
 
-export default function VideoModal({ video, onClose, onPlayInApp }) {
+export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }) {
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
@@ -23,7 +23,15 @@ export default function VideoModal({ video, onClose, onPlayInApp }) {
     setDeepResult(null);
     setDeepLoading(true);
     analyzeVideoDeep(video)
-      .then((result) => { if (!cancelled) setDeepResult(result); })
+      .then((result) => {
+        if (!cancelled) {
+          setDeepResult(result);
+          // AI 정밀 점수를 카드에도 반영 — confidence:high 일 때만
+          if (result?.confidence === "high" && onDeepResult) {
+            onDeepResult(video.videoId, result);
+          }
+        }
+      })
       .catch((err) => { console.error("AI 정밀 분석 실패:", err); })
       .finally(() => { if (!cancelled) setDeepLoading(false); });
     return () => { cancelled = true; };
@@ -91,14 +99,16 @@ export default function VideoModal({ video, onClose, onPlayInApp }) {
 
   const badge = getSafetyBadge(v.totalScore);
 
+  // ⚠️ 라벨은 '긍정형'으로 — 점수가 높을수록 좋다(안전)는 뜻이 자연스럽게 읽히게.
+  //    ('폭력성 100'은 '폭력 만점'으로 오해될 수 있어 '폭력 안전 100'으로 표기)
   const scoreItems = [
-    { label: "폭력성", icon: "🔴", score: v.violence },
-    { label: "언어",   icon: "💬", score: v.language },
-    { label: "선정성", icon: "🔞", score: v.sexual },
-    { label: "공포",   icon: "👻", score: v.scary },
-    { label: "모방위험", icon: "⚠️", score: v.imitationRisk },
-    { label: "교육성", icon: "📚", score: v.educational },
-    { label: "상업성", icon: "🛒", score: v.commercialism },
+    { label: "폭력 안전",   icon: "🛡️", score: v.violence },
+    { label: "언어 안전",   icon: "💬", score: v.language },
+    { label: "선정성 안전", icon: "🔞", score: v.sexual },
+    { label: "공포 안전",   icon: "👻", score: v.scary },
+    { label: "모방 안전",   icon: "⚠️", score: v.imitationRisk },
+    { label: "교육성",      icon: "📚", score: v.educational },
+    { label: "비상업성",    icon: "🛒", score: v.commercialism },
   ].filter(item => item.score !== undefined);
 
   const handleWatchClick = () => {
@@ -233,13 +243,13 @@ export default function VideoModal({ video, onClose, onPlayInApp }) {
                   <p className="text-xs font-semibold mb-2" style={{ color: "#2C3528" }}>어떤 점수가 이상한가요?</p>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {[
-                      { key: "scary", label: "공포" },
-                      { key: "violence", label: "폭력성" },
-                      { key: "language", label: "언어" },
-                      { key: "sexual", label: "선정성" },
-                      { key: "imitation_risk", label: "모방위험" },
+                      { key: "scary", label: "공포 안전" },
+                      { key: "violence", label: "폭력 안전" },
+                      { key: "language", label: "언어 안전" },
+                      { key: "sexual", label: "선정성 안전" },
+                      { key: "imitation_risk", label: "모방 안전" },
                       { key: "educational", label: "교육성" },
-                      { key: "commercialism", label: "상업성" },
+                      { key: "commercialism", label: "비상업성" },
                     ].map(({ key, label }) => (
                       <button
                         key={key}

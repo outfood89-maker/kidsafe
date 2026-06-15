@@ -362,6 +362,15 @@ export default function KidHome() {
     } finally { setLoading(false); }
   };
 
+  // AI 정밀 분석 완료 시 카드 점수 동기화 (모달 → 카드)
+  const handleDeepResult = (videoId, result) => {
+    const patch = { totalScore: result.totalScore, educational: result.educational };
+    const update = (list) => list.map((v) => v.videoId === videoId ? { ...v, ...patch } : v);
+    setVideos((prev) => update(prev));
+    setRecommendedVideos((prev) => update(prev));
+    setHistoryVideos((prev) => update(prev));
+  };
+
   const handlePlayInApp = async (video) => {
     // VideoPlayer로 재생 — 시청 기록은 VideoPlayer의 handleEnd에서 저장
     const videoWithProfile = { ...video, profileId: selectedProfile?.id || null };
@@ -678,6 +687,7 @@ export default function KidHome() {
             video={selectedVideo}
             onClose={() => setSelectedVideo(null)}
             onPlayInApp={(video) => { setSelectedVideo(null); handlePlayInApp(video); }}
+            onDeepResult={handleDeepResult}
           />
         )}
         {selectedPlaylist && (

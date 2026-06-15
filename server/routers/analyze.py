@@ -499,11 +499,26 @@ async def analyze_deep(data: AnalyzeRequest):
         channel_id = data.channelId or ""
 
         # 캐시에 이미 정밀 분석(high) 결과가 있으면 즉시 반환 (비용 0)
+        # 단, prompt-rules.json이 캐시 이후에 수정됐으면 재분석 (룰 업데이트 자동 반영)
         if video_id:
             cache = read_cache()
             cached = cache.get(video_id)
             if cached and cached.get("confidence") == "high":
-                return cached
+                try:
+                    rules_mtime = os.path.getmtime(PROMPT_RULES_PATH)
+                    analyzed_at = cached.get("analyzedAt", "")
+                    if analyzed_at:
+                        from datetime import datetime, timezone
+                        cached_dt = datetime.fromisoformat(analyzed_at)
+                        rules_dt = datetime.fromtimestamp(rules_mtime, tz=timezone.utc)
+                        if rules_dt <= cached_dt:
+                            return cached
+                        # 룰이 더 최신 → 캐시 무시하고 재분석
+                        print(f"룰 업데이트 감지 → 재분석: {video_id}")
+                    else:
+                        return cached
+                except Exception:
+                    return cached
 
         trusted = is_trusted_channel(channel_id)
 
