@@ -134,5 +134,45 @@
     "emoji": "📺",
     "description": "같은 채널 영상을 3개 이상 시청했어요!",
     "earnedAt": "2026-06-12T17:18:38.507Z"
+  },
+  {
+    "profileId": "1780384750187",
+    "badgeId": "dino_expert",
+    "name": "공룡 박사",
+    "emoji": "🦕",
+    "description": "공룡 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-14T13:31:48.540Z"
+  },
+  {
+    "profileId": "1779888608658",
+    "badgeId": "fairy_tale_lover",
+    "name": "동화 왕국",
+    "emoji": "📚",
+    "description": "동화/동요 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-14T14:35:35.245Z"
+  },
+  {
+    "profileId": "1779888608658",
+    "badgeId": "dino_expert",
+    "name": "공룡 박사",
+    "emoji": "🦕",
+    "description": "공룡 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-14T14:35:35.245Z"
+  },
+  {
+    "profileId": "1779888608658",
+    "badgeId": "channel_regular",
+    "name": "단골손님",
+    "emoji": "📺",
+    "description": "같은 채널 영상을 3개 이상 시청했어요!",
+    "earnedAt": "2026-06-14T14:55:24.591Z"
+  },
+  {
+    "profileId": "1779888608658",
+    "badgeId": "kidsafe_master",
+    "name": "KidSafe 마스터",
+    "emoji": "🏆",
+    "description": "배지를 5개 이상 획득했어요!",
+    "earnedAt": "2026-06-14T15:10:00.023Z"
   }
 ]

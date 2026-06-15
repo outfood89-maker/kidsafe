@@ -797,7 +797,7 @@ export default function ParentDashboard() {
                           onClick={() => setSelectedVideo(item)}
                           className="flex items-center gap-3 md:gap-4 text-left flex-1 min-w-0"
                         >
-                          <img src={item.thumbnail} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0" />
+                          <img src={item.thumbnail || null} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0 bg-gray-100" />
                           <div className="min-w-0">
                             <h3 className="line-clamp-1 text-sm font-medium transition" style={{ color: "#2C3528" }}>{item.title}</h3>
                             <p className="mt-0.5 text-xs" style={{ color: "#6B7A65" }}>{item.channelTitle}</p>

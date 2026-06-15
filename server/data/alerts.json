@@ -1,5 +1,106 @@
 [
   {
+    "id": "eb0e790c-ff1b-42cc-8e78-008b5082e6c6",
+    "profileId": "1779888608658",
+    "videoId": "Nelj8Ym-NoY",
+    "title": "뽀로로 오프닝 리믹스",
+    "channelTitle": "뫀성",
+    "thumbnail": "https://i.ytimg.com/vi/Nelj8Ym-NoY/mqdefault.jpg",
+    "totalScore": 85,
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "종합 점수 85점"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-14T17:25:58.245Z",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
+    "id": "c02f3b17-9519-476c-86d3-a7fbb94989dc",
+    "profileId": "1779888608658",
+    "videoId": "djAUrE2l7eA",
+    "title": "뽀로로 🐙문어의 꿈🐙 | 뽀로로 X 안예은 콜라보레이션 | 뽀로로와 노래해요 | 콜라뽀레이션",
+    "channelTitle": "뽀로로(Pororo)",
+    "thumbnail": "https://i.ytimg.com/vi/djAUrE2l7eA/mqdefault.jpg",
+    "totalScore": 85,
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "종합 점수 85점"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-14T15:15:18.000Z",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
+    "id": "6c93044f-1344-4e17-b505-749643561932",
+    "profileId": "1779888608658",
+    "videoId": "nTJl4M4wBNM",
+    "title": "[영어] 어떤 동물이 될까요? | 공룡일까? 동물일까? | 동물 맞히기 | 상어? 티라노사우루스? 강아지? | 단어 놀이 | 니니키즈 NINIkids",
+    "channelTitle": "니니키즈",
+    "thumbnail": "https://i.ytimg.com/vi/nTJl4M4wBNM/mqdefault.jpg",
+    "totalScore": 95,
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "늦은 시간(23시) 시청"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-14T14:55:24.038Z",
+    "watchCount": 2,
+    "repeated": true,
+    "read": false,
+    "updatedAt": "2026-06-14T14:55:24.584Z"
+  },
+  {
+    "id": "bc6b0193-d2bf-43d1-8fa8-edd864b14a7b",
+    "profileId": "1779888608658",
+    "videoId": "CtvpEWZchLc",
+    "title": "[영어] 어떤 동물일까요? | 공룡일까? 동물일까? | 동물 맞히기 | 호랑이? 코리토사우루스? 무당벌레? | 단어 놀이 | 니니키즈 NINIkids",
+    "channelTitle": "니니키즈",
+    "thumbnail": "https://i.ytimg.com/vi/CtvpEWZchLc/mqdefault.jpg",
+    "totalScore": 95,
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "늦은 시간(23시) 시청"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-14T14:54:00.183Z",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
+    "id": "c7d3afb2-0a16-4780-9694-17a6f9e7d0be",
+    "profileId": "1780384750187",
+    "videoId": "nTJl4M4wBNM",
+    "title": "[영어] 어떤 동물이 될까요? | 공룡일까? 동물일까? | 동물 맞히기 | 상어? 티라노사우루스? 강아지? | 단어 놀이 | 니니키즈 NINIkids",
+    "channelTitle": "니니키즈",
+    "thumbnail": "https://i.ytimg.com/vi/nTJl4M4wBNM/mqdefault.jpg",
+    "totalScore": 95,
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "reasons": [
+      "늦은 시간(22시) 시청"
+    ],
+    "severity": "warning",
+    "watchedAt": "2026-06-14T13:31:48.525Z",
+    "watchCount": 1,
+    "repeated": false,
+    "read": false
+  },
+  {
     "id": "2321473c-49db-4cc9-895d-c849f3e599e5",
     "profileId": "1781080145523",
     "videoId": "LneN7ZWY9es",

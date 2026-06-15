@@ -1,6 +1,5 @@
 import axios from 'axios'
 
-// 배포 환경: VITE_API_URL 환경변수 사용 / 로컬: localhost:3000
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 // 키워드로 YouTube 영상 검색

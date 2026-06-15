@@ -8,7 +8,7 @@
 
 ## 기술 스택
 - 프론트: React 19, React Router v7, Tailwind CSS, Axios, Recharts, react-icons
-- 백엔드: Node.js + Express 5 (ES Module 방식) → 추후 FastAPI 전환 예정
+- 백엔드: FastAPI (Python) — `server/` 폴더, uvicorn으로 실행 / Express 백업: `server_backup/`
 - AI: Anthropic API — 키디 챗봇 전용 (claude-haiku-4-5-20251001)
 - 영상: YouTube Data API v3
 - 아바타: 로컬 PNG (avatar_01~08.png) — DiceBear 제거
@@ -35,6 +35,10 @@
 - JSON 읽기/쓰기 시 반드시 `encoding="utf-8"` 명시
 - FastAPI에서 Anthropic은 반드시 `AsyncAnthropic` 사용 (sync 쓰면 블로킹)
 - API 엔드포인트 주소 동일하게 유지 → 프론트 코드 수정 불필요
+- **라우터 추가 시 반드시 `main.py`에 import + `include_router` 등록할 것** — 누락 시 404 (chat 라우터 누락 사고 발생)
+- **FastAPI 응답 JSON 형태를 Express와 100% 동일하게 유지** — 프론트가 `{ ...video, ...safety }` 패턴으로 spread하므로 필드 추가 시 원본 데이터 덮어쓰기 위험 (videoId 덮어쓰기 사고 발생)
+- **외부 API(YouTube 등) 응답 dict 접근은 반드시 `.get()`으로** — JS는 undefined로 넘어가지만 Python은 KeyError로 500 터짐 (예: `item["id"]["videoId"]` → `item.get("id", {}).get("videoId")`)
+- **Pydantic 모델의 Optional 필드는 `Optional[str]` 등으로 선언** — 프론트가 `null`을 명시적으로 보낼 경우 `str` 타입이면 422 Unprocessable Entity 발생 (chat profileName/profileAge 사고 발생)
 
 ## 중요 설정
 

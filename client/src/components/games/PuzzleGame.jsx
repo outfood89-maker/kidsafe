@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import KiddyImg from "../KiddyImg";
 import confettiLib from "canvas-confetti";
 
@@ -94,77 +94,29 @@ if (typeof document !== "undefined" && !document.getElementById("puzzle-style"))
   document.head.appendChild(s);
 }
 
-// 이모지를 Canvas에 그려서 data URL로 변환
-const useEmojiCanvas = (emoji, size) => {
-  return useMemo(() => {
-    if (!emoji || typeof document === "undefined") return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    const fontSize = size * 0.88;
-    ctx.font = `${fontSize}px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
 
-    // 배경 그라데이션 (빈 공간 조각도 위치별로 구별 가능)
-    const grad = ctx.createLinearGradient(0, 0, size, size);
-    grad.addColorStop(0,    "#FFD6E8");
-    grad.addColorStop(0.33, "#D6EAFF");
-    grad.addColorStop(0.66, "#D6FFE8");
-    grad.addColorStop(1,    "#FFF3D6");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
-
-    // 1차: 임시 렌더 후 실제 픽셀 범위 측정
-    ctx.fillText(emoji, size / 2, size / 2);
-    const data = ctx.getImageData(0, 0, size, size).data;
-    let minX = size, maxX = 0, minY = size, maxY = 0;
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        if (data[(y * size + x) * 4 + 3] > 10) {
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-
-    const emojiW = maxX - minX + 1;
-    const emojiH = maxY - minY + 1;
-    const emojiCX = (minX + maxX) / 2;
-    const emojiCY = (minY + maxY) / 2;
-    const scale = Math.min(size / emojiW, size / emojiH) * 0.97;
-    const newFontSize = fontSize * scale;
-    const drawX = size / 2 + (size / 2 - emojiCX) * scale;
-    const drawY = size / 2 + (size / 2 - emojiCY) * scale;
-
-    // 2차: 스케일 + 정확한 중앙 정렬
-    ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
-    ctx.font = `${newFontSize}px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif`;
-    ctx.fillText(emoji, drawX, drawY);
-
-    return canvas.toDataURL();
-  }, [emoji, size]);
-};
-
-// 이모지 한 조각 컴포넌트
-const EmojiPiece = ({ emojiSrc, row, col, cols, displaySize, dim = false, style = {} }) => {
+// 이모지 한 조각 컴포넌트 — CSS 클리핑 방식 (모바일 canvas 호환성 문제 해결)
+const EmojiPiece = ({ emoji, row, col, cols, displaySize, dim = false, style = {} }) => {
   const totalSize = displaySize * cols;
   return (
     <div style={{
       width: displaySize, height: displaySize,
       flexShrink: 0, borderRadius: 8,
-      backgroundImage: emojiSrc ? `url(${emojiSrc})` : "none",
-      backgroundSize: `${totalSize}px ${totalSize}px`,
-      backgroundPosition: `-${col * displaySize}px -${row * displaySize}px`,
-      backgroundRepeat: "no-repeat",
+      overflow: "hidden", position: "relative",
+      background: "linear-gradient(135deg, #FFD6E8 0%, #D6EAFF 33%, #D6FFE8 66%, #FFF3D6 100%)",
       filter: dim ? "grayscale(1) brightness(0.35) opacity(0.5)" : "none",
       ...style,
-    }} />
+    }}>
+      <div style={{
+        position: "absolute",
+        width: totalSize, height: totalSize,
+        left: -col * displaySize, top: -row * displaySize,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: totalSize * 0.82, lineHeight: 1, userSelect: "none",
+      }}>
+        {emoji}
+      </div>
+    </div>
   );
 };
 
@@ -306,8 +258,6 @@ export default function PuzzleGame({ onComplete }) {
   }, [dragging, placed]);
 
   const pieceSize = difficulty ? PUZZLE_SIZE / difficulty.cols : 0;
-  const gridEmojiSrc = useEmojiCanvas(item?.emoji, PUZZLE_SIZE);
-  const trayEmojiSrc = useEmojiCanvas(item?.emoji, TRAY_SIZE * (difficulty?.cols ?? 2));
   const timerPct = difficulty ? timer / difficulty.time : 0;
   const timerColor = timerPct > 0.5 ? "#4ECDC4" : timerPct > 0.25 ? "#FFB347" : "#FF6B6B";
   const isWin = correct >= (difficulty?.pieces ?? 0);
@@ -347,10 +297,9 @@ export default function PuzzleGame({ onComplete }) {
       <BgBubbles />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: "#8060B0" }}>이 이모지를 완성해봐요!</div>
-        {gridEmojiSrc && (
-          <img src={gridEmojiSrc} alt={item?.name}
-            style={{ width: 200, height: 200, borderRadius: 24, boxShadow: "0 8px 32px rgba(150,80,255,0.2)", animation: "puzzlePreviewPop 0.5s ease-out" }} />
-        )}
+        <div style={{ width: 200, height: 200, borderRadius: 24, boxShadow: "0 8px 32px rgba(150,80,255,0.2)", animation: "puzzlePreviewPop 0.5s ease-out", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 140, background: "linear-gradient(135deg, #FFD6E8 0%, #D6EAFF 50%, #D6FFE8 100%)", userSelect: "none" }}>
+          {item?.emoji}
+        </div>
         <div style={{ fontSize: 20, fontWeight: 800, color: "#5C3D9E" }}>{item?.name}</div>
         <div key={countdown} style={{ fontSize: 80, fontWeight: 900, color: "#A855F7", lineHeight: 1, animation: "puzzleCountdown 1s ease-in-out" }}>
           {countdown === 0 ? "🚀" : countdown}
@@ -439,20 +388,21 @@ export default function PuzzleGame({ onComplete }) {
                   background: isPlaced ? "transparent" : "rgba(200,170,255,0.07)",
                   animation: isRecent ? "puzzlePlaced 0.4s ease-out" : "none",
                 }}>
-                <EmojiPiece emojiSrc={gridEmojiSrc} row={r} col={c} cols={difficulty.cols} displaySize={pieceSize} dim={!isPlaced} />
+                <EmojiPiece emoji={item?.emoji} row={r} col={c} cols={difficulty.cols} displaySize={pieceSize} dim={!isPlaced} />
               </div>
             );
           })}
           {/* X-ray 힌트 오버레이 */}
-          {hintActive && gridEmojiSrc && (
-            <img src={gridEmojiSrc} alt="힌트"
-              style={{
-                position: "absolute", inset: 0, width: "100%", height: "100%",
-                objectFit: "cover", borderRadius: 6, pointerEvents: "none",
-                animation: "puzzleHintFade 2s ease-in-out forwards",
-                zIndex: 10,
-              }}
-            />
+          {hintActive && (
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: 6, pointerEvents: "none",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: PUZZLE_SIZE * 0.72, background: "rgba(255,255,255,0.85)",
+              animation: "puzzleHintFade 2s ease-in-out forwards", zIndex: 10,
+              userSelect: "none",
+            }}>
+              {item?.emoji}
+            </div>
           )}
         </div>
       </div>
@@ -484,7 +434,7 @@ export default function PuzzleGame({ onComplete }) {
                   setDragging({ row, col, x: e.clientX, y: e.clientY });
                 }}
                 style={{ cursor: "grab", borderRadius: 10, overflow: "hidden", border: "2px solid #D0B0F0", opacity: isDragging ? 0.25 : 1, animation: isWrong ? "puzzleWrong 0.5s ease-in-out" : "none", boxShadow: "0 2px 8px rgba(150,80,255,0.13)", touchAction: "none" }}>
-                <EmojiPiece emojiSrc={trayEmojiSrc} row={row} col={col} cols={difficulty.cols} displaySize={TRAY_SIZE} />
+                <EmojiPiece emoji={item?.emoji} row={row} col={col} cols={difficulty.cols} displaySize={TRAY_SIZE} />
               </div>
             );
           })}
@@ -497,7 +447,7 @@ export default function PuzzleGame({ onComplete }) {
       {/* 드래그 고스트 */}
       {dragging && (
         <EmojiPiece
-          emojiSrc={trayEmojiSrc} row={dragging.row} col={dragging.col}
+          emoji={item?.emoji} row={dragging.row} col={dragging.col}
           cols={difficulty.cols} displaySize={TRAY_SIZE}
           style={{ position: "fixed", left: dragging.x - TRAY_SIZE / 2, top: dragging.y - TRAY_SIZE / 2, zIndex: 9999, pointerEvents: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.22)", border: "2px solid #C9A0FF", transform: "scale(1.12)", opacity: 0.92 }}
         />

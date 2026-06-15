@@ -1,2 +1,7 @@
 node_modules
 .env
+server/venv/
+server/__pycache__/
+server/routers/__pycache__/
+**/__pycache__/
+*.pyc

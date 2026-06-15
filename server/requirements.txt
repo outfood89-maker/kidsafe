@@ -1,0 +1,6 @@
+fastapi==0.136.1
+uvicorn==0.42.0
+httpx==0.28.1
+python-dotenv==1.2.2
+anthropic==0.109.1
+pydantic==2.12.5
