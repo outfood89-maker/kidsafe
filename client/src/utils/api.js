@@ -18,13 +18,25 @@ export const getRecommendedVideos = async (age) => {
   return response.data
 }
 
-// 영상 안전도 검수
+// 영상 안전도 검수 (Tier 0~1 — 빠른 키워드/채널 분석, 검색 목록용)
 export const analyzeVideo = async (title, description, videoId = "", channelId = "") => {
   const response = await axios.post(`${BASE_URL}/analyze`, {
     title,
     description,
     videoId,
     channelId,
+  })
+  return response.data
+}
+
+// 영상 정밀 검수 (Tier 2 — 자막 + Claude AI, 영상 상세 모달용)
+export const analyzeVideoDeep = async (video) => {
+  const response = await axios.post(`${BASE_URL}/analyze/deep`, {
+    title: video.title,
+    description: video.description || "",
+    videoId: video.videoId || "",
+    channelId: video.channelId || "",
+    channelTitle: video.channelTitle || "",
   })
   return response.data
 }

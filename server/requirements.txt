@@ -4,3 +4,4 @@ httpx==0.28.1
 python-dotenv==1.2.2
 anthropic==0.109.1
 pydantic==2.12.5
+youtube-transcript-api==0.6.2
