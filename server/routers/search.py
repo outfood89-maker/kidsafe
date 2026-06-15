@@ -1,6 +1,7 @@
 import os
 import re
 import asyncio
+import html
 import httpx
 from fastapi import APIRouter, HTTPException
 
@@ -94,10 +95,10 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
     results = [
         {
             "videoId": item["id"]["videoId"],
-            "title": item["snippet"].get("title", ""),
-            "description": item["snippet"].get("description", ""),
+            "title": html.unescape(item["snippet"].get("title", "")),
+            "description": html.unescape(item["snippet"].get("description", "")),
             "thumbnail": item["snippet"].get("thumbnails", {}).get("medium", {}).get("url", ""),
-            "channelTitle": item["snippet"].get("channelTitle", ""),
+            "channelTitle": html.unescape(item["snippet"].get("channelTitle", "")),
             "channelId": item["snippet"].get("channelId", ""),
             # YouTube 안전 메타데이터 — analyze.py Tier 0+1에서 활용
             "madeForKids": detail_map.get(item["id"]["videoId"], {}).get("madeForKids", False),
@@ -185,8 +186,8 @@ async def search_youtube_playlists(keyword: str, max_results: int = 6) -> list:
 
             return {
                 "playlistId": playlist_id,
-                "title": item["snippet"].get("title", ""),
-                "channelTitle": item["snippet"].get("channelTitle", ""),
+                "title": html.unescape(item["snippet"].get("title", "")),
+                "channelTitle": html.unescape(item["snippet"].get("channelTitle", "")),
                 "thumbnail": item["snippet"].get("thumbnails", {}).get("medium", {}).get("url", ""),
                 "thumbnails": thumbnails,
                 "firstVideoTitle": first_video_title,

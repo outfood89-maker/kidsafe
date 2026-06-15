@@ -111,8 +111,21 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
     { label: "비상업성",    icon: "🛒", score: v.commercialism },
   ].filter(item => item.score !== undefined);
 
+  // 재생 게이팅 룰
+  // - YouTube 인증(madeForKids): 즉시 재생
+  // - AI 분석 완료 + 총점 70+ AND 위험 카테고리 모두 50+: 재생 가능
+  // - AI 분석 완료 + 총점 < 70 OR 위험 카테고리 하나라도 < 50: 차단
+  //   (총점이 70이어도 모방 안전 25처럼 극단적 위험 항목이 있으면 차단)
+  // - AI 분석 미완료: 분석 완료 대기 — 재생 차단
+  const isCertified = video.madeForKids;
+  const dangerScores = [v.violence, v.language, v.sexual, v.scary, v.imitationRisk].filter(s => s !== undefined);
+  const hasCriticalDanger = dangerScores.some(s => s < 60);  // 카테고리 하나라도 60 미만이면 차단
+  const isDangerous = isDeep && (v.totalScore < 75 || hasCriticalDanger);  // 총점 75 미만도 차단
+  const isPending = !isCertified && !isDeep;
+  const canPlay = isCertified || (isDeep && !isDangerous);
+
   const handleWatchClick = () => {
-    // 정밀 분석된 점수를 시청 기록에 반영하기 위해 머지된 v를 전달
+    if (!canPlay) return;
     try { onPlayInApp(v); } catch (e) { console.error("영상 재생 처리 오류:", e); }
   };
 
@@ -295,14 +308,30 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
             </div>
           )}
 
-          {/* 재생 버튼 */}
-          <button
-            onClick={handleWatchClick}
-            className="w-full rounded-2xl py-3.5 text-base font-bold text-white"
-            style={{ backgroundColor: "#6DAB60" }}
-          >
-            ▶ KidSafe에서 보기
-          </button>
+          {/* 재생 버튼 — 게이팅 룰 적용 */}
+          {isDangerous ? (
+            <div
+              className="w-full rounded-2xl py-3.5 text-base font-bold text-center"
+              style={{ backgroundColor: "#FFF0EF", color: "#C84B47", border: "1.5px solid #F5C6C5" }}
+            >
+              🚫 어린이에게 적합하지 않은 영상이에요
+            </div>
+          ) : isPending ? (
+            <div
+              className="w-full rounded-2xl py-3.5 text-base font-bold text-center"
+              style={{ backgroundColor: "#F8F7F2", color: "#9BA89A", border: "1.5px solid #E4EAE0" }}
+            >
+              🔍 AI 분석 완료 후 시청 가능해요
+            </div>
+          ) : (
+            <button
+              onClick={handleWatchClick}
+              className="w-full rounded-2xl py-3.5 text-base font-bold text-white"
+              style={{ backgroundColor: "#6DAB60" }}
+            >
+              ▶ KidSafe에서 보기
+            </button>
+          )}
         </div>
       </div>
     </div>
