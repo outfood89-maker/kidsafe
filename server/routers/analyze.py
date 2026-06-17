@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 import anthropic
-from auth import get_current_user
+from auth import get_current_user, _supabase_select
 
 # 자막 추출 라이브러리 — 설치/임포트 실패해도 서버는 떠야 하므로 방어적 import
 try:
@@ -32,24 +32,35 @@ AUTO_TRUST_THRESHOLD = 3
 
 # 위험도 레벨별 키워드 — severe(-30) / moderate(-15) / mild(-5)
 # ⚠️ '성인'은 SEXUAL에만 — LANGUAGE에 중복 넣으면 이중 감점됨
+# ⚠️ 한글은 부분일치(substring)라 모호한 한 글자 키워드 금지.
+#    예) "피"는 피아노·피카츄·커피·피자·해피 등 무해한 단어를 전부 오탐 → 검색 카드 점수가 부당하게 깎임.
+#    대신 유혈을 뜻하는 명확한 복합어(유혈/피범벅/피투성이/피흘)로 대체한다.
 VIOLENCE_KEYWORDS = {
-    "severe":   ["살인", "학살", "고문", "총격", "폭탄", "테러", "murder", "massacre", "torture", "bombing"],
-    "moderate": ["전쟁", "폭력", "격투", "싸움", "kill", "fight", "blood", "violence", "attack"],
-    "mild":     ["horror", "scary", "피"],
+    "severe":   ["살인", "학살", "고문", "총격", "폭탄", "테러", "자살", "자해", "흉기", "참수", "사형", "총살",
+                 "murder", "massacre", "torture", "bombing"],
+    "moderate": ["전쟁", "폭력", "격투", "싸움", "폭행", "학대", "kill", "fight", "blood", "violence", "attack"],
+    "mild":     ["horror", "scary", "유혈", "피범벅", "피투성이", "피흘"],
 }
 LANGUAGE_KEYWORDS = {
-    "severe":   ["씨발", "개새", "병신", "지랄", "미친놈", "ㅅㅂ", "ㅂㅅ", "fuck", "shit"],
-    "moderate": ["욕설", "비속어", "저주", "damn"],
+    "severe":   ["씨발", "개새", "병신", "지랄", "미친놈", "ㅅㅂ", "ㅂㅅ", "썅", "좆", "fuck", "shit"],
+    "moderate": ["욕설", "비속어", "저주", "닥쳐", "damn"],
     "mild":     [],
 }
 SEXUAL_KEYWORDS = {
-    "severe":   ["야동", "섹스", "포르노", "porn", "nude", "naked"],
-    "moderate": ["성인", "19금", "에로", "노출", "adult", "sexy"],
-    "mild":     ["선정"],
+    "severe":   ["야동", "섹스", "포르노", "음란", "성행위", "porn", "nude", "naked"],
+    "moderate": ["성인", "19금", "에로", "노출", "성추행", "성희롱", "adult", "sexy"],
+    # ⚠️ "선정"은 '선정성'과 '선정(선택)'을 구분 못 해 '올해의 그림책 선정' 같은 무해한 제목을 오탐.
+    #    실제 선정성을 뜻하는 명확한 형태(선정성/선정적)로만 매칭한다.
+    "mild":     ["선정성", "선정적"],
 }
+
+# ⚠️ 의도적으로 제외한 위험어 — 부분일치 시 무해한 동음이의어를 오탐하기 때문:
+#    새끼(강아지 새끼=puppy) · 변태(곤충 변태=metamorphosis) · 꺼져(불이 꺼져=turn off)
+#    몰카(장난 몰래카메라=prank) · 처형(아내의 언니=sister-in-law) · 야한(시야한계 substring)
+#    납치/유괴(동화 단골 소재) → 이런 단어는 Tier 2 AI가 문맥으로 판단하게 둔다.
 EDUCATIONAL_KEYWORDS = ["교육", "학습", "과학", "수학", "역사", "영어", "동화", "동요", "자연", "우주",
                         "공룡", "실험", "탐구", "퀴즈", "learn", "education", "science", "math",
-                        "history", "지식", "탐험", "다큐", "동물", "식물", "우주", "숫자", "한글", "ABC"]
+                        "history", "지식", "탐험", "다큐", "동물", "식물", "숫자", "한글", "ABC"]
 
 # YouTube categoryId 27 = 교육, 10 = 음악, 1 = 영화/애니메이션
 EDU_CATEGORY_ID = "27"
@@ -613,8 +624,16 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
                 except Exception:
                     return cached
 
-        # 새 분석(캐시 미스)일 때만 일일 한도 체크 — 캐시 히트는 무료
-        check_and_increment_usage(user["user_id"])
+        # 새 분석(캐시 미스)일 때만 일일 한도 체크 — 캐시 히트는 무료, 프리미엄은 무제한
+        subs = await _supabase_select("subscriptions", {
+            "user_id": f"eq.{user['user_id']}",
+            "plan": "eq.premium",
+            "status": "eq.active",
+            "select": "id",
+            "limit": "1",
+        })
+        if not subs:
+            check_and_increment_usage(user["user_id"])
 
         trusted = is_trusted_channel(channel_id)
 
