@@ -310,6 +310,11 @@ export const getAdminStats = async () => {
   return response.data
 }
 
+export const getAdminAuditLog = async () => {
+  const response = await axios.get(`${BASE_URL}/admin/audit`)
+  return response.data
+}
+
 export const getAdminUsers = async () => {
   const response = await axios.get(`${BASE_URL}/admin/users`)
   return response.data

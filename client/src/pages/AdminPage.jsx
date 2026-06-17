@@ -6,6 +6,7 @@ import {
 } from "recharts"
 import {
   getAdminStats,
+  getAdminAuditLog,
   getAdminFeedbacks,
   suggestAdminRules,
   getAdminPendingRules,
@@ -37,6 +38,10 @@ const NAV = [
     group: "회원 관리",
     items: [{ id: "members", label: "회원 목록", icon: "👥" }],
   },
+  {
+    group: "시스템",
+    items: [{ id: "audit", label: "감사 로그", icon: "📜" }],
+  },
 ]
 
 // 메뉴 id → 헤더 타이틀
@@ -46,6 +51,19 @@ const TAB_TITLE = {
   rules: "💡 룰 제안",
   current: "📚 적용 중인 룰",
   members: "👥 회원 목록",
+  audit: "📜 감사 로그",
+}
+
+// 감사 로그 액션별 색상
+const AUDIT_ACTION_MAP = {
+  "역할 변경":      { color: "#7C3AED", bg: "#EDE9FE" },
+  "프리미엄 부여":  { color: "#D97706", bg: "#FEF3C7" },
+  "프리미엄 해제":  { color: "#9BA89A", bg: "#F1F1ED" },
+  "룰 승인":        { color: "#059669", bg: "#ECFDF5" },
+  "룰 거부":        { color: "#EF5350", bg: "#FFEBEE" },
+  "룰 일괄 승인":   { color: "#059669", bg: "#ECFDF5" },
+  "룰 일괄 거부":   { color: "#EF5350", bg: "#FFEBEE" },
+  "AI 룰 제안 생성": { color: "#3B82F6", bg: "#EFF6FF" },
 }
 
 const CATEGORY_MAP = {
@@ -73,6 +91,8 @@ export default function AdminPage() {
   const [pendingRules, setPendingRules] = useState([])
   const [currentRules, setCurrentRules] = useState({})
   const [members, setMembers] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
+  const [auditLoaded, setAuditLoaded] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
   const [actionLoading, setActionLoading] = useState("")
   const [toast, setToast] = useState("")
@@ -100,6 +120,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (tab === "members" && members.length === 0) {
       loadMembers()
+    }
+    if (tab === "audit" && !auditLoaded) {
+      loadAudit()
     }
   }, [tab])
 
@@ -141,6 +164,16 @@ export default function AdminPage() {
     try {
       const data = await getAdminUsers()
       setMembers(data)
+    } catch (err) {
+      check403(err)
+    }
+  }
+
+  const loadAudit = async () => {
+    try {
+      const data = await getAdminAuditLog()
+      setAuditLogs(data)
+      setAuditLoaded(true)
     } catch (err) {
       check403(err)
     }
@@ -809,6 +842,73 @@ export default function AdminPage() {
                         {premiumLoading ? "처리 중..." : m.is_premium ? "프리미엄 해제" : "프리미엄 부여"}
                       </button>
                     </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* ── 감사 로그 ── */}
+          {tab === "audit" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium" style={{ color: "#9BA89A" }}>
+                  총 {auditLogs.length}건 · 최신순
+                </p>
+                <button
+                  onClick={loadAudit}
+                  className="text-xs px-3 py-1.5 rounded-xl font-medium transition hover:opacity-80"
+                  style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                >
+                  새로고침
+                </button>
+              </div>
+
+              {auditLogs.length === 0 && (
+                <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>
+                  기록된 관리자 활동이 없어요
+                </p>
+              )}
+
+              {auditLogs.map((log, i) => {
+                const a = AUDIT_ACTION_MAP[log.action] || { color: "#6B7A65", bg: "#F1F1ED" }
+                return (
+                  <div
+                    key={i}
+                    className="rounded-2xl p-4"
+                    style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span
+                        className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style={{ color: a.color, backgroundColor: a.bg }}
+                      >
+                        {log.action}
+                      </span>
+                      <span className="text-xs shrink-0" style={{ color: "#C4CFBF" }}>
+                        {log.timestamp
+                          ? new Date(log.timestamp).toLocaleString("ko-KR", {
+                              month: "2-digit", day: "2-digit",
+                              hour: "2-digit", minute: "2-digit",
+                            })
+                          : ""}
+                      </span>
+                    </div>
+                    {log.detail && (
+                      <p className="text-sm mb-1" style={{ color: "#2C3528" }}>{log.detail}</p>
+                    )}
+                    {log.target && (
+                      <p
+                        className="text-xs truncate"
+                        style={{ color: "#9BA89A" }}
+                        title={log.target}
+                      >
+                        대상: {log.target}
+                      </p>
+                    )}
+                    <p className="text-xs mt-1.5" style={{ color: "#C4CFBF" }}>
+                      👤 {log.actorEmail || log.actorId || "(알 수 없음)"}
+                    </p>
                   </div>
                 )
               })}

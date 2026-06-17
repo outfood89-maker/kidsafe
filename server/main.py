@@ -27,6 +27,7 @@ def ensure_data_files():
         "pending-rules.json": [],
         "prompt-rules.json": {},
         "usage.json": {},
+        "audit-log.json": [],
     }
     for filename, default in defaults.items():
         path = os.path.join("data", filename)
@@ -37,7 +38,7 @@ def ensure_data_files():
 
 ensure_data_files()
 
-from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats
+from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit
 
 app = FastAPI(
     title="KidSafe API",
@@ -68,6 +69,7 @@ app.include_router(game_bonus.router, prefix="/game-bonus")
 app.include_router(feedback.router, prefix="/feedback")
 app.include_router(admin_users.router, prefix="/admin/users")
 app.include_router(admin_stats.router, prefix="/admin/stats")
+app.include_router(admin_audit.router, prefix="/admin/audit")
 
 
 @app.get("/")

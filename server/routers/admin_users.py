@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 from auth import require_admin, SUPABASE_URL, SUPABASE_SECRET_KEY
+from audit import write_audit
 
 router = APIRouter()
 
@@ -122,6 +123,7 @@ async def update_role(user_id: str, data: RoleRequest, admin: dict = Depends(req
     else:
         await _post("/rest/v1/accounts", {"user_id": user_id, "role": data.role})
 
+    write_audit(admin, "역할 변경", target=user_id, detail=f"role → {data.role}")
     return {"ok": True, "message": f"역할이 '{data.role}'로 변경됐어요."}
 
 
@@ -148,6 +150,7 @@ async def update_premium(user_id: str, data: PremiumRequest, admin: dict = Depen
                 "status": "active",
                 "started_at": datetime.now(timezone.utc).isoformat(),
             })
+        write_audit(admin, "프리미엄 부여", target=user_id)
         return {"ok": True, "message": "프리미엄이 부여됐어요."}
     else:
         await _patch(
@@ -155,4 +158,5 @@ async def update_premium(user_id: str, data: PremiumRequest, admin: dict = Depen
             {"user_id": f"eq.{user_id}", "plan": "eq.premium"},
             {"status": "cancelled"},
         )
+        write_audit(admin, "프리미엄 해제", target=user_id)
         return {"ok": True, "message": "프리미엄이 해제됐어요."}

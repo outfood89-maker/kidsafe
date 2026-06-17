@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import anthropic
 from auth import require_admin
+from audit import write_audit
 
 router = APIRouter()
 
@@ -153,6 +154,7 @@ async def suggest_rules(admin: dict = Depends(require_admin)):
                 f["status"] = "processed"
         write_json(FEEDBACK_PATH, feedbacks)
 
+        write_audit(admin, "AI 룰 제안 생성", detail=f"{len(suggestions)}건 제안")
         return {"ok": True, "suggestions": suggestions}
 
     except Exception as e:
@@ -200,6 +202,7 @@ async def approve_rule(data: ApproveRequest, admin: dict = Depends(require_admin
         pending.pop(data.index)
         write_json(PENDING_RULES_PATH, pending)
 
+        write_audit(admin, "룰 승인", target=category, detail=rule_text)
         return {"ok": True, "message": f"룰이 승인됐어요. 다음 분석부터 즉시 반영돼요!", "addedRule": rule_text}
 
     except HTTPException:
@@ -218,6 +221,7 @@ async def reject_rule(index: int, admin: dict = Depends(require_admin)):
             raise HTTPException(status_code=404, detail="해당 인덱스의 룰이 없어요")
         rejected = pending.pop(index)
         write_json(PENDING_RULES_PATH, pending)
+        write_audit(admin, "룰 거부", target=rejected.get("category", ""), detail=rejected.get("rule", ""))
         return {"ok": True, "message": "룰 제안이 거부됐어요.", "rejectedRule": rejected.get("rule")}
     except HTTPException:
         raise
@@ -260,6 +264,7 @@ async def approve_rules_bulk(data: BulkRequest, admin: dict = Depends(require_ad
         new_pending = [r for i, r in enumerate(pending) if i not in idx_set]
         write_json(PENDING_RULES_PATH, new_pending)
 
+        write_audit(admin, "룰 일괄 승인", detail=f"{approved}건")
         return {"ok": True, "approved": approved, "message": f"{approved}개 룰이 승인됐어요!"}
 
     except HTTPException:
@@ -277,6 +282,7 @@ async def reject_rules_bulk(data: BulkRequest, admin: dict = Depends(require_adm
         idx_set = {i for i in data.indices if 0 <= i < len(pending)}
         new_pending = [r for i, r in enumerate(pending) if i not in idx_set]
         write_json(PENDING_RULES_PATH, new_pending)
+        write_audit(admin, "룰 일괄 거부", detail=f"{len(idx_set)}건")
         return {"ok": True, "rejected": len(idx_set), "message": f"{len(idx_set)}개 룰이 거부됐어요."}
     except HTTPException:
         raise

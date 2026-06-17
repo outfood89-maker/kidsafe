@@ -8,3 +8,6 @@ server/routers/__pycache__/
 
 # Express 서버 백업본 (로컬 보관용, 버전 관리 제외)
 server_backup/
+
+# 감사 로그 (런타임 기록 — 관리자 이메일 포함, 버전 관리 제외)
+server/data/audit-log.json
