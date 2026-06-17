@@ -47,6 +47,7 @@
 | `/badges` | BadgeCollection.jsx (로그인 필수) |
 | `/games` | Games.jsx (로그인 필수) |
 | `/account` | Account.jsx — 계정 관리 (로그인 필수) |
+| `/admin` | AdminPage.jsx — 관리자 대시보드 (로그인 필수 + 백엔드 `require_admin`) |
 
 ---
 
@@ -63,7 +64,8 @@ kidsafe/
 │       │   ├── ParentDashboard.jsx
 │       │   ├── Favorites.jsx
 │       │   ├── BadgeCollection.jsx
-│       │   └── Games.jsx
+│       │   ├── Games.jsx
+│       │   └── AdminPage.jsx         # 관리자 대시보드 (사이드바 + 대시보드/검수/회원/감사로그)
 │       ├── components/
 │       │   ├── VideoModal.jsx       # 영상 상세 모달 + AI 분석 결과 표시
 │       │   ├── VideoPlayer.jsx      # KidSafe 내장 플레이어
@@ -83,10 +85,12 @@ kidsafe/
 │
 └── server/
     ├── main.py                      # FastAPI 진입점 (포트 3000)
+    ├── auth.py                      # Supabase JWT 검증 + require_admin/require_premium
+    ├── audit.py                     # 감사 로그 공용 헬퍼 (write_audit)
     ├── routers/
     │   ├── search.py                # YouTube 검색 + 추천 (html.unescape 처리)
     │   ├── analyze.py               # 검수 엔진 (Tier 0~2 + 캐시)
-    │   ├── feedback.py              # 피드백 수집 + 자동화 파이프라인
+    │   ├── feedback.py              # 피드백 수집 + 자동화 파이프라인 + 룰 승인/거부(일괄)
     │   ├── history.py
     │   ├── profiles.py
     │   ├── badges.py
@@ -95,7 +99,10 @@ kidsafe/
     │   ├── blocked_keywords.py
     │   ├── alerts.py
     │   ├── chat.py                  # 키디 챗봇 (AsyncAnthropic)
-    │   └── game_bonus.py
+    │   ├── game_bonus.py
+    │   ├── admin_users.py           # 관리자: 회원 목록/역할/프리미엄 관리
+    │   ├── admin_stats.py           # 관리자: 대시보드 통계 집계
+    │   └── admin_audit.py           # 관리자: 감사 로그 조회
     └── data/
         ├── analysis-cache.json      # 영상 검수 결과 캐시
         ├── prompt-rules.json        # AI 판단 기준 룰 (외부 파일, 재시작 불필요)
@@ -104,6 +111,7 @@ kidsafe/
         ├── usage.json               # user_id별 일일 Tier2 사용 카운트
         ├── feedback.json            # 사용자 피드백 수집
         ├── pending-rules.json       # 승인 대기 룰 제안
+        ├── audit-log.json           # 관리자 활동 감사 로그 (gitignore, 최근 500건)
         ├── profiles.json
         ├── history.json
         ├── badges.json
@@ -142,8 +150,19 @@ kidsafe/
 | GET | `/feedback/admin/rules` | 현재 적용 룰 조회 |
 | POST | `/feedback/admin/rules/suggest` | Claude가 피드백 분석 → 룰 제안 |
 | GET | `/feedback/admin/rules/pending` | 승인 대기 룰 조회 |
-| POST | `/feedback/admin/rules/approve` | 룰 승인 |
-| DELETE | `/feedback/admin/rules/pending/{index}` | 룰 거부 |
+| POST | `/feedback/admin/rules/approve` | 룰 승인 (단일) |
+| DELETE | `/feedback/admin/rules/pending/{index}` | 룰 거부 (단일) |
+| POST | `/feedback/admin/rules/approve-bulk` | **룰 일괄 승인** (인덱스 밀림 방지) |
+| POST | `/feedback/admin/rules/reject-bulk` | **룰 일괄 거부** |
+
+### 관리자 (모두 `require_admin` 보호)
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/admin/stats` | 대시보드 통계 (지표 카드 + 안전도 분포 + 검색 추이 + Top10) |
+| GET | `/admin/users` | 회원 목록 (Supabase Auth + 역할 + 프리미엄 병합) |
+| PATCH | `/admin/users/{user_id}/role` | 역할 변경 (user ↔ admin) |
+| PATCH | `/admin/users/{user_id}/premium` | 프리미엄 수동 부여/해제 |
+| GET | `/admin/audit` | 감사 로그 조회 (최신순) |
 
 ### 시청 기록 / 프로필 / 배지 / 찜 / 검색 히스토리 / 차단 키워드 / 알림 / 챗봇 / 게임 보너스
 > 기존 Express와 동일한 엔드포인트 유지 (프론트 수정 없음)
@@ -218,9 +237,14 @@ kidsafe/
 |---|---|
 | YouTube 인증 (madeForKids) | ✅ 즉시 재생 허용 |
 | AI 분석 미완료 | ⏳ "AI 분석 완료 후 시청 가능" (비활성) |
-| 총점 < 75 | 🚫 재생 차단 |
+| 총점 < 프로필 기준점수(safetyThreshold) | 🚫 재생 차단 |
 | 위험 카테고리(폭력/언어/선정/공포/모방) 중 하나라도 < 60 | 🚫 재생 차단 |
+| 비상업성 ≤ 50 (언박싱·가챠 등 소비 유도) | 🚫 재생 차단 |
 | 위 조건 모두 통과 | ✅ 재생 허용 |
+
+> 총점 기준은 프로필 연령/커스텀값(getEffectiveThreshold)을 따름 — 하드코딩 금지
+> 교육성은 정보 지표라 게이팅 대상 아님 (CSM·COPPA: 교육성 ≠ 안전)
+> 비상업성 임계값 50 = prompt-rules.json penalties "언박싱 → 50 이하"와 정합
 
 ---
 
@@ -261,7 +285,7 @@ kidsafe/
 - AI 요약 + ageRating 표시
 - 7개 카테고리 점수 그리드 (긍정형 라벨)
 - 피드백 버튼 → 자동화 파이프라인 실행 → 재분석
-- 재생 게이팅 (총점 75+ AND 카테고리 60+)
+- 재생 게이팅 (총점 ≥ 프로필 기준 AND 위험 카테고리 60+ AND 비상업성 50 초과)
 
 ### 부모 화면 (ParentDashboard.jsx)
 - 프로필 관리 / 시청 시간 제한 / 안전 기준점 슬라이더
@@ -273,6 +297,16 @@ kidsafe/
 - 영상 제목 맞추기 게임
 - 안전/위험 분류 게임
 - 게임 성과 → 시청 시간 보너스 연동
+
+### 관리자 대시보드 (AdminPage.jsx)
+- **좌측 사이드바 레이아웃** (그룹: 개요 / 검수 관리 / 회원 관리 / 시스템) + 모바일 햄버거 드로어
+- **📊 대시보드** — 지표 카드 5종(누적 검색·분석 영상·평균 안전도·위험 비율·대기 피드백) + 안전도 도넛 차트 + 최근 7일 검색 추이 막대 + 인기 검색어/검수 채널 Top10 (Recharts)
+- **💡 룰 모더레이션 큐** — 카테고리/타입 필터 + 체크박스 일괄 승인·거부 (인덱스 밀림 방지: 스냅샷 일괄 처리)
+- **📚 적용 중인 룰** — 카테고리별 면제/감점/보너스 표시
+- **📋 피드백 목록** — 사용자 점수 이상 신고 조회
+- **👥 회원 관리** — 회원 목록 + 역할 변경(admin/user) + 프리미엄 수동 부여/해제 (결제 연동 전 시연용)
+- **📜 감사 로그** — 관리자 액션 기록(역할·프리미엄·룰 승인/거부/일괄·AI 제안) + 실행자 표시
+- 권한: `/admin` 라우트는 로그인 보호 + 모든 백엔드 엔드포인트 `require_admin`, 비관리자는 403 화면
 
 ---
 
@@ -330,10 +364,14 @@ kidsafe/
 
 ---
 
+## 완료된 주요 마일스톤
+- ✅ Phase 0~1: Supabase 인증 + 멤버십 게이팅
+- ✅ Phase 2: 관리자 페이지 (대시보드 + 모더레이션 큐 + 회원 관리 + 감사 로그, 모두 `require_admin`)
+- ✅ Railway 환경변수 SUPABASE_URL / PUBLISHABLE_KEY / SECRET_KEY 추가 완료
+
 ## 남은 작업
 
-1. 결제 연동 (토스페이먼츠 구독) — Phase 3
-2. 도네이션 결제 — Phase 4
+1. 결제 연동 (토스페이먼츠 구독) — Phase 3 ⏸ **개인사업자 등록 후 진행** (사업자등록번호 필요 → 현재 보류, 결제 UI는 데모용)
+2. 도네이션 결제 — Phase 4 ⏸ (동일 사유로 보류)
 3. 기존 JSON 데이터 Supabase DB 이전 — Phase 5
-4. 관리자 페이지 (피드백 검토 + `require_admin`) — Phase 2
-5. Railway 환경변수 SUPABASE_URL / PUBLISHABLE_KEY / SECRET_KEY 추가 (배포 전 필수)
+4. 관리자 페이지 추가 아이디어 — 룰/필터/정책 분리 관리(키워드 blocklist / 채널 allowlist / 점수 임계값) — 선택
