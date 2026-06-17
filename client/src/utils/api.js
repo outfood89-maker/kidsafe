@@ -263,6 +263,12 @@ export const submitFeedbackPipeline = async (data) => {
   return response.data
 }
 
+// 현재 유저의 role + 프리미엄 여부 조회
+export const getUserStatus = async () => {
+  const response = await axios.get(`${BASE_URL}/me/status`)
+  return response.data // { role, is_premium }
+}
+
 // ── 관리자 전용 ──────────────────────────────────────────────
 
 export const getAdminFeedbacks = async () => {

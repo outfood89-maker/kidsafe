@@ -26,6 +26,7 @@ import {
 } from "recharts";
 
 import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory } from "../utils/api";
+import { useAuth } from "../contexts/AuthContext";
 import VideoModal from "../components/VideoModal";
 import PaywallModal from "../components/PaywallModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
@@ -75,6 +76,7 @@ const truncateByDisplayWidth = (str, maxWidth) => {
 
 
 export default function ParentDashboard() {
+  const { isPremium } = useAuth();
   const [history, setHistory] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -556,7 +558,7 @@ export default function ParentDashboard() {
               {profiles.length < 4 && (
                 <button
                   onClick={() => {
-                    if (profiles.length >= 1) {
+                    if (!isPremium && profiles.length >= 1) {
                       setShowProfilePaywall(true);
                     } else {
                       setShowCreateForm(!showCreateForm);

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { supabase } from "../utils/supabase"
+import { getUserStatus } from "../utils/api"
 
 // 로그인 상태를 앱 전역에서 공유하는 컨텍스트
 const AuthContext = createContext(null)
@@ -8,12 +9,29 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isPremium, setIsPremium] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  // 로그인 시 백엔드에서 role/premium 상태 동기화
+  const fetchUserStatus = async () => {
+    try {
+      const status = await getUserStatus()
+      setIsAdmin(status.role === "admin")
+      setIsPremium(status.is_premium === true)
+    } catch {
+      setIsAdmin(false)
+      setIsPremium(false)
+    }
+  }
 
   useEffect(() => {
     // 앱 시작 시 저장된 세션 복원 (한 번 로그인하면 재진입 시 자동 로그인 유지)
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session)
       setUser(data.session?.user ?? null)
+      if (data.session?.user) {
+        await fetchUserStatus()  // isPremium/isAdmin 확정 후 loading 해제
+      }
       setLoading(false)
     })
 
@@ -21,6 +39,12 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserStatus()
+      } else {
+        setIsAdmin(false)
+        setIsPremium(false)
+      }
     })
 
     return () => listener.subscription.unsubscribe()
@@ -50,8 +74,11 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
+  // 관리자가 권한 변경 후 새로고침 없이 반영시킬 때 사용
+  const refreshUserStatus = () => fetchUserStatus()
+
   return (
-    <AuthContext.Provider value={{ session, user, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, loading, isPremium, isAdmin, signUp, signIn, signOut, refreshUserStatus }}>
       {children}
     </AuthContext.Provider>
   )
