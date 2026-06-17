@@ -5,3 +5,6 @@ server/__pycache__/
 server/routers/__pycache__/
 **/__pycache__/
 *.pyc
+
+# Express 서버 백업본 (로컬 보관용, 버전 관리 제외)
+server_backup/
