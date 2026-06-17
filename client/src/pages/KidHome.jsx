@@ -12,7 +12,7 @@ import {
   getFavorites, addFavorite, removeFavorite,
   checkBlockedKeyword, getProfiles, getGameBonus,
 } from "../utils/api";
-import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword } from "../utils/safetyFilter";
+import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword, getEffectiveThreshold } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
 import VideoPlayer from "../components/VideoPlayer";
 import PlaylistModal from "../components/PlaylistModal";
@@ -685,6 +685,7 @@ export default function KidHome() {
         {selectedVideo && (
           <VideoModal
             video={selectedVideo}
+            safetyThreshold={getEffectiveThreshold(selectedProfile?.age, selectedProfile?.safetyThreshold)}
             onClose={() => setSelectedVideo(null)}
             onPlayInApp={(video) => { setSelectedVideo(null); handlePlayInApp(video); }}
             onDeepResult={handleDeepResult}

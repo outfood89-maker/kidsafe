@@ -29,9 +29,13 @@ export const getSafetyGrade = (score) => {
   return { grade: '위험', color: 'red' }
 }
 
+// 프로필의 실효 기준점수 반환 (커스텀 → 연령 기본값 → 전역 기본값 순)
+export const getEffectiveThreshold = (age, customThreshold) =>
+  customThreshold ?? AGE_THRESHOLD[age] ?? 70
+
 // 연령 기준으로 콘텐츠 필터링 (커스텀 threshold 우선 적용)
 export const filterByAge = (videos, age, customThreshold) => {
-  const threshold = customThreshold ?? AGE_THRESHOLD[age] ?? 70
+  const threshold = getEffectiveThreshold(age, customThreshold)
   return videos.filter(video => video.totalScore >= threshold)
 }
 

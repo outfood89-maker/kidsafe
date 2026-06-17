@@ -3,7 +3,7 @@ import { FaTimes, FaInfoCircle } from "react-icons/fa";
 import { analyzeVideoDeep, submitFeedback } from "../utils/api";
 import PaywallModal from "./PaywallModal";
 
-export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }) {
+export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70 }) {
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
@@ -123,14 +123,14 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
 
   // 재생 게이팅 룰
   // - YouTube 인증(madeForKids): 즉시 재생
-  // - AI 분석 완료 + 총점 70+ AND 위험 카테고리 모두 50+: 재생 가능
-  // - AI 분석 완료 + 총점 < 70 OR 위험 카테고리 하나라도 < 50: 차단
-  //   (총점이 70이어도 모방 안전 25처럼 극단적 위험 항목이 있으면 차단)
-  // - AI 분석 미완료: 분석 완료 대기 — 재생 차단
+  // - AI 분석 완료 + 총점 ≥ safetyThreshold AND 위험 카테고리(폭력/언어/선정/공포/모방) 모두 60+: 재생 가능
+  // - AI 분석 완료 + 총점 < safetyThreshold OR 위험 카테고리 하나라도 60 미만: 차단
+  // - AI 분석 미완료: 재생 차단 (분석 대기)
+  // ⚠️ safetyThreshold는 반드시 프로필 기준값(getEffectiveThreshold)을 넘겨야 함 — 하드코딩 금지
   const isCertified = video.madeForKids;
   const dangerScores = [v.violence, v.language, v.sexual, v.scary, v.imitationRisk].filter(s => s !== undefined);
-  const hasCriticalDanger = dangerScores.some(s => s < 60);  // 카테고리 하나라도 60 미만이면 차단
-  const isDangerous = isDeep && (v.totalScore < 75 || hasCriticalDanger);  // 총점 75 미만도 차단
+  const hasCriticalDanger = dangerScores.some(s => s < 60);
+  const isDangerous = isDeep && (v.totalScore < safetyThreshold || hasCriticalDanger);
   const isPending = !isCertified && !isDeep;
   const canPlay = isCertified || (isDeep && !isDangerous);
 
