@@ -123,14 +123,17 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
 
   // 재생 게이팅 룰
   // - YouTube 인증(madeForKids): 즉시 재생
-  // - AI 분석 완료 + 총점 ≥ safetyThreshold AND 위험 카테고리(폭력/언어/선정/공포/모방) 모두 60+: 재생 가능
-  // - AI 분석 완료 + 총점 < safetyThreshold OR 위험 카테고리 하나라도 60 미만: 차단
+  // - AI 분석 완료 + 총점 ≥ safetyThreshold AND 위험 카테고리(폭력/언어/선정/공포/모방) 모두 60+ AND 비상업성 50 초과: 재생 가능
+  // - AI 분석 완료 + 총점 < safetyThreshold OR 위험 카테고리 하나라도 60 미만 OR 비상업성 50 이하: 차단
   // - AI 분석 미완료: 재생 차단 (분석 대기)
   // ⚠️ safetyThreshold는 반드시 프로필 기준값(getEffectiveThreshold)을 넘겨야 함 — 하드코딩 금지
+  // ⚠️ 비상업성 임계값 50 = prompt-rules.json penalties "언박싱 → 50 이하" 정의와 일치 (채점-게이팅 정합)
+  //    교육성은 정보 지표라 게이팅 대상 아님 (낮아도 차단 X) — CONTEXT.md 설계 참고
   const isCertified = video.madeForKids;
   const dangerScores = [v.violence, v.language, v.sexual, v.scary, v.imitationRisk].filter(s => s !== undefined);
   const hasCriticalDanger = dangerScores.some(s => s < 60);
-  const isDangerous = isDeep && (v.totalScore < safetyThreshold || hasCriticalDanger);
+  const hasCommercialRisk = v.commercialism !== undefined && v.commercialism <= 50;
+  const isDangerous = isDeep && (v.totalScore < safetyThreshold || hasCriticalDanger || hasCommercialRisk);
   const isPending = !isCertified && !isDeep;
   const canPlay = isCertified || (isDeep && !isDangerous);
 
