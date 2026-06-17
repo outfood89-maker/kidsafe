@@ -263,6 +263,68 @@ export const submitFeedbackPipeline = async (data) => {
   return response.data
 }
 
+// ── 관리자 전용 ──────────────────────────────────────────────
+
+export const getAdminFeedbacks = async () => {
+  const response = await axios.get(`${BASE_URL}/feedback`)
+  return response.data
+}
+
+export const suggestAdminRules = async () => {
+  const response = await axios.post(`${BASE_URL}/feedback/admin/rules/suggest`)
+  return response.data
+}
+
+export const getAdminPendingRules = async () => {
+  const response = await axios.get(`${BASE_URL}/feedback/admin/rules/pending`)
+  return response.data
+}
+
+export const approveAdminRule = async (index) => {
+  const response = await axios.post(`${BASE_URL}/feedback/admin/rules/approve`, { index })
+  return response.data
+}
+
+export const rejectAdminRule = async (index) => {
+  const response = await axios.delete(`${BASE_URL}/feedback/admin/rules/pending/${index}`)
+  return response.data
+}
+
+export const approveAdminRulesBulk = async (indices) => {
+  const response = await axios.post(`${BASE_URL}/feedback/admin/rules/approve-bulk`, { indices })
+  return response.data
+}
+
+export const rejectAdminRulesBulk = async (indices) => {
+  const response = await axios.post(`${BASE_URL}/feedback/admin/rules/reject-bulk`, { indices })
+  return response.data
+}
+
+export const getAdminCurrentRules = async () => {
+  const response = await axios.get(`${BASE_URL}/feedback/admin/rules`)
+  return response.data
+}
+
+export const getAdminStats = async () => {
+  const response = await axios.get(`${BASE_URL}/admin/stats`)
+  return response.data
+}
+
+export const getAdminUsers = async () => {
+  const response = await axios.get(`${BASE_URL}/admin/users`)
+  return response.data
+}
+
+export const updateAdminUserRole = async (userId, role) => {
+  const response = await axios.patch(`${BASE_URL}/admin/users/${userId}/role`, { role })
+  return response.data
+}
+
+export const updateAdminUserPremium = async (userId, grant) => {
+  const response = await axios.patch(`${BASE_URL}/admin/users/${userId}/premium`, { grant })
+  return response.data
+}
+
 
 
 

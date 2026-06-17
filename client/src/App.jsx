@@ -11,6 +11,7 @@ import ProfileSelect from './pages/ProfileSelect'
 import Favorites from './pages/Favorites'
 import BadgeCollection from './pages/BadgeCollection'
 import MiniGame from './pages/MiniGame'
+import AdminPage from './pages/AdminPage'
 
 // 앱 전역 세로 고정 헬퍼 (VideoPlayer에서도 사용)
 export const lockPortrait = () => {
@@ -41,6 +42,7 @@ function App() {
           <Route path="/badges" element={<ProtectedRoute><BadgeCollection /></ProtectedRoute>} />
           <Route path="/games" element={<ProtectedRoute><MiniGame /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

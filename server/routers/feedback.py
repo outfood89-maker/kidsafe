@@ -1,10 +1,11 @@
 import json
 import os
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import anthropic
+from auth import require_admin
 
 router = APIRouter()
 
@@ -46,6 +47,10 @@ class ApproveRequest(BaseModel):
     index: int             # pending-rules.json 배열 인덱스
 
 
+class BulkRequest(BaseModel):
+    indices: List[int]     # 일괄 처리할 pending-rules.json 배열 인덱스 목록
+
+
 # ─── POST /feedback — 점수 이상 신고 접수 ─────────────────────
 
 @router.post("")
@@ -71,14 +76,14 @@ async def submit_feedback(data: FeedbackRequest):
 # ─── GET /feedback — 쌓인 피드백 조회 ────────────────────────
 
 @router.get("")
-async def get_feedbacks():
+async def get_feedbacks(admin: dict = Depends(require_admin)):
     return read_json(FEEDBACK_PATH, [])
 
 
 # ─── POST /admin/rules/suggest — Claude가 피드백 분석 → 룰 제안 ─
 
 @router.post("/admin/rules/suggest")
-async def suggest_rules():
+async def suggest_rules(admin: dict = Depends(require_admin)):
     try:
         feedbacks = read_json(FEEDBACK_PATH, [])
         pending_feedbacks = [f for f in feedbacks if f.get("status") == "pending"]
@@ -157,14 +162,14 @@ async def suggest_rules():
 # ─── GET /admin/rules/pending — 승인 대기 중인 제안 룰 조회 ──
 
 @router.get("/admin/rules/pending")
-async def get_pending_rules():
+async def get_pending_rules(admin: dict = Depends(require_admin)):
     return read_json(PENDING_RULES_PATH, [])
 
 
 # ─── POST /admin/rules/approve — 제안 룰 승인 → prompt-rules.json 반영 ──
 
 @router.post("/admin/rules/approve")
-async def approve_rule(data: ApproveRequest):
+async def approve_rule(data: ApproveRequest, admin: dict = Depends(require_admin)):
     try:
         pending = read_json(PENDING_RULES_PATH, [])
 
@@ -206,7 +211,7 @@ async def approve_rule(data: ApproveRequest):
 # ─── DELETE /admin/rules/pending/{index} — 제안 룰 거부 ──────
 
 @router.delete("/admin/rules/pending/{index}")
-async def reject_rule(index: int):
+async def reject_rule(index: int, admin: dict = Depends(require_admin)):
     try:
         pending = read_json(PENDING_RULES_PATH, [])
         if index < 0 or index >= len(pending):
@@ -220,10 +225,69 @@ async def reject_rule(index: int):
         raise HTTPException(status_code=500, detail=f"룰 거부 오류: {str(e)}")
 
 
+# ─── POST /admin/rules/approve-bulk — 제안 룰 일괄 승인 ───────
+# 인덱스가 밀리지 않도록 스냅샷에 대해 한 번에 처리 (인덱스 집합 → 일괄 반영 후 재구성)
+
+@router.post("/admin/rules/approve-bulk")
+async def approve_rules_bulk(data: BulkRequest, admin: dict = Depends(require_admin)):
+    try:
+        pending = read_json(PENDING_RULES_PATH, [])
+        idx_set = {i for i in data.indices if 0 <= i < len(pending)}
+        if not idx_set:
+            return {"ok": True, "approved": 0, "message": "처리할 룰이 없어요."}
+
+        rules = read_json(PROMPT_RULES_PATH, {})
+        approved = 0
+        for i in idx_set:
+            rule = pending[i]
+            category = rule.get("category")
+            rule_type = rule.get("type")   # "exemptions" | "penalties" | "bonuses"
+            rule_text = rule.get("rule")
+            if not all([category, rule_type, rule_text]):
+                continue
+
+            if category not in rules:
+                rules[category] = {"description": "", "exemptions": [], "penalties": [], "bonuses": []}
+            if rule_type not in rules[category]:
+                rules[category][rule_type] = []
+            if rule_text not in rules[category][rule_type]:
+                rules[category][rule_type].append(rule_text)
+            approved += 1
+
+        write_json(PROMPT_RULES_PATH, rules)
+
+        # 처리된 인덱스를 제외하고 pending 재구성 (pop 반복 시 인덱스 밀림 방지)
+        new_pending = [r for i, r in enumerate(pending) if i not in idx_set]
+        write_json(PENDING_RULES_PATH, new_pending)
+
+        return {"ok": True, "approved": approved, "message": f"{approved}개 룰이 승인됐어요!"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"룰 일괄 승인 오류: {str(e)}")
+
+
+# ─── POST /admin/rules/reject-bulk — 제안 룰 일괄 거부 ────────
+
+@router.post("/admin/rules/reject-bulk")
+async def reject_rules_bulk(data: BulkRequest, admin: dict = Depends(require_admin)):
+    try:
+        pending = read_json(PENDING_RULES_PATH, [])
+        idx_set = {i for i in data.indices if 0 <= i < len(pending)}
+        new_pending = [r for i, r in enumerate(pending) if i not in idx_set]
+        write_json(PENDING_RULES_PATH, new_pending)
+        return {"ok": True, "rejected": len(idx_set), "message": f"{len(idx_set)}개 룰이 거부됐어요."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"룰 일괄 거부 오류: {str(e)}")
+
+
 # ─── GET /admin/rules — 현재 적용 중인 룰 전체 조회 ──────────
 
 @router.get("/admin/rules")
-async def get_current_rules():
+async def get_current_rules(admin: dict = Depends(require_admin)):
     return read_json(PROMPT_RULES_PATH, {})
 
 
