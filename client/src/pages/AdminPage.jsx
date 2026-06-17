@@ -67,12 +67,13 @@ const AUDIT_ACTION_MAP = {
 }
 
 const CATEGORY_MAP = {
-  scary:        { label: "공포",   color: "#E57373", bg: "#FFEBEE" },
-  violence:     { label: "폭력",   color: "#EF5350", bg: "#FFEBEE" },
-  language:     { label: "언어",   color: "#FF8A65", bg: "#FBE9E7" },
-  sexual:       { label: "선정성", color: "#EC407A", bg: "#FCE4EC" },
-  educational:  { label: "교육성", color: "#42A5F5", bg: "#E3F2FD" },
-  commercialism:{ label: "상업성", color: "#FFA726", bg: "#FFF3E0" },
+  scary:         { label: "👻 공포",    color: "#7C3AED", bg: "#EDE9FE" },
+  violence:      { label: "🛡️ 폭력",   color: "#DC2626", bg: "#FEE2E2" },
+  language:      { label: "💬 언어",    color: "#EA580C", bg: "#FFEDD5" },
+  sexual:        { label: "🔞 선정성",  color: "#DB2777", bg: "#FCE7F3" },
+  educational:   { label: "📚 교육성",  color: "#0369A1", bg: "#E0F2FE" },
+  commercialism: { label: "🛒 상업성",  color: "#B45309", bg: "#FEF3C7" },
+  imitation_risk:{ label: "⚠️ 모방위험", color: "#065F46", bg: "#D1FAE5" },
 }
 
 const STATUS_MAP = {
@@ -706,37 +707,55 @@ export default function AdminPage() {
                 </p>
               )}
               {Object.entries(currentRules).map(([category, data]) => {
-                const cat = CATEGORY_MAP[category] || { label: category, color: "#888", bg: "#eee" }
+                const cat = CATEGORY_MAP[category] || { label: category, color: "#6B7A65", bg: "#F1F1ED" }
                 const sections = [
-                  { key: "exemptions", label: "✅ 면제", color: "#059669" },
-                  { key: "penalties",  label: "🚫 감점", color: "#EF5350" },
-                  { key: "bonuses",    label: "⭐ 보너스", color: "#F59E0B" },
+                  { key: "exemptions", label: "면제", icon: "✅", color: "#059669", itemBg: "#F0FDF4", border: "#86EFAC" },
+                  { key: "penalties",  label: "감점", icon: "🚫", color: "#DC2626", itemBg: "#FFF5F5", border: "#FCA5A5" },
+                  { key: "bonuses",    label: "보너스", icon: "⭐", color: "#B45309", itemBg: "#FFFBEB", border: "#FCD34D" },
                 ]
+                const totalItems = sections.reduce((n, s) => n + (data[s.key]?.length || 0), 0)
                 return (
-                  <div key={category} className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E4EAE0" }}>
-                    <div className="px-4 py-3" style={{ backgroundColor: cat.bg }}>
-                      <span className="text-sm font-bold" style={{ color: cat.color }}>{cat.label}</span>
-                      {data.description && (
-                        <span className="text-xs ml-2" style={{ color: cat.color + "AA" }}>{data.description}</span>
-                      )}
+                  <div key={category} className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${cat.color}33` }}>
+                    {/* 카테고리 헤더 */}
+                    <div className="px-4 py-3 flex items-start justify-between gap-2" style={{ backgroundColor: cat.bg }}>
+                      <div>
+                        <span className="text-sm font-extrabold" style={{ color: cat.color }}>{cat.label}</span>
+                        {data.description && (
+                          <p className="text-xs mt-0.5 leading-snug" style={{ color: "#4B5563" }}>{data.description}</p>
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5"
+                        style={{ backgroundColor: cat.color + "22", color: cat.color }}>
+                        {totalItems}개
+                      </span>
                     </div>
-                    <div className="bg-white px-4 py-3 flex flex-col gap-3">
-                      {sections.map(({ key, label, color }) => {
+                    {/* 섹션별 룰 */}
+                    <div className="bg-white px-4 py-3 flex flex-col gap-4">
+                      {sections.map(({ key, label, icon, color, itemBg, border }) => {
                         const items = data[key] || []
                         if (items.length === 0) return null
                         return (
                           <div key={key}>
-                            <p className="text-xs font-semibold mb-1.5" style={{ color }}>
-                              {label} ({items.length})
-                            </p>
-                            <ul className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <span className="text-xs">{icon}</span>
+                              <span className="text-xs font-bold" style={{ color }}>{label}</span>
+                              <span className="text-xs font-medium px-1.5 py-0 rounded-full"
+                                style={{ backgroundColor: itemBg, color, border: `1px solid ${border}` }}>
+                                {items.length}
+                              </span>
+                            </div>
+                            <ul className="flex flex-col gap-1.5">
                               {items.map((item, j) => (
                                 <li
                                   key={j}
-                                  className="text-xs py-1.5 px-3 rounded-lg"
-                                  style={{ backgroundColor: "#F8F7F2", color: "#2C3528" }}
+                                  className="text-xs py-2 px-3 rounded-lg leading-relaxed"
+                                  style={{
+                                    backgroundColor: itemBg,
+                                    color: "#1F2937",
+                                    borderLeft: `3px solid ${border}`,
+                                  }}
                                 >
-                                  • {item}
+                                  {item}
                                 </li>
                               ))}
                             </ul>
