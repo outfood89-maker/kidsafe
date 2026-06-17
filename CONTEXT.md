@@ -1,16 +1,18 @@
 # KidSafe 프로젝트 컨텍스트
 
-> 마지막 업데이트: 2026-06-07
+> 마지막 업데이트: 2026-06-17
 
 ## 프로젝트 개요
 
 어린이를 위한 안전한 YouTube 영상 검색/추천 플랫폼.
-부모가 자녀의 시청 기록을 관리하고, 아이는 안전한 영상만 검색할 수 있다.
+부모가 자녀의 시청 기록을 관리하고, 아이는 AI가 검수한 안전한 영상만 시청할 수 있다.
 
 - **GitHub**: https://github.com/outfood89-maker/kidsafe
+- **배포 (프론트)**: https://kidsafe-eight.vercel.app
+- **배포 (백엔드)**: https://kidsafe-production.up.railway.app
 - **개발자**: Freddie (초급 프론트엔드, 포트폴리오 목적)
 - **AI 파트너**: Claude Sonnet 4.6
-- **목표**: 7월 초 완성 → Vercel 배포
+- **목표**: 7월 초 완성
 
 ---
 
@@ -19,12 +21,16 @@
 | 구분 | 기술 |
 |---|---|
 | 프론트엔드 | React 19, React Router v7, Tailwind CSS, Axios |
-| 백엔드 | Node.js + Express 5 (ES Module 방식) |
-| AI | Anthropic API — claude-haiku-4-5-20251001 (키디 챗봇 전용) |
+| 백엔드 | **FastAPI (Python)** — `server/` 폴더, uvicorn 포트 3000 |
+| AI | Anthropic API — claude-haiku-4-5-20251001 |
 | 영상 | YouTube Data API v3 |
+| 자막 추출 | youtube-transcript-api |
 | 차트 | Recharts |
-| 아바타 | DiceBear API |
-| 배포 예정 | Vercel (프론트) + Railway (백엔드) |
+| 아바타 | 로컬 PNG (avatar_01~08.png) |
+| 배포 | Vercel (프론트) + Railway (백엔드) |
+| 인증 | Supabase Auth (이메일/비밀번호, ES256 JWT) |
+
+> ⚠️ 백엔드는 Express → FastAPI로 전환 완료. `server_backup/`에 Express 원본 보존.
 
 ---
 
@@ -32,12 +38,15 @@
 
 | 경로 | 컴포넌트 |
 |---|---|
-| `/` | Landing.jsx (랜딩/인트로 페이지) |
-| `/profiles` | ProfileSelect.jsx (프로필 선택) |
-| `/kids` | KidHome.jsx (아이 홈) |
-| `/parent` | ParentDashboard.jsx (부모 대시보드) |
-| `/favorites` | Favorites.jsx (찜 목록) |
-| `/badges` | BadgeCollection.jsx (배지 컬렉션) |
+| `/` | Landing.jsx (공개) |
+| `/login` | Login.jsx (공개) |
+| `/profiles` | ProfileSelect.jsx (로그인 필수) |
+| `/kids` | KidHome.jsx — 아이 홈 (로그인 필수) |
+| `/parent` | ParentDashboard.jsx (로그인 필수) |
+| `/favorites` | Favorites.jsx (로그인 필수) |
+| `/badges` | BadgeCollection.jsx (로그인 필수) |
+| `/games` | Games.jsx (로그인 필수) |
+| `/account` | Account.jsx — 계정 관리 (로그인 필수) |
 
 ---
 
@@ -48,42 +57,60 @@ kidsafe/
 ├── client/
 │   └── src/
 │       ├── pages/
-│       │   ├── Landing.jsx           # 랜딩/인트로 페이지 (전면 개편 완료)
-│       │   ├── ProfileSelect.jsx     # 프로필 선택
-│       │   ├── KidHome.jsx           # 아이 홈 (핵심 페이지)
-│       │   ├── ParentDashboard.jsx   # 부모 대시보드
-│       │   ├── Favorites.jsx         # 찜 목록
-│       │   └── BadgeCollection.jsx   # 배지 컬렉션
+│       │   ├── Landing.jsx
+│       │   ├── ProfileSelect.jsx
+│       │   ├── KidHome.jsx
+│       │   ├── ParentDashboard.jsx
+│       │   ├── Favorites.jsx
+│       │   ├── BadgeCollection.jsx
+│       │   └── Games.jsx
 │       ├── components/
-│       │   ├── NavBar.jsx            # 공통 네비게이션 바
-│       │   ├── VideoModal.jsx        # 영상 상세 모달
-│       │   └── PlaylistModal.jsx     # 재생목록 모달
+│       │   ├── VideoModal.jsx       # 영상 상세 모달 + AI 분석 결과 표시
+│       │   ├── VideoPlayer.jsx      # KidSafe 내장 플레이어
+│       │   ├── PlaylistModal.jsx
+│       │   ├── BottomTabBar.jsx
+│       │   ├── ChatWidget.jsx       # 키디 AI 챗봇
+│       │   ├── KiddyImg.jsx         # 키디 캐릭터 컴포넌트
+│       │   ├── NavBar.jsx           # 공통 네비바 (showAccountMenu prop)
+│       │   ├── ProtectedRoute.jsx   # 비로그인 시 /login 리다이렉트
+│       │   └── PaywallModal.jsx     # 멤버십 한도 초과 paywall 모달
+│       ├── contexts/
+│       │   └── AuthContext.jsx      # 전역 인증 상태 (Supabase Auth)
 │       └── utils/
-│           ├── api.js                # 모든 API 호출 함수
-│           └── safetyFilter.js       # 안전도 필터/Anti-Bias 로직
+│           ├── api.js               # 모든 API 호출 함수 (Bearer 토큰 자동 첨부)
+│           ├── supabase.js          # Supabase 클라이언트 초기화
+│           └── safetyFilter.js      # 안전도 필터/Anti-Bias 로직
 │
 └── server/
-    ├── index.js                      # 서버 진입점 (포트 3000, 0.0.0.0)
-    ├── routes/
-    │   ├── search.js                 # YouTube 검색 + 추천
-    │   ├── analyze.js                # 안전도 분석 (키워드 기반)
-    │   ├── history.js                # 시청 기록
-    │   ├── profiles.js               # 프로필 관리
-    │   ├── badges.js                 # 배지 시스템
-    │   ├── favorites.js              # 찜 기능
-    │   ├── search-history.js         # 검색 히스토리
-    │   ├── blocked-keywords.js       # 차단 키워드
-    │   ├── alerts.js                 # 위험 영상 알림
-    │   └── chat.js                   # 키디 AI 챗봇
+    ├── main.py                      # FastAPI 진입점 (포트 3000)
+    ├── routers/
+    │   ├── search.py                # YouTube 검색 + 추천 (html.unescape 처리)
+    │   ├── analyze.py               # 검수 엔진 (Tier 0~2 + 캐시)
+    │   ├── feedback.py              # 피드백 수집 + 자동화 파이프라인
+    │   ├── history.py
+    │   ├── profiles.py
+    │   ├── badges.py
+    │   ├── favorites.py
+    │   ├── search_history.py
+    │   ├── blocked_keywords.py
+    │   ├── alerts.py
+    │   ├── chat.py                  # 키디 챗봇 (AsyncAnthropic)
+    │   └── game_bonus.py
     └── data/
-        ├── profiles.json             # 프로필 데이터
-        ├── history.json              # 시청 기록
-        ├── badges.json               # 획득 배지
-        ├── favorites.json            # 찜 목록
-        ├── searches.json             # 검색 히스토리
-        ├── blocked-keywords.json     # 차단 키워드 (system + custom)
-        ├── alerts.json               # 위험 영상 알림 목록
-        └── alert-settings.json       # 알림 기준 설정
+        ├── analysis-cache.json      # 영상 검수 결과 캐시
+        ├── prompt-rules.json        # AI 판단 기준 룰 (외부 파일, 재시작 불필요)
+        ├── trusted-channels.json    # 신뢰 채널 화이트리스트
+        ├── channel-scores.json      # 자동 신뢰 학습 누적 점수
+        ├── usage.json               # user_id별 일일 Tier2 사용 카운트
+        ├── feedback.json            # 사용자 피드백 수집
+        ├── pending-rules.json       # 승인 대기 룰 제안
+        ├── profiles.json
+        ├── history.json
+        ├── badges.json
+        ├── favorites.json
+        ├── searches.json
+        ├── blocked-keywords.json
+        └── alerts.json
 ```
 
 ---
@@ -93,188 +120,173 @@ kidsafe/
 ### 검색
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| GET/POST | `/search` | 영상(20개) + 재생목록 검색 |
+| GET | `/search` | 영상(20개) + 재생목록 동시 검색 |
 | GET | `/search/recommend` | 나이별 추천 영상 |
 | GET | `/search/history-recommend` | 시청 기록 기반 추천 |
 
-### 안전도
+### 검수 (핵심)
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/analyze` | 안전도 분석 (키워드 기반) |
+| POST | `/analyze` | Tier 0~1 키워드 분석 (빠름, 카드용) |
+| POST | `/analyze/batch` | 여러 영상 일괄 분석 |
+| POST | `/analyze/deep` | Tier 2 AI 정밀 분석 (자막 + Claude, 모달용) |
+| DELETE | `/analyze/cache/{videoId}` | 특정 영상 캐시 삭제 |
+| GET | `/analyze/{videoId}` | 캐시된 결과 조회 |
 
-### 시청 기록
+### 피드백 & 룰 자동화
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| GET | `/history` | 전체 시청 기록 조회 |
-| POST | `/history` | 시청 기록 저장 (violence, language, sexual, educational 포함) |
-| DELETE | `/history/item?watchedAt=&profileId=` | 특정 기록 삭제 |
-| DELETE | `/history/all?profileId=` | 전체/프로필별 기록 삭제 |
+| POST | `/feedback` | 점수 이상 신고 접수 |
+| GET | `/feedback` | 피드백 목록 조회 |
+| POST | `/feedback/pipeline` | **자동화 파이프라인** (피드백 → Claude 룰 생성 → 즉시 반영 → 캐시 삭제) |
+| GET | `/feedback/admin/rules` | 현재 적용 룰 조회 |
+| POST | `/feedback/admin/rules/suggest` | Claude가 피드백 분석 → 룰 제안 |
+| GET | `/feedback/admin/rules/pending` | 승인 대기 룰 조회 |
+| POST | `/feedback/admin/rules/approve` | 룰 승인 |
+| DELETE | `/feedback/admin/rules/pending/{index}` | 룰 거부 |
 
-### 프로필
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/profiles` | 전체 프로필 조회 |
-| POST | `/profiles` | 프로필 생성 (safetyThreshold 자동 설정) |
-| PUT | `/profiles/:id` | 프로필 수정 (safetyThreshold 포함) |
-| DELETE | `/profiles/:id` | 프로필 삭제 |
+### 시청 기록 / 프로필 / 배지 / 찜 / 검색 히스토리 / 차단 키워드 / 알림 / 챗봇 / 게임 보너스
+> 기존 Express와 동일한 엔드포인트 유지 (프론트 수정 없음)
 
-### 배지
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/badges/:profileId` | 배지 조회 |
-| POST | `/badges/check/:profileId` | 배지 조건 체크 및 부여 |
+---
 
-### 찜
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/favorites` | 찜 목록 조회 |
-| POST | `/favorites` | 찜 추가 |
-| DELETE | `/favorites/:id` | 찜 해제 |
+## 검수 아키텍처 (핵심 기술)
 
-### 검색 히스토리
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/search-history` | 검색 히스토리 조회 |
-| POST | `/search-history` | 검색 히스토리 저장 |
-| DELETE | `/search-history/:id` | 1개 삭제 |
-| DELETE | `/search-history/all/:profileId` | 전체 삭제 |
+### 계층형 검수 파이프라인
 
-### 차단 키워드
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/blocked-keywords` | 전체 키워드 조회 |
-| GET | `/blocked-keywords/check?keyword=` | 차단 여부 확인 |
-| POST | `/blocked-keywords/custom` | 커스텀 키워드 추가 |
-| DELETE | `/blocked-keywords/custom/:keyword` | 커스텀 키워드 삭제 |
+```
+영상 검수 요청
+   ↓
+[캐시 확인] analysis-cache.json
+   ├── 캐시 있음 + 룰 파일보다 최신 → 즉시 반환 (비용 0)
+   ├── 캐시 있음 + 룰 파일이 더 최신 → 재분석 (룰 자동 무효화) ← 핵심
+   └── 캐시 없음 ↓
+   
+[Tier 0+1] 키워드 + 채널 분석 (무료, 즉시)
+   • 키워드 레벨별 가중치: severe(-30) / moderate(-15) / mild(-5)
+   • madeForKids 플래그, 카테고리(27=교육), topicCategories 보너스
+   • 채널 화이트리스트 + 자동 신뢰 학습 (90+점 3회 → 자동 등록)
+   • 총점 = (폭력 + 언어 + 선정성) / 3 (교육성 제외)
+   
+[Tier 2] AI 정밀 분석 (자막 + Claude Haiku)
+   • youtube-transcript-api로 자막 추출 (한국어/영어)
+   • 자막 없으면 메타데이터만으로 분석
+   • Claude가 7개 카테고리 점수 + 사유 + 요약 생성
+   • 총점 = (폭력 + 언어 + 선정성 + 공포 + 모방위험) / 5
+   
+[캐싱] analysis-cache.json 저장
+```
 
-### 위험 영상 알림
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/alerts` | 알림 목록 조회 |
-| PATCH | `/alerts/:id/read` | 읽음 처리 |
-| PATCH | `/alerts/read-all` | 전체 읽음 처리 |
-| GET | `/alerts/settings` | 알림 설정 조회 |
-| PUT | `/alerts/settings` | 알림 설정 저장 |
+### 7개 검수 카테고리
 
-### 키디 챗봇
-| 메서드 | 경로 | 설명 |
+| 카테고리 | 총점 반영 | 설명 |
+|---|:---:|---|
+| violence (폭력 안전) | ✅ | 100=폭력 없음 |
+| language (언어 안전) | ✅ | 100=고운 말 |
+| sexual (선정성 안전) | ✅ | 100=선정성 없음 |
+| scary (공포 안전) | ✅ | 100=공포 없음 |
+| imitation_risk (모방 안전) | ✅ | 100=모방 위험 없음 |
+| educational (교육성) | ❌ 별도 | 100=교육적 |
+| commercialism (비상업성) | ❌ 별도 | 100=구매 유도 없음 |
+
+> 교육성·상업성은 위험 지표가 아니라 정보 지표 → 총점 미반영, 모달에 별도 표시
+
+### prompt-rules.json — 외부 판단 기준 룰
+
+- `server/data/prompt-rules.json`에 카테고리별 exemptions / penalties / bonuses 정의
+- Claude 시스템 프롬프트에 런타임으로 주입 → **서버 재시작 없이 즉시 반영**
+- 룰 수정 시 mtime 기반으로 기존 캐시 자동 무효화
+- 현재 6개 카테고리 룰 정의: scary / violence / language / educational / commercialism / imitation_risk
+
+### 피드백 자동화 파이프라인 (`POST /feedback/pipeline`)
+
+```
+사용자 "이 점수 이상해요" 클릭
+   → 피드백 저장 (feedback.json)
+   → Claude가 방향 판단 (점수가 낮아야 하는지 / 높아야 하는지)
+   → exemptions 또는 penalties에 룰 1줄 자동 추가
+   → analysis-cache.json에서 해당 영상 캐시 삭제
+   → 모달에서 자동 재분석 트리거
+   → 새 점수로 즉시 업데이트
+```
+
+---
+
+## 재생 게이팅 룰 (VideoModal.jsx)
+
+| 조건 | 결과 |
+|---|---|
+| YouTube 인증 (madeForKids) | ✅ 즉시 재생 허용 |
+| AI 분석 미완료 | ⏳ "AI 분석 완료 후 시청 가능" (비활성) |
+| 총점 < 75 | 🚫 재생 차단 |
+| 위험 카테고리(폭력/언어/선정/공포/모방) 중 하나라도 < 60 | 🚫 재생 차단 |
+| 위 조건 모두 통과 | ✅ 재생 허용 |
+
+---
+
+## 안전도 등급 기준
+
+| 점수 | 등급 | 색상 |
 |---|---|---|
-| POST | `/chat` | Anthropic API 호출 (claude-haiku-4-5-20251001) |
+| 90점 이상 | 안전 | green (#2E9E50) |
+| 70~89점 | 주의 | yellow (#C47A00) |
+| 69점 이하 | 위험 | red (#C84B47) |
+
+---
+
+## 카드 점수 실시간 동기화
+
+- 검색 카드 초기 점수: Tier 0+1 키워드 분석 결과
+- 모달 열고 AI 분석 완료 시 → `onDeepResult` 콜백으로 카드 `totalScore` 즉시 업데이트
+- 모달을 닫지 않아도 뒤 카드 점수가 AI 점수로 실시간 교체됨
 
 ---
 
 ## 구현 완료 기능
 
 ### 아이 화면 (KidHome.jsx)
-- 나이별 YouTube 영상 검색 + 안전도 필터링
-- Anti-Bias 편식 방지 로직 (70% 초과 시 감점, 새 영역 +20점)
-- 오늘의 추천 영상 (나이별 키워드)
-- 시청 기록 기반 추천 영상
-- 재생목록 검색 + 모달
-- 더보기 기능 (검색 9개씩, 추천 6개씩)
-- 검색 결과 sessionStorage 유지 (이탈 후 복귀 시 복원)
-- 찜(하트) 버튼 시각 피드백
-- 검색 히스토리 (최근 검색어 표시/삭제)
-- 차단 키워드 검색 자동 차단
-- 배지 시스템 21개 (시청/안전/장르/찜/탐험/마스터)
-- 배지 컬렉션 페이지 (카테고리 탭, 진행도 바)
-- 키디 AI 챗봇 (플로팅 버튼, 빠른 질문 3개)
-- ?q= 파라미터로 데모 키워드 지정 가능 (랜딩 미리보기용)
+- YouTube 영상 검색 + Tier 0+1 안전도 필터링
+- Anti-Bias 편식 방지 로직
+- 검색 결과 sessionStorage 유지
+- 찜(하트) / 검색 히스토리 / 차단 키워드 검색 차단
+- 모바일: 가로형 리스트 카드 / 데스크톱: 3열 그리드
+- 교육성 80+ 영상에 📚 교육적 마크 표시
+- 등급 위주 뱃지 (안전/주의/위험 + 점수 작게)
+- 키디 AI 챗봇 (플로팅)
+- 배지 시스템 21개
+- 시청 시간 제한 + 게임 보너스 시간
+
+### 영상 모달 (VideoModal.jsx)
+- Tier 2 AI 정밀 분석 (모달 열 때 자동 실행)
+- AI 요약 + ageRating 표시
+- 7개 카테고리 점수 그리드 (긍정형 라벨)
+- 피드백 버튼 → 자동화 파이프라인 실행 → 재분석
+- 재생 게이팅 (총점 75+ AND 카테고리 60+)
 
 ### 부모 화면 (ParentDashboard.jsx)
-- 프로필 관리 (생성/삭제/수정)
-- 시청 시간 제한 설정
-- 프로필별 안전도 기준점수 커스텀 (슬라이더, 50~95점)
-- 시청 기록 조회 (프로필 탭 필터)
-  - 10개씩 더보기
-  - 개별 삭제 / 전체 삭제
-  - 영상 클릭 시 상세 모달 (VideoModal 재활용)
-- 시청 패턴 분석 (프로필별 독립 탭)
-  - 안전도 분포 PieChart
-  - 최다 시청 채널 TOP5 HorizontalBarChart
-  - 시간대별 시청 BarChart
-  - 최근 7일 시청 추이 LineChart
-- 위험 영상 알림 (심각도 2단계, 반복 시청 감지, 채널 차단 연동)
-- 알림 설정 (기준 점수 슬라이더, 심야 알림 토글)
-- 차단 키워드 관리 (시스템 기본 + 커스텀 추가/삭제)
+- 프로필 관리 / 시청 시간 제한 / 안전 기준점 슬라이더
+- 시청 기록 + 패턴 분석 (PieChart / BarChart / LineChart)
+- 위험 영상 알림 + 설정
+- 차단 키워드 관리
 
-### 랜딩 페이지 (Landing.jsx)
-- Hero 섹션 (그라데이션 애니메이션, 방패 floating, fadeInUp)
-- 스크롤 reveal 애니메이션 (IntersectionObserver 기반)
-- 기능 소개 4개 카드 + 학부모용 "왜 필요한가요?" 설명
-- 앱 미리보기 섹션
-  - 아이 화면: 스마트폰 모형 iframe (/kids)
-  - 부모 화면: 브라우저 모형 iframe (/parent)
-- 숫자 카운트업 애니메이션 (21개 배지, 3단계, 4명)
-- 4단계 사용법 플로우 (연결선 포함)
-- 회원가입 버튼 (준비 중 배지)
-- 영상 배경 준비됨 (주석 처리 — /public/intro.mp4 넣고 해제)
-- 푸터
+### 미니게임
+- 영상 제목 맞추기 게임
+- 안전/위험 분류 게임
+- 게임 성과 → 시청 시간 보너스 연동
 
 ---
 
-## 안전도 기준
+## FastAPI 핵심 주의사항
 
-| 점수 | 등급 | 색상 |
-|---|---|---|
-| 90점 이상 | 안전 | green |
-| 70~89점 | 주의 | yellow |
-| 69점 이하 | 위험 | red |
-
-### 나이별 기본 safetyThreshold
-| 나이 | 기본값 |
-|---|---|
-| 3세 | 90점 |
-| 5세 | 85점 |
-| 7세 | 80점 |
-| 10세 | 70점 |
-
----
-
-## 배지 시스템 (21개)
-
-| 카테고리 | 배지 |
-|---|---|
-| 시청 | 첫 영상 🎬, 10개 달성 🎯, 50개 달성 🏆, 100개 달성 👑, 다양한 장르 🌈 |
-| 안전 | 안전 수호자 🛡️, 완벽한 선택 ⭐, 위험 없는 하루 ✅ |
-| 장르 | 동요 마스터 🎵, 과학 탐험가 🔬, 공룡 박사 🦕, 동화 왕국 📚 |
-| 찜 | 찜 수집가 💝, 찜 마스터 💖, 재생목록 팬 🎬 |
-| 탐험 | 호기심 탐험가 🔍, 장르 개척자 🗺️, 단골손님 📺, 저녁 탐험가 🌙 |
-| 마스터 | 올스타 🌠, 과학 꿈나무 🔬 |
-
----
-
-## 중요 설정 및 주의사항
-
-### 안전도 분석 (analyze.js)
-- 현재: 키워드 기반 (Anthropic 크레딧 절약 목적)
-- chat.js만 Anthropic API 사용 (claude-haiku-4-5-20251001)
-
-### 모바일 테스트
-- `api.js` BASE_URL을 PC 로컬 IP로 변경 (예: http://192.168.0.x:3000)
-- 서버는 `0.0.0.0`으로 바인딩되어 있어 모바일 접속 가능
-- 배포 전 BASE_URL 반드시 `http://localhost:3000` 확인
-
-### 랜딩페이지 영상 배경 연결 방법
-1. `/client/public/intro.mp4` 파일 추가
-2. `Landing.jsx` Hero 섹션 video 태그 주석 해제
-
-### Git 커밋 방식 (Freddie 선호)
-```bash
-git add .
-git commit -m "feat: 작업 내용"
-git push origin master
-```
-
----
-
-## 남은 작업
-
-1. **UI 전체 개선** — 랜딩/아이/부모 화면 전반적인 디자인 고도화
-2. **회원가입/로그인** — 현재 준비 중 상태 (추후 구현)
-3. **랜딩 배경 영상** — 직접 제작 후 `/client/public/intro.mp4` 추가
-4. **Vercel 배포** — 프론트 배포 + Railway 백엔드 배포
-5. **README 작성** — 포트폴리오용 문서화
+- `server/` 작업 전 `server_backup/`에 복사 (삭제 금지)
+- Railway 재시작 시 JSON 초기화 → `ensure_data_files()`로 방지
+- JSON 읽기/쓰기 반드시 `encoding="utf-8"` 명시
+- Anthropic은 반드시 `AsyncAnthropic` 사용 (sync 쓰면 블로킹)
+- 라우터 추가 시 `main.py`에 import + `include_router` 등록 필수
+- 응답 JSON 형태 Express와 100% 동일 유지 (프론트 `{...video, ...safety}` spread)
+- YouTube API 응답은 반드시 `.get()`으로 방어적 접근
+- Pydantic Optional 필드는 `Optional[str]` 등으로 선언
+- YouTube 제목/설명은 `html.unescape()` 처리 필수 (&quot; 등 방지)
 
 ---
 
@@ -283,7 +295,45 @@ git push origin master
 - 모든 주석과 답변은 한국어
 - 함수형 컴포넌트만 사용 (class형 금지)
 - Axios만 사용 (fetch 금지)
-- Tailwind CSS만 사용 (인라인 style 불가피한 경우만 허용)
+- Tailwind CSS만 사용 (인라인 style 불가피한 경우만)
 - try-catch 필수
-- 백엔드는 ES Module 방식 (`import/export`) — `require()` 절대 금지
-- 기존 파일 절대 삭제 금지 (VideoModal.jsx 삭제 사고 전례 있음)
+- 기존 파일 절대 삭제 금지 — 비활성화 시 주석처리
+
+---
+
+## 회원·멤버십 시스템
+
+### 인증 (완료)
+- Supabase Auth — 이메일/비밀번호 가입/로그인
+- JWT 검증: JWKS 기반 ES256 (`server/auth.py`)
+- 앱 본체 전 라우트 `ProtectedRoute`로 보호 — 비로그인 시 `/login` 리다이렉트
+- axios interceptor — 백엔드 요청에 `Authorization: Bearer <token>` 자동 첨부
+
+### 계정 관리 UX (완료)
+- NavBar `showAccountMenu` prop → 우상단 보호자 드롭다운 (내 계정 / 자녀 프로필 / 멤버십 / 로그아웃)
+- `/account` 페이지 — 내 계정 탭(이름수정·비번변경·로그아웃·탈퇴) + 멤버십 탭
+
+### 멤버십 플랜
+| 기능 | Free | Premium (4,900원/월) |
+|---|:---:|:---:|
+| 영상 검색 · 기본 안전검수 | ✅ | ✅ |
+| AI 정밀검수 | 하루 3회 | 무제한 |
+| 자녀 프로필 | 1명 | 최대 4명 |
+| 부모 주간 리포트 | ❌ | ✅ |
+
+### 멤버십 게이팅 (완료)
+- `POST /analyze/deep` — JWT 인증 필수. 캐시 히트는 무료, 새 분석만 카운트
+- `server/data/usage.json` — user_id별 날짜+일일 카운트 저장, 날짜 바뀌면 자동 리셋
+- 한도 초과 시 HTTP 429 → 프론트 `PaywallModal` 표시
+- 자녀 프로필 2번째 추가 시도 → `PaywallModal` 표시
+- `client/src/components/PaywallModal.jsx` — 무료/프리미엄 비교 + `/account?tab=membership` 이동
+
+---
+
+## 남은 작업
+
+1. 결제 연동 (토스페이먼츠 구독) — Phase 3
+2. 도네이션 결제 — Phase 4
+3. 기존 JSON 데이터 Supabase DB 이전 — Phase 5
+4. 관리자 페이지 (피드백 검토 + `require_admin`) — Phase 2
+5. Railway 환경변수 SUPABASE_URL / PUBLISHABLE_KEY / SECRET_KEY 추가 (배포 전 필수)

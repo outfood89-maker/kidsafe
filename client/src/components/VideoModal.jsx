@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
-import { FaTimes } from "react-icons/fa";
-import { analyzeVideoDeep, submitFeedbackPipeline } from "../utils/api";
+import { FaTimes, FaInfoCircle } from "react-icons/fa";
+import { analyzeVideoDeep, submitFeedback } from "../utils/api";
+import PaywallModal from "./PaywallModal";
 
 export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }) {
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState("scary");
   const [feedbackReason, setFeedbackReason] = useState("");
   // "idle" | "loading" | "done" | "error"
   const [feedbackStatus, setFeedbackStatus] = useState("idle");
+  // 사유(note) 펼침 상태 — 펼쳐진 카테고리 catKey, 없으면 null
+  const [expandedNote, setExpandedNote] = useState(null);
 
   useEffect(() => {
     if (video) requestAnimationFrame(() => setVisible(true));
@@ -32,7 +36,13 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
           }
         }
       })
-      .catch((err) => { console.error("AI 정밀 분석 실패:", err); })
+      .catch((err) => {
+        if (err?.response?.status === 429) {
+          setPaywallOpen(true);
+        } else {
+          console.error("AI 정밀 분석 실패:", err);
+        }
+      })
       .finally(() => { if (!cancelled) setDeepLoading(false); });
     return () => { cancelled = true; };
   }, [video?.videoId]);
@@ -47,7 +57,8 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
       setFeedbackStatus("loading");
       const cur = deepResult ? { ...video, ...deepResult } : video;
       const scoreMap = { scary: cur.scary, violence: cur.violence, language: cur.language, sexual: cur.sexual, imitation_risk: cur.imitationRisk, educational: cur.educational, commercialism: cur.commercialism };
-      await submitFeedbackPipeline({
+      // 신고만 접수(관리자 검토용) — 점수를 즉시 바꾸지 않음
+      await submitFeedback({
         videoId: video.videoId,
         title: video.title,
         channelTitle: video.channelTitle || "",
@@ -56,21 +67,11 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
         reason: feedbackReason,
       });
       setFeedbackStatus("done");
-      // 룰이 즉시 반영됐으니 Tier 2 재분석 자동 트리거
-      setTimeout(async () => {
+      // 접수 안내만 잠깐 보여주고 패널 닫기 (재분석 없음)
+      setTimeout(() => {
         setFeedbackOpen(false);
         setFeedbackStatus("idle");
         setFeedbackReason("");
-        setDeepResult(null);
-        setDeepLoading(true);
-        try {
-          const result = await analyzeVideoDeep(video);
-          setDeepResult(result);
-        } catch (e) {
-          console.error("재분석 실패:", e);
-        } finally {
-          setDeepLoading(false);
-        }
       }, 1800);
     } catch (e) {
       console.error("피드백 전송 실패:", e);
@@ -80,6 +81,11 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
   };
 
   if (!video) return null;
+
+  // AI 한도 초과 paywall
+  if (paywallOpen) {
+    return <PaywallModal reason="tier2" onClose={() => setPaywallOpen(false)} />;
+  }
 
   // 정밀 분석 결과가 있으면 점수/요약을 업그레이드해서 표시 (없으면 원본 유지)
   const v = deepResult ? { ...video, ...deepResult } : video;
@@ -101,15 +107,19 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
 
   // ⚠️ 라벨은 '긍정형'으로 — 점수가 높을수록 좋다(안전)는 뜻이 자연스럽게 읽히게.
   //    ('폭력성 100'은 '폭력 만점'으로 오해될 수 있어 '폭력 안전 100'으로 표기)
+  // catKey는 백엔드 categories 키 — note(사유) 조회용
+  const cats = v.categories || {};
   const scoreItems = [
-    { label: "폭력 안전",   icon: "🛡️", score: v.violence },
-    { label: "언어 안전",   icon: "💬", score: v.language },
-    { label: "선정성 안전", icon: "🔞", score: v.sexual },
-    { label: "공포 안전",   icon: "👻", score: v.scary },
-    { label: "모방 안전",   icon: "⚠️", score: v.imitationRisk },
-    { label: "교육성",      icon: "📚", score: v.educational },
-    { label: "비상업성",    icon: "🛒", score: v.commercialism },
-  ].filter(item => item.score !== undefined);
+    { label: "폭력 안전",   icon: "🛡️", score: v.violence,      catKey: "violence" },
+    { label: "언어 안전",   icon: "💬", score: v.language,      catKey: "language" },
+    { label: "선정성 안전", icon: "🔞", score: v.sexual,        catKey: "sexual" },
+    { label: "공포 안전",   icon: "👻", score: v.scary,         catKey: "scary" },
+    { label: "모방 안전",   icon: "⚠️", score: v.imitationRisk, catKey: "imitation_risk" },
+    { label: "교육성",      icon: "📚", score: v.educational,   catKey: "educational" },
+    { label: "비상업성",    icon: "🛒", score: v.commercialism, catKey: "commercialism" },
+  ]
+    .filter(item => item.score !== undefined)
+    .map(item => ({ ...item, note: (cats[item.catKey] || {}).note || "" }));
 
   // 재생 게이팅 룰
   // - YouTube 인증(madeForKids): 즉시 재생
@@ -220,20 +230,43 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
 
           {/* 안전도 점수 — 그리드 */}
           <div className="grid grid-cols-2 gap-2">
-            {scoreItems.map((item) => (
-              <div key={item.label} className="rounded-xl px-3 py-2" style={{ backgroundColor: "#F8F7F2" }}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>{item.icon} {item.label}</span>
-                  <span className="text-xs font-bold" style={{ color: "#2C3528" }}>{item.score}</span>
+            {scoreItems.map((item) => {
+              // 90 미만 + 사유 있을 때만 ⓘ 노출 (90+는 초록=안전이라 설명 불필요)
+              const hasNote = item.score < 90 && !!item.note;
+              const isOpen = expandedNote === item.catKey;
+              return (
+                <div
+                  key={item.label}
+                  onClick={hasNote ? () => setExpandedNote(isOpen ? null : item.catKey) : undefined}
+                  className="rounded-xl px-3 py-2"
+                  style={{ backgroundColor: "#F8F7F2", cursor: hasNote ? "pointer" : "default" }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#6B7A65" }}>
+                      {item.icon} {item.label}
+                      {hasNote && (
+                        <FaInfoCircle
+                          style={{ fontSize: "10px", color: isOpen ? "#C47A00" : "#C4BBA8" }}
+                        />
+                      )}
+                    </span>
+                    <span className="text-xs font-bold" style={{ color: "#2C3528" }}>{item.score}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: "#E4EAE0" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${Math.min(item.score, 100)}%`, backgroundColor: getBarColor(item.score) }}
+                    />
+                  </div>
+                  {/* 사유 — 탭하면 펼침 */}
+                  {hasNote && isOpen && (
+                    <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#8A7B5C" }}>
+                      {item.note}
+                    </p>
+                  )}
                 </div>
-                <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: "#E4EAE0" }}>
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${Math.min(item.score, 100)}%`, backgroundColor: getBarColor(item.score) }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* 점수 피드백 */}
@@ -249,7 +282,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
                 </button>
               ) : feedbackStatus === "done" ? (
                 <div className="text-center text-sm font-medium py-3" style={{ color: "#2E9E50" }}>
-                  ✅ 룰이 추가됐어요! 지금 바로 재분석 중...
+                  ✅ 신고가 접수됐어요. 검토 후 반영할게요!
                 </div>
               ) : (
                 <div className="rounded-xl p-3" style={{ backgroundColor: "#F8F7F2" }}>
@@ -300,7 +333,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult }
                       className="flex-1 rounded-lg py-1.5 text-xs font-bold text-white disabled:opacity-60"
                       style={{ backgroundColor: "#6DAB60" }}
                     >
-                      {feedbackStatus === "loading" ? "분석 중..." : feedbackStatus === "error" ? "오류 발생" : "보내기"}
+                      {feedbackStatus === "loading" ? "접수 중..." : feedbackStatus === "error" ? "오류 발생" : "신고하기"}
                     </button>
                   </div>
                 </div>

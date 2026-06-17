@@ -27,6 +27,7 @@ import {
 
 import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory } from "../utils/api";
 import VideoModal from "../components/VideoModal";
+import PaywallModal from "../components/PaywallModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 
@@ -83,6 +84,7 @@ export default function ParentDashboard() {
   const [chartTab, setChartTab] = useState("전체");
   const [reportTab, setReportTab] = useState("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showProfilePaywall, setShowProfilePaywall] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState(7);
   const [newGender, setNewGender] = useState("남자");
@@ -399,8 +401,13 @@ export default function ParentDashboard() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#F8F7F2" }}>
+      {/* 프로필 추가 한도 초과 paywall */}
+      {showProfilePaywall && (
+        <PaywallModal reason="profile" onClose={() => setShowProfilePaywall(false)} />
+      )}
+
       {/* 상단 네비게이션 바 */}
-      <NavBar backTo="/" backLabel="홈으로" title="부모 대시보드" />
+      <NavBar backTo="/" backLabel="홈으로" title="부모 대시보드" showAccountMenu />
 
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-8">
 
@@ -548,7 +555,13 @@ export default function ParentDashboard() {
               </div>
               {profiles.length < 4 && (
                 <button
-                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  onClick={() => {
+                    if (profiles.length >= 1) {
+                      setShowProfilePaywall(true);
+                    } else {
+                      setShowCreateForm(!showCreateForm);
+                    }
+                  }}
                   className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-white transition"
                   style={{ backgroundColor: "#6DAB60" }}
                 >

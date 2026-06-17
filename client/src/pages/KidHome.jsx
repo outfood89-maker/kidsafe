@@ -691,7 +691,11 @@ export default function KidHome() {
           />
         )}
         {selectedPlaylist && (
-          <PlaylistModal playlist={selectedPlaylist} onClose={() => setSelectedPlaylist(null)} />
+          <PlaylistModal
+            playlist={selectedPlaylist}
+            onClose={() => setSelectedPlaylist(null)}
+            onSelectVideo={(video) => { setSelectedPlaylist(null); setSelectedVideo(video); }}
+          />
         )}
 
         {/* YouTube API 할당량 초과 안내 */}
@@ -1130,11 +1134,27 @@ export default function KidHome() {
               {favorites.slice(0, 3).map((fav) => (
                 <div
                   key={fav.id}
-                  onClick={() =>
-                    fav.type === "video"
-                      ? window.open(`https://www.youtube.com/watch?v=${fav.itemId}`, "_blank")
-                      : window.open(`https://www.youtube.com/playlist?list=${fav.itemId}`, "_blank")
-                  }
+                  onClick={() => {
+                    if (fav.type === "video") {
+                      setSelectedVideo({
+                        videoId: fav.itemId,
+                        title: fav.title,
+                        thumbnail: fav.thumbnail,
+                        channelTitle: fav.channelTitle || "",
+                        channelId: fav.channelId || "",
+                        description: fav.description || "",
+                        totalScore: fav.totalScore ?? 100,
+                        madeForKids: fav.madeForKids || false,
+                      });
+                    } else {
+                      setSelectedPlaylist({
+                        playlistId: fav.itemId,
+                        title: fav.title,
+                        thumbnail: fav.thumbnail,
+                        channelTitle: fav.channelTitle || "",
+                      });
+                    }
+                  }}
                   className="cursor-pointer overflow-hidden bg-white transition duration-200 hover:-translate-y-0.5"
                   style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
                 >

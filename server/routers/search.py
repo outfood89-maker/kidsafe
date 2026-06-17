@@ -236,6 +236,66 @@ async def recommend(age: int):
         raise HTTPException(status_code=500, detail="추천 영상 검색 중 오류가 발생했어요")
 
 
+# GET /search/playlist-items?playlistId=xxx — 재생목록 안 영상 목록 (검수용)
+@router.get("/playlist-items")
+async def get_playlist_items(playlistId: str):
+    if not playlistId:
+        raise HTTPException(status_code=400, detail="playlistId를 입력해주세요")
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://www.googleapis.com/youtube/v3/playlistItems",
+                params={
+                    "key": os.getenv("YOUTUBE_API_KEY"),
+                    "playlistId": playlistId,
+                    "part": "snippet",
+                    "maxResults": 50,
+                },
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+
+        items = resp.json().get("items", [])
+        # videoId 있는 항목만 (삭제된 영상 등 제외)
+        valid = [
+            item for item in items
+            if item.get("snippet", {}).get("resourceId", {}).get("videoId")
+        ]
+
+        if not valid:
+            return {"videos": []}
+
+        video_ids = [item["snippet"]["resourceId"]["videoId"] for item in valid]
+        # madeForKids / categoryId / topicCategories — 기존 함수 재사용
+        detail_map = await get_video_details(video_ids)
+
+        videos = [
+            {
+                "videoId": item["snippet"]["resourceId"]["videoId"],
+                "title": html.unescape(item["snippet"].get("title", "")),
+                "description": html.unescape(item["snippet"].get("description", "")),
+                "thumbnail": (
+                    item["snippet"].get("thumbnails", {}).get("medium", {}).get("url", "")
+                    or item["snippet"].get("thumbnails", {}).get("default", {}).get("url", "")
+                ),
+                "channelTitle": html.unescape(
+                    item["snippet"].get("videoOwnerChannelTitle", "")
+                    or item["snippet"].get("channelTitle", "")
+                ),
+                "channelId": item["snippet"].get("videoOwnerChannelId", ""),
+                "madeForKids": detail_map.get(item["snippet"]["resourceId"]["videoId"], {}).get("madeForKids", False),
+                "categoryId": detail_map.get(item["snippet"]["resourceId"]["videoId"], {}).get("categoryId", ""),
+                "topicCategories": detail_map.get(item["snippet"]["resourceId"]["videoId"], {}).get("topicCategories", []),
+            }
+            for item in valid
+        ]
+
+        return {"videos": videos}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"재생목록 영상 조회 오류: {str(e)}")
+
+
 # GET /search/history-recommend?keyword=xxx
 @router.get("/history-recommend")
 async def history_recommend(keyword: str):

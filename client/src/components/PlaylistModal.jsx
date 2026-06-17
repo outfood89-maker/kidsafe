@@ -1,206 +1,163 @@
 import { useState, useEffect } from "react";
-import { FaTimes, FaList, FaPlay, FaSpinner } from "react-icons/fa";
-import { analyzeVideo } from "../utils/api";
+import { FaTimes, FaList, FaSpinner } from "react-icons/fa";
+import { getPlaylistItems } from "../utils/api";
+import { getSafetyGrade } from "../utils/safetyFilter";
 
-export default function PlaylistModal({ playlist, onClose }) {
-  const [safetyResult, setSafetyResult] = useState(null);
-  const [analyzing, setAnalyzing] = useState(true);
-
-  // playlist 데이터가 없으면 렌더링하지 않음
-  if (!playlist) return null;
+// onSelectVideo: 영상 클릭 시 부모(KidHome/Favorites)에서 VideoModal 띄우기 위한 콜백
+export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // 첫 번째 영상 제목으로 대표 안전도 검수
-    const analyze = async () => {
-      try {
-        setAnalyzing(true);
-        const result = await analyzeVideo(playlist.title, "");
-        setSafetyResult(result);
-      } catch (err) {
-        console.error("재생목록 안전도 검수 실패:", err);
-        setSafetyResult(null);
-      } finally {
-        setAnalyzing(false);
-      }
-    };
-    analyze();
-  }, [playlist.playlistId]);
+    if (!playlist?.playlistId) return;
+    setLoading(true);
+    setError("");
+    getPlaylistItems(playlist.playlistId)
+      .then((data) => setVideos(data || []))
+      .catch(() => setError("영상 목록을 불러오지 못했어요."))
+      .finally(() => setLoading(false));
+  }, [playlist?.playlistId]);
 
-  // 안전도 뱃지
-  const getSafetyBadge = (score) => {
-    if (score >= 90) return { text: "안전", color: "bg-green-500" };
-    if (score >= 70) return { text: "주의", color: "bg-yellow-500" };
-    return { text: "위험", color: "bg-red-500" };
+  if (!playlist) return null;
+
+  const handleVideoClick = (video) => {
+    if (onSelectVideo) onSelectVideo(video);
   };
 
-  // 점수 바 색상
-  const getScoreBarColor = (score) => {
-    if (score >= 90) return "bg-green-500";
-    if (score >= 70) return "bg-yellow-500";
-    return "bg-red-500";
+  const getSafetyBadgeStyle = (color) => {
+    if (color === "green") return { backgroundColor: "#2E9E50" };
+    if (color === "yellow") return { backgroundColor: "#C47A00" };
+    return { backgroundColor: "#C84B47" };
   };
-
-  // 오버레이 클릭 시 닫기
-  const handleOverlayClick = () => {
-    try {
-      onClose();
-    } catch (err) {
-      console.error("모달 닫기 오류:", err);
-    }
-  };
-
-  // 모달 내부 클릭 시 이벤트 전파 방지
-  const handleModalClick = (e) => {
-    e.stopPropagation();
-  };
-
-  // YouTube 재생목록 페이지로 이동
-  const handleWatchClick = () => {
-    window.open(`https://www.youtube.com/playlist?list=${playlist.playlistId}`, "_blank");
-  };
-
-  const safetyBadge = safetyResult ? getSafetyBadge(safetyResult.totalScore) : null;
-
-  const scoreItems = safetyResult
-    ? [
-        { label: "폭력성", icon: "🔴", score: safetyResult.violence },
-        { label: "언어", icon: "💬", score: safetyResult.language },
-        { label: "선정성", icon: "🔞", score: safetyResult.sexual },
-        { label: "교육성", icon: "📚", score: safetyResult.educational },
-      ]
-    : [];
 
   return (
     <div
-      onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
     >
       <div
-        onClick={handleModalClick}
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-lg bg-white sm:rounded-3xl overflow-hidden"
+        style={{
+          borderRadius: "24px 24px 0 0",
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {/* 닫기 버튼 */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:bg-gray-100"
+          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/40"
         >
-          <FaTimes className="text-gray-700" />
+          <FaTimes className="text-white text-xs" />
         </button>
 
-        {/* 썸네일 영역 — 3장 겹치기 */}
-        <div className="relative h-[200px] bg-gray-100 overflow-hidden">
-          {playlist.thumbnails && playlist.thumbnails.length > 0 ? (
-            <>
-              {playlist.thumbnails[2] && (
-                <img
-                  src={playlist.thumbnails[2]}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover opacity-40 scale-95 translate-x-4 translate-y-1"
-                />
-              )}
-              {playlist.thumbnails[1] && (
-                <img
-                  src={playlist.thumbnails[1]}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover opacity-70 translate-x-2"
-                />
-              )}
-              <img
-                src={playlist.thumbnails[0]}
-                alt={playlist.title}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </>
+        {/* 헤더 썸네일 */}
+        <div className="relative flex-shrink-0" style={{ height: "130px", overflow: "hidden" }}>
+          {playlist.thumbnail ? (
+            <img src={playlist.thumbnail} alt={playlist.title} className="w-full h-full object-cover" />
           ) : (
-            <div className="flex h-full items-center justify-center bg-purple-100">
-              <FaList className="text-6xl text-purple-400" />
+            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#EDE9FE" }}>
+              <FaList className="text-5xl" style={{ color: "#7C3AED" }} />
             </div>
           )}
-
-          {/* 안전도 뱃지 */}
-          {safetyBadge && (
-            <div className={`absolute left-4 top-4 rounded-full px-4 py-2 text-sm font-bold text-white shadow-lg ${safetyBadge.color}`}>
-              {safetyBadge.text} ({safetyResult.totalScore}점)
-            </div>
-          )}
-
-          {/* 재생목록 뱃지 */}
-          <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-purple-500 px-3 py-2 text-sm font-bold text-white shadow-md">
-            <FaList className="text-xs" />
-            재생목록
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)" }} />
+          <div className="absolute bottom-3 left-3 right-10">
+            <p className="text-xs font-bold text-purple-300">{playlist.channelTitle}</p>
+            <h2
+              className="mt-0.5 font-extrabold text-white leading-snug"
+              style={{ fontSize: "15px", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            >
+              {playlist.title}
+            </h2>
+          </div>
+          <div
+            className="absolute right-3 bottom-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-white"
+            style={{ backgroundColor: "#7C3AED" }}
+          >
+            <FaList style={{ fontSize: "9px" }} />
+            재생목록 · {playlist.videoCount}개
           </div>
         </div>
 
-        {/* 콘텐츠 영역 */}
-        <div className="p-6">
-          {/* 채널명 */}
-          <p className="text-sm font-bold text-purple-500">{playlist.channelTitle}</p>
+        {/* 안내 문구 */}
+        <div className="flex-shrink-0 px-4 py-2.5" style={{ backgroundColor: "#F5F3FF", borderBottom: "1px solid #EDE9FE" }}>
+          <p className="text-xs" style={{ color: "#6D28D9" }}>
+            🔍 영상을 클릭하면 AI 안전 검수 후 시청할 수 있어요. 재생목록 전체를 YouTube에서 바로 여는 기능은 제공하지 않아요.
+          </p>
+        </div>
 
-          {/* 제목 */}
-          <h2 className="mt-2 text-2xl font-extrabold text-gray-900">{playlist.title}</h2>
+        {/* 영상 목록 */}
+        <div className="flex-1 overflow-y-auto px-4 py-3" style={{ gap: "10px", display: "flex", flexDirection: "column" }}>
+          {loading && (
+            <div className="flex flex-col items-center gap-3 py-10" style={{ color: "#7C3AED" }}>
+              <FaSpinner className="animate-spin text-3xl" />
+              <p className="text-sm font-medium">영상 목록 불러오는 중...</p>
+            </div>
+          )}
 
-          {/* 영상 개수 */}
-          <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-gray-500">
-            <FaPlay className="text-purple-400" />
-            총 {playlist.videoCount}개 영상
-          </div>
+          {!loading && error && (
+            <p className="text-center text-sm py-10" style={{ color: "#9CA3AF" }}>{error}</p>
+          )}
 
-          {/* 안전도 분석 영역 */}
-          <div className="mt-6 rounded-2xl bg-purple-50 p-4">
-            <p className="font-medium text-purple-900">🤖 AI 안전도 분석</p>
-            <p className="mt-1 text-sm text-purple-600">재생목록 제목 기준으로 분석한 결과예요.</p>
+          {!loading && !error && videos.length === 0 && (
+            <p className="text-center text-sm py-10" style={{ color: "#9CA3AF" }}>영상이 없어요.</p>
+          )}
 
-            {/* 로딩 중 */}
-            {analyzing && (
-              <div className="mt-4 flex items-center gap-3 text-purple-500">
-                <FaSpinner className="animate-spin text-xl" />
-                <span className="font-semibold">분석 중이에요...</span>
-              </div>
-            )}
-
-            {/* 분석 실패 */}
-            {!analyzing && !safetyResult && (
-              <p className="mt-3 text-sm text-gray-400">안전도 분석을 불러오지 못했어요.</p>
-            )}
-          </div>
-
-          {/* 점수 항목 */}
-          {!analyzing && safetyResult && (
-            <div className="mt-6 space-y-5">
-              {scoreItems.map((item) => (
-                <div key={item.label}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="font-semibold text-gray-700">
-                      {item.icon} {item.label}
-                    </span>
-                    <span className="font-bold text-gray-900">{item.score}</span>
+          {!loading && videos.map((video, idx) => {
+            const safetyInfo = video.totalScore != null ? getSafetyGrade(video.totalScore) : null;
+            return (
+              <div
+                key={video.videoId}
+                onClick={() => handleVideoClick(video)}
+                className="flex gap-3 cursor-pointer rounded-2xl p-2 transition"
+                style={{ border: "1px solid #EDE9FE" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F5F3FF"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ""}
+              >
+                {/* 썸네일 */}
+                <div className="relative flex-shrink-0 rounded-xl overflow-hidden" style={{ width: "100px", height: "62px" }}>
+                  {video.thumbnail ? (
+                    <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full" style={{ backgroundColor: "#EDE9FE" }} />
+                  )}
+                  <div
+                    className="absolute left-1.5 top-1.5 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold text-white"
+                    style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                  >
+                    {idx + 1}
                   </div>
-                  <div className="h-4 w-full overflow-hidden rounded-full bg-gray-200">
+                  {safetyInfo && (
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${getScoreBarColor(item.score)}`}
-                      style={{ width: `${Math.max(0, Math.min(item.score, 100))}%` }}
-                    />
-                  </div>
+                      className="absolute right-1 bottom-1 rounded-full px-1.5 py-0.5 text-white"
+                      style={{ fontSize: "9px", fontWeight: "700", ...getSafetyBadgeStyle(safetyInfo.color) }}
+                    >
+                      {safetyInfo.grade}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
 
-          {/* AI 요약 */}
-          {!analyzing && safetyResult?.summary && (
-            <div className="mt-6 rounded-2xl bg-sky-100 p-4">
-              <p className="font-medium text-sky-900">🤖 AI 요약</p>
-              <p className="mt-2 text-gray-700">{safetyResult.summary}</p>
-            </div>
-          )}
-
-          {/* YouTube에서 보기 버튼 */}
-          <button
-            onClick={handleWatchClick}
-            className="mt-8 w-full rounded-2xl bg-purple-500 px-6 py-4 text-lg font-bold text-white transition hover:bg-purple-600"
-          >
-            📋 YouTube에서 재생목록 보기
-          </button>
+                {/* 텍스트 */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="font-semibold leading-snug"
+                    style={{
+                      fontSize: "12px", color: "#2C3528",
+                      display: "-webkit-box", WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical", overflow: "hidden",
+                    }}
+                  >
+                    {video.title}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: "#9BA89A" }}>{video.channelTitle}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

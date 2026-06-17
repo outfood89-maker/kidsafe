@@ -105,39 +105,49 @@
     "analyzedAt": "2026-06-15T05:11:38.400925+00:00"
   },
   "Bxx9-9MwNK4": {
-    "violence": 95,
+    "violence": 98,
     "language": 100,
     "sexual": 100,
-    "educational": 85,
-    "totalScore": 95,
-    "summary": "핑크퐁의 대표 동요로, 공룡 멸종을 주제로 한 교육적 콘텐츠입니다. 폭력성이 없고 어린이 친화적으로 제작되어 매우 안전합니다.",
+    "educational": 95,
+    "totalScore": 98,
+    "summary": "핑크퐁 공식 채널의 교육 동요로, 공룡 멸종이라는 자연사를 아이 눈높이에 맞춰 차분하게 설명합니다. 폭력·욕설·선정성이 전혀 없고 따라 할 위험 행동도 없어 3세 이상이면 안전하게 시청 가능합니다.",
     "confidence": "high",
     "ageRating": 3,
-    "scary": 85,
+    "scary": 93,
+    "imitationRisk": 99,
+    "commercialism": 96,
     "categories": {
       "violence": {
-        "score": 95,
-        "note": "공룡 멸종이라는 과학 주제를 다루지만, 동요 형식으로 교육적이고 폭력적 요소 없음."
+        "score": 98,
+        "note": "공룡 멸종이라는 자연사 주제이지만 폭력적 묘사 없이 교육 동요 형식으로 차분하게 전달됨."
       },
       "language": {
         "score": 100,
-        "note": "핑크퐁의 인기 동요로 어린이 대상 콘텐츠이므로 욕설이나 비속어 없음."
+        "note": "공식 키즈 채널의 동요이므로 욕설·비속어·혐오표현 전혀 없음."
       },
       "sexual": {
         "score": 100,
-        "note": "선정적 요소 전혀 없음."
+        "note": "선정성 요소 전혀 없음."
       },
       "scary": {
-        "score": 85,
-        "note": "공룡 멸종이라는 다소 무거운 주제이지만, 동요 형식으로 순화되어 공포감은 최소화됨."
+        "score": 93,
+        "note": "공룡 멸종과 자연재해를 주제로 하지만 공식 키즈 채널의 동요 형식으로 차분하게 설명되므로 트라우마성 공포 없음; 다만 어린 아이들에게 멸종·재해라는 개념 자체가 약간의 불안감을 줄 수 있어 만점 아님."
+      },
+      "imitation_risk": {
+        "score": 99,
+        "note": "따라 할 위험한 행동이나 소비 유도 요소 전혀 없음."
       },
       "educational": {
-        "score": 85,
-        "note": "공룡 멸종이라는 역사・과학 개념을 음악과 함께 배우는 교육적 콘텐츠."
+        "score": 95,
+        "note": "공룡 멸종이라는 자연사 개념을 동요로 설명하여 과학 교육 가치가 높음; 다만 정교한 과학적 설명(운석 충돌, 화산 활동 등의 복합 원인)보다는 단순화된 형식이므로 만점 아님."
+      },
+      "commercialism": {
+        "score": 96,
+        "note": "공식 키즈 채널의 교육 콘텐츠로 브랜드 캐릭터 등장하나 제품 구매나 소비 유도 의도 없음."
       }
     },
     "source": "metadata",
-    "analyzedAt": "2026-06-15T12:45:49.796210+00:00"
+    "analyzedAt": "2026-06-16T14:34:52.933871+00:00"
   },
   "rrkKzQ0wB5c": {
     "violence": 100,
@@ -334,22 +344,423 @@
   },
   "ykYDjfE4a14": {
     "violence": 95,
-    "language": 100,
+    "language": 98,
     "sexual": 100,
-    "educational": 95,
-    "totalScore": 96,
-    "summary": "핑크퐁 공식 채널의 건강 위생 교육 동요로, 배탈세균을 귀엽게 의인화하여 상한 음식의 위험성을 재미있게 가르칩니다. 3세 이상 어린이가 안전하게 시청할 수 있습니다.",
+    "educational": 92,
+    "totalScore": 95,
+    "summary": "핑크퐁의 공식 키즈 콘텐츠로, 배탈 증상과 의료 도움의 중요성을 아이 눈높이의 동요와 역할극으로 자연스럽게 교육합니다. 3세 이상이면 안전하게 즐길 수 있습니다.",
     "confidence": "high",
     "ageRating": 3,
-    "scary": 90,
+    "scary": 92,
+    "imitationRisk": 90,
+    "commercialism": 93,
     "categories": {
       "violence": {
         "score": 95,
-        "note": "폭력 요소 없음. 의사 역할극과 세균 캐릭터가 교육 목적으로 의인화되어 있음."
+        "note": "배탈세균 캐릭터는 의인화되었으나 실제 폭력 묘사 없이 의료 교육 맥락에서 다루어짐."
+      },
+      "language": {
+        "score": 98,
+        "note": "아기상어 시리즈 표준 언어 사용, 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 92,
+        "note": "세균을 교육 목적으로 의인화했으나 공식 키즈 채널의 건강 교육 콘텐츠로, 아이 친화적 톤과 해결 구조로 트라우마성 공포 없음."
+      },
+      "imitation_risk": {
+        "score": 90,
+        "note": "의사 역할극을 통한 병원 경험 긍정화이며, 따라할 위험한 행동이 없음."
+      },
+      "educational": {
+        "score": 92,
+        "note": "배탈의 원인(세균)과 치료(의사 방문) 과정을 동요로 가르쳐 실제 건강·위생 교육 가치 있음."
+      },
+      "commercialism": {
+        "score": 93,
+        "note": "아기상어 캐릭터 등장하지만 스토리·교육 맥락 중심이며 구매 유도 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T03:25:14.777711+00:00"
+  },
+  "CVhmrFjJQ5I": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[✨NEW] 기침세균 vs 아기상어 의사🦠 | 아기상어 병원놀이 동요 | #병원친구 | 소방관, 감기 | 생활습관 동요 | 감기 조심 | 뚜루루뚜루 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "fMJ7pKNkLZg": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"배탈세균 vs 아기상어 의사\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "1_F1fBmqbc0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[✨NEW] 충치세균 vs 아기상어 의사🦷 | 아기상어 병원놀이 동요 | 병원친구 | 양치송 | 생활습관 동요 | 뚜루루뚜루 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "cv38MVSrEnM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"그러면 안 돼 | 아이스크림을 너무 많이 먹으면 배탈나요! | 인기동요 | 아기동요  | 톰토미 (TOMTOMI)\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "vMK7B2Dg4BU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"냄새세균 vs 아기상어 의사\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "sa5jcnefZn8": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"57화 | 베베핀이 아파요!💦 열이 펄펄 기침 콜록 | 동생이 아플 땐 어떻게 할까요? | 아야 감기에 걸렸어요 | 아파요송 | 베베핀 Bebefinn - 키즈 인기 동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "YZeTxaP4rCs": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"195화 | 나는야 최고의 의사 선생님!🧑‍⚕️ | 베베핀과 민지 병원놀이 | 베베핀 의사 놀이 | 안전 동요 | 베베핀 Bebefinn - 키즈 인기 동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "gv0O87R9oaY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아야, 아야, 아파! | 상어가족 토이카 놀이 | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "wI92vbgDS1I": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"병원 놀이 | 인체 동요 | 바디송 | 인체과학 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "eAAUhK40mHo": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"내 사이렌 어디 갔나?🚨 | 경찰차의 사이렌을 훔친 도둑은?! | 뚜루루뚜루 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "NWS3bJgPfQQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"또아야 놀자! 바이러스를 예방해요 2 | 손에 사는 바이러스들! | 깨끗하게 손 씻기 | 어린이 건강동화★지니키즈\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "qY7XcBzZz_o": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"음식은 왜 상할까? | 🤢우웩! 음식에서 이상한 냄새가 나요! | 큐리큐리송 | 호기심동요 | 주니토니 | JunyTony\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Um0rbzEvZYY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"꺼억 뿡! 방귀와 트림 | 방귀는 왜 나올까❓ | 아기상어 궁금해송❓ | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "-jA60VstbQE": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"어린이 위생교육 손 씻기 동화책 ‘배탈난 모시’ 구연\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "D8NbskFl-Mw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"코코멜론 스쿨버스 타고 학교에 가자~! 아기상어,핑크퐁 알파벳, 숫자놀이 | 핑키팝토이\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "wxT4vSTB0OI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"꾀병부리면 왕주사들고 간호사 상어가 나타나요~ 핑크퐁 상어가족 색칠공부 아기상어 색칠놀이 | 키즈짱\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "uWLofG3ml4k": {
+    "violence": 85,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 95,
+    "summary": "\"전쟁이다 세균 vs 백혈구\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "nOo-hQyWEfo": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"아기상어 미아 예방송 | 멈춰요 생각해요 도와주세요! | 어린이 안전 교육 동요 | 뚜루루뚜루 | 상어가족 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "H1-oVKKMA9I": {
+    "violence": 98,
+    "language": 100,
+    "sexual": 100,
+    "educational": 92,
+    "totalScore": 97,
+    "summary": "공식 키즈 채널의 생활습관 교육 동요로, 냄새세균을 귀엽게 의인화해 손 씻기와 청결의 중요성을 가르칩니다. 폭력·혐오·공포 요소가 없어 3세 이상 안전하게 시청 가능합니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 92,
+    "imitationRisk": 95,
+    "commercialism": 96,
+    "categories": {
+      "violence": {
+        "score": 98,
+        "note": "폭력 요소 전혀 없으며, 의사 역할극은 친화적이고 교육적 맥락에서만 진행됨."
       },
       "language": {
         "score": 100,
-        "note": "공식 키즈 채널의 동요 형식이므로 고운 말만 사용될 것으로 예상됨."
+        "note": "욕설·비속어 없이 유아 친화적 언어만 사용하는 동요 콘텐츠."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 92,
+        "note": "냄새세균을 의인화했으나 공식 키즈 채널의 생활습관 교육 맥락에서 악의적이지 않고, 세균 캐릭터가 아이 친화적으로 표현됨."
+      },
+      "imitation_risk": {
+        "score": 95,
+        "note": "손 씻기·목욕 등 긍정적 생활습관 형성을 유도하므로 모방 위험 매우 낮음."
+      },
+      "educational": {
+        "score": 92,
+        "note": "위생 습관(씻기, 목욕의 중요성)을 동요와 역할극으로 자연스럽게 교육하는 실질적 교육 콘텐츠."
+      },
+      "commercialism": {
+        "score": 96,
+        "note": "핑크퐁 브랜드 캐릭터 등장하나 스토리·교육 맥락 안에서 자연스러우며 구매 유도 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T17:58:02.231018+00:00"
+  },
+  "Z5ppkANvR_4": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"세균맨송 🦠 | 아기상어 생활 습관 | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Bsr6QZaP8GQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"뿌지직! 똥과 오줌 | 아기상어 궁금해송❓ | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "qqvfIZdCs_c": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"똥이랑 오줌은 왜 냄새가 날까? | 큐리큐리송 | 코를 찌르는 지독한 냄새 파헤치기 🤣 | 응가송 | 알쏭달쏭 인체탐험 | 호기심동요 | 주니토니 by 키즈캐슬\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "JyeqhJqHQlA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"핑크퐁과 함께 치카치카 양치하자! | 치카송 | 양치 습관 | 핑크퐁! 생활습관동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "e7iQ0YO4T0A": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"👃🎶 코딱지송 | 코털을 꽉! 잡아요! 😂 신나는 코딱지 노래 🎵✨ | 인기 동요 | 공룡 대발이 | 대발이TV\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Y2N0PQHfwgM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"꼬질꼬질 라푼젤 공주님 | 공주님의 머리에서 이상한 냄새가 나요!😖 | 공주동요 | 생활습관동요 | 주니토니 | JunyTony\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "MZ3t6UwPTcA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"LG전자 X 핑크퐁 아기상어 - 건강관리가전! 우리집을 지켜줘\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "ta1LvEysrYw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"충치는 왜 생길까? | 뮤탄스! 네 정체를 밝혀라! | 큐리큐리송 | 알쏭달쏭 인체탐험 | 호기심동요 | 주니토니 by 키즈캐슬\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "DZF06J5Ahzw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"나는야 공룡 요리사 | 공룡동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "8tZqPSlBJx8": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"손톱은 왜 계속 자랄까? | 딱! 딱! 손톱깎이로 깎아도 계속 자라나는 손톱 | 인체 호기심 | 호기심동요 | 주니토니 | JunyTony\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "mN4BqycSiEw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"딸꾹딸꾹 딸꾹질 | 아기상어 궁금해송❓| 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "jwoDmiF_4u0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"내 거 내 거 다 내 거 | 내 마음대로 할래! | 아기상어 생활 습관 | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "JNZkGoX6yUM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"나쁜 세균 뾰족이는 싫어\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "gQJ4oUFmauI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"코~ 잘 시간이야 | 아기상어 생활 습관 | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "IOnkmMlTxVA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"화가 날 땐 셋까지 세어봐🔥| 괜찮아, 이젠 괜찮아! | 아기상어 생활 습관 | 뚜루루뚜루 | 상어가족 인기 동요 | 핑크퐁! 아기상어 올리\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "71bGNVvSeyE": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 78,
+    "totalScore": 95,
+    "summary": "콩순이의 노래 따라 부르기 99편으로, 마녀 등장에도 불구하고 동요 형식의 아이 친화적 판타지 콘텐츠입니다. 폭력, 욕설, 선정성 요소가 없어 3세 이상이면 안전하게 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 88,
+    "imitationRisk": 92,
+    "commercialism": 90,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "마녀가 등장하지만 동요·노래 형식의 아이 친화적 판타지 콘텐츠로, 실제 폭력 묘사 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "노래 따라 부르기 형식으로 욕설이나 부적절한 언어 사용 가능성 극히 낮음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 콘텐츠 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 88,
+        "note": "마녀 캐릭터가 등장하지만 동요 형식의 아이 친화적 연출로 교육적 공포 수준; 실제 호러 요소 없음."
+      },
+      "imitation_risk": {
+        "score": 92,
+        "note": "노래 따라 부르기 중심으로 위험한 모방 행동 유도 요소 거의 없음."
+      },
+      "educational": {
+        "score": 78,
+        "note": "노래 따라 부르기를 통한 음악·언어 학습 효과는 있으나, 스토리 기반 교육 가치는 제한적."
+      },
+      "commercialism": {
+        "score": 90,
+        "note": "콩순이 캐릭터 노출이 있으나 스토리 중심으로 구매 유도가 직접적이지 않음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T17:59:34.937537+00:00"
+  },
+  "-fcPJvON_zQ": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 65,
+    "totalScore": 96,
+    "summary": "KBS에서 방영된 '뾰로롱 꼬마마녀' 애니메이션 오프닝곡으로, 마법 판타지 소재를 아이 친화적으로 다룬 안전한 콘텐츠입니다. 5세 이상 시청 권장됩니다.",
+    "confidence": "high",
+    "ageRating": 5,
+    "scary": 90,
+    "imitationRisk": 95,
+    "commercialism": 85,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "마법 판타지 애니메이션 오프닝으로 폭력 요소 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "동요 형식의 오프닝곡으로 고운 말만 사용."
       },
       "sexual": {
         "score": 100,
@@ -357,14 +768,1793 @@
       },
       "scary": {
         "score": 90,
-        "note": "배탈세균이 의인화되어 등장하지만 교육 목적의 건강 위생 콘텐츠로 실제 공포를 유발하지 않음."
+        "note": "마녀가 등장하지만 '꼬마마녀' 오프닝으로 아이 친화적인 판타지 연출, 공포 요소 없음."
+      },
+      "imitation_risk": {
+        "score": 95,
+        "note": "마법을 소재로 하지만 오프닝곡으로 따라 할 위험 행동 미포함."
       },
       "educational": {
-        "score": 95,
-        "note": "상한 음식 섭취의 위험성과 위생 교육, 병원 방문 시 긍정적 태도 형성에 매우 교육적임."
+        "score": 65,
+        "note": "순수 엔터테인먼트 애니메이션 오프닝으로 교육적 내용 제한적."
+      },
+      "commercialism": {
+        "score": 85,
+        "note": "공식 KBS 방영 애니메이션 오프닝으로 과도한 상업성 없음."
       }
     },
     "source": "metadata",
-    "analyzedAt": "2026-06-15T17:11:47.751698+00:00"
+    "analyzedAt": "2026-06-15T17:59:58.790215+00:00"
+  },
+  "AOy1D8RT9tY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"뽀로로와노래해요 NEW2 | 10화 예쁜 맘 예쁜 꿈 | 친구를 도와주는 마음 | 뽀로로 노래 | 매주 토요일 7시에 만나요!\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "YFoR_8JS87M": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"뽀로로 영화 | 오프닝 - 날아라 드래곤 | 뽀로로 마법사2 - 드래곤 기사가 되어라 | 매주 일요일은 뽀로로 영화데이 | 뽀로로와 함께 영화봐요! | 뽀로로 이야기\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "8DdrEl19kBI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"뽀로로 스페셜 OST | 뽀로로 마법사 | 날아라 드래곤! | 뽀로로 주제곡 | 뽀로로와노래해요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "NpffKbJsw_I": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"공룡 멸종송 | 공룡송 | 공룡노래 | 공룡동요 | 깨비키즈 KEBIKIDS\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "05neqpR8Cmo": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"공룡이 알고싶다 - 공룡이 사라졌다(공룡멸종설)! 두번째 이야기 (상) [깨비키즈 KEBIKIDS] | 공룡이야기 | 공룡동화\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "d0h2nGqWvSA": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 92,
+    "totalScore": 97,
+    "summary": "과학송 형식으로 공룡 멸종의 원인을 설명하는 교육 콘텐츠입니다. 폭력성·선정성·상업성이 없으며 교육 가치가 높지만, 지구 재난이라는 주제가 매우 어린 아이에게 약간의 불안감을 줄 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 5,
+    "scary": 88,
+    "imitationRisk": 100,
+    "commercialism": 100,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "공룡 멸종이라는 자연사를 다루지만 실제 폭력·학대 장면 없이 과학적 설명 중심으로 진행되는 것으로 보임."
+      },
+      "language": {
+        "score": 100,
+        "note": "과학송 형식의 교육 콘텐츠로 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 88,
+        "note": "운석 충돌·지구 재난이라는 주제가 시각적으로 자극적일 수 있으나, 교육 목적의 차분한 설명으로 추정되어 트라우마성 공포는 낮음. 다만 일부 어린 아이(3세)에게는 '지구 멸종' 이미지가 불안감을 줄 수 있음."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "아이가 모방할 위험한 행동이나 소비 충동을 부추기는 요소 없음."
+      },
+      "educational": {
+        "score": 92,
+        "note": "공룡 멸종의 과학적 원인(운석충돌설 등)을 노래 형식으로 설명하는 높은 교육 가치. 다만 여러 설 중 하나만 다루는 것으로 보여 만점은 아님."
+      },
+      "commercialism": {
+        "score": 100,
+        "note": "공식 과학 교육 채널의 순수 교육 콘텐츠로 제품 판매나 구매 유도 요소 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:35:20.927393+00:00"
+  },
+  "bLg_klJzGNU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"공룡동화 | 공룡이 멸종한 이유!! | 공룡시리즈 | 공룡모험 | 공룡이야기 | dinosaur adventure\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "vZNyObuGgbs": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 97,
+    "summary": "공식 검증 키즈 채널 깨비키즈의 공룡 멸종을 주제로 한 자연사 교육 동화입니다. 폭력·공포·상업성이 없고 호기심과 과학 학습을 중심으로 구성되어 있어 유아(3세 이상)가 안전하게 시청할 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 92,
+    "imitationRisk": 100,
+    "commercialism": 96,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "공룡 멸종이라는 자연사적 사건을 다루지만 실제 폭력·학대 묘사 없이 교육 목적으로 차분하게 설명하는 형식이므로 안전함."
+      },
+      "language": {
+        "score": 100,
+        "note": "공식 키즈 채널의 동화 형식 콘텐츠로 욕설·비속어·혐오표현 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 92,
+        "note": "공룡 멸종이라는 재난 주제를 다루지만 공식 키즈 채널에서 자연사 교육으로 차분하게 설명하는 형식이므로 트라우마성 공포가 없음. 호기심 학습 맥락이므로 유의미한 감점 사유 없음."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "아이가 따라 할 수 있는 위험한 행동이나 도박성 소비 유도 요소 없음."
+      },
+      "educational": {
+        "score": 95,
+        "note": "공룡 멸종의 과학적 원인을 캐릭터(초롱이, 뽀롱이)를 통해 호기심 형식으로 가르치는 교육 콘텐츠로 학습 가치 높음. 다만 영상(2)이므로 시리즈 초반부 학습 요소에 비해 확장성이 제한적일 수 있음."
+      },
+      "commercialism": {
+        "score": 96,
+        "note": "공식 키즈 채널의 교육 콘텐츠로 제품 광고나 구매 유도가 없으며, 캐릭터가 교육 맥락에서 자연스럽게 사용됨."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:35:32.066096+00:00"
+  },
+  "xApg55XnZC0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"화산이 폭발해요 | 아기 티라노 | 티라노사우루스 | 공룡 동요 | 동물 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "A2MhWbKSjXQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[다이노스터 공룡이야기] 공룡이 멸종하게 된 이유 | 다이노스터: 공룡 수호대 | Quantum Heroes: Dinoster | 제18화\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "WDf6QyAsTZw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"공룡이 왜 멸종했을까? (1) | 공룡호기심 | 공룡멸종 | 공룡이야기 | 깨비키즈 KEBIKIDS\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "gmjXlJL5z3o": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"포유류에겐 기회가 된 공룡의 멸종 (The extinction of dinosaurs was an opportunity for mammals.)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "u8KpNMiYR40": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"약 6,500만년 전 그날, 공룡은 왜 멸종했을까? | 공룡의 멸종 | 공룡송 | 과학송 | 허풍선이 과학송\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "jzYkU7rdyiE": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"*NEW* 공룡 화석 | 🔍숨겨진 공룡 화석을 찾아라! | 브라키오사우루스도 만나볼까요? | 공룡송 | 공룡동요 | 공룡 친구들 | 주니토니 | JunyTony\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "BGmrtasO5Fg": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"공룡 탐험 | 주니토니와 함께 신비한 공룡의 세계로 떠나요! 🦕🦖 | 탐험동요 | 주니토니\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "EXdlSeFlZq0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"공룡들은 어디로 사라졌을까? | 공룡 동요 | 어린이 공룡 지식 | 호기심 동요 | 핑크퐁 공룡 유치원\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "aLl4L2Es1k8": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"쥬라기 시대5 - 빙하편 | 공룡 동요 | 무서운 동요 | 어린이 동요 | 망둥이키즈\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "BKE42eh-C1k": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"멸종 위기 동물을 보호해요 | 🌏지구가 아프대! 🐼동물 친구들이 위험해! | 동물동요 | 초록초록 지구 | 환경동요 | 주니토니 | JunyTony\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "kl0TVgVq5_E": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"사라진 공룡들 #1 | 공룡 멸종의 수수께끼 | 지니★공룡상식\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "oJ0ZW-9tZ8g": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"공룡 멸종 D-DAY: 그 1시간 동안 벌어진 일. Experience the Day of Dinosaur Extinction in One Hour #과학 #공룡 #티라노사우루스 \"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "9PMSTzOEzRA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"공룡이 멸종하지 않은 이유 과학적으로 설명해드림 / 스브스뉴스\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "O-8HyWSUAZE": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 97,
+    "summary": "공식 키즈 채널 주니토니의 공룡 멸종을 다룬 교육 동요로, 자연사를 차분하고 안전하게 설명합니다. 3세 이상이면 안전하게 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 92,
+    "imitationRisk": 100,
+    "commercialism": 98,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "공룡 멸종이라는 자연사 현상을 교육 목적으로 다루며 폭력적 묘사나 학대 장면 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "공식 키즈 채널의 동요 형식으로 고운 표현만 사용함."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 92,
+        "note": "공룡 멸종(운석 충돌, 화산)이라는 자연재해를 다루나, 공식 키즈 채널의 동요 형식으로 차분하고 교육적으로 연출되어 트라우마성 공포 없음."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "아이가 따라 할 위험한 행동이나 도박성 소비 유도 요소 없음."
+      },
+      "educational": {
+        "score": 95,
+        "note": "공룡 멸종의 과학적 원인(운석 충돌, 화산 활동 등)을 아이 눈높이에 맞춘 동요로 설명하는 교육적 가치가 높으나, 심화 학습 요소는 제한적."
+      },
+      "commercialism": {
+        "score": 98,
+        "note": "교육적 목표를 중심으로 하는 동요 콘텐츠로 구매 유도나 상업적 광고 요소 거의 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:35:03.402711+00:00"
+  },
+  "pyoVHOl2rrU": {
+    "violence": 98,
+    "language": 100,
+    "sexual": 100,
+    "educational": 96,
+    "totalScore": 98,
+    "summary": "핑크퐍 공식 채널의 검증된 손씻기 교육 동요로, 세균을 친숙하게 의인화하여 생활습관을 효과적으로 가르칩니다. 3세 이상 모든 어린이가 안전하게 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 92,
+    "imitationRisk": 99,
+    "commercialism": 96,
+    "categories": {
+      "violence": {
+        "score": 98,
+        "note": "폭력 요소 전혀 없으며, '세균맨'은 교육 목적의 의인화 캐릭터로 안전합니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "생활습관 교육 동요로 욕설·비속어·혐오표현 없습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없습니다."
+      },
+      "scary": {
+        "score": 92,
+        "note": "세균을 의인화했지만 핑크퐁의 공식 키즈 채널에서 위생 교육 목적으로 친숙하게 표현하므로 트라우마성 공포 없습니다."
+      },
+      "imitation_risk": {
+        "score": 99,
+        "note": "손씻기 생활습관을 긍정적으로 유도하므로 모방 위험이 없습니다."
+      },
+      "educational": {
+        "score": 96,
+        "note": "손씻기 방법과 위생 중요성을 동요로 실제 교육하는 높은 교육적 가치 콘텐츠입니다."
+      },
+      "commercialism": {
+        "score": 96,
+        "note": "핑크퐁 브랜드 캐릭터가 등장하지만 생활습관 교육 스토리 맥락 내에서 자연스럽고 구매 유도 없습니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:18:19.893575+00:00"
+  },
+  "zSXH6ZwJrVs": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"우글우글 세균맨 저리가! | 손씻기송 | 생활습관 동요 | 유아 교육 | 유치원 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "-D6zRZyeZ70": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"손을 씻어요🧼ㅣ유치원동요ㅣ필수동요ㅣ똑똑키즈! 와 함께 신나게 불러보아요!\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "N6gjR26WbO4": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"손씻기송 | 애창동요 | 인기동요 | 쓱싹쓱싹 씻었나요? 뽀드득 뽀드득 씻었나요? | 개인위생 | 청결 | 깨비키즈 KEBIKIDS\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "X35YV62idfI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"손씻기송 | 더러운 세균들 뽀득뽀득 씻어내요! | 바이러스 예방 | 손씻기 영상으로 배우기 | 캠페인송 | 생활습관동요 | 주니토니 by 키즈캐슬\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "quzuxTm9Xvg": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"손 씻기 발 씻기 washing hands Waching feet.(Eng sub &amp; Pronounce sub) Gukak children song\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "gy_-69B5L_c": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"보글보글 손씻기 | 사이사이로 구석구석 손을 씻어요 | 핑크퐁 체조 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "SdewtTGHylw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"손씻기동요 | 뽀로로와 뽀드득 뽀드득 손 씻어요 | 생활습관동요 | 뽀로로와 노래해요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "mw09RFDw6Q4": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"손씻기송\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "CZf7rhEjcmk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"예쁜 손을 씻어요 | 생활습관 | 깨끗하게 손씻기 | 동요모음 | 인기동요 | 리아차차 LiaChaCha\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Saqoc9SnCkY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"[유아동요] ‘뽀득뽀득 손씻기송‘ 뮤직비디오 (손씻기 6단계 노래) | The Hand-washing song\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "LRaJ_kjil3k": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"키드키즈 &#39;손씻기송&#39; 감염예방의 기본은 손씻기! 어린이동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "JvfyAtvZRvk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"아기상어와 6단계 손 씻기 | 올바른 손 씻기! #BabySharkHandWashChallenge 아기상어손씻기챌린지 | 코로나 예방 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "9aQtKgb2y-s": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"손씻기송(재미나라 손씻기 운동본부 버전)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "hpry905K7E4": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"손을 깨끗이 씻어요 | 생활습관 노래 | 간식 🍪 먹기 전에 손씻기 | 위생교육 | 리틀엔젤 인기동요 | Little Angel\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "yQ7mPFS2BFc": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"조아요TV 7월동요 : 손씻기송 가사판 #손씻기 #위생교육 #청결교육 #건강안전 #7월주제 #손을씻어요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "-wvrC2UMqKQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"손씻기송+  | 어린이 올바른 손씻기 교육 | 생활 습관 | 호기와 노래해요, 댄스댄스 율동체조 | 호기! 핑크퐁 - 놀면서 배워요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "WiG1ppvKo3Y": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"EBS 보니하니와 함께한 ‘올바른 손씻기 송’ 뮤직비디오!\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "6LQs8fHaCgI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"[코로나 예방 손씻기] 아기상어와 손 씻어요 | 핑크퐁 X 보건복지부 | 아기상어 손씻기 챌린지 #BabySharkHandWashChallenge | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "kwhCaFGwGhs": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"손씻기동요 | 뽀로로와 뽀드득 뽀드득 손 씻어요 | 생활습관동요 | 뽀로로와 노래해요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "AKNbb3ZhAMQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 15,
+    "totalScore": 99,
+    "summary": "팝마트 랜덤박스 언박싱은 사행성 뽑기를 미화하고 구매 욕구를 강하게 자극하는 순수 상업 콘텐츠로, 교육적 가치가 전혀 없습니다. 어린이가 반복 시청하면 물질 소비 욕구와 도박적 행동을 강화할 수 있으므로 주의가 필요합니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 100,
+    "imitationRisk": 95,
+    "commercialism": 35,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설이나 비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 없음."
+      },
+      "scary": {
+        "score": 100,
+        "note": "공포 요소 없음."
+      },
+      "imitation_risk": {
+        "score": 95,
+        "note": "단순 피규어 개봉이므로 신체 위험은 없으나 구매 욕구 유발 가능."
+      },
+      "educational": {
+        "score": 15,
+        "note": "교육적 가치가 거의 없으며 순수 소비·개봉 콘텐츠."
+      },
+      "commercialism": {
+        "score": 35,
+        "note": "팝마트 랜덤박스는 사행성 뽑기(가챠)로, 반복적 개봉으로 구매 욕구와 떼쓰기를 유발하는 전형적 상업 콘텐츠."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:18:46.886959+00:00"
+  },
+  "prLOGaRr2EY": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 98,
+    "summary": "\"뽀로로 서프라이즈백깡 #랜덤깡 #피규어깡 #피규어 #랜덤박스 #뽀로로 #뽀로로서프라이즈백 #random #randompack #ppororo #unboxing #깡\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "D6rP74QxFlI": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 98,
+    "summary": "\"[2탄]친남매의 팝마트 랜덤 피규어 언박싱🎁\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "Y-0rHWKV0dQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"프린세스 캐치 티니핑 서프라이즈 랜덤 풀박스 언박싱💖 #티니핑 #하츄핑 #랜덤 #장난감 #리뷰 #풀박스 #언박싱 #키덜트\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "p9OknMAiR80": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 98,
+    "summary": "\"친남매의 팝마트 랜덤피규어 언박싱🎁\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "fkzuxBDC6mY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"현실 냥글냥글 🩷위시캣 서프라이즈 인형 언박싱 #리뷰 #shorts\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "fMI1BsISQjU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"L.O.L 서프라이즈 올스타 B.B 언박싱⚾️  All-Star B.Bs Unboxing [L.O.L Surprise Unboxing]\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Gs8JKGpBcyU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"넷플릭스 미니어처 뽑기⁉️👽\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "i6SmK6ke0p0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"Kinder Joy Surprise eggs  킨더조이 언박싱_ 포포TV\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "TGNxqahCsdw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 99,
+    "summary": "아기 노래와 서프라이즈 에그를 결합한 콘텐츠로, 폭력·공포·언어 문제는 없으나 상업성(뽑기/언박싱)이 높아 소비 욕구 유도 위험이 있습니다. 검증된 공식 키즈 채널 여부가 불확실하므로 보호자 판단이 필요합니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "imitationRisk": 100,
+    "commercialism": 45,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 전혀 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설이나 부적절한 언어 사용 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 95,
+        "note": "놀라운 달걀 개봉이지만 아이 친화적인 프레임으로 예상되며, 공포 요소 없음."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "위험한 모방 행동을 유도하지 않음."
+      },
+      "educational": {
+        "score": 55,
+        "note": "동요라고 명시되어 있으나, 실제 교육적 내용(생활습관, 과학, 사회성 등)의 명확한 증거 없음."
+      },
+      "commercialism": {
+        "score": 45,
+        "note": "서프라이즈 에그(뽑기/언박싱)는 전형적인 소비 유도 형식이며, 구매 욕구 자극 위험이 있음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:19:16.542590+00:00"
+  },
+  "LTPd4klGcdI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"NEW! A LOT OF KINDER SURPRISE EGGS TOY (KINDER JOY)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "_htNkxjvoCo": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"Disney Pixar Cars Unboxing Review | Lightning McQueen Surprises ASMR NO Talking\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "AYUhUZlT-Hg": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"Surprise Eggs Kids Songs | Hokie Pokie Kids Videos\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "f5HQzdwQKLA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"Eggs Surprise | The Best Kids Songs &amp; Nursery Rhymes | Nick and Poli\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "YwaW1NaS-GE": {
+    "violence": 75,
+    "language": 85,
+    "sexual": 100,
+    "educational": 70,
+    "totalScore": 70,
+    "summary": "이 영상은 위험한 SNS 챌린지로 인한 10대 사망 사고를 다루는 뉴스 보도입니다. 공익적 경고 가치는 있으나, 구체적인 챌린지 방법이 노출될 경우 호기심 있는 청소년의 모방 위험이 매우 높습니다. 10세 이상 보호자와 함께 시청하고, 이를 따라 하지 않도록 명확히 지도해야 합니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 65,
+    "imitationRisk": 25,
+    "commercialism": 95,
+    "categories": {
+      "violence": {
+        "score": 75,
+        "note": "직접적인 폭력 묘사는 없으나, 사망 사고를 다루는 심각한 뉴스 콘텐츠로 간접적 위협 요소 포함."
+      },
+      "language": {
+        "score": 85,
+        "note": "뉴스 형식의 정중한 언어 사용으로 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 65,
+        "note": "10대 사망 사고를 다루는 심각한 주제로 불안감·공포감을 유발할 수 있음."
+      },
+      "imitation_risk": {
+        "score": 25,
+        "note": "위험한 틱톡 챌린지(크로밍·탈취제 흡입)를 보도하면서 구체적인 방법 설명 우려, 호기심 있는 청소년이 모방할 수 있는 높은 위험."
+      },
+      "educational": {
+        "score": 70,
+        "note": "위험한 SNS 챌린지의 실제 피해를 경고하는 공익적 교육 뉴스로서 가치 있음."
+      },
+      "commercialism": {
+        "score": 95,
+        "note": "공공 뉴스 채널의 사건 보도로 상업적 유도 요소 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:19:42.939847+00:00"
+  },
+  "nCyrKbr01i0": {
+    "violence": 75,
+    "language": 85,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 73,
+    "summary": "이 영상은 '위험한 챌린지'를 주제로 한 뉴스 보도로 추정됩니다. 성인 대상 팩트 뉴스이지만, 위험한 행동 자체를 시각적으로 노출할 가능성이 높아 어린이의 모방 위험이 심각합니다. 어린이 시청을 강력히 권장하지 않습니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 80,
+    "imitationRisk": 25,
+    "commercialism": 95,
+    "categories": {
+      "violence": {
+        "score": 75,
+        "note": "직접적인 폭력 묘사는 없으나, 뉴스 채널이 위험한 챌린지를 다루므로 자극적 내용 포함 가능성 높음."
+      },
+      "language": {
+        "score": 85,
+        "note": "뉴스 채널의 표준 언어 사용 추정, 욕설이나 비속어는 없을 것으로 예상."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 없음."
+      },
+      "scary": {
+        "score": 80,
+        "note": "'위험한 챌린지' 콘텐츠지만 뉴스 형식의 교육적 경고 방식으로 추정되어 극도의 공포는 아님."
+      },
+      "imitation_risk": {
+        "score": 25,
+        "note": "제목에서 명시적으로 '위험한 챌린지'를 다루고 있어, 아이들이 모방할 위험성이 높음. 뉴스 채널의 사실 보도라도 위험 행동 자체를 노출시키므로 모방 유도 위험 심각."
+      },
+      "educational": {
+        "score": 60,
+        "note": "뉴스 채널의 보도는 위험성을 경고하는 교육적 목적이 있으나, 아이 대상이 아닌 성인 시청자 기준 콘텐츠로 추정."
+      },
+      "commercialism": {
+        "score": 95,
+        "note": "뉴스 채널의 공익 보도로 보이며, 구매·소비 유도 요소 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:20:46.164393+00:00"
+  },
+  "D4bXDDIs7kA": {
+    "violence": 75,
+    "language": 95,
+    "sexual": 100,
+    "educational": 72,
+    "totalScore": 69,
+    "summary": "이 영상은 위험한 SNS 챌린지로 인한 실제 사망 사건을 다루는 뉴스로, 교육적 가치가 있으나 모방 위험이 매우 높습니다. 10대 청소년이 챌린지 내용에 호기심을 갖고 따라 할 위험이 있으므로, 부모 감시 하에 선별 시청하거나 저학년에게는 제한을 권장합니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 60,
+    "imitationRisk": 15,
+    "commercialism": 98,
+    "categories": {
+      "violence": {
+        "score": 75,
+        "note": "직접적인 폭력 묘사는 없으나, 사망 사고의 결과를 다루므로 간접적 위협 요소 있음."
+      },
+      "language": {
+        "score": 95,
+        "note": "뉴스 형식으로 적절한 언어 사용, 욕설이나 비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 60,
+        "note": "10대 청소년 사망이라는 심각한 주제가 다루어져 심리적 불안감을 유발할 수 있음."
+      },
+      "imitation_risk": {
+        "score": 15,
+        "note": "위험한 틱톡 챌린지('크로밍')를 구체적으로 언급하고 있어 시청 청소년이 호기심을 통해 따라 할 위험이 매우 높음."
+      },
+      "educational": {
+        "score": 72,
+        "note": "위험한 SNS 챌린지의 해로움을 알리는 교육적 가치가 있으나, 10대 대상 교육물로는 선별 시청 권장."
+      },
+      "commercialism": {
+        "score": 98,
+        "note": "공영방송 뉴스로 상업적 유도가 거의 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:21:08.144621+00:00"
+  },
+  "E5rx4RDPmQ4": {
+    "violence": 75,
+    "language": 95,
+    "sexual": 100,
+    "educational": 35,
+    "totalScore": 72,
+    "summary": "실제 사건을 보도한 뉴스이지만, 폭포 급류에 뛰어드는 극단적으로 위험한 행동을 구체적으로 영상화하고 있어 어린이가 모방할 위험이 매우 큽니다. 아이에게 절대 보이지 않기를 권장합니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 65,
+    "imitationRisk": 25,
+    "commercialism": 100,
+    "categories": {
+      "violence": {
+        "score": 75,
+        "note": "직접적인 폭력 묘사는 없으나, 실제 신체 위험 장면이 포함됨."
+      },
+      "language": {
+        "score": 95,
+        "note": "뉴스 형식으로 객관적 표현 사용, 욕설이나 비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 65,
+        "note": "실제 위험 상황(폭포 급류 투신)이 영상화되어 불안감을 유발할 수 있음."
+      },
+      "imitation_risk": {
+        "score": 25,
+        "note": "휴대폰 회수를 위해 폭포 급류에 뛰어드는 위험한 행동을 실제로 보여주므로 모방 위험이 매우 높음."
+      },
+      "educational": {
+        "score": 35,
+        "note": "뉴스 형식이지만 위험 행동의 교육적 가치(하지 말아야 할 것)는 명시되지 않고 사건 중심으로 묘사됨."
+      },
+      "commercialism": {
+        "score": 100,
+        "note": "상업적 유도 요소 없음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:22:40.066952+00:00"
+  },
+  "qw4WyM-2SHw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"나이 먹을수록 위험한 성격\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "fLmXDY7bOEs": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"“10초 버티면 서비스”…위험한 수면 마취 챌린지 / 채널A / 뉴스A 라이브\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "2aD1fG28HlE": {
+    "violence": 100,
+    "language": 95,
+    "sexual": 100,
+    "educational": 50,
+    "totalScore": 83,
+    "summary": "이 뉴스는 인형 뽑기의 중독성을 다루지만, 아이들의 흥분과 만족감을 강조하는 방식이 실제로는 뽑기 행동을 미화하고 사행성 소비를 부추길 수 있어 위험합니다. 도박 중독의 초기 단계를 정상화하는 우려가 있습니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 95,
+    "imitationRisk": 25,
+    "commercialism": 20,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 없음."
+      },
+      "language": {
+        "score": 95,
+        "note": "일상 언어 사용, 특별한 욕설이나 비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 없음."
+      },
+      "scary": {
+        "score": 95,
+        "note": "공포 요소 없음."
+      },
+      "imitation_risk": {
+        "score": 25,
+        "note": "인형 뽑기의 중독성과 사행성을 긍정적으로 묘사하며 아이들의 반복 구매 행동을 부추길 수 있음."
+      },
+      "educational": {
+        "score": 50,
+        "note": "도박 중독의 위험성을 다루지만, 실제 교육적 메시지보다는 '위험하지만 재미있다'는 인상을 줄 가능성."
+      },
+      "commercialism": {
+        "score": 20,
+        "note": "인형 뽑기(가챠/뽑기) 사행성 콘텐츠를 긍정적으로 노출하며 아이들의 반복 구매 욕구를 강하게 자극함."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-15T18:30:16.332129+00:00"
+  },
+  "U_yCjMXjvuU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"천원으로 뽑기(미니 공략법) #뽑기 #미니인형뽑기 #와리 #가챠 #가챠깡\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "z2G0PxR6ntY": {
+    "violence": 50,
+    "language": 100,
+    "sexual": 100,
+    "educational": 65,
+    "totalScore": 78,
+    "summary": "이 콘텐츠는 실제 항공기 참사를 다루는 뉴스 보도로, 어린이에게 심각한 공포와 트라우마를 유발할 수 있습니다. 10세 이상 청소년도 부모 지도하에 시청하기를 권장합니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 40,
+    "imitationRisk": 100,
+    "commercialism": 95,
+    "categories": {
+      "violence": {
+        "score": 50,
+        "note": "항공기 참사 관련 콘텐츠로, 실제 사망 사건을 다루고 있어 아이에게 트라우마를 줄 수 있습니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "뉴스 보도 형식으로 욕설이나 비속어가 없습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소가 전혀 없습니다."
+      },
+      "scary": {
+        "score": 40,
+        "note": "실제 대형 참사 사건(사망자 다수)을 다루는 콘텐츠로, 어린이에게 심각한 불안감과 공포를 유발할 수 있습니다."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "모방 위험 행동이 없습니다."
+      },
+      "educational": {
+        "score": 65,
+        "note": "뉴스 보도로서 사건의 사실을 전달하는 교육적 가치가 있으나, 어린이 교육 콘텐츠가 아닙니다."
+      },
+      "commercialism": {
+        "score": 95,
+        "note": "공영방송 뉴스로 상업적 유도 요소가 없습니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T02:52:03.174997+00:00"
+  },
+  "5eqnECOGd6s": {
+    "violence": 35,
+    "language": 95,
+    "sexual": 100,
+    "educational": 30,
+    "totalScore": 68,
+    "summary": "제목과 설명만으로는 구체적 콘텐츠를 알 수 없지만, 비행기 탑승 중 '사건 발생'이라는 모호한 설정이 폭력적·위험한 상황을 암시할 우려가 있습니다. 실제 영상 확인 후 재평가를 권장합니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 50,
+    "imitationRisk": 60,
+    "commercialism": 85,
+    "categories": {
+      "violence": {
+        "score": 35,
+        "note": "동물(사자)이 주인공인 상황에서 비행기 탑승 중 예측 불가능한 '사건(happened)'이 발생한다는 설정이 폭력적 상황을 암시할 가능성이 높음."
+      },
+      "language": {
+        "score": 95,
+        "note": "제목과 설명에서 욕설이나 비속어가 보이지 않음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 보이지 않음."
+      },
+      "scary": {
+        "score": 50,
+        "note": "비행기 탑승 중 '사건'이 발생한다는 모호한 설정이 사고, 추락, 공포 상황을 암시할 수 있어 불안감 유발 가능성."
+      },
+      "imitation_risk": {
+        "score": 60,
+        "note": "실제 콘텐츠 확인 불가하나, 비행기 탑승 중 위험한 상황이 묘사될 경우 아이들의 모방 위험이 존재할 수 있음."
+      },
+      "educational": {
+        "score": 30,
+        "note": "제목·설명에서 교육적 가치를 찾기 어려우며, 단순 자극적 상황 설정으로 보임."
+      },
+      "commercialism": {
+        "score": 85,
+        "note": "명확한 상품 판매 유도가 보이지 않으나, 'Action Story' 채널이 시리즈물을 통해 조회수 수익화할 가능성."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T02:56:55.749408+00:00"
+  },
+  "YQaTo3Joui8": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 70,
+    "totalScore": 98,
+    "summary": "의인화된 비행기 가족을 소개하는 신나는 동요로, 폭력·공포·위험 요소가 없는 매우 안전한 영상입니다. 3세 이상이면 무난하게 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "imitationRisk": 95,
+    "commercialism": 88,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없는 안전한 의인화 콘텐츠입니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "동요 형식으로 고운 말만 사용하며 욕설이나 비속어가 없습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 없습니다."
+      },
+      "scary": {
+        "score": 95,
+        "note": "비행기를 귀엽게 의인화한 가족 소개 콘텐츠로 공포 요소가 없습니다."
+      },
+      "imitation_risk": {
+        "score": 95,
+        "note": "비행기 가족 소개 동요이므로 따라 할 위험한 행동을 부추기지 않습니다."
+      },
+      "educational": {
+        "score": 70,
+        "note": "비행기를 의인화하여 가족 개념을 소개하는 방식이나, 실질적 교육 내용(탈것 지식, 기능 설명 등)이 명확하지 않아 교육성이 중간 수준입니다."
+      },
+      "commercialism": {
+        "score": 88,
+        "note": "비행기 캐릭터가 등장하나 명백한 제품 판매나 구매 유도가 보이지 않습니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T03:14:59.089235+00:00"
+  },
+  "j0zrVf3ZnDM": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 83,
+    "summary": "곤충 정보를 가챠뽑기 형식으로 제공하는 영상으로, 랜덤 보상 메커니즘이 아이의 도박성 심리와 구매 욕구를 자극할 수 있습니다. 모방 위험과 상업성이 매우 높으므로 어린이 시청을 권하지 않습니다.",
+    "confidence": "high",
+    "ageRating": 10,
+    "scary": 95,
+    "imitationRisk": 25,
+    "commercialism": 20,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "폭력 요소가 없습니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "언어 관련 문제가 없습니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 없습니다."
+      },
+      "scary": {
+        "score": 95,
+        "note": "곤충이 등장하지만 교육적 맥락에서 공포를 유발하지 않습니다."
+      },
+      "imitation_risk": {
+        "score": 25,
+        "note": "가챠뽑기는 랜덤 보상의 기대감과 도박성 심리를 자극해 아이의 구매 욕구와 모방 행동(조르기, 소비)을 강하게 유도합니다."
+      },
+      "educational": {
+        "score": 40,
+        "note": "곤충 소개가 있을 수 있으나 가챠뽑기 메커니즘 중심이므로 교육적 가치가 제한적입니다."
+      },
+      "commercialism": {
+        "score": 20,
+        "note": "가챠뽑기 콘텐츠는 랜덤 아이템 구매의 도박성 기대감을 미화하며 강하게 소비를 유도합니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T09:34:16.592001+00:00"
+  },
+  "4-HhZXJLY-M": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 90,
+    "totalScore": 100,
+    "summary": "꼬마버스 타요의 공식 채널에서 제공하는 색깔 학습 동요로, 폭력·선정성·공포 요소가 없어 3세 이상 영유아가 안전하게 즐길 수 있습니다. 타요 캐릭터를 통해 교통수단에 대한 긍정적 관심과 색상 인식을 자연스럽게 형성할 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 100,
+    "imitationRisk": 100,
+    "commercialism": 95,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 전혀 없음"
+      },
+      "language": {
+        "score": 100,
+        "note": "고운 말만 사용"
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 전혀 없음"
+      },
+      "scary": {
+        "score": 100,
+        "note": "친숙한 인기 캐릭터 타요를 통한 밝고 즐거운 동요 형식으로 공포 요소 없음"
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "색깔 학습과 버스 바퀴 의인화로 자동차/교통안전에 대한 긍정적 인식 형성, 위험 모방 행동 없음"
+      },
+      "educational": {
+        "score": 90,
+        "note": "무지개 색깔 학습과 버스 바퀴 움직임을 음악으로 표현하는 교육 가치가 있으나, 직접적 언어·숫자·개념 학습 요소는 제한적"
+      },
+      "commercialism": {
+        "score": 95,
+        "note": "타요 캐릭터가 등장하지만 스토리·교육 맥락 안에서 자연스럽게 쓰이며 직접적 구매 유도 없음"
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:33:38.557297+00:00"
+  },
+  "PBfIz5YoEi0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 98,
+    "summary": "공식 키즈 채널의 타요 캐릭터를 활용한 색칠·장난감 만들기 콘텐츠로, 폭력·공포·욕설 등 안전 위협 요소가 없습니다. 다만 반복된 '만들기' 메시지가 상품 소비 욕구를 약간 자극할 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 100,
+    "imitationRisk": 90,
+    "commercialism": 85,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 전혀 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 전혀 없음."
+      },
+      "scary": {
+        "score": 100,
+        "note": "무서운 요소 전혀 없음."
+      },
+      "imitation_risk": {
+        "score": 90,
+        "note": "색칠놀이·장난감 제작은 안전하나, 제목에 '만들기'가 반복되어 장난감 구매·소비 욕구가 약간 자극될 수 있음."
+      },
+      "educational": {
+        "score": 95,
+        "note": "색칠·크래프트 활동으로 창의성·미세근육 발달을 촉진하고, 경찰차라는 친숙한 교통수단을 소개하는 교육적 가치가 있음."
+      },
+      "commercialism": {
+        "score": 85,
+        "note": "공식 채널의 인기 캐릭터(타요) 장난감이 주제이고 제목에 '만들기'·'색칠놀이' 반복으로 타요 브랜드 상품 인지도 증대 유도 가능성이 있으나, 영상 자체가 DIY 활동 중심이므로 직접적 구매 강요는 없을 것으로 예상."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:34:21.844398+00:00"
+  },
+  "tVU53nGuPGw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 99,
+    "summary": "타요의 공식 오프닝 곡으로 폭력, 공포, 선정성 등 위해 요소가 전혀 없는 안전한 콘텐츠입니다. 3세 이상 어린이가 안심하고 시청할 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "imitationRisk": 98,
+    "commercialism": 90,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 전혀 없음. 타요라는 친근한 버스 캐릭터의 오프닝 곡으로 순수한 교육 애니메이션 장르임."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설·비속어 없음. 어린이용 동요곡으로 언어가 순결함."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 95,
+        "note": "공포 요소 없음. 밝고 긍정적인 오프닝 곡이며 타요 같은 의인화된 탈것 캐릭터는 아이 친화적임."
+      },
+      "imitation_risk": {
+        "score": 98,
+        "note": "모방 위험 행동이 없음. 단순 오프닝 곡이므로 아이가 따라할 위험한 행동이 없음."
+      },
+      "educational": {
+        "score": 80,
+        "note": "타요 애니메이션은 일반적으로 사회성·안전·협력 등 생활 교육을 담으나, 오프닝 곡만으로는 직접적인 교육 내용을 판단하기 어려워 완전 만점은 아님."
+      },
+      "commercialism": {
+        "score": 90,
+        "note": "공식 채널의 오프닝 곡으로 스토리 맥락 내 자연스러운 콘텐츠이며, 명시적인 구매·상품 유도가 없음. 채널 구독 권유는 있으나 이는 일반적인 관례임."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:33:55.542422+00:00"
+  },
+  "Hvbw5EL3E54": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"꼬마버스가 출발합니다 (The Little Bus is Leaving)\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "SvXHePwV6pc": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"자동차 동요 l 타요노래 우린 멋진 구조대 l 경찰차송 l 소방차송 l 구급차송 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "19TkhpbU41Y": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"부릉부릉 농장 버스가 달려요🚌 | 어린이 동요 | Wheels On The Bus | 핑크퐁 농장 동물 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "YYTBDXPkPXA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"RESCUE TAYO (레스큐 타요) 뮤직비디오🚒(타요 ver.) l 꼬마버스 타요 X 케플러(Kep1er) l 키즈팝 프로젝트\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "_AlUg1ceg8Y": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"Do you like Tayo Friend? Police car Fire truck Siren 타요 장난감 좋아해? 경찰차 소방차 사이렌 Excavator 포크레인\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "a8Dofz_o7wM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"폴&리즈가 출동해요! l 경찰 특공대가 출동합니다🚔 l 타요 노래 l 레스큐 타요 동요 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "MYK7OuhVQYo": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"열 꼬마 스트롱 l 다리에서 떨어진 구조 트럭 스트롱 l 타요 노래 l 레스큐 타요 동요 l 숫자 배우기 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "4KZ3iq4Xkog": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 85,
+    "educational": 40,
+    "totalScore": 95,
+    "summary": "\"[성인버스 타요] 불에 타요\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "FRyAuQhdyt8": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"타요버스 현실버전 - 감기 옮기지마 (Tayo Bus Real life) [Kojer]\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "sjqSbAxuFCk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"알록달록 컬러 버스 | 빨강 파랑 노랑 하양 버스로 색깔을 배워요! | 버스송 | 자동차 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "a9QA7zOkAyQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"'RESCUE TAYO' Official MV | 꼬마버스 타요 X Kep1er 케플러 '레스큐 타요'\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "JS7zSvr6CnU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"타요가 눈 속에 갇혔어요. 아이들을 위한 영상. Taio is stuck in the snow. Video for children.\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "DnIBm14nNJk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"알록달록 색깔 물풍선 l 악당 배드카의 색깔 물풍선 공격! l 배드카 VS 레스큐팀 l 색깔 배우기 l 놀면서 배워요 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "nwzpy_p43eE": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 55,
+    "totalScore": 100,
+    "summary": "\"타요 오프닝송 l 변신! 타요와 중장비 레인저스🎵오프닝송 공개! l 타요 8기 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "7yxYwljRQZ0": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 94,
+    "totalScore": 98,
+    "summary": "핑크퐁의 공식 과학 교육 동요로, 공룡 멸종이라는 자연사를 밝고 차분하게 설명합니다. 폭력성·공포·상업성 모두 안전하며 3세 이상 모든 연령이 안심하고 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 93,
+    "imitationRisk": 100,
+    "commercialism": 96,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "공룡 멸종이라는 자연사를 다루지만 폭력적 묘사 없이 교육적으로 접근하는 동요 형식이므로 안전함."
+      },
+      "language": {
+        "score": 100,
+        "note": "핑크퐁 공식 교육 동요로 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 93,
+        "note": "공룡 멸종·화산·운석 등 자연사를 다루나 핑크퐁의 밝고 따뜻한 동요 스타일로 차분하게 설명하므로 트라우마성 공포 없음."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "아이가 따라 할 위험 행동이나 도박성 소비 유도 요소 없음."
+      },
+      "educational": {
+        "score": 94,
+        "note": "공룡 멸종의 원인(화산·운석·환경변화)을 아이 눈높이에 맞게 노래로 가르치는 훌륭한 과학 교육 콘텐츠."
+      },
+      "commercialism": {
+        "score": 96,
+        "note": "핑크퐁 브랜드 콘텐츠지만 구매 유도나 장난감 언박싱 없이 순수 교육 목적의 동요로만 구성됨."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:35:13.140673+00:00"
+  },
+  "0ybj2-S2O1Q": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"공룡 멸종송 #공룡송 #공룡노래 #공룡동요 #깨비키즈 #KEBIKIDS\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "t0K3cO9n6ms": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"엘라스모사우루스 | 바닷속을 휙휙 헤엄치는 공룡 | 공룡 동요 | 동물 동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "adxQK-RakAM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"공룡이 살아있다면  공룡동요  핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "l77687ddhAM": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[핫클립] 공룡들이 사라진 이유는? / YTN 사이언스\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "PYInV-27Vdk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"공룡이 사라진 이유 -썰 그것이 미스테리\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "3AFuzIPukZ0": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"공룡멸종송 2 | 공룡송 | 공룡이 사라졌다 | 공룡노래 | 깨비키즈 KEBIKIDS\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "HHxED-VDnZI": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"공룡멸종\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Q4HMn3BJ24Y": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 92,
+    "totalScore": 99,
+    "summary": "공룡의 특징을 노래와 율동으로 알려주는 아이 친화적 교육 동요입니다. 폭력·공포·언어 문제 없이 3세 이상 안심하고 볼 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 95,
+    "imitationRisk": 100,
+    "commercialism": 75,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "공룡을 친구로 소개하는 교육적 맥락이며 폭력 요소가 전혀 없음."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설·비속어 없이 순수한 아동 콘텐츠 언어만 사용."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 95,
+        "note": "공룡은 등장하지만 '공룡은 내 친구'라는 친화적·교육적 맥락에서 의인화되어 아이에게 공포감을 주지 않음. 율동교실 형식으로 즐거운 분위기 유지."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "율동교실 형식으로 따라할 수 있는 행동이 모두 안전한 율동과 동작뿐이므로 위험 행동 모방 위험 없음."
+      },
+      "educational": {
+        "score": 92,
+        "note": "공룡의 특징(턱뼈, 이빨, 뿔, 목 길이 등)을 노래와 율동으로 자연스럽게 소개하는 교육적 가치가 있으나, 깊이 있는 과학적 설명보다는 특징 소개 수준이라 만점은 아님."
+      },
+      "commercialism": {
+        "score": 75,
+        "note": "영실업·콩순이 상품 링크와 매장 정보가 설명란에 포함되어 있어 브랜드 노출이 있으나, 영상 본편에서 직접적인 구매 유도나 언박싱이 없으므로 상업성이 중간 수준."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:37:30.185989+00:00"
+  },
+  "IoCUwyhCPN4": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 88,
+    "totalScore": 99,
+    "summary": "아빠를 향한 순수한 사랑과 감사를 주제로 한 감성 동요입니다. 폭력·욕설·공포 요소가 없고 어린이 친화적이어서 3세 이상이면 안전하게 즐길 수 있습니다. 다만 외부 링크 유도가 있으므로 부모의 간단한 확인이 권장됩니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 96,
+    "imitationRisk": 100,
+    "commercialism": 85,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없음. 순수한 가족 사랑 테마의 동요."
+      },
+      "language": {
+        "score": 100,
+        "note": "고운 말만 사용. 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 96,
+        "note": "아빠를 찾는 상황이 어린이 눈높이의 순박한 꿈 배경에서 일어나므로 불안감 없음. 해피엔딩 메시지."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "따라 하기에 위험한 행동이나 소비 유도 요소 없음."
+      },
+      "educational": {
+        "score": 88,
+        "note": "가족 사랑과 부모-자녀 유대감을 교육하는 감정 교육 콘텐츠이나, 색깔·동물·자연 학습 등 직접적인 지식 학습 요소는 제한적."
+      },
+      "commercialism": {
+        "score": 85,
+        "note": "설명에 미니게임 링크가 포함되어 외부 플랫폼으로의 유도가 있음. 다만 강압적이지 않고 선택적이므로 85점."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-16T14:37:53.199660+00:00"
+  },
+  "nF3EmbRepzk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 85,
+    "totalScore": 100,
+    "summary": "1987년 제작된 클래식 애니메이션 오프닝 동요로, 폭력·욕설·선정성·공포 요소가 전혀 없습니다. 모든 연령의 아이가 안심하고 즐길 수 있는 건전한 음악 콘텐츠입니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 100,
+    "imitationRisk": 100,
+    "commercialism": 100,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소 전혀 없음. 순수 오프닝 동요곡입니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "욕설·비속어 없음. 1980년대 정통 동요 가사로 순하고 깔끔함."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 100,
+        "note": "무섭거나 자극적인 요소 전혀 없음. 밝고 긍정적인 오프닝 곡."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "모방 위험 행동·도박성 콘텐츠 전혀 없음. 순수 음악 감상 콘텐츠."
+      },
+      "educational": {
+        "score": 85,
+        "note": "정통 동요로 리듬·음악감각·감정 표현 학습엔 좋으나, 직접적인 생활습관·과학·사회성 교육 내용이 부족해 만점은 아님."
+      },
+      "commercialism": {
+        "score": 100,
+        "note": "구매·소비 유도 요소 전혀 없음. 순수 오프닝 음악 영상."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-17T09:17:32.913615+00:00"
+  },
+  "5ZXYeCqixxw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 92,
+    "totalScore": 100,
+    "summary": "1987년 인기 애니메이션 '아기공룡 둘리'의 주제가를 현대적으로 재해석한 음악 영상입니다. 모든 안전 지표에서 우수하며 유아부터 안심하고 시청할 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 98,
+    "imitationRisk": 100,
+    "commercialism": 97,
+    "categories": {
+      "violence": {
+        "score": 100,
+        "note": "폭력 요소가 전혀 없는 순수한 주제가 곡입니다."
+      },
+      "language": {
+        "score": 100,
+        "note": "고운 우리말만 사용된 동요 형식의 곡입니다."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정적 요소가 전혀 없습니다."
+      },
+      "scary": {
+        "score": 98,
+        "note": "공룡이 등장하지만 아기공룡 둘리는 귀엽고 친근한 캐릭터로 무섭지 않으며, 밝고 즐거운 주제가 분위기입니다."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "따라할 위험 행동이나 구매 유도 요소가 없습니다."
+      },
+      "educational": {
+        "score": 92,
+        "note": "추억의 고전 애니메이션 주제가로 한국 문화 유산 학습 가치는 있으나, 직접적인 학습 내용(숫자·글자·생활습관 등)은 제한적입니다."
+      },
+      "commercialism": {
+        "score": 97,
+        "note": "오래된 애니메이션 OST 재현 곡으로 구매·소비 유도가 거의 없습니다."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-17T09:17:53.508941+00:00"
+  },
+  "n1Qxem9wjFM": {
+    "violence": 70,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 90,
+    "summary": "\"아기공룡둘리 라면송(핵폭탄과 유도탄들 - 라면과 구공탄)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "c-JSLbd2urE": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"숲튽훈모창 - 아기공룡둘리(새벽5시모창)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "3q4Ey8BcBT8": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[복면가왕] 동심으로 돌아간 마법 같은 무대💕 오승원의 ＜아기공룡 둘리＞, MBC 230611 방송\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "Kwk5ANvPr7o": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"[나만너애 ] 둘리 中  마이콜 - 라면 송\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "jTl0Lbocsxc": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기공룡둘리 삽입곡 비누방울\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "51Fd2m0yzKQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[옛날TV] 추억의 만화 OST - 아기공룡 둘리 원곡 가수의 Live\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "AnijyqNh_OQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기공룡 둘리 (Michael Jackson Remix)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "7KKZdbAUAmw": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"🦕 둘리야…엄마 안 찾고 여기서 뭐해..? | 아기 공룡 둘리 뽕짝 Ver.\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "miQsakeGmOo": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[둘리테마거리] 아기공룡 둘리 오프닝송 (2009)\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "p5R4-_Uc45Y": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"1억 년 잠 깬 '둘리사우루스'..신안서 찾은 아기 공룡[목포MBC 뉴스데스크]\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "WNelhQt_DLY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기공룡 둘리 (3)\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "7e6vHa1gyWs": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기 공룡 둘리   라면과 구공탄\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "CSf7Cj7E7cQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 80,
+    "totalScore": 100,
+    "summary": "\"[동요 노래방] 아기 공룡 둘리 - 함께 노래해요 No.KY2738\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "Pb0dgKU6Btc": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"[KY ENTERTAINMENT] 아기 공룡 둘리 - 만화영화주제가 (KY.2738) / KY Karaoke\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "mOStJnBXR_I": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기공룡 둘리 얼음별 대모험 - 바요킹의 노래\"은(는) YouTube 공식 아동용 인증 영상이에요."
+  },
+  "-8a_49Zfk4c": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기공룡 둘리 얼음별 대모험 - 둘리 요리사의 노래\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "tYdn9XVkAXY": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"2009 아기공룡 둘리\"은(는) 어린이에게 안전한 콘텐츠예요."
+  },
+  "2yFQXnRjs2Y": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"아기공룡 둘리 [R&B Cover]\"은(는) 어린이에게 안전한 콘텐츠예요."
   }
 }

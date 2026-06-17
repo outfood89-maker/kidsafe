@@ -1,6 +1,21 @@
 import axios from 'axios'
+import { supabase } from './supabase'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+// 우리 백엔드(BASE_URL) 요청에는 로그인 토큰을 자동으로 붙인다.
+// (백엔드 auth.py가 이 토큰으로 회원/관리자/구독 권한을 검증)
+axios.interceptors.request.use(async (config) => {
+  const url = config.url || ''
+  if (url.startsWith(BASE_URL)) {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  }
+  return config
+})
 
 // 키워드로 YouTube 영상 검색
 export const searchVideos = async (keyword) => {
@@ -8,6 +23,14 @@ export const searchVideos = async (keyword) => {
     params: { keyword }
   })
   return response.data // videos + playlists 둘 다 반환
+}
+
+// 재생목록 안 영상 목록 가져오기 (검수용)
+export const getPlaylistItems = async (playlistId) => {
+  const response = await axios.get(`${BASE_URL}/search/playlist-items`, {
+    params: { playlistId }
+  })
+  return response.data.videos
 }
 
 // 나이별 추천 영상 검색 (신규)

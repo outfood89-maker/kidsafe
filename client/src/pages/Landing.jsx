@@ -5,6 +5,7 @@ import {
   FaStar, FaUserPlus, FaBell,
 } from "react-icons/fa"
 import KiddyImg from "../components/KiddyImg"
+import { useAuth } from "../contexts/AuthContext"
 
 // 브라우저 프레임 모형
 const BrowserMockup = ({ src, urlLabel, scale = 0.48, contentHeight = 360, offsetY = 0 }) => (
@@ -233,6 +234,7 @@ const SAFETY_TIPS = [
 
 export default function Landing() {
   const navigate = useNavigate()
+  const { user, signOut } = useAuth()
   const [tip] = useState(() => SAFETY_TIPS[Math.floor(Math.random() * SAFETY_TIPS.length)])
   const [activeFeat, setActiveFeat] = useState(0)
   const dragStartX = useRef(null)
@@ -335,13 +337,28 @@ export default function Landing() {
             </div>
             <span className="text-lg font-medium text-white">KidSafe</span>
           </div>
-          <button
-            onClick={() => navigate("/profiles")}
-            className="rounded-[10px] px-5 py-2 text-sm font-medium text-white transition"
-            style={{ backgroundColor: "#6DAB60" }}
-          >
-            시작하기
-          </button>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-white/70 hidden sm:block">
+                {user.user_metadata?.display_name || user.email}
+              </span>
+              <button
+                onClick={signOut}
+                className="rounded-[10px] px-4 py-2 text-sm font-medium text-white/80 transition hover:text-white"
+                style={{ border: "1px solid rgba(255,255,255,0.25)" }}
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate("/login")}
+              className="rounded-[10px] px-5 py-2 text-sm font-medium text-white transition"
+              style={{ backgroundColor: "#6DAB60" }}
+            >
+              로그인
+            </button>
+          )}
         </nav>
 
         {/* 메인 콘텐츠 */}
@@ -378,22 +395,14 @@ export default function Landing() {
             >
               🚀 지금 시작하기
             </button>
-            <div className="relative">
-              <button
-                disabled
-                className="w-full rounded-[10px] px-8 py-4 text-base font-medium cursor-not-allowed"
-                style={{ border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.4)", backgroundColor: "rgba(255,255,255,0.05)" }}
-              >
-                <FaUserPlus className="mr-2 inline" />
-                회원가입
-              </button>
-              <span
-                className="absolute -top-2 -right-2 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                style={{ backgroundColor: "#EF9F27", color: "#2C3528" }}
-              >
-                준비 중
-              </span>
-            </div>
+            <button
+              onClick={() => navigate("/login")}
+              className="rounded-[10px] px-8 py-4 text-base font-medium text-white transition hover:opacity-90"
+              style={{ border: "1px solid rgba(255,255,255,0.2)", backgroundColor: "rgba(255,255,255,0.05)" }}
+            >
+              <FaUserPlus className="mr-2 inline" />
+              로그인 / 회원가입
+            </button>
           </div>
         </div>
 

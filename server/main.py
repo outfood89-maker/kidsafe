@@ -22,9 +22,11 @@ def ensure_data_files():
         "game-bonus.json": [],
         "analysis-cache.json": {},
         "trusted-channels.json": [],
+        "channel-scores.json": {},
         "feedback.json": [],
         "pending-rules.json": [],
         "prompt-rules.json": {},
+        "usage.json": {},
     }
     for filename, default in defaults.items():
         path = os.path.join("data", filename)

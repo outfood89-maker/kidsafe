@@ -5,12 +5,18 @@ import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
+import VideoModal from "../components/VideoModal";
+import VideoPlayer from "../components/VideoPlayer";
+import PlaylistModal from "../components/PlaylistModal";
 
 export default function Favorites() {
   const [favorites, setFavorites] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
@@ -46,10 +52,33 @@ export default function Favorites() {
 
   const handleCardClick = (fav) => {
     if (fav.type === "video") {
-      window.open(`https://www.youtube.com/watch?v=${fav.itemId}`, "_blank");
+      // 영상은 VideoModal로 열어 안전 게이팅 적용
+      setSelectedVideo({
+        videoId: fav.itemId,
+        title: fav.title,
+        thumbnail: fav.thumbnail,
+        channelTitle: fav.channelTitle || "",
+        channelId: fav.channelId || "",
+        description: fav.description || "",
+        totalScore: fav.totalScore ?? 100,
+        madeForKids: fav.madeForKids || false,
+      });
     } else {
-      window.open(`https://www.youtube.com/playlist?list=${fav.itemId}`, "_blank");
+      setSelectedPlaylist({
+        playlistId: fav.itemId,
+        title: fav.title,
+        thumbnail: fav.thumbnail,
+        channelTitle: fav.channelTitle || "",
+        videoCount: fav.videoCount || 0,
+      });
     }
+  };
+
+  const handleDeepResult = (videoId, result) => {
+    // AI 정밀 분석 완료 시 찜 목록 카드 점수 실시간 업데이트
+    setFavorites((prev) =>
+      prev.map((f) => f.itemId === videoId ? { ...f, totalScore: result.totalScore } : f)
+    );
   };
 
   const getBadgeStyle = (color) => {
@@ -180,6 +209,27 @@ export default function Favorites() {
         )}
 
       </div>
+      {selectedPlaylist && (
+        <PlaylistModal
+          playlist={selectedPlaylist}
+          onClose={() => setSelectedPlaylist(null)}
+          onSelectVideo={(video) => { setSelectedPlaylist(null); setSelectedVideo(video); }}
+        />
+      )}
+      {selectedVideo && (
+        <VideoModal
+          video={selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          onPlayInApp={(v) => { setPlayingVideo(v); setSelectedVideo(null); }}
+          onDeepResult={handleDeepResult}
+        />
+      )}
+      {playingVideo && (
+        <VideoPlayer
+          video={playingVideo}
+          onClose={() => setPlayingVideo(null)}
+        />
+      )}
       {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
       <div className="md:hidden">
         <BottomTabBar activeTab="favorites" chatOpen={chatOpen} onChatToggle={() => setChatOpen((p) => !p)} />
