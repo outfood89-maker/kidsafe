@@ -42,17 +42,28 @@ export const getRecommendedVideos = async (age) => {
 }
 
 // 영상 안전도 검수 (Tier 0~1 — 키워드+채널+YouTube 메타데이터, 검색 목록용)
+// ⚠️ thumbnail/channelTitle도 함께 보냄 — 백엔드가 캐시 _meta에 저장해 추천 엔진 후보 풀로 재활용
 export const analyzeVideo = async (video) => {
   const response = await axios.post(`${BASE_URL}/analyze`, {
     title: video.title,
     description: video.description || "",
     videoId: video.videoId || "",
     channelId: video.channelId || "",
+    channelTitle: video.channelTitle || "",
+    thumbnail: video.thumbnail || "",
     madeForKids: video.madeForKids || false,
     categoryId: video.categoryId || "",
     topicCategories: video.topicCategories || [],
   })
   return response.data
+}
+
+// 캐시 기반 맞춤 추천 (YouTube 쿼터 0 — 이미 분석된 안전 영상 풀에서 선호 채널 우대)
+export const getCacheRecommendedVideos = async (profileId, limit = 12) => {
+  const response = await axios.get(`${BASE_URL}/recommend`, {
+    params: { profileId, limit },
+  })
+  return response.data // { videos, source, poolSize }
 }
 
 // 영상 정밀 검수 (Tier 2 — 자막 + Claude AI, 영상 상세 모달용)

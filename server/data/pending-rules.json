@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "category": "educational",
+    "type": "bonuses",
+    "rule": "악기 연주(피아노, 기타, 바이올린 등)를 실제로 시연하며 음악 기초를 보여주는 콘텐츠는 교육성 가산점 부여",
+    "reason": "악보 읽기, 악기 연주법 등 음악 교육적 가치가 있는 콘텐츠를 교육성으로 인정해야 함",
+    "suggestedAt": "2026-06-17T17:01:45.977361+00:00",
+    "status": "pending"
+  },
+  {
+    "category": "commercialism",
+    "type": "exemptions",
+    "rule": "음악 교육·악기 연주 영상에서 채널명, 곡명, 악보 출처 등 크레딧 정보 표시는 구매 유도로 보지 않음 — commercialism 95 이상으로 판단",
+    "reason": "교육 콘텐츠의 필수 정보 표시를 상업성으로 오평가하지 않기 위함",
+    "suggestedAt": "2026-06-17T17:01:45.977361+00:00",
+    "status": "pending"
+  }
+]

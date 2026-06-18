@@ -48,5 +48,25 @@
     "reason": "비 상업성이 너무 높게 나와요",
     "reportedAt": "2026-06-16T15:20:24.342762+00:00",
     "status": "processed"
+  },
+  {
+    "videoId": "K1Z9rXG2zj4",
+    "title": "[악보]동요 피아노 연주 | 다섯 글자 예쁜 말 | by LaLLa",
+    "channelTitle": "LaLLa Music 랄라뮤직",
+    "category": "commercialism",
+    "currentScore": 85,
+    "reason": "이게 어린이들이 보면 안될정도의 상업적인 요소인가? 한번 생각해봐야함",
+    "reportedAt": "2026-06-17T15:43:17.005260+00:00",
+    "status": "processed"
+  },
+  {
+    "videoId": "K1Z9rXG2zj4",
+    "title": "[악보]동요 피아노 연주 | 다섯 글자 예쁜 말 | by LaLLa",
+    "channelTitle": "LaLLa Music 랄라뮤직",
+    "category": "educational",
+    "currentScore": 88,
+    "reason": "피아노를 연주하는것을 보여준다는것 자체가 혹시 교육성에 포함이 되는거 아닌가요?",
+    "reportedAt": "2026-06-17T15:44:13.942452+00:00",
+    "status": "processed"
   }
 ]

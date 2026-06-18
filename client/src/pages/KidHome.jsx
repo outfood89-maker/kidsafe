@@ -3,11 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
-  FaCommentDots, FaShieldAlt, FaSignOutAlt, FaGamepad,
+  FaCommentDots, FaShieldAlt, FaSignOutAlt, FaGamepad, FaMicrophone,
 } from "react-icons/fa";
 import {
   searchVideos, analyzeVideo, saveHistory, getHistory,
-  checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos,
+  checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos, getCacheRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
   getFavorites, addFavorite, removeFavorite,
   checkBlockedKeyword, getProfiles, getGameBonus,
@@ -89,8 +89,10 @@ export default function KidHome() {
   const [greetingIndex, setGreetingIndex] = useState(0);
   const [kiddyBounce, setKiddyBounce] = useState(true);
   const [kiddyClicked, setKiddyClicked] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
+  const recognitionRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -135,6 +137,8 @@ export default function KidHome() {
       //   fetchRecommendedVideos(cached.age, history);
       //   fetchHistoryRecommendedVideos(history, cached.age);
       // });
+      // 캐시 기반 추천은 YouTube 쿼터 0 → 항상 활성화 (이미 분석된 안전 영상 풀에서 추천)
+      fetchCacheRecommendedVideos(cached.id);
     }
     // 비로그인 시도 자동 추천도 비활성화
     // else { fetchRecommendedVideos(7, []); }
@@ -270,6 +274,18 @@ export default function KidHome() {
     } finally { setRecommendLoading(false); }
   };
 
+  // 캐시 기반 추천 — 백엔드가 이미 분석·필터링한 안전 영상을 반환하므로 재검수 불필요 (YouTube 쿼터 0)
+  const fetchCacheRecommendedVideos = async (profileId) => {
+    try {
+      setHistoryLoading(true);
+      const { videos: results } = await getCacheRecommendedVideos(profileId);
+      setHistoryVideos(results || []);
+      setHistoryKeyword("");
+    } catch (err) {
+      console.error("캐시 기반 추천 실패:", err);
+    } finally { setHistoryLoading(false); }
+  };
+
   const fetchHistoryRecommendedVideos = async (watchHistory, age) => {
     if (!watchHistory || watchHistory.length === 0) return;
     const topKeyword = getTopKeyword(watchHistory);
@@ -317,6 +333,62 @@ export default function KidHome() {
     `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
   const AVATAR_OFFSET_X = { 5: "43%" };
 
+
+  // 검색 결과 초기화 → 홈 화면(추천 섹션)으로 복귀
+  const handleClearSearch = () => {
+    setSearchKeyword("");
+    setVideos([]);
+    setPlaylists([]);
+    setError("");
+    setQuotaError(false);
+    setShowSearchHistory(false);
+    if (selectedProfile?.id) sessionStorage.removeItem(`kidsafe_search_${selectedProfile.id}`);
+  };
+
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("이 브라우저는 음성 검색을 지원하지 않아요. Chrome을 사용해보세요!");
+      return;
+    }
+    // 토글 방식: 듣는 중에 다시 누르면 녹음을 멈추고 onend에서 검색 실행
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ko-KR";
+    recognition.interimResults = true;  // 말하는 도중 실시간으로 입력창에 표시
+    recognition.continuous = false;     // 말 끝나면 자동 종료 (콘솔 테스트와 동일 환경)
+    recognition.maxAlternatives = 1;
+
+    let finalText = "";
+
+    recognition.onstart = () => { setError(""); setIsListening(true); };
+    recognition.onerror = (e) => {
+      setIsListening(false);
+      if (e.error === "no-speech") setError("아무 소리도 안 들렸어요. 다시 눌러서 말해봐요!");
+      else if (e.error === "not-allowed") setError("마이크 사용이 차단됐어요. 브라우저 설정에서 허용해주세요.");
+      else if (e.error !== "aborted") setError(`음성 인식 오류: ${e.error}`);
+    };
+    recognition.onresult = (event) => {
+      let interim = "";
+      finalText = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      setSearchKeyword((finalText + interim).trim());
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      const text = finalText.trim();
+      if (text) handleSearch(text);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
 
   const handleSearch = async (keyword) => {
     const trimmedKeyword = (keyword || searchKeyword).trim();
@@ -851,13 +923,35 @@ export default function KidHome() {
                       <div className="flex items-center gap-2"
                         style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
                         <FaSearch style={{ color: "#B8D8B2", flexShrink: 0 }} />
-                        <input type="text" placeholder="영상 검색..." value={searchKeyword}
+                        <input type="text" placeholder={isListening ? "🎤 말해보세요..." : "영상 검색..."} value={searchKeyword}
                           onChange={(e) => setSearchKeyword(e.target.value)}
                           onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
                           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                           className="flex-1 bg-transparent outline-none font-semibold"
                           style={{ color: "#fff", fontSize: "16px" }}
                         />
+                        {/* 검색 결과/입력 있을 때만 X(지우기) — 누르면 홈(추천) 화면으로 복귀 */}
+                        {(videos.length > 0 || playlists.length > 0 || searchKeyword) && (
+                          <button onClick={handleClearSearch} title="검색 지우기"
+                            className="flex items-center justify-center shrink-0"
+                            style={{ color: "#B8D8B2", width: 24, height: 24 }}>
+                            <FaTimes className="text-sm" />
+                          </button>
+                        )}
+                        {/* 음성 검색 버튼 */}
+                        <button
+                          onClick={handleVoiceSearch}
+                          title={isListening ? "듣는 중... (클릭하면 중지)" : "음성으로 검색"}
+                          className="flex items-center justify-center shrink-0 rounded-full transition-all"
+                          style={{
+                            width: 32, height: 32,
+                            backgroundColor: isListening ? "#C84B47" : "rgba(255,255,255,0.15)",
+                            color: isListening ? "#fff" : "#B8D8B2",
+                            animation: isListening ? "pulse 1s infinite" : "none",
+                          }}
+                        >
+                          <FaMicrophone className="text-sm" />
+                        </button>
                         <button onClick={() => handleSearch()} disabled={loading}
                           className="rounded-[10px] px-4 py-2 text-sm font-bold text-white disabled:opacity-50 whitespace-nowrap shrink-0"
                           style={{ backgroundColor: "#6DAB60" }}>검색</button>

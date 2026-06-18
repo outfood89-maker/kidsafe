@@ -1,128 +1,20 @@
 [
   {
-    "id": "bonus_1781451143788",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "ox-quiz",
-    "correctCount": 5,
-    "bonusMinutes": 7,
-    "createdAt": "2026-06-14T15:32:23.788Z"
-  },
-  {
-    "id": "bonus_1781453314337",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "ox-quiz",
-    "correctCount": 9,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:08:34.337Z"
-  },
-  {
-    "id": "bonus_1781453787773",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "ox-quiz",
-    "correctCount": 10,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:16:27.773Z"
-  },
-  {
-    "id": "bonus_1781453826939",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
+    "id": "bonus_1781785682600",
+    "profileId": "1781785161561",
+    "date": "2026-06-18",
     "game": "word-match",
-    "correctCount": 10,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:17:06.939Z"
-  },
-  {
-    "id": "bonus_1781455495637",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "word-match",
-    "correctCount": 8,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:44:55.637Z"
-  },
-  {
-    "id": "bonus_1781455657643",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "puzzle",
     "correctCount": 9,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:47:37.643Z"
-  },
-  {
-    "id": "bonus_1781455677524",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "ox-quiz",
-    "correctCount": 1,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:47:57.524Z"
-  },
-  {
-    "id": "bonus_1781456084196",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "puzzle",
-    "correctCount": 4,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T16:54:44.196Z"
-  },
-  {
-    "id": "bonus_1781457259100",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "puzzle",
-    "correctCount": 9,
-    "bonusMinutes": 7,
-    "createdAt": "2026-06-14T17:14:19.100Z"
-  },
-  {
-    "id": "bonus_1781457484442",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "puzzle",
-    "correctCount": 16,
-    "bonusMinutes": 6,
-    "createdAt": "2026-06-14T17:18:04.442Z"
-  },
-  {
-    "id": "bonus_1781457782611",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "puzzle",
-    "correctCount": 4,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T17:23:02.611Z"
-  },
-  {
-    "id": "bonus_1781457871478",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "memory-card",
-    "correctCount": 1,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T17:24:31.478Z"
-  },
-  {
-    "id": "bonus_1781458595515",
-    "profileId": "1779888608658",
-    "date": "2026-06-14",
-    "game": "puzzle",
-    "correctCount": 9,
-    "bonusMinutes": 0,
-    "createdAt": "2026-06-14T17:36:35.515Z"
-  },
-  {
-    "id": "bonus_1781494370775",
-    "profileId": "1780384750187",
-    "date": "2026-06-15",
-    "game": "ox-quiz",
-    "correctCount": 10,
     "bonusMinutes": 3,
-    "createdAt": "2026-06-15T03:32:50.775612+00:00"
+    "createdAt": "2026-06-18T12:28:02.600367+00:00"
+  },
+  {
+    "id": "bonus_1781785708628",
+    "profileId": "1781785161561",
+    "date": "2026-06-18",
+    "game": "puzzle",
+    "correctCount": 9,
+    "bonusMinutes": 7,
+    "createdAt": "2026-06-18T12:28:28.628122+00:00"
   }
 ]

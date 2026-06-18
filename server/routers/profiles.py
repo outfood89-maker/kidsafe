@@ -13,6 +13,16 @@ DATA_PATH = os.path.join(BASE_DIR, "../data/profiles.json")
 # 나이별 기본 안전도 기준점수
 DEFAULT_THRESHOLD = {3: 90, 5: 85, 7: 80, 10: 70}
 
+# 프로필에 종속된 데이터 파일들 — 프로필 삭제 시 함께 정리해 orphan(고아) 기록을 막는다.
+# 모두 list 구조이며 각 항목에 profileId 필드를 가진다.
+DEPENDENT_FILES = [
+    "history.json",      # 시청 기록
+    "favorites.json",    # 찜 목록
+    "searches.json",     # 검색 기록
+    "badges.json",       # 배지
+    "game-bonus.json",   # 게임 보너스
+]
+
 
 def read_profiles() -> list:
     with open(DATA_PATH, "r", encoding="utf-8") as f:
@@ -22,6 +32,31 @@ def read_profiles() -> list:
 def write_profiles(data: list):
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def cleanup_profile_data(profile_id: str) -> dict:
+    """프로필 삭제 시 그 프로필의 종속 데이터(시청기록·찜·검색기록·배지·게임보너스)를 함께 제거한다.
+    한 파일이 실패해도 나머지는 계속 정리한다. {파일명: 삭제건수} 반환."""
+    removed = {}
+    for filename in DEPENDENT_FILES:
+        path = os.path.join(BASE_DIR, "../data", filename)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                items = json.load(f)
+            if not isinstance(items, list):
+                continue
+            filtered = [it for it in items if it.get("profileId") != profile_id]
+            deleted = len(items) - len(filtered)
+            if deleted > 0:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(filtered, f, ensure_ascii=False, indent=2)
+                removed[filename] = deleted
+        except FileNotFoundError:
+            continue
+        except Exception:
+            # 종속 데이터 정리 실패가 프로필 삭제 자체를 막지 않도록 무시
+            continue
+    return removed
 
 
 # GET /profiles
@@ -125,7 +160,9 @@ async def delete_profile(profile_id: str):
             raise HTTPException(status_code=404, detail="프로필을 찾을 수 없어요")
 
         write_profiles(filtered)
-        return {"success": True}
+        # 종속 데이터(시청기록·찜·검색기록·배지·게임보너스)도 함께 정리 — orphan 방지
+        removed = cleanup_profile_data(profile_id)
+        return {"success": True, "removed": removed}
 
     except HTTPException:
         raise

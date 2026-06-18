@@ -517,9 +517,26 @@ class AnalyzeRequest(BaseModel):
     channelTitle: Optional[str] = ""
     title: str
     description: str = ""
+    thumbnail: Optional[str] = ""
     madeForKids: Optional[bool] = False
     categoryId: Optional[str] = ""
     topicCategories: Optional[List[str]] = None
+
+
+def attach_meta(result: dict, data: "AnalyzeRequest") -> dict:
+    """캐시 엔트리에 화면 표시용 메타데이터(_meta)를 붙인다.
+    ⚠️ 추천 엔진(recommend.py)이 캐시를 후보 풀로 쓰려면 title/thumbnail/channel이 필요한데,
+    안전도 필드(violence 등)에는 이게 없으므로 _meta 하위에 따로 저장한다.
+    ⚠️ _meta는 프론트의 { ...video, ...safety } spread에 섞여도 무해한 추가 필드 — 원본 덮어쓰기 없음."""
+    result["_meta"] = {
+        "videoId": data.videoId or "",
+        "title": data.title or "",
+        "thumbnail": data.thumbnail or "",
+        "channelTitle": data.channelTitle or "",
+        "channelId": data.channelId or "",
+        "madeForKids": bool(data.madeForKids),
+    }
+    return result
 
 
 class BatchAnalyzeRequest(BaseModel):
@@ -546,6 +563,7 @@ async def analyze_video(data: AnalyzeRequest):
             video_id, data.title, data.description, channel_id,
             data.madeForKids or False, data.categoryId or "", data.topicCategories or [],
         )
+        attach_meta(result, data)
 
         if video_id:
             cache = read_cache()
@@ -579,6 +597,7 @@ async def analyze_batch(data: BatchAnalyzeRequest):
                 video_id, item.title, item.description, channel_id,
                 item.madeForKids or False, item.categoryId or "", item.topicCategories or [],
             )
+            attach_meta(result, item)
 
             if video_id:
                 cache[video_id] = result
@@ -651,6 +670,8 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
             print(f"Tier 2 Claude 분석 실패 → 키워드 폴백: {ai_err}")
             result = analyze_by_keywords(video_id, data.title, data.description, channel_id)
             result["confidence"] = "low"
+
+        attach_meta(result, data)
 
         # 채널 자동 신뢰 학습 (90+ 판정 누적 → AUTO_TRUST_THRESHOLD 도달 시 자동 등록)
         try_auto_trust_channel(channel_id, data.channelTitle or "", result.get("totalScore", 0))
