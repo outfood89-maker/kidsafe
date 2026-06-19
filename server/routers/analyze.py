@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 import time
+import base64
+import httpx
 import anthropic
 from auth import get_current_user, _supabase_select
 from db import sb_select, sb_upsert, sb_delete
@@ -385,6 +387,13 @@ async def build_deep_system_prompt() -> str:
 친숙한 인기 캐릭터(엘사·뽀로로 등)와 동요로 시작해 폭력·자해·성적 암시로 전환되는 '엘사게이트' 위장,
 교육 태그만 붙인 가짜 교육물, 위험 챌린지를 재미로 포장한 모방 유도를 특히 경계해서 낮게 평가해.
 
+[🖼️ 썸네일 이미지 분석 — 제공될 때만]
+영상 썸네일 이미지가 함께 주어지면 반드시 자막·제목과 종합해 판단해. 썸네일은 클릭을 유도하는 '얼굴'이라 위장 콘텐츠의 핵심 단서다.
+- 엘사게이트 신호: 친숙한 인기 캐릭터(엘사·스파이더맨·뽀로로·페파피그 등)가 기괴·폭력·선정·공포 상황에 놓인 썸네일, 피·무기·주사기·괴이한 표정, 과장된 충격 표정과 자극적 색감 → scary·violence·sexual 을 강하게 감점(40 이하).
+- 미끼(clickbait) 위장: 제목·자막은 깨끗한데 썸네일만 자극적이면 낚시 위장이므로 의심하고 낮게 평가하며 summary 에 명시해.
+- 신뢰 신호: 썸네일이 평범한 동요·교육 화면(캐릭터가 웃으며 노래, 숫자·글자 학습 화면 등)이면 안전 신호로 본다.
+- 단, 단순히 그림체가 만화적이거나 색이 밝다는 이유로 감점하지 마. '캐릭터가 해로운 상황에 놓였는가'가 기준이다.
+
 [ageRating(권장 최소 나이) — 반드시 3, 5, 7, 10 중 하나]
 이 영상을 즐기기에 적절한 최소 나이. 안전해도 내용이 어려우면 높은 숫자를 줘.
 {rules_section}
@@ -443,17 +452,54 @@ def parse_claude_json(raw: str) -> dict:
         raise
 
 
-async def analyze_with_claude(title: str, description: str, channel_title: str, transcript: str, trusted: bool) -> dict:
-    """Claude Haiku로 정밀 분석. 실패 시 예외를 던지고 호출부가 폴백 처리."""
+async def fetch_thumbnail_b64(video_id: str) -> "str | None":
+    """videoId 로 YouTube 썸네일을 받아 base64 로 반환. 실패하면 None (텍스트 분석으로 폴백).
+    썸네일 URL 은 규칙이 고정이라 추가 데이터 없이 videoId 만으로 구성된다."""
+    if not video_id:
+        return None
+    # hqdefault(480x360) → 위장 판단에 충분한 해상도. 없으면 mqdefault 폴백.
+    urls = [
+        f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+        f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg",
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            for url in urls:
+                r = await c.get(url)
+                # YouTube 는 썸네일 없을 때 120x90 회색 플레이스홀더를 주기도 함 → 너무 작으면 스킵
+                if r.status_code == 200 and r.content and len(r.content) > 2000:
+                    return base64.standard_b64encode(r.content).decode("ascii")
+    except Exception as e:
+        print(f"[썸네일] 추출 실패: {video_id} — {e}")
+    return None
+
+
+async def analyze_with_claude(
+    title: str, description: str, channel_title: str, transcript: str,
+    trusted: bool, thumbnail_b64: "str | None" = None,
+) -> dict:
+    """Claude Haiku로 정밀 분석. 썸네일 이미지가 있으면 Vision 으로 함께 판단.
+    실패 시 예외를 던지고 호출부가 폴백 처리."""
     client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     trust_line = "검증된 공식 키즈 채널" if trusted else "일반 채널"
-    user_content = (
+    user_text = (
         f"제목: {title}\n"
         f"채널: {channel_title or '(알 수 없음)'} ({trust_line})\n"
         f"설명: {description or '(없음)'}\n"
-        f"자막: {transcript or '(자막 없음 — 제목·설명·채널로만 판단)'}"
+        f"자막: {transcript or '(자막 없음 — 제목·설명·채널로만 판단)'}\n"
+        + ("위 영상의 썸네일 이미지를 함께 첨부했어. 자막·제목과 썸네일을 종합해 판단해."
+           if thumbnail_b64 else "(썸네일 없음)")
     )
+
+    # 썸네일이 있으면 [이미지 블록 + 텍스트 블록], 없으면 텍스트만
+    if thumbnail_b64:
+        user_content = [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": thumbnail_b64}},
+            {"type": "text", "text": user_text},
+        ]
+    else:
+        user_content = user_text
 
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -671,14 +717,21 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
         trusted_set = await trusted_channel_set()
         trusted = bool(channel_id and channel_id in trusted_set)
 
-        # 자막 추출 (실패해도 빈 문자열 → 메타데이터만으로 분석)
+        # 자막 + 썸네일 동시 추출 (둘 다 실패해도 메타데이터만으로 분석)
         transcript = await fetch_transcript(video_id)
-        source = "transcript" if transcript else "metadata"
+        thumbnail_b64 = await fetch_thumbnail_b64(video_id)
+        # source 표기: 어떤 근거로 분석했는지 (확신도 투명성)
+        parts = []
+        if transcript:
+            parts.append("transcript")
+        if thumbnail_b64:
+            parts.append("thumbnail")
+        source = "+".join(parts) if parts else "metadata"
 
-        # Claude 정밀 분석 — 실패 시 Tier 0~1 키워드 분석으로 폴백
+        # Claude 정밀 분석 (썸네일 있으면 Vision) — 실패 시 Tier 0~1 키워드 분석으로 폴백
         try:
             ai = await analyze_with_claude(
-                data.title, data.description, data.channelTitle or "", transcript, trusted
+                data.title, data.description, data.channelTitle or "", transcript, trusted, thumbnail_b64
             )
             result = build_deep_result(ai, source)
         except Exception as ai_err:
