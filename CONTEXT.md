@@ -22,6 +22,7 @@
 |---|---|
 | 프론트엔드 | React 19, React Router v7, Tailwind CSS, Axios |
 | 백엔드 | **FastAPI (Python)** — `server/` 폴더, uvicorn 포트 3000 |
+| 데이터 저장 | **Supabase (PostgreSQL)** — 전 데이터 DB 이전 완료 (JSON 파일 탈출) |
 | AI | Anthropic API — claude-haiku-4-5-20251001 |
 | 영상 | YouTube Data API v3 |
 | 자막 추출 | youtube-transcript-api |
@@ -31,6 +32,7 @@
 | 인증 | Supabase Auth (이메일/비밀번호, ES256 JWT) |
 
 > ⚠️ 백엔드는 Express → FastAPI로 전환 완료. `server_backup/`에 Express 원본 보존.
+> ⚠️ 데이터는 JSON 파일 → **Supabase PostgreSQL로 전면 이전 완료** (Railway 재시작에도 데이터 보존). `data/*.json`은 레거시/마이그레이션 원본으로만 잔존.
 
 ---
 
@@ -86,7 +88,11 @@ kidsafe/
 └── server/
     ├── main.py                      # FastAPI 진입점 (포트 3000)
     ├── auth.py                      # Supabase JWT 검증 + require_admin/require_premium
-    ├── audit.py                     # 감사 로그 공용 헬퍼 (write_audit)
+    ├── db.py                        # Supabase DB 공용 헬퍼 (select/insert/update/delete/upsert, httpx 연결 재사용)
+    ├── rules_store.py               # prompt_rules(AI 판단 룰) DB 공용 모듈 — analyze+feedback 공유
+    ├── audit.py                     # 감사 로그 공용 헬퍼 (write_audit, DB)
+    ├── sql/                         # DB 스키마 (schema.sql, schema_phase3*.sql) — Supabase SQL Editor에서 실행
+    ├── migrate_*.py                 # JSON→DB 1회성 마이그레이션 스크립트
     ├── routers/
     │   ├── search.py                # YouTube 검색 + 추천 (html.unescape 처리)
     │   ├── analyze.py               # 검수 엔진 (Tier 0~2 + 캐시)
@@ -120,6 +126,34 @@ kidsafe/
         ├── blocked-keywords.json
         └── alerts.json
 ```
+
+---
+
+## 데이터 저장 (Supabase PostgreSQL)
+
+> JSON 파일 → DB 전면 이전 완료 (Phase 2~3c). Railway 재시작에도 데이터 보존.
+
+### 멀티테넌시
+- 모든 유저 데이터는 `user_id`(auth.users.id)로 스코프 — 부모별 자녀 프로필/기록 격리
+- 소유권 검증(`get_owned_profile`)으로 남의 프로필 데이터 접근 차단
+- 프로필 삭제 시 종속 데이터 자동 정리 (DB `on delete cascade` — 수동 정리 불필요)
+
+### 테이블
+
+| 분류 | 테이블 |
+|---|---|
+| 유저 데이터 (user_id 스코프) | profiles, history, favorites, badges, searches, game_bonus, alerts, alert_settings, blocked_keywords |
+| 시스템 검수 캐시 | analysis_cache, trusted_channels, channel_scores |
+| 멤버십 | usage(일일 한도), accounts(role), subscriptions |
+| 운영/검수 룰 | feedback, pending_rules, prompt_rules, audit_log |
+
+### 접근 방식
+- `db.py` 공용 헬퍼 — httpx로 Supabase PostgREST 직접 호출 (supabase-py 의존성 없음)
+- service(secret) 키로 RLS 우회 → 백엔드 전용. RLS는 켜되 정책 없음(프론트 직접 접근 차단)
+- ⚡ **httpx.AsyncClient 전역 재사용** — DB 호출당 ~420ms→~40ms (TLS 핸드셰이크 제거, 10배 개선)
+- DB 컬럼 snake_case ↔ 프론트 camelCase 변환 계층으로 기존 응답 형태 100% 유지
+- 검수 캐시(`analysis_cache.result`)·룰(`prompt_rules.data`)은 jsonb로 통째 보관
+- `prompt_rules.updated_at`으로 룰 변경 시 검수 캐시 자동 무효화(재분석)
 
 ---
 
@@ -371,10 +405,14 @@ kidsafe/
 - ✅ Phase 0~1: Supabase 인증 + 멤버십 게이팅
 - ✅ Phase 2: 관리자 페이지 (대시보드 + 모더레이션 큐 + 회원 관리 + 감사 로그, 모두 `require_admin`)
 - ✅ Railway 환경변수 SUPABASE_URL / PUBLISHABLE_KEY / SECRET_KEY 추가 완료
+- ✅ **JSON → Supabase DB 전면 이전 완료** (멀티테넌시 + 연결 재사용 최적화)
+  - 유저 데이터(프로필·기록·찜·배지·검색·게임) + 알림·차단키워드
+  - 검수 캐시·신뢰채널·usage (기존 캐시 228개 마이그레이션)
+  - 피드백·룰·감사로그 + 관리자 통계 집계
+- ✅ 음성 검색 (Web Speech API) + 개인화 추천 엔진
 
 ## 남은 작업
 
-1. 결제 연동 (토스페이먼츠 구독) — Phase 3 ⏸ **개인사업자 등록 후 진행** (사업자등록번호 필요 → 현재 보류, 결제 UI는 데모용)
-2. 도네이션 결제 — Phase 4 ⏸ (동일 사유로 보류)
-3. 기존 JSON 데이터 Supabase DB 이전 — Phase 5
-4. 관리자 페이지 추가 아이디어 — 룰/필터/정책 분리 관리(키워드 blocklist / 채널 allowlist / 점수 임계값) — 선택
+1. 결제 연동 (토스페이먼츠 구독) — ⏸ **개인사업자 등록 후 진행** (사업자등록번호 필요 → 현재 보류, 결제 UI는 데모용)
+2. 도네이션 결제 — ⏸ (동일 사유로 보류)
+3. 관리자 페이지 추가 아이디어 — 룰/필터/정책 분리 관리(키워드 blocklist / 채널 allowlist / 점수 임계값) — 선택
