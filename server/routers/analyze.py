@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
+import time
 import anthropic
 from auth import get_current_user, _supabase_select
+from db import sb_select, sb_upsert, sb_delete
 
 # 자막 추출 라이브러리 — 설치/임포트 실패해도 서버는 떠야 하므로 방어적 import
 try:
@@ -19,11 +21,9 @@ except Exception:
 router = APIRouter()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CACHE_PATH = os.path.join(BASE_DIR, "../data/analysis-cache.json")
-TRUSTED_CHANNELS_PATH = os.path.join(BASE_DIR, "../data/trusted-channels.json")
-CHANNEL_SCORES_PATH = os.path.join(BASE_DIR, "../data/channel-scores.json")
+# analysis_cache / trusted_channels / channel_scores / usage 는 Phase 3b 에서 DB 로 이전됨.
+# prompt-rules 는 3c 에서 DB 전환 예정 — 현재 JSON 유지 (mtime 기반 캐시 무효화에 사용)
 PROMPT_RULES_PATH = os.path.join(BASE_DIR, "../data/prompt-rules.json")
-USAGE_PATH = os.path.join(BASE_DIR, "../data/usage.json")
 
 FREE_DAILY_DEEP_LIMIT = 3
 
@@ -67,96 +67,116 @@ EDU_CATEGORY_ID = "27"
 KIDS_TOPIC_KEYWORDS = ["children", "child", "kids", "educational", "cartoon", "animation", "nursery"]
 
 
-def read_usage() -> dict:
-    try:
-        with open(USAGE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def write_usage(data: dict):
-    with open(USAGE_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def check_and_increment_usage(user_id: str):
-    """새 정밀검수 시 일일 카운트를 확인하고 증가. 한도 초과 시 HTTP 429."""
+async def check_and_increment_usage(user_id: str):
+    """새 정밀검수 시 일일 카운트를 확인하고 증가. 한도 초과 시 HTTP 429. (DB)"""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    usage = read_usage()
-    entry = usage.get(user_id, {"date": today, "deep_count": 0})
-    if entry.get("date") != today:
-        entry = {"date": today, "deep_count": 0}
-    used = entry["deep_count"]
+    rows = await sb_select("usage", {"user_id": f"eq.{user_id}", "select": "*", "limit": "1"})
+    entry = rows[0] if rows else None
+    used = entry["deep_count"] if (entry and entry.get("date") == today) else 0
     if used >= FREE_DAILY_DEEP_LIMIT:
         raise HTTPException(
             status_code=429,
             detail={"code": "DAILY_LIMIT_EXCEEDED", "used": used, "limit": FREE_DAILY_DEEP_LIMIT},
         )
-    entry["deep_count"] = used + 1
-    usage[user_id] = entry
-    write_usage(usage)
+    await sb_upsert(
+        "usage",
+        {"user_id": user_id, "date": today, "deep_count": used + 1},
+        on_conflict="user_id",
+    )
 
 
-def read_channel_scores() -> dict:
-    try:
-        with open(CHANNEL_SCORES_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+# ── 신뢰 채널 메모리 캐시 ──────────────────────────────────────────────
+# is_trusted_channel 은 검색 영상마다 호출되므로 매번 DB 를 치면 폭주한다.
+# 작고 자주 안 변하는 목록이라 프로세스 메모리에 TTL 캐시로 들고 있는다.
+_trusted_cache: "set | None" = None
+_trusted_cache_ts = 0.0
+_TRUSTED_TTL = 30  # 초
 
 
-def write_channel_scores(data: dict):
-    with open(CHANNEL_SCORES_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def _invalidate_trusted_cache():
+    global _trusted_cache
+    _trusted_cache = None
 
 
-def try_auto_trust_channel(channel_id: str, channel_title: str, score: int):
-    """Tier 2에서 90+ 판정을 AUTO_TRUST_THRESHOLD번 받은 채널을 자동 신뢰 목록에 등록"""
-    if not channel_id or score < 90:
-        return
-    if is_trusted_channel(channel_id):
-        return
-    scores = read_channel_scores()
-    entry = scores.get(channel_id, {"channelId": channel_id, "channelTitle": channel_title, "count": 0})
-    entry["count"] += 1
-    scores[channel_id] = entry
-    write_channel_scores(scores)
-    if entry["count"] >= AUTO_TRUST_THRESHOLD:
-        channels = read_trusted_channels()
-        if not any(ch.get("channelId") == channel_id for ch in channels):
-            channels.append({"channelId": channel_id, "channelTitle": channel_title, "autoAdded": True})
-            with open(TRUSTED_CHANNELS_PATH, "w", encoding="utf-8") as f:
-                json.dump(channels, f, ensure_ascii=False, indent=2)
-            print(f"채널 자동 신뢰 등록: {channel_title} ({channel_id})")
+async def trusted_channel_set() -> set:
+    """신뢰 채널 id 집합을 TTL 캐시로 반환 (DB 1회 → TTL 동안 메모리 재사용)."""
+    global _trusted_cache, _trusted_cache_ts
+    now = time.time()
+    if _trusted_cache is None or now - _trusted_cache_ts > _TRUSTED_TTL:
+        rows = await sb_select("trusted_channels", {"select": "channel_id"})
+        _trusted_cache = {r["channel_id"] for r in rows}
+        _trusted_cache_ts = now
+    return _trusted_cache
 
 
-def read_cache() -> dict:
-    try:
-        with open(CACHE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def write_cache(data: dict):
-    with open(CACHE_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def read_trusted_channels() -> list:
-    try:
-        with open(TRUSTED_CHANNELS_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def is_trusted_channel(channel_id: str) -> bool:
+async def is_trusted_channel(channel_id: str) -> bool:
     if not channel_id:
         return False
-    channels = read_trusted_channels()
-    return any(ch.get("channelId") == channel_id for ch in channels)
+    return channel_id in await trusted_channel_set()
+
+
+async def try_auto_trust_channel(channel_id: str, channel_title: str, score: int):
+    """Tier 2에서 90+ 판정을 AUTO_TRUST_THRESHOLD번 받은 채널을 자동 신뢰 목록에 등록 (DB)"""
+    if not channel_id or score < 90:
+        return
+    if await is_trusted_channel(channel_id):
+        return
+    rows = await sb_select("channel_scores", {"channel_id": f"eq.{channel_id}", "select": "count", "limit": "1"})
+    count = (rows[0]["count"] if rows else 0) + 1
+    await sb_upsert(
+        "channel_scores",
+        {"channel_id": channel_id, "channel_title": channel_title, "count": count},
+        on_conflict="channel_id",
+    )
+    if count >= AUTO_TRUST_THRESHOLD:
+        await sb_upsert(
+            "trusted_channels",
+            {"channel_id": channel_id, "channel_title": channel_title, "auto_added": True},
+            on_conflict="channel_id",
+        )
+        _invalidate_trusted_cache()
+        print(f"채널 자동 신뢰 등록: {channel_title} ({channel_id})")
+
+
+# ── 검수 캐시 (analysis_cache 테이블) ──────────────────────────────────
+async def get_cache_entry(video_id: str) -> "dict | None":
+    """단일 영상 캐시 result 반환 (없으면 None)."""
+    if not video_id:
+        return None
+    rows = await sb_select("analysis_cache", {"video_id": f"eq.{video_id}", "select": "result", "limit": "1"})
+    return rows[0]["result"] if rows else None
+
+
+async def get_cache_entries(video_ids: list) -> dict:
+    """여러 영상 캐시를 in 쿼리 1번으로 조회 → {video_id: result}. (batch 핫패스)"""
+    ids = [v for v in video_ids if v]
+    if not ids:
+        return {}
+    rows = await sb_select(
+        "analysis_cache",
+        {"video_id": f"in.({','.join(ids)})", "select": "video_id,result"},
+    )
+    return {r["video_id"]: r["result"] for r in rows}
+
+
+async def upsert_cache(video_id: str, result: dict):
+    """단일 영상 캐시 저장/갱신."""
+    if not video_id:
+        return
+    await sb_upsert(
+        "analysis_cache",
+        {"video_id": video_id, "result": result, "updated_at": datetime.now(timezone.utc).isoformat()},
+        on_conflict="video_id",
+    )
+
+
+async def upsert_cache_many(rows: list):
+    """여러 캐시 엔트리를 한 번에 저장. rows: [{'video_id':.., 'result':..}, ...]"""
+    if not rows:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    payload = [{"video_id": r["video_id"], "result": r["result"], "updated_at": now} for r in rows]
+    await sb_upsert("analysis_cache", payload, on_conflict="video_id")
 
 
 DANGER_WEIGHTS = {"severe": 30, "moderate": 15, "mild": 5}
@@ -203,8 +223,10 @@ def analyze_by_keywords(
     made_for_kids: bool = False,
     category_id: str = "",
     topic_categories: list = None,
+    trusted_set: set = None,
 ) -> dict:
-    """Tier 0 (레벨 키워드) + Tier 1 (채널·YouTube 메타데이터) 분석"""
+    """Tier 0 (레벨 키워드) + Tier 1 (채널·YouTube 메타데이터) 분석.
+    ⚠️ 신뢰 채널 판정은 DB 폭주를 막기 위해 trusted_set(미리 로드한 집합)으로 받는다."""
     text = f"{title} {description}"
 
     violence = calc_safety_score_leveled(text, VIOLENCE_KEYWORDS)
@@ -213,7 +235,7 @@ def analyze_by_keywords(
     educational = calc_edu_score(text)
 
     # Tier 1-A: 수동/자동 신뢰 채널 보너스
-    trusted = is_trusted_channel(channel_id)
+    trusted = bool(trusted_set and channel_id and channel_id in trusted_set)
     channel_bonus = 5 if trusted else 0
 
     # Tier 1-B: YouTube 공식 madeForKids (COPPA 법적 플래그) — 강력한 신뢰
@@ -555,20 +577,20 @@ async def analyze_video(data: AnalyzeRequest):
 
         # 캐시 확인 (videoId 있을 때만)
         if video_id:
-            cache = read_cache()
-            if video_id in cache:
-                return cache[video_id]
+            cached = await get_cache_entry(video_id)
+            if cached:
+                return cached
 
+        trusted_set = await trusted_channel_set()
         result = analyze_by_keywords(
             video_id, data.title, data.description, channel_id,
             data.madeForKids or False, data.categoryId or "", data.topicCategories or [],
+            trusted_set=trusted_set,
         )
         attach_meta(result, data)
 
         if video_id:
-            cache = read_cache()
-            cache[video_id] = result
-            write_cache(cache)
+            await upsert_cache(video_id, result)
 
         return result
 
@@ -582,8 +604,12 @@ async def analyze_video(data: AnalyzeRequest):
 @router.post("/batch")
 async def analyze_batch(data: BatchAnalyzeRequest):
     try:
-        cache = read_cache()
+        # 핫패스 최적화: 영상 id 들의 캐시를 in 쿼리 1번으로, 신뢰 채널은 메모리 1회
+        video_ids = [it.videoId for it in data.items if it.videoId]
+        cache = await get_cache_entries(video_ids)
+        trusted_set = await trusted_channel_set()
         results = []
+        new_rows = []
 
         for item in data.items:
             video_id = item.videoId or ""
@@ -596,15 +622,17 @@ async def analyze_batch(data: BatchAnalyzeRequest):
             result = analyze_by_keywords(
                 video_id, item.title, item.description, channel_id,
                 item.madeForKids or False, item.categoryId or "", item.topicCategories or [],
+                trusted_set=trusted_set,
             )
             attach_meta(result, item)
 
             if video_id:
-                cache[video_id] = result
+                new_rows.append({"video_id": video_id, "result": result})
 
             results.append(result)
 
-        write_cache(cache)
+        # 신규 분석 결과만 한 번에 저장 (DB 왕복 1회)
+        await upsert_cache_many(new_rows)
         return {"results": results}
 
     except Exception as e:
@@ -624,8 +652,7 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
         # 캐시에 이미 정밀 분석(high) 결과가 있으면 즉시 반환 (비용 0)
         # 단, prompt-rules.json이 캐시 이후에 수정됐으면 재분석 (룰 업데이트 자동 반영)
         if video_id:
-            cache = read_cache()
-            cached = cache.get(video_id)
+            cached = await get_cache_entry(video_id)
             if cached and cached.get("confidence") == "high":
                 try:
                     rules_mtime = os.path.getmtime(PROMPT_RULES_PATH)
@@ -652,9 +679,10 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
             "limit": "1",
         })
         if not subs:
-            check_and_increment_usage(user["user_id"])
+            await check_and_increment_usage(user["user_id"])
 
-        trusted = is_trusted_channel(channel_id)
+        trusted_set = await trusted_channel_set()
+        trusted = bool(channel_id and channel_id in trusted_set)
 
         # 자막 추출 (실패해도 빈 문자열 → 메타데이터만으로 분석)
         transcript = await fetch_transcript(video_id)
@@ -668,18 +696,16 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
             result = build_deep_result(ai, source)
         except Exception as ai_err:
             print(f"Tier 2 Claude 분석 실패 → 키워드 폴백: {ai_err}")
-            result = analyze_by_keywords(video_id, data.title, data.description, channel_id)
+            result = analyze_by_keywords(video_id, data.title, data.description, channel_id, trusted_set=trusted_set)
             result["confidence"] = "low"
 
         attach_meta(result, data)
 
         # 채널 자동 신뢰 학습 (90+ 판정 누적 → AUTO_TRUST_THRESHOLD 도달 시 자동 등록)
-        try_auto_trust_channel(channel_id, data.channelTitle or "", result.get("totalScore", 0))
+        await try_auto_trust_channel(channel_id, data.channelTitle or "", result.get("totalScore", 0))
 
         if video_id:
-            cache = read_cache()
-            cache[video_id] = result
-            write_cache(cache)
+            await upsert_cache(video_id, result)
 
         return result
 
@@ -693,11 +719,10 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
 @router.delete("/cache/{video_id}")
 async def delete_cache(video_id: str):
     try:
-        cache = read_cache()
-        if video_id not in cache:
+        existing = await get_cache_entry(video_id)
+        if not existing:
             return {"ok": True, "message": "캐시에 없는 영상이에요."}
-        del cache[video_id]
-        write_cache(cache)
+        await sb_delete("analysis_cache", {"video_id": f"eq.{video_id}"})
         return {"ok": True, "message": f"{video_id} 캐시가 삭제됐어요. 다음 분석 시 새로 계산돼요."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"캐시 삭제 오류: {str(e)}")
@@ -707,10 +732,10 @@ async def delete_cache(video_id: str):
 @router.get("/{video_id}")
 async def get_cached_analysis(video_id: str):
     try:
-        cache = read_cache()
-        if video_id not in cache:
+        cached = await get_cache_entry(video_id)
+        if not cached:
             raise HTTPException(status_code=404, detail="캐시된 분석 결과가 없어요")
-        return cache[video_id]
+        return cached
     except HTTPException:
         raise
     except Exception as e:

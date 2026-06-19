@@ -386,12 +386,10 @@ async def feedback_pipeline(data: PipelineRequest):
             rules[data.category][rule_type].append(new_rule)
             write_json(PROMPT_RULES_PATH, rules)
 
-        # ④ analysis-cache.json에서 해당 영상 삭제 → 다음 모달 열 때 새 룰로 재분석
+        # ④ analysis_cache(DB)에서 해당 영상 삭제 → 다음 모달 열 때 새 룰로 재분석
         if data.videoId:
-            cache = read_json(CACHE_PATH, {})
-            if data.videoId in cache:
-                del cache[data.videoId]
-                write_json(CACHE_PATH, cache)
+            from db import sb_delete
+            await sb_delete("analysis_cache", {"video_id": f"eq.{data.videoId}"})
 
         return {
             "ok": True,

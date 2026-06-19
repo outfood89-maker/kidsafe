@@ -64,7 +64,9 @@ async def recommend(profileId: Optional[str] = None, limit: int = 12, user: dict
     이미 분석된 안전 영상 풀(캐시)에서, 아이가 자주 본 안전 채널을 우대해 추천한다.
     캐시가 쌓일수록 후보가 풍부해지고 추천이 정확해진다(설계서 5-3)."""
     try:
-        cache = _read_json(CACHE_PATH, {})
+        # 검수 캐시(analysis_cache) 전체 로드 → {video_id: result} (Phase 3b: JSON→DB)
+        cache_rows = await sb_select("analysis_cache", {"select": "video_id,result"})
+        cache = {r["video_id"]: r["result"] for r in cache_rows}
 
         # 프로필 정보 (연령 + 안전 기준) — 본인 프로필만 조회 (DB)
         profile = None
