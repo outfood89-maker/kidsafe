@@ -1,50 +1,59 @@
-import json
-import os
+"""
+배지 라우터 — Supabase DB 버전 (JSON 파일에서 이전)
+
+멀티테넌시: user_id 스코프 + profile_id 소유권 검증.
+배지 판정 로직(get_badge_definitions)은 기존 그대로 보존하고,
+데이터 소스만 JSON → DB 로 교체한다. (favorites/searches 는 클로저로 주입)
+DB row → 프론트 camelCase 변환.
+"""
+
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+
+from auth import get_current_user
+from db import sb_select, sb_insert
+from routers.profiles import get_owned_profile
 
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BADGES_PATH = os.path.join(BASE_DIR, "../data/badges.json")
-HISTORY_PATH = os.path.join(BASE_DIR, "../data/history.json")
-FAVORITES_PATH = os.path.join(BASE_DIR, "../data/favorites.json")
-SEARCHES_PATH = os.path.join(BASE_DIR, "../data/searches.json")
+
+# ── DB row → 프론트 camelCase 변환 ──────────────────────────────────────
+def _badge_to_api(row: dict) -> dict:
+    return {
+        "profileId": row.get("profile_id"),
+        "badgeId": row.get("badge_id"),
+        "name": row.get("name"),
+        "emoji": row.get("emoji"),
+        "description": row.get("description"),
+        "earnedAt": row.get("earned_at"),
+    }
 
 
-def read_badges() -> list:
-    with open(BADGES_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _history_to_api(row: dict) -> dict:
+    return {
+        "profileId": row.get("profile_id"),
+        "videoId": row.get("video_id"),
+        "title": row.get("title"),
+        "channelTitle": row.get("channel_title"),
+        "totalScore": row.get("total_score"),
+        "violence": row.get("violence"),
+        "language": row.get("language"),
+        "sexual": row.get("sexual"),
+        "educational": row.get("educational"),
+        "watchedAt": row.get("watched_at"),
+    }
 
 
-def write_badges(data: list):
-    with open(BADGES_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def _fav_to_api(row: dict) -> dict:
+    return {"profileId": row.get("profile_id"), "type": row.get("type")}
 
 
-def read_history() -> list:
-    with open(HISTORY_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _search_to_api(row: dict) -> dict:
+    return {"profileId": row.get("profile_id"), "keyword": row.get("keyword")}
 
 
-def read_favorites() -> list:
-    try:
-        with open(FAVORITES_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def read_searches() -> list:
-    try:
-        with open(SEARCHES_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-# 배지 정의 목록 (badges.js와 동일)
-def get_badge_definitions():
+# 배지 정의 목록 (badges.js와 동일) — favorites/searches 는 요청 시점 데이터를 클로저로 주입
+def get_badge_definitions(favorites: list, searches: list):
     return [
         {
             "id": "first_step",
@@ -135,28 +144,28 @@ def get_badge_definitions():
             "name": "찜 수집가",
             "emoji": "💝",
             "description": "영상이나 재생목록을 3개 이상 찜했어요!",
-            "check": lambda history, profile_id, earned_badges: len([f for f in read_favorites() if f.get("profileId") == profile_id]) >= 3,
+            "check": lambda history, profile_id, earned_badges: len([f for f in favorites if f.get("profileId") == profile_id]) >= 3,
         },
         {
             "id": "fav_master",
             "name": "찜 마스터",
             "emoji": "💖",
             "description": "영상이나 재생목록을 10개 이상 찜했어요!",
-            "check": lambda history, profile_id, earned_badges: len([f for f in read_favorites() if f.get("profileId") == profile_id]) >= 10,
+            "check": lambda history, profile_id, earned_badges: len([f for f in favorites if f.get("profileId") == profile_id]) >= 10,
         },
         {
             "id": "playlist_fan",
             "name": "재생목록 팬",
             "emoji": "🎬",
             "description": "재생목록을 3개 이상 찜했어요!",
-            "check": lambda history, profile_id, earned_badges: len([f for f in read_favorites() if f.get("profileId") == profile_id and f.get("type") == "playlist"]) >= 3,
+            "check": lambda history, profile_id, earned_badges: len([f for f in favorites if f.get("profileId") == profile_id and f.get("type") == "playlist"]) >= 3,
         },
         {
             "id": "curious_explorer",
             "name": "호기심 탐험가",
             "emoji": "🔍",
             "description": "검색을 10번 이상 해봤어요!",
-            "check": lambda history, profile_id, earned_badges: len([s for s in read_searches() if s.get("profileId") == profile_id]) >= 10,
+            "check": lambda history, profile_id, earned_badges: len([s for s in searches if s.get("profileId") == profile_id]) >= 10,
         },
         {
             "id": "genre_pioneer",
@@ -165,7 +174,7 @@ def get_badge_definitions():
             "description": "5가지 이상 다양한 키워드로 검색했어요!",
             "check": lambda history, profile_id, earned_badges: len(set(
                 s.get("keyword", "").strip().lower()
-                for s in read_searches()
+                for s in searches
                 if s.get("profileId") == profile_id
             )) >= 5,
         },
@@ -272,53 +281,64 @@ def _check_channel_regular(history, profile_id, earned_badges) -> bool:
 
 # GET /badges/{profileId}
 @router.get("/{profile_id}")
-async def get_badges(profile_id: str):
-    try:
-        badges = read_badges()
-        profile_badges = [b for b in badges if b.get("profileId") == profile_id]
-        return {"badges": profile_badges}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="배지를 불러오는 중 오류가 발생했어요")
+async def get_badges(profile_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_profile(profile_id, user["user_id"])
+    rows = await sb_select(
+        "badges",
+        {"profile_id": f"eq.{profile_id}", "select": "*", "order": "earned_at.asc"},
+    )
+    return {"badges": [_badge_to_api(b) for b in rows]}
 
 
 # POST /badges/check/{profileId}
 @router.post("/check/{profile_id}")
-async def check_badges(profile_id: str):
-    try:
-        history = read_history()
-        badges = read_badges()
-        earned_badge_ids = [b.get("badgeId") for b in badges if b.get("profileId") == profile_id]
+async def check_badges(profile_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_profile(profile_id, user["user_id"])
 
-        new_badges = []
-        badge_definitions = get_badge_definitions()
+    # 판정에 필요한 데이터를 DB 에서 한 번에 조회 (해당 프로필 스코프)
+    history = [_history_to_api(r) for r in await sb_select(
+        "history", {"profile_id": f"eq.{profile_id}", "select": "*"})]
+    favorites = [_fav_to_api(r) for r in await sb_select(
+        "favorites", {"profile_id": f"eq.{profile_id}", "select": "*"})]
+    searches = [_search_to_api(r) for r in await sb_select(
+        "searches", {"profile_id": f"eq.{profile_id}", "select": "*"})]
+    earned = [_badge_to_api(b) for b in await sb_select(
+        "badges", {"profile_id": f"eq.{profile_id}", "select": "*"})]
+    earned_ids = [b["badgeId"] for b in earned]
 
-        for badge in badge_definitions:
-            if badge["id"] in earned_badge_ids:
-                continue
-            try:
-                earned = badge["check"](history, profile_id, badges)
-            except Exception:
-                earned = False
+    new_badges = []
+    new_rows = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for badge in get_badge_definitions(favorites, searches):
+        if badge["id"] in earned_ids:
+            continue
+        try:
+            ok = badge["check"](history, profile_id, earned)
+        except Exception:
+            ok = False
+        if ok:
+            new_badges.append({
+                "profileId": profile_id,
+                "badgeId": badge["id"],
+                "name": badge["name"],
+                "emoji": badge["emoji"],
+                "description": badge["description"],
+                "earnedAt": now_iso,
+            })
+            new_rows.append({
+                "user_id": user["user_id"],
+                "profile_id": profile_id,
+                "badge_id": badge["id"],
+                "name": badge["name"],
+                "emoji": badge["emoji"],
+                "description": badge["description"],
+                "earned_at": now_iso,
+            })
 
-            if earned:
-                new_badge = {
-                    "profileId": profile_id,
-                    "badgeId": badge["id"],
-                    "name": badge["name"],
-                    "emoji": badge["emoji"],
-                    "description": badge["description"],
-                    "earnedAt": datetime.now(timezone.utc).isoformat(),
-                }
-                new_badges.append(new_badge)
+    if new_rows:
+        await sb_insert("badges", new_rows)
 
-        if new_badges:
-            badges.extend(new_badges)
-            write_badges(badges)
-
-        return {
-            "newBadges": new_badges,
-            "allBadges": [b for b in badges if b.get("profileId") == profile_id],
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="배지 체크 중 오류가 발생했어요")
+    return {
+        "newBadges": new_badges,
+        "allBadges": earned + new_badges,
+    }

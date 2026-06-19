@@ -1,43 +1,48 @@
-import json
-import os
-import uuid
+"""
+찜(즐겨찾기) 라우터 — Supabase DB 버전 (JSON 파일에서 이전)
+
+멀티테넌시: user_id 스코프 + profile_id 소유권 검증.
+중복 찜은 DB unique(profile_id, item_id) 제약이 막는다 → 409.
+DB 컬럼 snake_case → 프론트 camelCase 변환 (_to_api).
+"""
+
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 
+from auth import get_current_user
+from db import sb_select, sb_insert, sb_delete
+from routers.profiles import get_owned_profile
+
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(BASE_DIR, "../data/favorites.json")
 
-
-def read_data() -> list:
-    with open(DATA_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_data(data: list):
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def _to_api(row: dict) -> dict:
+    return {
+        "id": row.get("id"),
+        "profileId": row.get("profile_id"),
+        "type": row.get("type"),
+        "itemId": row.get("item_id"),
+        "title": row.get("title"),
+        "thumbnail": row.get("thumbnail"),
+        "channelTitle": row.get("channel_title"),
+        "totalScore": row.get("total_score"),
+        "savedAt": row.get("saved_at"),
+    }
 
 
 # GET /favorites?profileId=xxx
 @router.get("")
-async def get_favorites(profileId: str):
+async def get_favorites(profileId: str, user: dict = Depends(get_current_user)):
     if not profileId:
         raise HTTPException(status_code=400, detail="profileId가 필요합니다.")
-
-    try:
-        all_favs = read_data()
-        filtered = sorted(
-            [f for f in all_favs if f.get("profileId") == profileId],
-            key=lambda f: f.get("savedAt", ""),
-            reverse=True,
-        )
-        return filtered
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="서버 오류")
+    await get_owned_profile(profileId, user["user_id"])
+    rows = await sb_select(
+        "favorites",
+        {"profile_id": f"eq.{profileId}", "select": "*", "order": "saved_at.desc"},
+    )
+    return [_to_api(r) for r in rows]
 
 
 class FavoriteCreate(BaseModel):
@@ -52,53 +57,39 @@ class FavoriteCreate(BaseModel):
 
 # POST /favorites
 @router.post("")
-async def add_favorite(data: FavoriteCreate):
+async def add_favorite(data: FavoriteCreate, user: dict = Depends(get_current_user)):
     if not data.profileId or not data.type or not data.itemId:
         raise HTTPException(status_code=400, detail="필수 항목이 누락되었습니다.")
+    await get_owned_profile(data.profileId, user["user_id"])
 
     try:
-        all_favs = read_data()
-        existing = next((f for f in all_favs if f.get("profileId") == data.profileId and f.get("itemId") == data.itemId), None)
-        if existing:
-            raise HTTPException(status_code=409, detail="이미 찜한 항목입니다.")
-
-        new_fav = {
-            "id": str(uuid.uuid4()),
-            "profileId": data.profileId,
+        inserted = await sb_insert("favorites", {
+            "user_id": user["user_id"],
+            "profile_id": data.profileId,
             "type": data.type,
-            "itemId": data.itemId,
+            "item_id": data.itemId,
             "title": data.title,
             "thumbnail": data.thumbnail,
-            "channelTitle": data.channelTitle,
-            "totalScore": data.totalScore,
-            "savedAt": datetime.now(timezone.utc).isoformat(),
-        }
-
-        all_favs.append(new_fav)
-        write_data(all_favs)
-        return new_fav
-
-    except HTTPException:
+            "channel_title": data.channelTitle,
+            "total_score": data.totalScore,
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except HTTPException as e:
+        if e.status_code == 409:
+            raise HTTPException(status_code=409, detail="이미 찜한 항목입니다.")
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="서버 오류")
+    return _to_api(inserted[0])
 
 
 # DELETE /favorites/{id}
 @router.delete("/{fav_id}")
-async def delete_favorite(fav_id: str):
-    try:
-        all_favs = read_data()
-        index = next((i for i, f in enumerate(all_favs) if f.get("id") == fav_id), -1)
-
-        if index == -1:
-            raise HTTPException(status_code=404, detail="해당 찜 항목을 찾을 수 없습니다.")
-
-        all_favs.pop(index)
-        write_data(all_favs)
-        return {"message": "찜 해제 완료"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="서버 오류")
+async def delete_favorite(fav_id: str, user: dict = Depends(get_current_user)):
+    # 본인 소유 찜만 삭제 (user_id 동시 매칭)
+    rows = await sb_select(
+        "favorites",
+        {"id": f"eq.{fav_id}", "user_id": f"eq.{user['user_id']}", "select": "id", "limit": "1"},
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="해당 찜 항목을 찾을 수 없습니다.")
+    await sb_delete("favorites", {"id": f"eq.{fav_id}", "user_id": f"eq.{user['user_id']}"})
+    return {"message": "찜 해제 완료"}

@@ -1,14 +1,20 @@
-import json
-import os
+"""
+게임 보너스 라우터 — Supabase DB 버전 (JSON 파일에서 이전)
+
+멀티테넌시: user_id 스코프 + profile_id 소유권 검증.
+일일 보너스 한도(maxBonusMinutes)는 프로필 설정을 따른다.
+DB 컬럼 snake_case → 프론트 camelCase 변환 (_to_api).
+"""
+
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-router = APIRouter()
+from auth import get_current_user
+from db import sb_select, sb_insert
+from routers.profiles import get_owned_profile
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GAME_BONUS_PATH = os.path.join(BASE_DIR, "../data/game-bonus.json")
-PROFILES_PATH = os.path.join(BASE_DIR, "../data/profiles.json")
+router = APIRouter()
 
 # 게임별 보너스 기준 (game-bonus.js와 동일)
 THRESHOLDS = {
@@ -19,44 +25,37 @@ THRESHOLDS = {
 }
 
 
-def read_bonus() -> list:
-    try:
-        with open(GAME_BONUS_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def write_bonus(data: list):
-    with open(GAME_BONUS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def read_profiles() -> list:
-    try:
-        with open(PROFILES_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
+def _to_api(row: dict) -> dict:
+    return {
+        "id": row.get("id"),
+        "profileId": row.get("profile_id"),
+        "date": row.get("date"),
+        "game": row.get("game"),
+        "correctCount": row.get("correct_count"),
+        "bonusMinutes": row.get("bonus_minutes"),
+        "createdAt": row.get("created_at"),
+    }
 
 
 # GET /game-bonus?profileId=xxx
 @router.get("")
-async def get_bonus(profileId: str):
+async def get_bonus(profileId: str, user: dict = Depends(get_current_user)):
     if not profileId:
         raise HTTPException(status_code=400, detail="profileId 필요")
+    await get_owned_profile(profileId, user["user_id"])
 
-    try:
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        all_bonus = read_bonus()
-        today_records = [r for r in all_bonus if r.get("profileId") == profileId and r.get("date") == today]
-        bonus_minutes = sum(r.get("bonusMinutes", 0) for r in today_records)
-        already_played = len(today_records) > 0
-
-        return {"bonusMinutes": bonus_minutes, "alreadyPlayed": already_played, "records": today_records}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"보너스 조회 실패: {str(e)}")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    rows = await sb_select(
+        "game_bonus",
+        {"profile_id": f"eq.{profileId}", "date": f"eq.{today}", "select": "*"},
+    )
+    bonus_minutes = sum(r.get("bonus_minutes") or 0 for r in rows)
+    already_played = len(rows) > 0
+    return {
+        "bonusMinutes": bonus_minutes,
+        "alreadyPlayed": already_played,
+        "records": [_to_api(r) for r in rows],
+    }
 
 
 class BonusRequest(BaseModel):
@@ -67,49 +66,43 @@ class BonusRequest(BaseModel):
 
 # POST /game-bonus
 @router.post("")
-async def save_bonus(data: BonusRequest):
+async def save_bonus(data: BonusRequest, user: dict = Depends(get_current_user)):
     if not data.profileId or not data.game or data.correctCount is None:
         raise HTTPException(status_code=400, detail="profileId, game, correctCount 필요")
 
-    try:
-        threshold = THRESHOLDS.get(data.game, {"full": 5, "partial": 3, "fullBonus": 7, "partialBonus": 3})
-        bonus_minutes = 0
-        if data.correctCount >= threshold["full"]:
-            bonus_minutes = threshold["fullBonus"]
-        elif data.correctCount >= threshold.get("partial", 0):
-            bonus_minutes = threshold.get("partialBonus", 0)
+    profile = await get_owned_profile(data.profileId, user["user_id"])
 
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        all_bonus = read_bonus()
-        today_records = [r for r in all_bonus if r.get("profileId") == data.profileId and r.get("date") == today]
-        today_total = sum(r.get("bonusMinutes", 0) for r in today_records)
+    threshold = THRESHOLDS.get(data.game, {"full": 5, "partial": 3, "fullBonus": 7, "partialBonus": 3})
+    bonus_minutes = 0
+    if data.correctCount >= threshold["full"]:
+        bonus_minutes = threshold["fullBonus"]
+    elif data.correctCount >= threshold.get("partial", 0):
+        bonus_minutes = threshold.get("partialBonus", 0)
 
-        profiles = read_profiles()
-        profile = next((p for p in profiles if p.get("id") == data.profileId), None)
-        max_bonus = profile.get("maxBonusMinutes", 20) if profile else 20
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    rows = await sb_select(
+        "game_bonus",
+        {"profile_id": f"eq.{data.profileId}", "date": f"eq.{today}", "select": "bonus_minutes"},
+    )
+    today_total = sum(r.get("bonus_minutes") or 0 for r in rows)
+    max_bonus = profile.get("max_bonus_minutes") or 20
 
-        remaining = max(0, max_bonus - today_total)
-        actual_bonus = min(bonus_minutes, remaining)
-        already_played = len(today_records) > 0
+    remaining = max(0, max_bonus - today_total)
+    actual_bonus = min(bonus_minutes, remaining)
 
-        record = {
-            "id": f"bonus_{int(datetime.now(timezone.utc).timestamp() * 1000)}",
-            "profileId": data.profileId,
-            "date": today,
-            "game": data.game,
-            "correctCount": data.correctCount,
-            "bonusMinutes": actual_bonus,
-            "createdAt": datetime.now(timezone.utc).isoformat(),
-        }
-        all_bonus.append(record)
-        write_bonus(all_bonus)
+    inserted = await sb_insert("game_bonus", {
+        "user_id": user["user_id"],
+        "profile_id": data.profileId,
+        "date": today,
+        "game": data.game,
+        "correct_count": data.correctCount,
+        "bonus_minutes": actual_bonus,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
 
-        return {
-            "bonusMinutes": actual_bonus,
-            "todayTotal": today_total + actual_bonus,
-            "maxBonus": max_bonus,
-            "record": record,
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"보너스 저장 실패: {str(e)}")
+    return {
+        "bonusMinutes": actual_bonus,
+        "todayTotal": today_total + actual_bonus,
+        "maxBonus": max_bonus,
+        "record": _to_api(inserted[0]),
+    }

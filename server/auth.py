@@ -128,8 +128,9 @@ async def _supabase_select(table: str, params: dict) -> list:
         "Authorization": f"Bearer {SUPABASE_SECRET_KEY}",
     }
     try:
-        async with httpx.AsyncClient(timeout=10.0) as c:
-            r = await c.get(url, headers=headers, params=params)
+        # 전역 httpx 클라이언트 재사용 (연결 keep-alive → 호출당 ~500ms 절감)
+        from db import _get_client
+        r = await _get_client().get(url, headers=headers, params=params)
         r.raise_for_status()
         return r.json()
     except HTTPException:

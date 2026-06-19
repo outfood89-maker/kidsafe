@@ -1,15 +1,18 @@
 import json
 import os
 from collections import Counter
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
+
+from auth import get_current_user
+from db import sb_select
 
 router = APIRouter()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 캐시(analysis-cache)는 시스템 데이터 — Phase 3 에서 DB 전환 예정, 현재 JSON 유지
 CACHE_PATH = os.path.join(BASE_DIR, "../data/analysis-cache.json")
-HISTORY_PATH = os.path.join(BASE_DIR, "../data/history.json")
-PROFILES_PATH = os.path.join(BASE_DIR, "../data/profiles.json")
+# history/profiles 는 Phase 2 에서 DB 로 이전됨 → DB 조회
 
 # 연령별 기본 안전 기준 — 프론트 safetyFilter.js의 AGE_THRESHOLD와 동일하게 유지할 것
 AGE_THRESHOLD = {3: 90, 5: 85, 7: 80, 10: 70}
@@ -56,27 +59,36 @@ def is_safe_candidate(entry: dict, threshold: int) -> bool:
 
 # GET /recommend?profileId=...&limit=12
 @router.get("")
-async def recommend(profileId: Optional[str] = None, limit: int = 12):
+async def recommend(profileId: Optional[str] = None, limit: int = 12, user: dict = Depends(get_current_user)):
     """캐시 기반 맞춤 추천 — YouTube 쿼터 0.
     이미 분석된 안전 영상 풀(캐시)에서, 아이가 자주 본 안전 채널을 우대해 추천한다.
     캐시가 쌓일수록 후보가 풍부해지고 추천이 정확해진다(설계서 5-3)."""
     try:
         cache = _read_json(CACHE_PATH, {})
-        history = _read_json(HISTORY_PATH, [])
-        profiles = _read_json(PROFILES_PATH, [])
 
-        # 프로필 정보 (연령 + 안전 기준)
-        profile = next((p for p in profiles if str(p.get("id")) == str(profileId)), None)
+        # 프로필 정보 (연령 + 안전 기준) — 본인 프로필만 조회 (DB)
+        profile = None
+        if profileId:
+            prows = await sb_select(
+                "profiles",
+                {"id": f"eq.{profileId}", "user_id": f"eq.{user['user_id']}", "select": "*", "limit": "1"},
+            )
+            profile = prows[0] if prows else None
         age = profile.get("age") if profile else None
-        threshold = effective_threshold(age, profile.get("safetyThreshold") if profile else None)
+        threshold = effective_threshold(age, profile.get("safety_threshold") if profile else None)
 
-        # 이 프로필의 시청 기록 → 이미 본 영상(제외용) + 선호 채널(가산점용)
-        my_history = [h for h in history if not profileId or h.get("profileId") == str(profileId)]
-        watched_ids = {h.get("videoId") for h in my_history if h.get("videoId")}
+        # 이 프로필의 시청 기록 → 이미 본 영상(제외용) + 선호 채널(가산점용) (DB)
+        my_history = []
+        if profileId:
+            my_history = await sb_select(
+                "history",
+                {"profile_id": f"eq.{profileId}", "select": "video_id,channel_title,total_score"},
+            )
+        watched_ids = {h.get("video_id") for h in my_history if h.get("video_id")}
         preferred_channels = Counter(
-            h.get("channelTitle")
+            h.get("channel_title")
             for h in my_history
-            if h.get("channelTitle") and (h.get("totalScore") or 0) >= SAFE_WATCH_SCORE
+            if h.get("channel_title") and (h.get("total_score") or 0) >= SAFE_WATCH_SCORE
         )
 
         scored = []
