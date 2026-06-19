@@ -1,25 +1,18 @@
-import json
-import os
+"""
+관리자 대시보드 통계 — Supabase DB 버전 (Phase 3c)
+
+집계 소스 전부 DB:
+- searches(검색) / channel_scores(검수 채널) / feedback(신고) / analysis_cache(검수 결과)
+"""
+
 from collections import Counter
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Depends
+
 from auth import require_admin
+from db import sb_select
 
 router = APIRouter()
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SEARCHES_PATH = os.path.join(BASE_DIR, "../data/searches.json")
-CHANNEL_SCORES_PATH = os.path.join(BASE_DIR, "../data/channel-scores.json")
-FEEDBACK_PATH = os.path.join(BASE_DIR, "../data/feedback.json")
-CACHE_PATH = os.path.join(BASE_DIR, "../data/analysis-cache.json")
-
-
-def read_json(path: str, default):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default
 
 
 # ─── GET /admin/stats — 관리자 대시보드 통계 ──────────────────
@@ -28,17 +21,17 @@ def read_json(path: str, default):
 async def get_stats(admin: dict = Depends(require_admin)):
     """대시보드 개요용 집계 통계 (검색/분석/안전도/피드백)"""
     try:
-        searches = read_json(SEARCHES_PATH, [])
-        channels = read_json(CHANNEL_SCORES_PATH, {})
-        feedbacks = read_json(FEEDBACK_PATH, [])
-        cache = read_json(CACHE_PATH, {})
+        searches = await sb_select("searches", {"select": "keyword,searched_at"})
+        channels = await sb_select("channel_scores", {"select": "channel_title,count"})
+        feedbacks = await sb_select("feedback", {"select": "status,category"})
+        cache_rows = await sb_select("analysis_cache", {"select": "result"})
+        cache_values = [r.get("result") for r in cache_rows]
 
-        # ── 안전도 분포 (분석 캐시 기준) ──
-        # 90+ 안전 / 70~89 주의 / ~69 위험
+        # ── 안전도 분포 (분석 캐시 기준) ── 90+ 안전 / 70~89 주의 / ~69 위험
         safe = caution = danger = 0
         score_sum = 0
         score_count = 0
-        for v in cache.values():
+        for v in cache_values:
             if not isinstance(v, dict):
                 continue
             score = v.get("totalScore")
@@ -64,7 +57,7 @@ async def get_stats(admin: dict = Depends(require_admin)):
         now = datetime.now(timezone.utc)
         day_counts = Counter()
         for s in searches:
-            raw = s.get("searchedAt", "")
+            raw = s.get("searched_at", "") or ""
             try:
                 dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
                 day_counts[dt.date().isoformat()] += 1
@@ -77,35 +70,25 @@ async def get_stats(admin: dict = Depends(require_admin)):
 
         # ── Top 검색 키워드 ──
         kw_counter = Counter(
-            s.get("keyword", "").strip()
+            (s.get("keyword") or "").strip()
             for s in searches
-            if s.get("keyword", "").strip()
+            if (s.get("keyword") or "").strip()
         )
-        top_keywords = [
-            {"keyword": k, "count": c} for k, c in kw_counter.most_common(10)
-        ]
+        top_keywords = [{"keyword": k, "count": c} for k, c in kw_counter.most_common(10)]
 
         # ── Top 채널 (검수 누적 횟수) ──
         top_channels = sorted(
             (
-                {
-                    "channelTitle": c.get("channelTitle", "(이름 없음)"),
-                    "count": c.get("count", 0),
-                }
-                for c in channels.values()
-                if isinstance(c, dict)
+                {"channelTitle": c.get("channel_title", "(이름 없음)"), "count": c.get("count", 0)}
+                for c in channels
             ),
             key=lambda x: x["count"],
             reverse=True,
         )[:10]
 
-        # ── 카테고리별 피드백 분포 (룰 개선 후보 파악용) ──
-        cat_counter = Counter(
-            f.get("category", "etc") for f in feedbacks if f.get("category")
-        )
-        feedback_by_category = [
-            {"category": k, "count": c} for k, c in cat_counter.most_common()
-        ]
+        # ── 카테고리별 피드백 분포 ──
+        cat_counter = Counter(f.get("category", "etc") for f in feedbacks if f.get("category"))
+        feedback_by_category = [{"category": k, "count": c} for k, c in cat_counter.most_common()]
 
         return {
             "cards": {

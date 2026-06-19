@@ -11,6 +11,7 @@ import time
 import anthropic
 from auth import get_current_user, _supabase_select
 from db import sb_select, sb_upsert, sb_delete
+from rules_store import load_prompt_rules, prompt_rules_updated_at
 
 # 자막 추출 라이브러리 — 설치/임포트 실패해도 서버는 떠야 하므로 방어적 import
 try:
@@ -20,11 +21,8 @@ except Exception:
 
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # analysis_cache / trusted_channels / channel_scores / usage 는 Phase 3b 에서 DB 로 이전됨.
-# prompt-rules 는 3c 에서 DB 전환 예정 — 현재 JSON 유지 (mtime 기반 캐시 무효화에 사용)
-PROMPT_RULES_PATH = os.path.join(BASE_DIR, "../data/prompt-rules.json")
-
+# prompt_rules 는 Phase 3c 에서 DB(rules_store) 로 이전됨.
 FREE_DAILY_DEEP_LIMIT = 3
 
 # 자동 신뢰 채널 등록 임계값 (Tier 2에서 90+ 판정을 N번 받으면 자동 등록)
@@ -332,15 +330,6 @@ async def fetch_transcript(video_id: str, max_chars: int = 2000) -> str:
         return ""
 
 
-def load_prompt_rules() -> dict:
-    """prompt-rules.json에서 판단 기준을 읽어옴. 파일 없거나 파싱 실패 시 빈 dict 반환."""
-    try:
-        with open(PROMPT_RULES_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
 def build_rules_section(rules: dict) -> str:
     """prompt-rules.json을 프롬프트 텍스트로 변환"""
     lines = []
@@ -377,8 +366,8 @@ def build_rules_section(rules: dict) -> str:
     return "\n".join(lines)
 
 
-def build_deep_system_prompt() -> str:
-    rules = load_prompt_rules()
+async def build_deep_system_prompt() -> str:
+    rules = await load_prompt_rules()
     rules_section = build_rules_section(rules)
 
     return f"""너는 어린이 미디어 안전 분석 전문가야. 주어진 유튜브 영상 정보를 보고 어린이에게 얼마나 안전하고 적합한지 평가해.
@@ -469,7 +458,7 @@ async def analyze_with_claude(title: str, description: str, channel_title: str, 
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1200,
-        system=build_deep_system_prompt(),
+        system=await build_deep_system_prompt(),
         messages=[{"role": "user", "content": user_content}],
     )
     raw = response.content[0].text if response.content else ""
@@ -655,13 +644,11 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
             cached = await get_cache_entry(video_id)
             if cached and cached.get("confidence") == "high":
                 try:
-                    rules_mtime = os.path.getmtime(PROMPT_RULES_PATH)
                     analyzed_at = cached.get("analyzedAt", "")
                     if analyzed_at:
-                        from datetime import datetime, timezone
                         cached_dt = datetime.fromisoformat(analyzed_at)
-                        rules_dt = datetime.fromtimestamp(rules_mtime, tz=timezone.utc)
-                        if rules_dt <= cached_dt:
+                        rules_dt = await prompt_rules_updated_at()
+                        if rules_dt is None or rules_dt <= cached_dt:
                             return cached
                         # 룰이 더 최신 → 캐시 무시하고 재분석
                         print(f"룰 업데이트 감지 → 재분석: {video_id}")

@@ -1,3 +1,16 @@
+"""
+피드백 & 룰 자동화 라우터 — Supabase DB 버전 (Phase 3c)
+
+데이터 소스:
+- feedback        → DB feedback 테이블 (점수 이상 신고)
+- pending_rules   → DB pending_rules 테이블 (승인 대기 룰 제안)
+- prompt_rules    → DB (rules_store 모듈, 공용)
+- analysis_cache  → DB (피드백 후 해당 영상 캐시 삭제 → 재분석)
+
+⚠️ pending-rules 의 approve/reject 는 프론트가 '인덱스'로 호출한다.
+   DB 조회를 created_at 오름차순으로 고정해 인덱스 순서를 일정하게 유지한다(프론트 변경 0).
+"""
+
 import json
 import os
 from datetime import datetime, timezone
@@ -5,31 +18,52 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 import anthropic
+
 from auth import require_admin
 from audit import write_audit
+from db import sb_select, sb_insert, sb_delete, sb_update
+from rules_store import load_prompt_rules, save_prompt_rules
 
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FEEDBACK_PATH = os.path.join(BASE_DIR, "../data/feedback.json")
-PENDING_RULES_PATH = os.path.join(BASE_DIR, "../data/pending-rules.json")
-PROMPT_RULES_PATH = os.path.join(BASE_DIR, "../data/prompt-rules.json")
-CACHE_PATH = os.path.join(BASE_DIR, "../data/analysis-cache.json")
+
+# ─── DB row → 프론트 camelCase 변환 ───────────────────────────
+
+def _fb_to_api(r: dict) -> dict:
+    return {
+        "id": r.get("id"),
+        "videoId": r.get("video_id"),
+        "title": r.get("title"),
+        "channelTitle": r.get("channel_title"),
+        "category": r.get("category"),
+        "currentScore": r.get("current_score"),
+        "reason": r.get("reason"),
+        "reportedAt": r.get("reported_at"),
+        "status": r.get("status"),
+    }
 
 
-# ─── 파일 I/O ────────────────────────────────────────────────
+def _pending_to_api(r: dict) -> dict:
+    return {
+        "category": r.get("category"),
+        "type": r.get("type"),
+        "rule": r.get("rule"),
+        "reason": r.get("reason"),
+        "suggestedAt": r.get("suggested_at"),
+        "status": r.get("status"),
+    }
 
-def read_json(path: str, default):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default
 
-
-def write_json(path: str, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def _add_rule(rules: dict, category: str, rule_type: str, rule_text: str) -> bool:
+    """prompt_rules dict 에 룰 1줄 추가 (중복이면 추가 안 함). 추가 여부 반환."""
+    if category not in rules:
+        rules[category] = {"description": "", "exemptions": [], "penalties": [], "bonuses": []}
+    if rule_type not in rules[category]:
+        rules[category][rule_type] = []
+    if rule_text not in rules[category][rule_type]:
+        rules[category][rule_type].append(rule_text)
+        return True
+    return False
 
 
 # ─── Pydantic 모델 ────────────────────────────────────────────
@@ -38,18 +72,17 @@ class FeedbackRequest(BaseModel):
     videoId: str
     title: str
     channelTitle: Optional[str] = ""
-    # 어떤 카테고리 점수가 이상한지
     category: str          # "scary" | "violence" | "language" | "sexual" | "educational"
     currentScore: int
-    reason: Optional[str] = ""  # 사용자가 직접 쓴 사유 (선택)
+    reason: Optional[str] = ""
 
 
 class ApproveRequest(BaseModel):
-    index: int             # pending-rules.json 배열 인덱스
+    index: int             # pending_rules 정렬 순서상의 인덱스
 
 
 class BulkRequest(BaseModel):
-    indices: List[int]     # 일괄 처리할 pending-rules.json 배열 인덱스 목록
+    indices: List[int]     # 일괄 처리할 인덱스 목록
 
 
 # ─── POST /feedback — 점수 이상 신고 접수 ─────────────────────
@@ -57,28 +90,27 @@ class BulkRequest(BaseModel):
 @router.post("")
 async def submit_feedback(data: FeedbackRequest):
     try:
-        feedbacks = read_json(FEEDBACK_PATH, [])
-        feedbacks.append({
-            "videoId": data.videoId,
+        await sb_insert("feedback", {
+            "video_id": data.videoId,
             "title": data.title,
-            "channelTitle": data.channelTitle,
+            "channel_title": data.channelTitle,
             "category": data.category,
-            "currentScore": data.currentScore,
+            "current_score": data.currentScore,
             "reason": data.reason,
-            "reportedAt": datetime.now(timezone.utc).isoformat(),
-            "status": "pending",  # pending | processed
+            "reported_at": datetime.now(timezone.utc).isoformat(),
+            "status": "pending",
         })
-        write_json(FEEDBACK_PATH, feedbacks)
         return {"ok": True, "message": "피드백이 접수됐어요. 검토 후 반영할게요!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"피드백 저장 오류: {str(e)}")
 
 
-# ─── GET /feedback — 쌓인 피드백 조회 ────────────────────────
+# ─── GET /feedback — 쌓인 피드백 조회 (최신순) ───────────────
 
 @router.get("")
 async def get_feedbacks(admin: dict = Depends(require_admin)):
-    return read_json(FEEDBACK_PATH, [])
+    rows = await sb_select("feedback", {"select": "*", "order": "created_at.desc"})
+    return [_fb_to_api(r) for r in rows]
 
 
 # ─── POST /admin/rules/suggest — Claude가 피드백 분석 → 룰 제안 ─
@@ -86,20 +118,18 @@ async def get_feedbacks(admin: dict = Depends(require_admin)):
 @router.post("/admin/rules/suggest")
 async def suggest_rules(admin: dict = Depends(require_admin)):
     try:
-        feedbacks = read_json(FEEDBACK_PATH, [])
-        pending_feedbacks = [f for f in feedbacks if f.get("status") == "pending"]
+        pending_feedbacks = await sb_select("feedback", {"status": "eq.pending", "select": "*"})
 
         if not pending_feedbacks:
             return {"ok": True, "message": "분석할 피드백이 없어요.", "suggestions": []}
 
-        current_rules = read_json(PROMPT_RULES_PATH, {})
+        current_rules = await load_prompt_rules()
 
-        # Claude에게 피드백 패턴 분석 요청
         client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
         feedbacks_text = "\n".join([
-            f"- [{f['category']}] '{f['title']}' (채널: {f['channelTitle']}) "
-            f"현재점수={f['currentScore']} 사유={f.get('reason','없음')}"
+            f"- [{f['category']}] '{f['title']}' (채널: {f.get('channel_title')}) "
+            f"현재점수={f['current_score']} 사유={f.get('reason') or '없음'}"
             for f in pending_feedbacks
         ])
 
@@ -115,7 +145,7 @@ async def suggest_rules(admin: dict = Depends(require_admin)):
 
 {feedbacks_text}
 
-현재 적용 중인 판단 기준(prompt-rules.json):
+현재 적용 중인 판단 기준(prompt-rules):
 {current_rules_text}
 
 위 피드백들을 분석해서, 기존 룰에 추가하면 좋을 새 예외 사례(exemption)나 가산점(bonus)을 제안해줘.
@@ -133,28 +163,30 @@ async def suggest_rules(admin: dict = Depends(require_admin)):
         )
 
         raw = response.content[0].text if response.content else "[]"
-
-        # JSON 파싱
         cleaned = raw.strip()
         start = cleaned.find("[")
         end = cleaned.rfind("]")
         suggestions = json.loads(cleaned[start:end + 1]) if start != -1 else []
 
-        # pending-rules.json에 저장
-        pending = read_json(PENDING_RULES_PATH, [])
+        # pending_rules 에 저장
+        now_iso = datetime.now(timezone.utc).isoformat()
+        new_rows = []
         for s in suggestions:
-            s["suggestedAt"] = datetime.now(timezone.utc).isoformat()
-            s["status"] = "pending"
-            pending.append(s)
-        write_json(PENDING_RULES_PATH, pending)
+            new_rows.append({
+                "category": s.get("category"),
+                "type": s.get("type"),
+                "rule": s.get("rule"),
+                "reason": s.get("reason"),
+                "suggested_at": now_iso,
+                "status": "pending",
+            })
+        if new_rows:
+            await sb_insert("pending_rules", new_rows)
 
-        # 처리된 피드백 status 업데이트
-        for f in feedbacks:
-            if f.get("status") == "pending":
-                f["status"] = "processed"
-        write_json(FEEDBACK_PATH, feedbacks)
+        # 처리된 피드백 status 업데이트 (pending → processed)
+        await sb_update("feedback", {"status": "eq.pending"}, {"status": "processed"})
 
-        write_audit(admin, "AI 룰 제안 생성", detail=f"{len(suggestions)}건 제안")
+        await write_audit(admin, "AI 룰 제안 생성", detail=f"{len(suggestions)}건 제안")
         return {"ok": True, "suggestions": suggestions}
 
     except Exception as e:
@@ -165,45 +197,39 @@ async def suggest_rules(admin: dict = Depends(require_admin)):
 
 @router.get("/admin/rules/pending")
 async def get_pending_rules(admin: dict = Depends(require_admin)):
-    return read_json(PENDING_RULES_PATH, [])
+    rows = await sb_select("pending_rules", {"select": "*", "order": "created_at.asc"})
+    return [_pending_to_api(r) for r in rows]
 
 
-# ─── POST /admin/rules/approve — 제안 룰 승인 → prompt-rules.json 반영 ──
+async def _load_pending_ordered() -> list:
+    """인덱스 매핑용 — 항상 같은 순서(created_at asc)로 pending_rules 조회."""
+    return await sb_select("pending_rules", {"select": "*", "order": "created_at.asc"})
+
+
+# ─── POST /admin/rules/approve — 제안 룰 승인 → prompt_rules 반영 ──
 
 @router.post("/admin/rules/approve")
 async def approve_rule(data: ApproveRequest, admin: dict = Depends(require_admin)):
     try:
-        pending = read_json(PENDING_RULES_PATH, [])
-
+        pending = await _load_pending_ordered()
         if data.index < 0 or data.index >= len(pending):
             raise HTTPException(status_code=404, detail="해당 인덱스의 룰이 없어요")
 
         rule = pending[data.index]
         category = rule.get("category")
-        rule_type = rule.get("type")   # "exemptions" | "penalties" | "bonuses"
+        rule_type = rule.get("type")
         rule_text = rule.get("rule")
-
         if not all([category, rule_type, rule_text]):
             raise HTTPException(status_code=400, detail="룰 데이터가 올바르지 않아요")
 
-        # prompt-rules.json에 추가
-        rules = read_json(PROMPT_RULES_PATH, {})
-        if category not in rules:
-            rules[category] = {"description": "", "exemptions": [], "penalties": [], "bonuses": []}
-        if rule_type not in rules[category]:
-            rules[category][rule_type] = []
+        rules = await load_prompt_rules()
+        _add_rule(rules, category, rule_type, rule_text)
+        await save_prompt_rules(rules)
 
-        if rule_text not in rules[category][rule_type]:
-            rules[category][rule_type].append(rule_text)
+        await sb_delete("pending_rules", {"id": f"eq.{rule['id']}"})
 
-        write_json(PROMPT_RULES_PATH, rules)
-
-        # pending에서 제거
-        pending.pop(data.index)
-        write_json(PENDING_RULES_PATH, pending)
-
-        write_audit(admin, "룰 승인", target=category, detail=rule_text)
-        return {"ok": True, "message": f"룰이 승인됐어요. 다음 분석부터 즉시 반영돼요!", "addedRule": rule_text}
+        await write_audit(admin, "룰 승인", target=category, detail=rule_text)
+        return {"ok": True, "message": "룰이 승인됐어요. 다음 분석부터 즉시 반영돼요!", "addedRule": rule_text}
 
     except HTTPException:
         raise
@@ -216,12 +242,12 @@ async def approve_rule(data: ApproveRequest, admin: dict = Depends(require_admin
 @router.delete("/admin/rules/pending/{index}")
 async def reject_rule(index: int, admin: dict = Depends(require_admin)):
     try:
-        pending = read_json(PENDING_RULES_PATH, [])
+        pending = await _load_pending_ordered()
         if index < 0 or index >= len(pending):
             raise HTTPException(status_code=404, detail="해당 인덱스의 룰이 없어요")
-        rejected = pending.pop(index)
-        write_json(PENDING_RULES_PATH, pending)
-        write_audit(admin, "룰 거부", target=rejected.get("category", ""), detail=rejected.get("rule", ""))
+        rejected = pending[index]
+        await sb_delete("pending_rules", {"id": f"eq.{rejected['id']}"})
+        await write_audit(admin, "룰 거부", target=rejected.get("category", ""), detail=rejected.get("rule", ""))
         return {"ok": True, "message": "룰 제안이 거부됐어요.", "rejectedRule": rejected.get("rule")}
     except HTTPException:
         raise
@@ -230,41 +256,34 @@ async def reject_rule(index: int, admin: dict = Depends(require_admin)):
 
 
 # ─── POST /admin/rules/approve-bulk — 제안 룰 일괄 승인 ───────
-# 인덱스가 밀리지 않도록 스냅샷에 대해 한 번에 처리 (인덱스 집합 → 일괄 반영 후 재구성)
 
 @router.post("/admin/rules/approve-bulk")
 async def approve_rules_bulk(data: BulkRequest, admin: dict = Depends(require_admin)):
     try:
-        pending = read_json(PENDING_RULES_PATH, [])
+        pending = await _load_pending_ordered()
         idx_set = {i for i in data.indices if 0 <= i < len(pending)}
         if not idx_set:
             return {"ok": True, "approved": 0, "message": "처리할 룰이 없어요."}
 
-        rules = read_json(PROMPT_RULES_PATH, {})
+        rules = await load_prompt_rules()
         approved = 0
+        ids = []
         for i in idx_set:
             rule = pending[i]
             category = rule.get("category")
-            rule_type = rule.get("type")   # "exemptions" | "penalties" | "bonuses"
+            rule_type = rule.get("type")
             rule_text = rule.get("rule")
             if not all([category, rule_type, rule_text]):
                 continue
-
-            if category not in rules:
-                rules[category] = {"description": "", "exemptions": [], "penalties": [], "bonuses": []}
-            if rule_type not in rules[category]:
-                rules[category][rule_type] = []
-            if rule_text not in rules[category][rule_type]:
-                rules[category][rule_type].append(rule_text)
+            _add_rule(rules, category, rule_type, rule_text)
+            ids.append(str(rule["id"]))
             approved += 1
 
-        write_json(PROMPT_RULES_PATH, rules)
+        await save_prompt_rules(rules)
+        if ids:
+            await sb_delete("pending_rules", {"id": f"in.({','.join(ids)})"})
 
-        # 처리된 인덱스를 제외하고 pending 재구성 (pop 반복 시 인덱스 밀림 방지)
-        new_pending = [r for i, r in enumerate(pending) if i not in idx_set]
-        write_json(PENDING_RULES_PATH, new_pending)
-
-        write_audit(admin, "룰 일괄 승인", detail=f"{approved}건")
+        await write_audit(admin, "룰 일괄 승인", detail=f"{approved}건")
         return {"ok": True, "approved": approved, "message": f"{approved}개 룰이 승인됐어요!"}
 
     except HTTPException:
@@ -278,12 +297,13 @@ async def approve_rules_bulk(data: BulkRequest, admin: dict = Depends(require_ad
 @router.post("/admin/rules/reject-bulk")
 async def reject_rules_bulk(data: BulkRequest, admin: dict = Depends(require_admin)):
     try:
-        pending = read_json(PENDING_RULES_PATH, [])
+        pending = await _load_pending_ordered()
         idx_set = {i for i in data.indices if 0 <= i < len(pending)}
-        new_pending = [r for i, r in enumerate(pending) if i not in idx_set]
-        write_json(PENDING_RULES_PATH, new_pending)
-        write_audit(admin, "룰 일괄 거부", detail=f"{len(idx_set)}건")
-        return {"ok": True, "rejected": len(idx_set), "message": f"{len(idx_set)}개 룰이 거부됐어요."}
+        ids = [str(pending[i]["id"]) for i in idx_set]
+        if ids:
+            await sb_delete("pending_rules", {"id": f"in.({','.join(ids)})"})
+        await write_audit(admin, "룰 일괄 거부", detail=f"{len(ids)}건")
+        return {"ok": True, "rejected": len(ids), "message": f"{len(ids)}개 룰이 거부됐어요."}
     except HTTPException:
         raise
     except Exception as e:
@@ -294,17 +314,17 @@ async def reject_rules_bulk(data: BulkRequest, admin: dict = Depends(require_adm
 
 @router.get("/admin/rules")
 async def get_current_rules(admin: dict = Depends(require_admin)):
-    return read_json(PROMPT_RULES_PATH, {})
+    return await load_prompt_rules()
 
 
 # ─── POST /feedback/pipeline — 완전 자동화 파이프라인 ─────────
-# ① 피드백 저장 → ② Claude 룰 1개 생성 → ③ prompt-rules.json 즉시 반영 → ④ 캐시 삭제
+# ① 피드백 저장 → ② Claude 룰 1개 생성 → ③ prompt_rules 즉시 반영 → ④ 캐시 삭제
 
 class PipelineRequest(BaseModel):
     videoId: str
     title: str
     channelTitle: Optional[str] = ""
-    category: str           # "scary" | "violence" | "language" | "sexual" | "educational"
+    category: str
     currentScore: int
     reason: Optional[str] = ""
 
@@ -313,21 +333,19 @@ class PipelineRequest(BaseModel):
 async def feedback_pipeline(data: PipelineRequest):
     try:
         # ① 피드백 저장
-        feedbacks = read_json(FEEDBACK_PATH, [])
-        feedbacks.append({
-            "videoId": data.videoId,
+        await sb_insert("feedback", {
+            "video_id": data.videoId,
             "title": data.title,
-            "channelTitle": data.channelTitle,
+            "channel_title": data.channelTitle,
             "category": data.category,
-            "currentScore": data.currentScore,
+            "current_score": data.currentScore,
             "reason": data.reason,
-            "reportedAt": datetime.now(timezone.utc).isoformat(),
+            "reported_at": datetime.now(timezone.utc).isoformat(),
             "status": "auto-processed",
         })
-        write_json(FEEDBACK_PATH, feedbacks)
 
         # ② Claude에게 룰 1개 생성 요청 (방향 판단 포함)
-        current_rules = read_json(PROMPT_RULES_PATH, {})
+        current_rules = await load_prompt_rules()
         cat_rules = current_rules.get(data.category, {})
         existing_exempt = "\n".join(f"- {r}" for r in cat_rules.get("exemptions", [])) or "(없음)"
         existing_penal = "\n".join(f"- {r}" for r in cat_rules.get("penalties", [])) or "(없음)"
@@ -375,20 +393,13 @@ async def feedback_pipeline(data: PipelineRequest):
         if not new_rule:
             return {"ok": False, "message": "Claude가 룰을 생성하지 못했어요."}
 
-        # ③ prompt-rules.json 즉시 반영
-        rules = read_json(PROMPT_RULES_PATH, {})
-        if data.category not in rules:
-            rules[data.category] = {"description": "", "exemptions": [], "penalties": [], "bonuses": []}
-        if rule_type not in rules[data.category]:
-            rules[data.category][rule_type] = []
-
-        if new_rule not in rules[data.category][rule_type]:
-            rules[data.category][rule_type].append(new_rule)
-            write_json(PROMPT_RULES_PATH, rules)
+        # ③ prompt_rules 즉시 반영
+        rules = await load_prompt_rules()
+        if _add_rule(rules, data.category, rule_type, new_rule):
+            await save_prompt_rules(rules)
 
         # ④ analysis_cache(DB)에서 해당 영상 삭제 → 다음 모달 열 때 새 룰로 재분석
         if data.videoId:
-            from db import sb_delete
             await sb_delete("analysis_cache", {"video_id": f"eq.{data.videoId}"})
 
         return {
@@ -396,7 +407,7 @@ async def feedback_pipeline(data: PipelineRequest):
             "addedRule": new_rule,
             "addedType": rule_type,
             "reason": suggested.get("reason", ""),
-            "message": f"룰이 추가됐어요! 모달을 다시 열면 새 점수로 재분석돼요.",
+            "message": "룰이 추가됐어요! 모달을 다시 열면 새 점수로 재분석돼요.",
         }
 
     except Exception as e:
