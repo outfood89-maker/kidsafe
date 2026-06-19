@@ -396,6 +396,8 @@ export default function KidHome() {
     try {
       const blockCheck = await checkBlockedKeyword(trimmedKeyword);
       if (blockCheck.blocked) {
+        // 차단 시 이전 검색 결과를 비우고 안내 메시지를 보여준다
+        setVideos([]); setPlaylists([]); setShowSearchHistory(false);
         setError(`🙈 앗! "${trimmedKeyword}"은(는) 검색할 수 없어요. 다른 키워드로 찾아봐요!`);
         return;
       }
@@ -984,6 +986,13 @@ export default function KidHome() {
                     </div>
                   </div>
 
+                  {/* 검색 안내/오류 메시지 — 검색창 바로 아래에 표시 */}
+                  {error && (
+                    <div className="mt-3 px-4 py-2.5 text-center text-sm font-medium" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", color: "#C84B47" }}>
+                      {error}
+                    </div>
+                  )}
+
                   {/* 모바일 전용: 검색창 아래 타이머 */}
                   {tl && (
                     <div className="md:hidden mt-3" style={{
@@ -1169,11 +1178,6 @@ export default function KidHome() {
         {/* ── 검색 결과 있을 때 ── */}
         {(videos.length > 0 || playlists.length > 0) && (
           <>
-            {error && (
-              <div className="mb-5 px-4 py-3 text-center text-sm font-medium" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", color: "#C84B47" }}>
-                {error}
-              </div>
-            )}
             {videos.length > 0 && (
               <section className="mt-4 mb-6">
                 <div className="mb-4 flex items-center gap-2">

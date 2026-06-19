@@ -1,39 +1,51 @@
-import json
-import os
-import uuid
+"""
+위험 영상 알림 라우터 — Supabase DB 버전 (JSON 파일에서 이전)
+
+멀티테넌시: user_id 스코프.
+- create_alert_if_needed: history 저장 시 호출 (async, user_id 필요)
+- alert_settings 는 user 당 1행 (upsert)
+DB 컬럼 snake_case → 프론트 camelCase 변환 (_to_api).
+"""
+
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 
+from auth import get_current_user
+from db import sb_select, sb_insert, sb_update, sb_upsert
+
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ALERTS_PATH = os.path.join(BASE_DIR, "../data/alerts.json")
-SETTINGS_PATH = os.path.join(BASE_DIR, "../data/alert-settings.json")
+# 알림 설정 기본값 (user 설정이 없을 때)
+DEFAULT_SETTINGS = {"threshold": 70, "lateNightAlert": True, "lateNightHour": 22}
 
 
-def read_alerts() -> list:
-    with open(ALERTS_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_alerts(data: list):
-    with open(ALERTS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def read_settings() -> dict:
-    with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_settings(data: dict):
-    with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def _to_api(row: dict) -> dict:
+    return {
+        "id": row.get("id"),
+        "profileId": row.get("profile_id"),
+        "videoId": row.get("video_id"),
+        "title": row.get("title"),
+        "channelTitle": row.get("channel_title"),
+        "thumbnail": row.get("thumbnail"),
+        "totalScore": row.get("total_score"),
+        "violence": row.get("violence"),
+        "language": row.get("language"),
+        "sexual": row.get("sexual"),
+        "reasons": row.get("reasons") or [],
+        "severity": row.get("severity"),
+        "watchedAt": row.get("watched_at"),
+        "watchCount": row.get("watch_count"),
+        "repeated": row.get("repeated"),
+        "read": row.get("read"),
+        "updatedAt": row.get("updated_at"),
+    }
 
 
 def get_severity(total_score: int, threshold: int) -> Optional[str]:
+    if total_score is None:
+        return None
     if total_score < threshold - 10:
         return "danger"
     if total_score < threshold:
@@ -41,19 +53,31 @@ def get_severity(total_score: int, threshold: int) -> Optional[str]:
     return None
 
 
-def create_alert_if_needed(record: dict) -> Optional[dict]:
-    """history.py에서 시청 기록 저장 시 호출"""
+async def _read_settings(user_id: str) -> dict:
+    """user 의 알림 설정을 camelCase 로 반환 (없으면 기본값)."""
+    rows = await sb_select(
+        "alert_settings",
+        {"user_id": f"eq.{user_id}", "select": "*", "limit": "1"},
+    )
+    if not rows:
+        return dict(DEFAULT_SETTINGS)
+    r = rows[0]
+    return {
+        "threshold": r.get("threshold", 70),
+        "lateNightAlert": r.get("late_night_alert", True),
+        "lateNightHour": r.get("late_night_hour", 22),
+    }
+
+
+async def create_alert_if_needed(record: dict, user_id: str) -> Optional[dict]:
+    """history 저장 시 호출 — 위험/늦은시간 조건이면 알림 생성·갱신."""
     try:
-        settings = read_settings()
-        alerts = read_alerts()
+        settings = await _read_settings(user_id)
 
         total_score = record.get("totalScore")
         violence = record.get("violence")
         language = record.get("language")
         sexual = record.get("sexual")
-        title = record.get("title")
-        channel_title = record.get("channelTitle")
-        thumbnail = record.get("thumbnail")
         video_id = record.get("videoId")
         profile_id = record.get("profileId")
         watched_at = record.get("watchedAt")
@@ -81,39 +105,51 @@ def create_alert_if_needed(record: dict) -> Optional[dict]:
         if not reasons:
             return None
 
-        severity = "warning" if (is_late_night and total_score >= threshold) else (get_severity(total_score, threshold) or "warning")
+        severity = "warning" if (is_late_night and (total_score or 0) >= threshold) else (get_severity(total_score, threshold) or "warning")
 
         # 같은 영상 + 프로필 알림이 이미 있으면 반복 시청으로 업데이트
-        existing = next((a for a in alerts if a.get("videoId") == video_id and a.get("profileId") == profile_id), None)
+        existing = await sb_select(
+            "alerts",
+            {
+                "user_id": f"eq.{user_id}",
+                "video_id": f"eq.{video_id}",
+                "profile_id": f"eq.{profile_id}",
+                "select": "id,watch_count",
+                "limit": "1",
+            },
+        )
         if existing:
-            existing["watchCount"] = existing.get("watchCount", 1) + 1
-            existing["repeated"] = True
-            existing["updatedAt"] = watched_at
-            write_alerts(alerts)
-            return existing
+            row = existing[0]
+            updated = await sb_update(
+                "alerts",
+                {"id": f"eq.{row['id']}"},
+                {
+                    "watch_count": (row.get("watch_count") or 1) + 1,
+                    "repeated": True,
+                    "updated_at": watched_at,
+                },
+            )
+            return _to_api(updated[0]) if updated else None
 
-        new_alert = {
-            "id": str(uuid.uuid4()),
-            "profileId": profile_id,
-            "videoId": video_id,
-            "title": title,
-            "channelTitle": channel_title,
-            "thumbnail": thumbnail,
-            "totalScore": total_score,
+        inserted = await sb_insert("alerts", {
+            "user_id": user_id,
+            "profile_id": profile_id,
+            "video_id": video_id,
+            "title": record.get("title"),
+            "channel_title": record.get("channelTitle"),
+            "thumbnail": record.get("thumbnail"),
+            "total_score": total_score,
             "violence": violence,
             "language": language,
             "sexual": sexual,
             "reasons": reasons,
             "severity": severity,
-            "watchedAt": watched_at,
-            "watchCount": 1,
+            "watched_at": watched_at,
+            "watch_count": 1,
             "repeated": False,
             "read": False,
-        }
-
-        alerts.insert(0, new_alert)
-        write_alerts(alerts)
-        return new_alert
+        })
+        return _to_api(inserted[0]) if inserted else None
 
     except Exception as e:
         print(f"알림 생성 실패: {e}")
@@ -122,51 +158,38 @@ def create_alert_if_needed(record: dict) -> Optional[dict]:
 
 # GET /alerts
 @router.get("")
-async def get_alerts():
-    try:
-        alerts = read_alerts()
-        return {"alerts": alerts}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="알림을 불러오는 중 오류가 발생했어요")
+async def get_alerts(user: dict = Depends(get_current_user)):
+    rows = await sb_select(
+        "alerts",
+        {"user_id": f"eq.{user['user_id']}", "select": "*", "order": "created_at.desc"},
+    )
+    return {"alerts": [_to_api(a) for a in rows]}
 
 
 # PATCH /alerts/read-all
 @router.patch("/read-all")
-async def read_all_alerts():
-    try:
-        alerts = read_alerts()
-        for a in alerts:
-            a["read"] = True
-        write_alerts(alerts)
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="전체 읽음 처리 중 오류가 발생했어요")
+async def read_all_alerts(user: dict = Depends(get_current_user)):
+    await sb_update("alerts", {"user_id": f"eq.{user['user_id']}"}, {"read": True})
+    return {"success": True}
 
 
 # PATCH /alerts/{id}/read
 @router.patch("/{alert_id}/read")
-async def read_alert(alert_id: str):
-    try:
-        alerts = read_alerts()
-        alert = next((a for a in alerts if a.get("id") == alert_id), None)
-        if not alert:
-            raise HTTPException(status_code=404, detail="알림을 찾을 수 없어요")
-        alert["read"] = True
-        write_alerts(alerts)
-        return {"success": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="읽음 처리 중 오류가 발생했어요")
+async def read_alert(alert_id: str, user: dict = Depends(get_current_user)):
+    updated = await sb_update(
+        "alerts",
+        {"id": f"eq.{alert_id}", "user_id": f"eq.{user['user_id']}"},
+        {"read": True},
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="알림을 찾을 수 없어요")
+    return {"success": True}
 
 
 # GET /alerts/settings
 @router.get("/settings")
-async def get_settings():
-    try:
-        return read_settings()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="설정을 불러오는 중 오류가 발생했어요")
+async def get_settings(user: dict = Depends(get_current_user)):
+    return await _read_settings(user["user_id"])
 
 
 class SettingsUpdate(BaseModel):
@@ -177,15 +200,17 @@ class SettingsUpdate(BaseModel):
 
 # PUT /alerts/settings
 @router.put("/settings")
-async def update_settings(data: SettingsUpdate):
-    try:
-        current = read_settings()
-        updated = {
-            "threshold": data.threshold if data.threshold is not None else current.get("threshold"),
-            "lateNightAlert": data.lateNightAlert if data.lateNightAlert is not None else current.get("lateNightAlert"),
-            "lateNightHour": data.lateNightHour if data.lateNightHour is not None else current.get("lateNightHour"),
-        }
-        write_settings(updated)
-        return {"success": True, "settings": updated}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="설정 저장 중 오류가 발생했어요")
+async def update_settings(data: SettingsUpdate, user: dict = Depends(get_current_user)):
+    current = await _read_settings(user["user_id"])
+    merged = {
+        "threshold": data.threshold if data.threshold is not None else current["threshold"],
+        "lateNightAlert": data.lateNightAlert if data.lateNightAlert is not None else current["lateNightAlert"],
+        "lateNightHour": data.lateNightHour if data.lateNightHour is not None else current["lateNightHour"],
+    }
+    await sb_upsert("alert_settings", {
+        "user_id": user["user_id"],
+        "threshold": merged["threshold"],
+        "late_night_alert": merged["lateNightAlert"],
+        "late_night_hour": merged["lateNightHour"],
+    }, on_conflict="user_id")
+    return {"success": True, "settings": merged}

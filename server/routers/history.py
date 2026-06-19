@@ -112,9 +112,9 @@ async def save_history(data: HistoryRecord, user: dict = Depends(get_current_use
         ids = ",".join(str(o["id"]) for o in old)
         await sb_delete("history", {"id": f"in.({ids})"})
 
-    # 위험 영상 알림 생성 (alerts 는 Phase 3 에서 DB 전환 예정 — 현재 JSON)
+    # 위험 영상 알림 생성 (DB, user 스코프)
     try:
-        create_alert_if_needed(new_record)
+        await create_alert_if_needed(new_record, user["user_id"])
     except Exception:
         pass
 
