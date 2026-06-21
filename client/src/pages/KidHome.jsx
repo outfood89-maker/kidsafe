@@ -6,13 +6,13 @@ import {
   FaCommentDots, FaShieldAlt, FaSignOutAlt, FaGamepad, FaMicrophone,
 } from "react-icons/fa";
 import {
-  searchVideos, analyzeVideo, saveHistory, getHistory,
+  searchVideos, analyzeVideo, analyzeVideosBatch, saveHistory, getHistory,
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos, getCacheRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
   getFavorites, addFavorite, removeFavorite,
   checkBlockedKeyword, getProfiles, getGameBonus,
 } from "../utils/api";
-import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword, getEffectiveThreshold } from "../utils/safetyFilter";
+import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword, getEffectiveThreshold, sortByLengthPreference } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
 import VideoPlayer from "../components/VideoPlayer";
 import PlaylistModal from "../components/PlaylistModal";
@@ -55,6 +55,35 @@ const GREETING_DIALOGUES = [
   { pose: "search",  text: "새로운 영상이 잔뜩 기다리고 있어! 빨리 찾아보자 🚀" },
 ];
 
+// 검색 전 홈에 노출되는 카테고리 칩 — 누르면 해당 키워드로 바로 검색
+const CATEGORY_CHIPS = [
+  { label: "동요", emoji: "🎵" },
+  { label: "공룡", emoji: "🦕" },
+  { label: "동화", emoji: "📖" },
+  { label: "동물", emoji: "🐶" },
+  { label: "자동차", emoji: "🚗" },
+  { label: "과학", emoji: "🔬" },
+  { label: "숫자", emoji: "🔢" },
+  { label: "색깔", emoji: "🎨" },
+];
+
+// 초 → 타이머용 분:초 라벨 (예: 59:30, 5:08). 음수는 0:00.
+const formatMMSS = (sec) => {
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+};
+
+// 초 → 유튜브식 길이 라벨 (mm:ss / h:mm:ss). 길이 정보 없으면 null 반환(배지 숨김).
+const formatDuration = (sec) => {
+  if (!sec || sec <= 0) return null;
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+};
+
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [videos, setVideos] = useState([]);
@@ -65,6 +94,7 @@ export default function KidHome() {
   const [timeLimitReached, setTimeLimitReached] = useState(false);
   const [timeLimitModalDismissed, setTimeLimitModalDismissed] = useState(false);
   const [todayMinutes, setTodayMinutes] = useState(0);
+  const [todaySeconds, setTodaySeconds] = useState(0);
   const [bonusMinutes, setBonusMinutes] = useState(0);
   const [newBadges, setNewBadges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
@@ -263,10 +293,8 @@ export default function KidHome() {
       setRecommendLoading(true);
       const { videos: results, keyword } = await getRecommendedVideos(age);
       setRecommendKeyword(keyword);
-      const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video);
-        return { ...video, ...safety };
-      }));
+      const safetyResults = await analyzeVideosBatch(results);
+      const analyzedVideos = results.map((video, i) => ({ ...video, ...safetyResults[i] }));
       setRecommendedVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
     } catch (err) {
       if (err.response?.status === 500) setQuotaError(true);
@@ -294,10 +322,8 @@ export default function KidHome() {
       setHistoryLoading(true);
       setHistoryKeyword(topKeyword);
       const { videos: results } = await getHistoryRecommendedVideos(topKeyword);
-      const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video);
-        return { ...video, ...safety };
-      }));
+      const safetyResults = await analyzeVideosBatch(results);
+      const analyzedVideos = results.map((video, i) => ({ ...video, ...safetyResults[i] }));
       setHistoryVideos(applyAntiBias(filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold), watchHistory, age));
     } catch (err) {
       if (err.response?.status === 500) setQuotaError(true);
@@ -323,6 +349,7 @@ export default function KidHome() {
       const minutes = Math.floor(totalSeconds / 60);
       const bonus = bonusData.bonusMinutes ?? 0;
       setTodayMinutes(minutes);
+      setTodaySeconds(totalSeconds);
       setBonusMinutes(bonus);
       const effectiveMinutes = minutes - bonus;
       if (profile.timeLimit && effectiveMinutes >= profile.timeLimit) setTimeLimitReached(true);
@@ -402,22 +429,26 @@ export default function KidHome() {
         return;
       }
       setLoading(true); setError(""); setQuotaError(false); setVideos([]); setPlaylists([]); setShowSearchHistory(false); setVisibleCount(9);
+      // 검색기록·배지 저장은 백그라운드 — 검색 결과를 막지 않음
       if (selectedProfile?.id) {
-        await saveSearchHistory(selectedProfile.id, trimmedKeyword);
-        await fetchSearchHistory(selectedProfile.id);
-        const result = await checkBadges(selectedProfile.id);
-        if (result.newBadges?.length > 0) {
-          setNewBadges(result.newBadges);
-          setEarnedBadges(result.allBadges);
-        }
+        saveSearchHistory(selectedProfile.id, trimmedKeyword)
+          .then(() => fetchSearchHistory(selectedProfile.id))
+          .catch(() => {});
+        checkBadges(selectedProfile.id).then((result) => {
+          if (result.newBadges?.length > 0) {
+            setNewBadges(result.newBadges);
+            setEarnedBadges(result.allBadges);
+          }
+        }).catch(() => {});
       }
       const { videos: results, playlists: playlistResults } = await searchVideos(trimmedKeyword);
-      const analyzedVideos = await Promise.all(results.map(async (video) => {
-        const safety = await analyzeVideo(video);
-        return { ...video, ...safety };
-      }));
+      // batch: DB in쿼리 1번 — 20개 개별 요청 대신 1번 왕복으로 처리
+      const safetyResults = await analyzeVideosBatch(results);
+      const analyzedVideos = results.map((video, i) => ({ ...video, ...safetyResults[i] }));
       const age = selectedProfile?.age || null;
-      const filteredVideos = age ? filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold) : analyzedVideos;
+      const ageFiltered = age ? filterByAge(analyzedVideos, age, selectedProfile?.safetyThreshold) : analyzedVideos;
+      // 관련도는 유지하되 너무 긴 영상은 살짝 뒤로 — 짧은 영상이 자연스럽게 더 잘 보이게
+      const filteredVideos = sortByLengthPreference(ageFiltered);
       if (filteredVideos.length === 0 && playlistResults.length === 0) {
         setError(`${age}세 기준에 맞는 영상이 없어요. 다른 키워드로 검색해봐요!`);
       } else {
@@ -462,64 +493,81 @@ export default function KidHome() {
   const VideoCard = ({ video, listOnMobile = false }) => {
     const { grade, color } = getSafetyGrade(video.totalScore);
     const isFavorited = favorites.some((f) => f.itemId === video.videoId);
+    const durationLabel = formatDuration(video.duration);
     return (
       <>
-      {/* ─ 모바일: 가로형 리스트 카드 (listOnMobile일 때만) ─ */}
+      {/* ─ 모바일: 유튜브식 풀폭 세로 카드 (listOnMobile일 때만) ─ */}
       <div
-        className={`${listOnMobile ? "flex lg:hidden" : "hidden"} bg-white overflow-hidden`}
-        style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+        className={`${listOnMobile ? "block lg:hidden" : "hidden"} bg-white overflow-hidden`}
+        style={{ borderRadius: "16px", border: "0.5px solid #E4EAE0" }}
       >
-        {/* 썸네일 (좌측) */}
+        {/* 큰 썸네일 (16:9) */}
         <div
-          className="relative shrink-0 cursor-pointer overflow-hidden"
-          style={{ width: "150px", height: "100px" }}
+          className="relative w-full cursor-pointer overflow-hidden"
+          style={{ aspectRatio: "16 / 9" }}
           onClick={() => setSelectedVideo(video)}
         >
           <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
+          {/* 안전 배지 — 좌상단 */}
           <div
-            className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-white flex items-baseline gap-1"
+            className="absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-white flex items-baseline gap-1"
             style={getSafetyBadgeStyle(color)}
           >
-            <span style={{ fontSize: "12px", fontWeight: 700 }}>{grade}</span>
-            <span style={{ fontSize: "9px", fontWeight: 600, opacity: 0.85 }}>{video.totalScore}</span>
+            <span style={{ fontSize: "13px", fontWeight: 700 }}>{grade}</span>
+            <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.85 }}>{video.totalScore}</span>
           </div>
-        </div>
-        {/* 정보 (우측) */}
-        <div className="flex-1 min-w-0 p-2.5 flex flex-col">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <p className="text-xs font-medium truncate" style={{ color: "#6DAB60" }}>
-              {video.channelTitle}
-            </p>
-            {video.educational >= 80 && (
-              <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 600, backgroundColor: "#FFF3E0", color: "#E07B00" }}>📚 교육적</span>
-            )}
-          </div>
-          <h3
-            className="text-sm font-medium cursor-pointer"
-            style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
-            onClick={() => setSelectedVideo(video)}
-          >
-            {video.title}
-          </h3>
-          <div className="mt-auto flex items-center justify-between gap-2 pt-1.5">
-            {video.madeForKids ? (
-              <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: "#EAF3F9", color: "#1D6FAA" }}>
-                ✅ YouTube 인증
-              </span>
-            ) : <span />}
-            <button
-              onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
-              className="rounded-full transition-all active:scale-110 flex items-center gap-1 shrink-0"
-              style={{
-                backgroundColor: isFavorited ? "#C84B47" : "#F8F7F2",
-                color: isFavorited ? "#fff" : "#C84B47",
-                padding: "4px 9px", fontSize: "12px", fontWeight: 600,
-              }}
+          {/* 길이 배지 — 우하단 */}
+          {durationLabel && (
+            <div
+              className="absolute rounded text-white"
+              style={{ right: "8px", bottom: "8px", backgroundColor: "rgba(0,0,0,0.8)", padding: "2px 7px", fontSize: "12px", fontWeight: 600 }}
             >
-              {isFavorited ? <FaHeart style={{ fontSize: "12px" }} /> : <FaRegHeart style={{ fontSize: "12px" }} />}
-              <span>{isFavorited ? "찜됨" : "찜"}</span>
-            </button>
+              {durationLabel}
+            </div>
+          )}
+        </div>
+        {/* 정보 — 채널 아이콘 + 제목 + 메타 + 찜 */}
+        <div className="flex gap-2.5 p-3">
+          {/* 채널 아이콘 (안전 등급색 + 채널 첫 글자) */}
+          <div
+            className="shrink-0 flex items-center justify-center rounded-full text-white"
+            style={{ width: "38px", height: "38px", fontSize: "16px", fontWeight: 700, ...getSafetyBadgeStyle(color) }}
+          >
+            {(video.channelTitle || "?").trim().charAt(0)}
           </div>
+          <div className="flex-1 min-w-0">
+            <h3
+              className="text-sm font-semibold cursor-pointer mb-1"
+              style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}
+              onClick={() => setSelectedVideo(video)}
+            >
+              {video.title}
+            </h3>
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              <span className="text-xs font-medium truncate" style={{ color: "#6B7A65", maxWidth: "100%" }}>
+                {video.channelTitle}
+              </span>
+              {/* 채널 신뢰 — YouTube 공식 아동용 인증 */}
+              {video.madeForKids && (
+                <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 600, backgroundColor: "#EAF3F9", color: "#1D6FAA" }}>✅ 인증</span>
+              )}
+              {video.educational >= 80 && (
+                <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 600, backgroundColor: "#FFF3E0", color: "#E07B00" }}>📚 교육</span>
+              )}
+            </div>
+          </div>
+          {/* 찜 버튼 */}
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
+            className="shrink-0 self-start rounded-full transition-all active:scale-110 flex items-center justify-center"
+            style={{
+              backgroundColor: isFavorited ? "#C84B47" : "#F8F7F2",
+              color: isFavorited ? "#fff" : "#C84B47",
+              width: "34px", height: "34px",
+            }}
+          >
+            {isFavorited ? <FaHeart style={{ fontSize: "14px" }} /> : <FaRegHeart style={{ fontSize: "14px" }} />}
+          </button>
         </div>
       </div>
 
@@ -568,6 +616,15 @@ export default function KidHome() {
             {isFavorited ? <FaHeart style={{ fontSize: "14px" }} /> : <FaRegHeart style={{ fontSize: "14px" }} />}
             <span>{isFavorited ? "찜됨" : "찜"}</span>
           </button>
+          {/* 유튜브식 길이 배지 — 우하단 */}
+          {durationLabel && (
+            <div
+              className="absolute rounded text-white"
+              style={{ right: "8px", bottom: "8px", backgroundColor: "rgba(0,0,0,0.8)", padding: "2px 6px", fontSize: "12px", fontWeight: 600 }}
+            >
+              {durationLabel}
+            </div>
+          )}
         </div>
         {/* 텍스트 */}
         <div className="p-3.5">
@@ -788,7 +845,10 @@ export default function KidHome() {
             timeLimit={selectedProfile?.timeLimit || null}
             usedMinutes={todayMinutes - bonusMinutes}
             onClose={(seconds) => {
-              if (seconds > 0) setTodayMinutes((prev) => prev + Math.floor(seconds / 60));
+              if (seconds > 0) {
+                setTodayMinutes((prev) => prev + Math.floor(seconds / 60));
+                setTodaySeconds((prev) => prev + seconds);
+              }
               setPlayingVideo(null);
             }}
             onWatchComplete={async (seconds) => {
@@ -906,11 +966,14 @@ export default function KidHome() {
             {/* 다크 히어로 배너 */}
             {(() => {
               const tl = selectedProfile?.timeLimit;
-              // 실제 사용 = 시청 시간 - 게임 보너스
-              const effectiveUsed = todayMinutes - bonusMinutes;
-              const remaining = tl ? Math.max(0, tl - effectiveUsed) : null;
-              const usedPct = tl ? Math.min(100, Math.max(0, (effectiveUsed / tl) * 100)) : 0;
-              const timerColor = timeLimitReached ? "#C84B47" : remaining !== null && remaining / tl <= 0.2 ? "#E8900A" : "#6DAB60";
+              // 실제 사용(초) = 시청 시간 - 게임 보너스. 분:초까지 보여주기 위해 초 단위로 계산.
+              const tlSec = tl ? tl * 60 : 0;
+              const effectiveUsedSec = todaySeconds - bonusMinutes * 60;
+              const remainingSec = tl ? Math.max(0, tlSec - effectiveUsedSec) : null;
+              const usedPct = tl ? Math.min(100, Math.max(0, (effectiveUsedSec / tlSec) * 100)) : 0;
+              const remainingLabel = remainingSec != null ? formatMMSS(remainingSec) : null;
+              const usedMinLabel = Math.max(0, Math.floor(effectiveUsedSec / 60));
+              const timerColor = timeLimitReached ? "#C84B47" : remainingSec !== null && remainingSec / tlSec <= 0.2 ? "#E8900A" : "#6DAB60";
               return (
                 <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8"
                   style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)", borderRadius: "24px", minHeight: "220px" }}>
@@ -993,29 +1056,22 @@ export default function KidHome() {
                     </div>
                   )}
 
-                  {/* 모바일 전용: 검색창 아래 타이머 */}
+                  {/* 모바일 전용: 검색창 아래 타이머 — 다크 배너에 직접 큰 분:초 */}
                   {tl && (
-                    <div className="md:hidden mt-3" style={{
-                      background: "white",
-                      borderRadius: 50,
-                      padding: "9px 18px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      boxShadow: "0 2px 16px rgba(0,0,0,0.13)",
-                    }}>
-                      <span style={{ fontSize: 16 }}>🌿</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#6B7A65", whiteSpace: "nowrap" }}>
-                        {timeLimitReached ? "시간 종료" : "남은 시간"}
+                    <div className="md:hidden mt-5 flex flex-col items-center">
+                      <span style={{
+                        fontSize: "46px", fontWeight: 800,
+                        fontVariantNumeric: "tabular-nums",
+                        color: timeLimitReached ? "#F1A0A0" : "#fff",
+                        letterSpacing: "-1px", lineHeight: 1,
+                      }}>
+                        {timeLimitReached ? "0:00" : remainingLabel}
                       </span>
-                      <div style={{ flex: 1, background: "#E8F5E4", borderRadius: 4, height: 6 }}>
-                        <div style={{ height: "100%", width: `${Math.max(0, 100 - usedPct)}%`, background: timerColor, borderRadius: 4, transition: "width 0.5s ease" }} />
-                      </div>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-                        <span style={{ fontSize: 26, fontWeight: 900, color: timerColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-                          {timeLimitReached ? "0" : remaining}
-                        </span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#6B7A65" }}>분</span>
+                      <p style={{ color: "#B8D8B2", fontSize: "12px", fontWeight: 600, marginTop: "5px" }}>
+                        {timeLimitReached ? "시간 종료" : "남은 시간"}
+                      </p>
+                      <div style={{ width: "190px", height: "6px", backgroundColor: "rgba(255,255,255,0.18)", borderRadius: "6px", marginTop: "12px" }}>
+                        <div style={{ height: "100%", width: `${Math.max(0, 100 - usedPct)}%`, backgroundColor: timerColor, borderRadius: "6px", transition: "width 0.5s ease" }} />
                       </div>
                     </div>
                   )}
@@ -1047,36 +1103,28 @@ export default function KidHome() {
                     )}
                   </div>
 
-                  {/* 중: 타이머 카드 (웹) */}
+                  {/* 중: 타이머 (웹) — 다크 배너에 직접 큰 분:초 (카드 없음) */}
                   {tl && (
                     <div className="hidden md:flex flex-col items-center justify-center"
-                      style={{
-                        flex: "21", minWidth: 0, marginLeft: "88px",
-                        padding: "24px 20px", borderRadius: "20px",
-                        background: "white",
-                        boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
-                        minHeight: "160px",
+                      style={{ flex: "21", minWidth: 0, marginLeft: "88px", minHeight: "160px" }}>
+                      <span style={{
+                        fontSize: "64px",
+                        fontWeight: "800",
+                        fontVariantNumeric: "tabular-nums",
+                        color: timeLimitReached ? "#F1A0A0" : "#fff",
+                        letterSpacing: "-2px",
+                        lineHeight: 1,
                       }}>
-                      <p style={{ color: "#6B7A65", fontSize: "12px", letterSpacing: "1px", marginBottom: "10px" }}>
-                        {timeLimitReached ? "⏰ 시간 초과" : "🌿 남은 시간"}
+                        {timeLimitReached ? "0:00" : remainingLabel}
+                      </span>
+                      <p style={{ color: "#B8D8B2", fontSize: "13px", fontWeight: 600, marginTop: "8px" }}>
+                        {timeLimitReached ? "시간 종료" : "남은 시간"}
                       </p>
-                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4, lineHeight: 1 }}>
-                        <span style={{
-                          fontSize: "72px",
-                          fontWeight: "900",
-                          fontVariantNumeric: "tabular-nums",
-                          color: timerColor,
-                          letterSpacing: "-2px",
-                        }}>
-                          {timeLimitReached ? "0" : remaining}
-                        </span>
-                        <span style={{ color: "#6B7A65", fontSize: "22px", fontWeight: "700" }}>분</span>
-                      </div>
-                      <div style={{ width: "80%", height: "8px", backgroundColor: "#E8F5E4", borderRadius: "6px", marginTop: "16px" }}>
+                      <div style={{ width: "170px", height: "6px", backgroundColor: "rgba(255,255,255,0.18)", borderRadius: "6px", marginTop: "16px" }}>
                         <div style={{ height: "100%", width: `${Math.max(0, 100 - usedPct)}%`, backgroundColor: timerColor, borderRadius: "6px", transition: "width 0.5s ease" }} />
                       </div>
-                      <p style={{ color: "#9BA89A", fontSize: "12px", marginTop: "8px" }}>
-                        {tl}분 중 {Math.max(0, todayMinutes - bonusMinutes)}분 사용
+                      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", marginTop: "10px" }}>
+                        {tl}분 중 {usedMinLabel}분 사용
                       </p>
                     </div>
                   )}
@@ -1116,6 +1164,40 @@ export default function KidHome() {
               );
             })()}
 
+            {/* 큐레이션 헤더(홈 전용) + 카테고리 칩(검색 후에도 항상 유지) — 모바일 전용 */}
+            <div className="lg:hidden mb-5">
+              {videos.length === 0 && playlists.length === 0 && (
+                <div className="flex items-center gap-2.5 mb-3">
+                  <KiddyImg pose="point" size={44} />
+                  <div className="min-w-0">
+                    <p className="text-base font-extrabold" style={{ color: "#2C3528" }}>
+                      오늘 {selectedProfile?.name ?? "친구"}를 위한 영상 🌿
+                    </p>
+                    <p className="text-xs" style={{ color: "#6B7A65" }}>키디가 안전하게 골라봤어요</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
+                {CATEGORY_CHIPS.map((c) => {
+                  const active = searchKeyword === c.label;
+                  return (
+                    <button
+                      key={c.label}
+                      onClick={() => { setSearchKeyword(c.label); handleSearch(c.label); }}
+                      className="shrink-0 rounded-full px-3.5 py-2 text-sm font-bold active:scale-95 transition"
+                      style={{
+                        border: active ? "1.5px solid #6DAB60" : "1.5px solid #E4EAE0",
+                        backgroundColor: active ? "#6DAB60" : "#fff",
+                        color: active ? "#fff" : "#2C3528",
+                      }}
+                    >
+                      {c.emoji} {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 추천 섹션 — 검색 결과 없을 때만 */}
             {videos.length === 0 && playlists.length === 0 && (
               <>
@@ -1130,10 +1212,10 @@ export default function KidHome() {
                     {recommendLoading ? (
                       <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
                     ) : (
-                      <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                      <div className="flex flex-col gap-3 lg:flex-row lg:overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                         {recommendedVideos.map((v) => (
-                          <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
-                            <VideoCard video={v} />
+                          <div key={v.videoId} className="w-full lg:w-[200px] lg:shrink-0">
+                            <VideoCard video={v} listOnMobile />
                           </div>
                         ))}
                       </div>
@@ -1152,10 +1234,10 @@ export default function KidHome() {
                     {historyLoading ? (
                       <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
                     ) : (
-                      <div className="flex gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
+                      <div className="flex flex-col gap-3 lg:flex-row lg:overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                         {historyVideos.map((v) => (
-                          <div key={v.videoId} style={{ minWidth: "200px", maxWidth: "200px", flexShrink: 0 }}>
-                            <VideoCard video={v} />
+                          <div key={v.videoId} className="w-full lg:w-[200px] lg:shrink-0">
+                            <VideoCard video={v} listOnMobile />
                           </div>
                         ))}
                       </div>

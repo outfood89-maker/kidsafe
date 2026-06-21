@@ -65,6 +65,27 @@ export const sortBySafety = (videos) => {
   return [...videos].sort((a, b) => b.totalScore - a.totalScore)
 }
 
+// 길이에 따른 "순위 페널티(칸 수)" — 매우 긴 영상일수록 살짝 뒤로.
+// 하드 컷이 아니라 약한 가중치라 좋은 긴 영상도 사라지지 않고 조금만 내려간다.
+const lengthRankPenalty = (sec) => {
+  if (!sec || sec <= 0) return 0
+  const min = sec / 60
+  if (min <= 10) return 0
+  if (min <= 20) return 2
+  if (min <= 40) return 5
+  if (min <= 60) return 8
+  return 12
+}
+
+// 검색 결과를 "YouTube 관련도(원래 순서) + 길이 선호"로 부드럽게 재정렬.
+// 원래 순위(index)를 주 가중치로 유지하므로 관련도는 거의 보존되고,
+// 너무 긴 영상만 페널티만큼 뒤로 밀려 짧은 영상이 자연스럽게 더 잘 보인다.
+export const sortByLengthPreference = (videos) =>
+  videos
+    .map((v, i) => ({ v, key: i + lengthRankPenalty(v.duration) }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.v)
+
 // 안전도 점수 종합 계산
 export const calculateTotalScore = (scores) => {
   const { violence, language, sexual, educational } = scores

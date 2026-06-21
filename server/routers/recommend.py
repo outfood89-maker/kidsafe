@@ -131,6 +131,7 @@ async def recommend(profileId: Optional[str] = None, limit: int = 12, user: dict
                 "channelTitle": meta.get("channelTitle"),
                 "channelId": meta.get("channelId"),
                 "madeForKids": meta.get("madeForKids", False),
+                "duration": meta.get("duration", 0),
                 "totalScore": entry.get("totalScore"),
                 "violence": entry.get("violence"),
                 "language": entry.get("language"),

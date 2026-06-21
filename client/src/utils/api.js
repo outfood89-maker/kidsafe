@@ -51,6 +51,7 @@ export const analyzeVideo = async (video) => {
     channelId: video.channelId || "",
     channelTitle: video.channelTitle || "",
     thumbnail: video.thumbnail || "",
+    duration: video.duration || 0,
     madeForKids: video.madeForKids || false,
     categoryId: video.categoryId || "",
     topicCategories: video.topicCategories || [],
@@ -64,6 +65,12 @@ export const getCacheRecommendedVideos = async (profileId, limit = 12) => {
     params: { profileId, limit },
   })
   return response.data // { videos, source, poolSize }
+}
+
+// 여러 영상 일괄 안전도 검수 (Tier 0~1 — DB in쿼리 1번 + 신규만 키워드 분석, 검색 속도 최적화)
+export const analyzeVideosBatch = async (videos) => {
+  const response = await axios.post(`${BASE_URL}/analyze/batch`, { items: videos })
+  return response.data.results
 }
 
 // 영상 정밀 검수 (Tier 2 — 자막 + Claude AI, 영상 상세 모달용)

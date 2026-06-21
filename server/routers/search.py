@@ -70,9 +70,12 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
                 "q": keyword,
                 "part": "snippet",
                 "type": "video",
-                "maxResults": max_results + 5,
+                # search.list는 maxResults가 1이든 50이든 쿼터 100유닛 고정 →
+                # 최대(50)로 받아 안전필터 통과 풀을 넓힌다 (쿼터 추가 0).
+                "maxResults": 50,
                 "relevanceLanguage": "ko",
-                "videoDuration": "short",
+                # videoDuration "short"(4분 미만) 제한 제거 → 뽀로로 정식 에피소드(5~10분)도 포함.
+                # 60초 이하 쇼츠는 아래 duration>60 필터로 계속 걸러진다.
                 "safeSearch": "strict",
                 "order": "relevance",
             },
@@ -100,6 +103,8 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
             "thumbnail": item["snippet"].get("thumbnails", {}).get("medium", {}).get("url", ""),
             "channelTitle": html.unescape(item["snippet"].get("channelTitle", "")),
             "channelId": item["snippet"].get("channelId", ""),
+            # 영상 길이(초) — 프론트 카드의 유튜브식 길이 배지에 사용
+            "duration": detail_map.get(item["id"]["videoId"], {}).get("duration", 0),
             # YouTube 안전 메타데이터 — analyze.py Tier 0+1에서 활용
             "madeForKids": detail_map.get(item["id"]["videoId"], {}).get("madeForKids", False),
             "categoryId": detail_map.get(item["id"]["videoId"], {}).get("categoryId", ""),
@@ -211,7 +216,7 @@ async def search(keyword: str):
 
     try:
         videos, playlists = await asyncio.gather(
-            search_youtube(keyword, 20),
+            search_youtube(keyword, 40),
             search_youtube_playlists(keyword, 6),
         )
         return {"videos": videos, "playlists": playlists}

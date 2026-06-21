@@ -18,21 +18,37 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   const [watchSeconds, setWatchSeconds] = useState(0);
   const watchSecondsRef = useRef(0);
   const videoEndedRef = useRef(false);
+  const savedRef = useRef(false); // 중복 저장 방지 — onClose/handleEnd/언마운트 어느 경로든 1회만 저장
+
+  // 시청 기록 저장(공통). savedRef 가드로 어느 경로로 호출돼도 한 번만 저장된다.
+  const persistHistory = async (seconds) => {
+    if (savedRef.current) return;
+    savedRef.current = true;
+    try {
+      await saveHistory({
+        videoId: video.videoId, title: video.title, channelTitle: video.channelTitle,
+        thumbnail: video.thumbnail, totalScore: video.totalScore, summary: video.summary,
+        violence: video.violence, language: video.language, sexual: video.sexual,
+        educational: video.educational, profileId: video.profileId || null,
+        watchSeconds: seconds,
+      });
+    } catch (err) { console.error("시청 기록 저장 실패:", err); }
+  };
+
   const onClose = async () => {
     const seconds = watchSecondsRef.current;
     // 영상을 끝까지 보지 않고 닫아도 일정 시간 이상이면 서버에 저장
-    if (!videoEndedRef.current && seconds >= 10) {
-      try {
-        await saveHistory({
-          videoId: video.videoId, title: video.title, channelTitle: video.channelTitle,
-          thumbnail: video.thumbnail, totalScore: video.totalScore, summary: video.summary,
-          violence: video.violence, language: video.language, sexual: video.sexual,
-          educational: video.educational, profileId: video.profileId || null,
-          watchSeconds: seconds,
-        });
-      } catch (err) { console.error("시청 기록 저장 실패(닫기):", err); }
-    }
+    if (!videoEndedRef.current && seconds >= 10) await persistHistory(seconds);
     _onClose(videoEndedRef.current ? 0 : seconds);
+  };
+  // popstate(뒤로가기 슬라이드) 리스너가 항상 최신 onClose를 호출하도록 ref로 유지
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  // 닫은 뒤 이동할 경로 예약 (시간초과 → 게임 등). 닫기는 항상 history.back() 한 경로로 통일.
+  const pendingNavRef = useRef(null);
+  const requestClose = (navTo = null) => {
+    pendingNavRef.current = navTo;
+    window.history.back();
   };
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
@@ -68,6 +84,36 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
     return () => clearInterval(timerRef.current);
   }, []);
 
+  // 언마운트(라우트 이동 등 onClose 없이 사라지는 경우) 시에도 시청 시간 저장 (최후 안전장치)
+  useEffect(() => {
+    return () => {
+      if (!savedRef.current && watchSecondsRef.current >= 10) {
+        persistHistory(watchSecondsRef.current);
+      }
+    };
+  }, []);
+
+  // 뒤로가기(모바일 오른쪽 슬라이드)를 가로채 라우트 이탈 대신 플레이어만 닫는다.
+  // → onClose가 실행돼 시청 시간이 부모로 전달되고 홈에서 즉시 차감된다.
+  useEffect(() => {
+    window.history.pushState({ vp: true }, "");
+    const onPop = async () => {
+      // 닫기(시청시간 저장 + 부모 차감) 완료 후, 예약된 이동이 있으면 라우트 변경
+      await onCloseRef.current();
+      if (pendingNavRef.current) {
+        const to = pendingNavRef.current;
+        pendingNavRef.current = null;
+        navigate(to);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      // 외부 사유로 언마운트돼 더미 history 항목이 남아있으면 정리 (리스너 제거 후라 안전)
+      if (window.history.state?.vp) window.history.back();
+    };
+  }, []);
+
   useEffect(() => {
     if (!timeLimit || timeLimitReached) return;
     const totalSeconds = usedMinutes * 60 + watchSeconds;
@@ -97,17 +143,9 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   const handleEnd = async () => {
     clearInterval(timerRef.current);
     setIsPlaying(false);
-    try {
-      await saveHistory({
-        videoId: video.videoId, title: video.title, channelTitle: video.channelTitle,
-        thumbnail: video.thumbnail, totalScore: video.totalScore, summary: video.summary,
-        violence: video.violence, language: video.language, sexual: video.sexual,
-        educational: video.educational, profileId: video.profileId || null,
-        watchSeconds,
-      });
-    } catch (err) { console.error("시청 기록 저장 실패:", err); }
-    if (onWatchComplete) onWatchComplete(watchSeconds);
     videoEndedRef.current = true;
+    await persistHistory(watchSecondsRef.current);
+    if (onWatchComplete) onWatchComplete(watchSecondsRef.current);
     setVideoEnded(true);
   };
 
@@ -158,7 +196,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
             부모님이 설정한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
           </p>
           <button
-            onClick={() => { onClose(); navigate("/games"); }}
+            onClick={() => requestClose("/games")}
             className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white"
             style={{ backgroundColor: "#6DAB60" }}
           >
@@ -167,7 +205,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
           <button onClick={handleKiddyChat} className="mt-3 w-full rounded-2xl py-3 text-sm font-bold" style={{ backgroundColor: "#EEF7EC", color: "#2E9E50" }}>
             💬 키디에게 소감 말해보자~!
           </button>
-          <button onClick={onClose} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}>
+          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}>
             확인
           </button>
         </div>
@@ -224,7 +262,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
 
         {/* 닫기 버튼 — 영상 우측 상단 플로팅 */}
         <button
-          onClick={onClose}
+          onClick={() => requestClose()}
           className="absolute flex items-center gap-1.5 rounded-full text-sm font-bold text-white"
           style={{
             top: "12px", right: "12px",
@@ -298,7 +336,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
               💬 키디에게 소감 말하기
             </button>
             <button
-              onClick={onClose}
+              onClick={() => requestClose()}
               className="w-full rounded-2xl py-3 text-sm font-medium"
               style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
             >
@@ -340,7 +378,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
               💬 키디에게 물어보기
             </button>
             <button
-              onClick={onClose}
+              onClick={() => requestClose()}
               className="w-full rounded-2xl py-3 text-sm font-medium mt-2"
               style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
             >

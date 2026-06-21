@@ -601,6 +601,7 @@ class AnalyzeRequest(BaseModel):
     title: str
     description: str = ""
     thumbnail: Optional[str] = ""
+    duration: Optional[int] = 0
     madeForKids: Optional[bool] = False
     categoryId: Optional[str] = ""
     topicCategories: Optional[List[str]] = None
@@ -618,6 +619,7 @@ def attach_meta(result: dict, data: "AnalyzeRequest") -> dict:
         "channelTitle": data.channelTitle or "",
         "channelId": data.channelId or "",
         "madeForKids": bool(data.madeForKids),
+        "duration": data.duration or 0,
     }
     return result
 
