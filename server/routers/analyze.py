@@ -568,6 +568,32 @@ def build_deep_result(ai: dict, source: str) -> dict:
     }
 
 
+# 제목에 나타나는 명백한 배틀/대결 신호 — 코드 안전장치용
+# ⚠️ "vs"는 일반 단어 오탐을 막으려 공백으로 감싼 형태만 매칭한다.
+BATTLE_KEYWORDS = ["배틀", "battle", "대결", " vs "]
+
+
+def apply_battle_guard(result: dict, title: str) -> dict:
+    """제목에 명백한 배틀 신호가 있으면 ageRating 최소 5 + violence 상한 86 으로 강제 보정.
+    작은 모델(Haiku)이 신뢰채널·madeForKids 맥락에 압도돼 배틀 연출을 관대하게 평가하는 것을
+    코드 레벨에서 잡는 하이브리드 안전장치. (AI 판단 + 규칙 보강)"""
+    t = (title or "").lower()
+    if not any(k in t for k in BATTLE_KEYWORDS):
+        return result
+
+    if result.get("violence") is not None:
+        result["violence"] = min(result["violence"], 86)
+    if (result.get("ageRating") or 0) < 5:
+        result["ageRating"] = 5
+
+    # 위험 카테고리 5개가 모두 있으면 총점 재계산 (build_deep_result 와 동일 공식)
+    keys = ["violence", "language", "sexual", "scary", "imitationRisk"]
+    vals = [result.get(k) for k in keys]
+    if all(v is not None for v in vals):
+        result["totalScore"] = round(sum(vals) / 5)
+    return result
+
+
 class AnalyzeRequest(BaseModel):
     videoId: Optional[str] = None
     channelId: Optional[str] = None
@@ -622,6 +648,8 @@ async def analyze_video(data: AnalyzeRequest):
             data.madeForKids or False, data.categoryId or "", data.topicCategories or [],
             trusted_set=trusted_set,
         )
+        # 배틀 안전장치 — 검색 카드(Tier 0+1)에서도 배틀 제목이면 ageRating 5 부여
+        result = apply_battle_guard(result, data.title)
         attach_meta(result, data)
 
         if video_id:
@@ -659,6 +687,8 @@ async def analyze_batch(data: BatchAnalyzeRequest):
                 item.madeForKids or False, item.categoryId or "", item.topicCategories or [],
                 trusted_set=trusted_set,
             )
+            # 배틀 안전장치 — 검색 카드(Tier 0+1)에서도 배틀 제목이면 ageRating 5 부여
+            result = apply_battle_guard(result, item.title)
             attach_meta(result, item)
 
             if video_id:
@@ -739,6 +769,8 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
             result = analyze_by_keywords(video_id, data.title, data.description, channel_id, trusted_set=trusted_set)
             result["confidence"] = "low"
 
+        # 배틀 안전장치 — 제목에 배틀 신호가 있으면 ageRating/violence 강제 보정
+        result = apply_battle_guard(result, data.title)
         attach_meta(result, data)
 
         # 채널 자동 신뢰 학습 (90+ 판정 누적 → AUTO_TRUST_THRESHOLD 도달 시 자동 등록)

@@ -34,9 +34,30 @@ export const getEffectiveThreshold = (age, customThreshold) =>
   customThreshold ?? AGE_THRESHOLD[age] ?? 70
 
 // 연령 기준으로 콘텐츠 필터링 (커스텀 threshold 우선 적용)
+// + AI 정밀분석(confidence==='high')으로 위험 판정된 영상은 아이 화면에서 숨김.
+//   재생 게이팅(VideoModal canPlay / recommend.is_safe_candidate)과 동일 기준으로 일관 유지.
+//   ⚠️ low(키워드만 본 것)는 오탐 방지를 위해 숨기지 않는다 — 모달을 열어 deep 분석 후 걸러진다.
+//   한 번 걸린 영상은 캐시에 high로 기록되므로 다음 검색부터 자동으로 사라진다.
 export const filterByAge = (videos, age, customThreshold) => {
   const threshold = getEffectiveThreshold(age, customThreshold)
-  return videos.filter(video => video.totalScore >= threshold)
+  return videos.filter(video => {
+    // 1) 총점 미달 제외 (기존 동작)
+    if (video.totalScore < threshold) return false
+
+    // 2) 권장 연령 초과 → 숨김 (confidence 무관)
+    //    배틀 가드 등 제목 기반으로 부여된 ageRating 은 키워드 단계라도 명백한 신호라 신뢰한다.
+    if (video.ageRating != null && age != null && video.ageRating > age) return false
+
+    // 3) 위험 카테고리/상업성은 AI 정밀분석(high)일 때만 — 오탐 방지
+    if (video.confidence === 'high') {
+      // 위험 카테고리(폭력/언어/선정/공포/모방) 중 하나라도 60 미만 → 숨김
+      const danger = [video.violence, video.language, video.sexual, video.scary, video.imitationRisk]
+      if (danger.some(s => s != null && s < 60)) return false
+      // 비상업성 50 이하(언박싱·가챠 등 소비 유도) → 숨김
+      if (video.commercialism != null && video.commercialism <= 50) return false
+    }
+    return true
+  })
 }
 
 // 안전도 점수 기반 정렬 (높은 순)

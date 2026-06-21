@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaPlus, FaShieldAlt, FaLock } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
 import { getProfiles, getBadges } from "../utils/api";
+import { useAuth } from "../contexts/AuthContext";
 
 // 높을수록 희귀 (획득 조건 기준)
 const BADGE_RANK = {
@@ -47,35 +48,52 @@ const getBadgeTierClass = (badgeId) => {
 
 export default function ProfileSelect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [profileBadges, setProfileBadges] = useState({});
 
   useEffect(() => {
-    const fetchProfiles = async () => {
+    // 로그인 사용자가 확정된 뒤 조회. user.id는 토큰 갱신과 무관하게 안정적이라
+    // 재조회 폭주/갱신 순간의 일시 실패를 피한다. 첫 조회가 실패하면 자동 재시도(최대 2회).
+    if (!user) return;
+    let cancelled = false;
+
+    const fetchProfiles = async (attempt = 0) => {
       try {
         const data = await getProfiles();
+        if (cancelled) return;
         setProfiles(data);
         const badgeResults = await Promise.all(
           data.map(async (p) => {
             try {
-              const badges = await getBadges(p.id);
-              return [p.id, badges];
+              return [p.id, await getBadges(p.id)];
             } catch {
               return [p.id, []];
             }
           })
         );
-        setProfileBadges(Object.fromEntries(badgeResults));
+        if (!cancelled) {
+          setProfileBadges(Object.fromEntries(badgeResults));
+          setLoading(false);
+        }
       } catch (err) {
-        console.error("프로필 불러오기 실패:", err);
-      } finally {
-        setLoading(false);
+        // 첫 진입 토큰 race 등 일시 실패 → 잠깐 후 재시도
+        if (!cancelled && attempt < 2) {
+          setTimeout(() => fetchProfiles(attempt + 1), 500);
+          return;
+        }
+        if (!cancelled) {
+          console.error("프로필 불러오기 실패:", err);
+          setLoading(false);
+        }
       }
     };
+
     fetchProfiles();
-  }, []);
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const handleProfileClick = (profile) => {
     setSelectedId(profile.id);
