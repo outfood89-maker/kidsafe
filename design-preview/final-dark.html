@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KidSafe 최종 방향 — 다크 OTT + 에메랄드·청록</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --emerald:#18C49A; --teal:#14B8C4; --spring:#16BEAF;
+    --gold:#F5B829; --coral:#F2655C;
+    --bg:#0B1F1B;        /* 딥 틸-그린 베이스 */
+    --bg-2:#0F2A24;      /* 카드 영역 */
+    --bg-3:#16352E;      /* 칩/보더 */
+    --txt:#EAF5F1; --sub:rgba(234,245,241,0.5);
+    font-family:"Pretendard Variable",Pretendard,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#05110e;color:var(--txt);-webkit-font-smoothing:antialiased;}
+  .guide{position:sticky;top:0;z-index:50;background:#05110e;color:#fff;padding:13px 20px;text-align:center;font-size:14px;font-weight:600;border-bottom:1px solid var(--bg-3);}
+  .guide b{color:var(--spring);}
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  /* 상단바 */
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:18px 30px;}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:20px;letter-spacing:-0.5px;}
+  .logo .mk{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--emerald),var(--teal));display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .nav .prof{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--emerald),var(--teal));display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .nav .prof img{width:32px;height:32px;object-fit:contain;}
+
+  /* 히어로 */
+  .hero{position:relative;height:420px;overflow:hidden;border-radius:24px;margin:0 30px;}
+  .hero-bg{position:absolute;inset:0;background:linear-gradient(120deg,var(--emerald) 0%,#13a0b0 55%,var(--teal) 100%);}
+  .hero-art{position:absolute;right:60px;top:50%;transform:translateY(-50%);font-size:220px;opacity:.92;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.3));}
+  .hero-art img{width:340px;height:340px;object-fit:contain;filter:drop-shadow(0 24px 44px rgba(0,0,0,0.35));}
+  .hero-fade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,31,27,0.92) 5%,rgba(11,31,27,0.55) 38%,transparent 70%),linear-gradient(0deg,var(--bg) 1%,transparent 26%);}
+  .hero-in{position:absolute;left:46px;bottom:42px;z-index:3;max-width:54%;}
+  .hbadge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.16);backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:800;letter-spacing:0.5px;padding:6px 13px;border-radius:999px;}
+  .hbadge .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);}
+  .htitle{font-size:46px;font-weight:900;letter-spacing:-1.5px;line-height:1.04;margin-top:16px;color:#fff;text-shadow:0 4px 20px rgba(0,0,0,0.25);}
+  .hmeta{margin-top:14px;display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.85);font-weight:600;}
+  .hmeta .s{background:#fff;color:#0E9E7E;font-weight:900;padding:3px 10px;border-radius:999px;font-size:13px;}
+  .hbtns{margin-top:22px;display:flex;gap:11px;}
+  .play{background:#fff;color:#0B1F1B;font-weight:900;font-size:15px;padding:13px 30px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.2);transition:transform .2s;}
+  .play:hover{transform:scale(1.05);}
+  .info{background:rgba(255,255,255,0.18);backdrop-filter:blur(8px);color:#fff;font-weight:700;font-size:15px;padding:13px 24px;border:none;border-radius:12px;cursor:pointer;}
+
+  /* 본문 */
+  .body{background:var(--bg);padding:26px 30px 50px;margin-top:-26px;border-radius:24px 24px 0 0;position:relative;}
+  .chips{display:flex;gap:9px;overflow-x:auto;padding-bottom:22px;scrollbar-width:none;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto;padding:9px 18px;border-radius:999px;font-size:14px;font-weight:700;background:var(--bg-3);color:var(--sub);border:1px solid transparent;cursor:pointer;transition:.18s;}
+  .chip:hover{color:var(--txt);}
+  .chip.on{background:linear-gradient(135deg,var(--emerald),var(--teal));color:#fff;}
+
+  .rowblock{margin-bottom:30px;}
+  .rt{font-size:21px;font-weight:800;letter-spacing:-0.5px;margin-bottom:15px;display:flex;align-items:center;gap:9px;}
+  .rt .cnt{font-size:13px;font-weight:700;color:var(--spring);}
+  .row{display:flex;gap:15px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;}
+  .row::-webkit-scrollbar{display:none;}
+  .card{flex:0 0 auto;width:215px;cursor:pointer;transition:transform .25s cubic-bezier(.2,.8,.2,1);}
+  .card:hover{transform:translateY(-8px) scale(1.05);}
+  .th{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:52px;box-shadow:0 8px 22px rgba(0,0,0,0.35);}
+  .card:hover .th{box-shadow:0 16px 40px rgba(20,184,196,0.3);}
+  .sc{position:absolute;left:9px;top:9px;background:linear-gradient(135deg,var(--emerald),var(--teal));color:#fff;font-size:12px;font-weight:900;padding:3px 11px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,0.3);}
+  .dur{position:absolute;right:9px;bottom:9px;background:rgba(0,0,0,0.8);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:7px;}
+  .ct{margin-top:11px;font-size:15px;font-weight:700;letter-spacing:-0.3px;line-height:1.3;color:var(--txt);}
+  .cc{margin-top:4px;font-size:13px;color:var(--sub);}
+
+  /* 키디 큐레이터 띠 */
+  .kiddybar{display:flex;align-items:center;gap:16px;background:linear-gradient(120deg,var(--bg-2),rgba(22,190,175,0.12));border:1px solid var(--bg-3);border-radius:18px;padding:16px 20px;margin-bottom:30px;}
+  .kiddybar .kc{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--emerald),var(--teal));display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;box-shadow:0 6px 16px rgba(0,0,0,0.25);}
+  .kiddybar .kc img{width:56px;height:56px;object-fit:contain;}
+  .kiddybar .kt{font-size:16px;font-weight:800;letter-spacing:-0.3px;}
+  .kiddybar .kt small{display:block;color:var(--sub);font-size:13px;font-weight:600;margin-top:3px;}
+
+  .palette{display:flex;gap:8px;justify-content:center;padding:30px 0 50px;flex-wrap:wrap;}
+  .pchip{width:60px;text-align:center;font-size:10px;font-weight:700;color:var(--sub);}
+  .pchip .pb{width:60px;height:44px;border-radius:10px;margin-bottom:5px;}
+
+  .t1{background:linear-gradient(135deg,#1aa67e,#0d6e54);} .t2{background:linear-gradient(135deg,#15a0b0,#0a5f6e);}
+  .t3{background:linear-gradient(135deg,#2bbf9a,#157a5e);} .t4{background:linear-gradient(135deg,#5aa8c4,#2d5f7a);}
+  .t5{background:linear-gradient(135deg,#18c49a,#14b8c4);} .t6{background:linear-gradient(135deg,#3fb8a0,#0e8a78);}
+</style>
+</head>
+<body>
+<div class="guide">✨ <b>최종 방향 시안</b> — 다크 OTT + 에메랄드→청록 그라데 + 키디 큐레이터 &nbsp;·&nbsp; 카드에 <b>호버</b>해봐 &nbsp;·&nbsp; 이게 아이홈이야</div>
+
+<div class="wrap">
+  <div class="nav">
+    <div class="logo"><div class="mk">🛡️</div> KidSafe</div>
+    <div class="prof"><img src="../client/public/images/kiddy.png" onerror="this.parentElement.innerHTML='🦖'"></div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-art"><img src="../client/public/images/kiddy_jump.png" onerror="this.parentElement.innerHTML='🦕'"></div>
+    <div class="hero-fade"></div>
+    <div class="hero-in">
+      <span class="hbadge"><span class="dot"></span> 오늘의 추천</span>
+      <div class="htitle">공룡과 떠나는<br>우주여행</div>
+      <div class="hmeta"><span class="s">안전 97</span> · 키즈사이언스 · 12분 · 3~7세</div>
+      <div class="hbtns">
+        <button class="play">▶ 바로 재생</button>
+        <button class="info">ⓘ 상세정보</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="chips">
+      <div class="chip on">전체</div><div class="chip">공룡</div><div class="chip">우주</div>
+      <div class="chip">동물</div><div class="chip">동요</div><div class="chip">과학</div><div class="chip">만들기</div><div class="chip">영어</div>
+    </div>
+
+    <div class="kiddybar">
+      <div class="kc"><img src="../client/public/images/kiddy_search.png" onerror="this.parentElement.innerHTML='🔍'"></div>
+      <div class="kt">키디가 오늘 골라봤어! 🦕<small>공룡을 좋아하는 너를 위한 안전한 영상 12개</small></div>
+    </div>
+
+    <div class="rowblock">
+      <div class="rt">🦕 공룡 친구들 <span class="cnt">12개</span></div>
+      <div class="row">
+        <div class="card"><div class="th t1"><span class="sc">안전 97</span><span class="dur">12:30</span>🦕</div><div class="ct">공룡과 떠나는 우주여행</div><div class="cc">키즈사이언스</div></div>
+        <div class="card"><div class="th t3"><span class="sc">안전 92</span><span class="dur">8:15</span>🦖</div><div class="ct">신기한 공룡 백과사전</div><div class="cc">어린이TV</div></div>
+        <div class="card"><div class="th t6"><span class="sc">안전 88</span><span class="dur">15:02</span>🦴</div><div class="ct">공룡이 살던 시대 탐험</div><div class="cc">탐험대</div></div>
+        <div class="card"><div class="th t1"><span class="sc">안전 95</span><span class="dur">6:40</span>🌋</div><div class="ct">화산과 공룡 이야기</div><div class="cc">키즈사이언스</div></div>
+      </div>
+    </div>
+
+    <div class="rowblock">
+      <div class="rt">🚀 우주 대모험 <span class="cnt">9개</span></div>
+      <div class="row">
+        <div class="card"><div class="th t2"><span class="sc">안전 94</span><span class="dur">10:20</span>🚀</div><div class="ct">달나라로 가는 로켓</div><div class="cc">우주탐험대</div></div>
+        <div class="card"><div class="th t4"><span class="sc">안전 91</span><span class="dur">9:00</span>🪐</div><div class="ct">토성의 고리 비밀</div><div class="cc">별빛과학</div></div>
+        <div class="card"><div class="th t2"><span class="sc">안전 96</span><span class="dur">11:10</span>👨‍🚀</div><div class="ct">우주인은 어떻게 살아요?</div><div class="cc">키즈사이언스</div></div>
+        <div class="card"><div class="th t4"><span class="sc">안전 89</span><span class="dur">7:30</span>🌟</div><div class="ct">반짝이는 별자리 찾기</div><div class="cc">밤하늘TV</div></div>
+      </div>
+    </div>
+
+    <div class="rowblock">
+      <div class="rt">▶ 이어서 볼까요? <span class="cnt">시청 기록</span></div>
+      <div class="row">
+        <div class="card"><div class="th t5"><span class="sc">안전 98</span><span class="dur">5:20</span>🎵</div><div class="ct">신나는 율동 동요</div><div class="cc">키즈뮤직</div></div>
+        <div class="card"><div class="th t6"><span class="sc">안전 93</span><span class="dur">13:40</span>🐢</div><div class="ct">바다거북 친구 이야기</div><div class="cc">동물탐험</div></div>
+        <div class="card"><div class="th t3"><span class="sc">안전 90</span><span class="dur">8:50</span>🔬</div><div class="ct">집에서 하는 과학실험</div><div class="cc">키즈사이언스</div></div>
+      </div>
+    </div>
+
+    <div class="palette">
+      <div class="pchip"><div class="pb" style="background:#18C49A"></div>에메랄드</div>
+      <div class="pchip"><div class="pb" style="background:#16BEAF"></div>스프링틸</div>
+      <div class="pchip"><div class="pb" style="background:#14B8C4"></div>청록</div>
+      <div class="pchip"><div class="pb" style="background:#F5B829"></div>골드</div>
+      <div class="pchip"><div class="pb" style="background:#F2655C"></div>코랄</div>
+      <div class="pchip"><div class="pb" style="background:#0B1F1B"></div>딥베이스</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

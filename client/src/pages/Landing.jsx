@@ -318,34 +318,34 @@ export default function Landing() {
   ]
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden" style={{ backgroundColor: "#F8F7F2" }}>
+    <div className="min-h-screen w-full overflow-x-hidden" style={{ backgroundColor: "#0B1F1B" }}>
 
-      {/* ① Hero 섹션 */}
+      {/* ① Hero 섹션 — 다크 OTT */}
       <section
         className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 text-center overflow-hidden"
-        style={{ backgroundColor: "#2C3528" }}
+        style={{ background: "radial-gradient(120% 90% at 50% 0%, #123129 0%, #0B1F1B 55%, #08160F 100%)" }}
       >
-        {/* 배경 장식 */}
-        <div className="absolute top-16 left-8 h-48 w-48 rounded-full opacity-10" style={{ backgroundColor: "#6DAB60", filter: "blur(40px)" }} />
-        <div className="absolute bottom-24 right-12 h-72 w-72 rounded-full opacity-10" style={{ backgroundColor: "#6DAB60", filter: "blur(60px)" }} />
+        {/* 배경 장식 — 에메랄드·청록 글로우 */}
+        <div className="absolute top-10 left-4 h-64 w-64 rounded-full opacity-20" style={{ backgroundColor: "#18C49A", filter: "blur(90px)" }} />
+        <div className="absolute bottom-20 right-8 h-80 w-80 rounded-full opacity-20" style={{ backgroundColor: "#14B8C4", filter: "blur(110px)" }} />
 
         {/* 네비게이션 */}
         <nav className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 md:px-16 py-5 z-10">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ backgroundColor: "#6DAB60" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[11px]" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 6px 18px rgba(20,184,196,0.35)" }}>
               <FaShieldAlt className="text-white text-sm" />
             </div>
-            <span className="text-lg font-medium text-white">KidSafe</span>
+            <span className="text-lg font-extrabold tracking-tight text-white">KidSafe</span>
           </div>
           {user ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-white/70 hidden sm:block">
+              <span className="text-sm text-white/60 hidden sm:block">
                 {user.user_metadata?.display_name || user.email}
               </span>
               <button
                 onClick={signOut}
-                className="rounded-[10px] px-4 py-2 text-sm font-medium text-white/80 transition hover:text-white"
-                style={{ border: "1px solid rgba(255,255,255,0.25)" }}
+                className="rounded-ks-md px-4 py-2 text-sm font-semibold text-white/80 transition hover:text-white hover:bg-white/5"
+                style={{ border: "1px solid rgba(255,255,255,0.18)" }}
               >
                 로그아웃
               </button>
@@ -353,8 +353,8 @@ export default function Landing() {
           ) : (
             <button
               onClick={() => navigate("/login")}
-              className="rounded-[10px] px-5 py-2 text-sm font-medium text-white transition"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="rounded-ks-md px-5 py-2.5 text-sm font-bold text-white transition hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 6px 18px rgba(20,184,196,0.3)" }}
             >
               로그인
             </button>
@@ -364,41 +364,44 @@ export default function Landing() {
         {/* 메인 콘텐츠 */}
         <div className="relative z-10 flex flex-col items-center">
           {/* 키디 이미지 */}
-          <div className="mb-4">
+          <div className="mb-8">
             <KiddyImg pose="hello" size={200} animate={true} />
           </div>
 
-          {/* 말풍선 */}
-          <div className="relative mb-6">
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2" style={{ width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "8px solid #F0F5ED" }} />
-            <div className="rounded-[14px] px-5 py-2.5 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#2C3528" }}>
+          {/* 말풍선 — 비활성화 (2026-06-22, 멘트 어색 피드백). 복구하려면 주석 해제.
+          <div className="relative mb-7">
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2" style={{ width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "8px solid #ffffff" }} />
+            <div className="rounded-ks-md px-5 py-2.5 text-sm font-bold" style={{ backgroundColor: "#ffffff", color: "#0B1F1B", boxShadow: "0 8px 22px rgba(0,0,0,0.25)" }}>
               내 영상은 내가 맡아줄게!
             </div>
           </div>
+          */}
 
-          <h1 className="text-4xl md:text-6xl font-medium leading-tight text-white">
+          <h1 className="text-5xl md:text-7xl font-black leading-[1.05] tracking-tight text-white">
             아이의 콘텐츠,
             <br />
-            <span style={{ color: "#6DAB60" }}>안전하게 지켜요</span>
+            <span style={{ background: "linear-gradient(110deg, #2BE0B4, #18C49A 45%, #14B8C4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              안전하게 지켜요
+            </span>
           </h1>
 
-          <p className="mt-5 max-w-xl text-base md:text-lg text-white/70 leading-relaxed">
+          <p className="mt-6 max-w-xl text-base md:text-xl font-medium text-white/65 leading-relaxed">
             AI가 YouTube 영상을 미리 검사하고, 아이의 나이에 맞는 안전한 콘텐츠만 추천해드려요.
             부모님은 언제든 시청 현황을 확인할 수 있어요.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <button
               onClick={() => navigate("/profiles")}
-              className="rounded-[10px] px-8 py-4 text-base font-medium text-white transition hover:opacity-90"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="rounded-ks-md px-8 py-4 text-base font-extrabold text-white transition hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 12px 30px rgba(20,184,196,0.35)" }}
             >
               🚀 지금 시작하기
             </button>
             <button
               onClick={() => navigate("/login")}
-              className="rounded-[10px] px-8 py-4 text-base font-medium text-white transition hover:opacity-90"
-              style={{ border: "1px solid rgba(255,255,255,0.2)", backgroundColor: "rgba(255,255,255,0.05)" }}
+              className="rounded-ks-md px-8 py-4 text-base font-bold text-white transition hover:bg-white/10"
+              style={{ border: "1px solid rgba(255,255,255,0.18)", backgroundColor: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)" }}
             >
               <FaUserPlus className="mr-2 inline" />
               로그인 / 회원가입
@@ -407,13 +410,13 @@ export default function Landing() {
         </div>
 
         {/* 스크롤 유도 */}
-        <div className="absolute bottom-8 flex flex-col items-center gap-1.5 animate-bounce" style={{ color: "rgba(255,255,255,0.5)" }}>
-          <p className="text-xs font-medium">스크롤해서 더 알아보기</p>
+        <div className="absolute bottom-8 flex flex-col items-center gap-1.5 animate-bounce" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <p className="text-xs font-semibold">스크롤해서 더 알아보기</p>
           <FaChevronDown />
         </div>
       </section>
 
-      {/* ② 오늘의 안전 팁 */}
+      {/* ② 오늘의 안전 팁 — 비활성화 (2026-06-22, "맥락 없이 들어가 보임" 피드백). 복구하려면 아래 주석 해제.
       <section className="px-5 py-6" style={{ backgroundColor: "#F0F5ED" }}>
         <div className="mx-auto max-w-2xl flex items-start gap-3">
           <span className="text-xl shrink-0 mt-0.5">💡</span>
@@ -423,30 +426,31 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      */}
 
       {/* ③ 기능 소개 섹션 */}
-      <section ref={featRef} className="px-4 py-20 md:py-28" style={{ backgroundColor: "#F8F7F2" }}>
+      <section ref={featRef} className="px-4 py-20 md:py-28" style={{ backgroundColor: "#0B1F1B" }}>
         <div className="mx-auto max-w-5xl">
           <div className={`text-center mb-12 transition-all duration-700 ${featInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6DAB60" }}>Features</p>
-            <h2 className="text-3xl md:text-4xl font-medium" style={{ color: "#2C3528" }}>KidSafe가 특별한 이유</h2>
-            <p className="mt-3 text-base" style={{ color: "#6B7A65" }}>아이의 안전한 미디어 환경을 위한 모든 것을 담았어요.</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Features</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe가 특별한 이유</h2>
+            <p className="mt-3 text-base font-medium" style={{ color: "#8FA89F" }}>아이의 안전한 미디어 환경을 위한 모든 것을 담았어요.</p>
           </div>
 
           {/* 모바일 전용: 카드 목록 */}
           <div className={`md:hidden flex flex-col gap-4 transition-all duration-700 ${featInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
             {features.map((feat) => (
-              <div key={feat.title} className="bg-white p-5" style={{ borderRadius: "20px", border: "1px solid #D4E8D0" }}>
+              <div key={feat.title} className="p-5" style={{ borderRadius: "18px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex items-center justify-center rounded-[12px] shrink-0" style={{ width: "44px", height: "44px", backgroundColor: feat.iconBg }}>
                     {feat.icon}
                   </div>
-                  <h3 className="text-xl font-semibold" style={{ color: "#1A2518" }}>{feat.title}</h3>
+                  <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>{feat.title}</h3>
                 </div>
-                <p className="text-sm leading-relaxed mb-4" style={{ color: "#3D4D38" }}>{feat.desc}</p>
-                <div className="pt-3" style={{ borderTop: "1px solid #E4EAE0" }}>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "#6DAB60" }}>📌 왜 필요한가요?</p>
-                  <p className="text-sm leading-relaxed" style={{ color: "#6B7A65" }}>{feat.why}</p>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: "#C5D8CF" }}>{feat.desc}</p>
+                <div className="pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <p className="text-xs font-bold mb-2" style={{ color: "#18C49A" }}>📌 왜 필요한가요?</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "#8FA89F" }}>{feat.why}</p>
                 </div>
               </div>
             ))}
@@ -460,13 +464,13 @@ export default function Landing() {
               <KiddyImg pose={featurePoses[activeFeat]} size={240} animate />
               <div
                 className="relative text-center px-5 py-3.5"
-                style={{ backgroundColor: "#F0F5ED", borderRadius: "14px", maxWidth: "240px" }}
+                style={{ backgroundColor: "#16352E", borderRadius: "14px", maxWidth: "240px", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 <div
                   className="absolute -top-2 left-1/2 -translate-x-1/2"
-                  style={{ width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "8px solid #F0F5ED" }}
+                  style={{ width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "8px solid #16352E" }}
                 />
-                <p className="text-base font-medium leading-snug whitespace-pre-line" style={{ color: "#2C3528" }}>
+                <p className="text-base font-bold leading-snug whitespace-pre-line" style={{ color: "#EAF5F1" }}>
                   {kiddySpeech[activeFeat]}
                 </p>
               </div>
@@ -494,20 +498,20 @@ export default function Landing() {
                     pointerEvents: activeFeat === i ? "auto" : "none",
                   }}
                 >
-                  <div className="h-full bg-white p-5 md:p-8" style={{ borderRadius: "20px", border: "1px solid #D4E8D0" }}>
+                  <div className="h-full p-5 md:p-8" style={{ borderRadius: "20px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)" }}>
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex items-center justify-center rounded-[12px] shrink-0" style={{ width: "52px", height: "52px", backgroundColor: feat.iconBg }}>
                         {feat.icon}
                       </div>
-                      <span className="text-sm font-medium px-3 py-1 rounded-full" style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}>
+                      <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ backgroundColor: "#16352E", color: "#18C49A" }}>
                         {i + 1} / {features.length}
                       </span>
                     </div>
-                    <h3 className="text-2xl md:text-4xl font-semibold mb-4" style={{ color: "#1A2518" }}>{feat.title}</h3>
-                    <p className="text-base md:text-2xl leading-relaxed mb-6" style={{ color: "#3D4D38" }}>{feat.desc}</p>
-                    <div className="pt-5" style={{ borderTop: "1px solid #E4EAE0" }}>
-                      <p className="text-base font-semibold mb-2.5" style={{ color: "#6DAB60" }}>📌 왜 필요한가요?</p>
-                      <p className="text-base leading-relaxed" style={{ color: "#3D4D38" }}>{feat.why}</p>
+                    <h3 className="text-2xl md:text-4xl font-black mb-4" style={{ color: "#EAF5F1" }}>{feat.title}</h3>
+                    <p className="text-base md:text-2xl leading-relaxed mb-6" style={{ color: "#C5D8CF" }}>{feat.desc}</p>
+                    <div className="pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                      <p className="text-base font-bold mb-2.5" style={{ color: "#18C49A" }}>📌 왜 필요한가요?</p>
+                      <p className="text-base leading-relaxed" style={{ color: "#8FA89F" }}>{feat.why}</p>
                     </div>
                   </div>
                 </div>
@@ -520,7 +524,7 @@ export default function Landing() {
             <button
               onClick={() => setActiveFeat(p => (p - 1 + features.length) % features.length)}
               className="flex items-center justify-center rounded-full transition hover:opacity-80"
-              style={{ width: "36px", height: "36px", backgroundColor: "white", border: "0.5px solid #E4EAE0", color: "#6DAB60", fontSize: "16px" }}
+              style={{ width: "36px", height: "36px", backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)", color: "#18C49A", fontSize: "16px" }}
             >
               ←
             </button>
@@ -532,14 +536,14 @@ export default function Landing() {
                 style={{
                   width: activeFeat === i ? "24px" : "8px",
                   height: "8px",
-                  backgroundColor: activeFeat === i ? "#6DAB60" : "#D4EAD0",
+                  backgroundColor: activeFeat === i ? "#18C49A" : "rgba(255,255,255,0.18)",
                 }}
               />
             ))}
             <button
               onClick={() => setActiveFeat(p => (p + 1) % features.length)}
               className="flex items-center justify-center rounded-full transition hover:opacity-80"
-              style={{ width: "36px", height: "36px", backgroundColor: "white", border: "0.5px solid #E4EAE0", color: "#6DAB60", fontSize: "16px" }}
+              style={{ width: "36px", height: "36px", backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)", color: "#18C49A", fontSize: "16px" }}
             >
               →
             </button>
@@ -548,30 +552,30 @@ export default function Landing() {
       </section>
 
       {/* ④ 앱 미리보기 섹션 */}
-      <section ref={previewRef} className="px-4 py-20 md:py-28 overflow-hidden" style={{ backgroundColor: "#F0F5ED" }}>
+      <section ref={previewRef} className="px-4 py-20 md:py-28 overflow-hidden" style={{ backgroundColor: "#0F2A24" }}>
         <div className="mx-auto max-w-6xl">
           <div className={`text-center mb-14 transition-all duration-700 ${previewInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6DAB60" }}>Live Preview</p>
-            <h2 className="text-3xl md:text-4xl font-medium" style={{ color: "#2C3528" }}>직접 확인해보세요</h2>
-            <p className="mt-3 text-base" style={{ color: "#6B7A65" }}>아이 화면, 부모 화면, 키디 채팅, 이렇게 생겼어요.</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Live Preview</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>직접 확인해보세요</h2>
+            <p className="mt-3 text-base font-medium" style={{ color: "#8FA89F" }}>아이 화면, 부모 화면, 키디 채팅, 이렇게 생겼어요.</p>
           </div>
 
           {/* 아이 화면 */}
           <div className={`flex flex-col md:flex-row gap-10 md:gap-16 mb-20 md:mb-24 transition-all duration-700 delay-100 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <span
-                className="inline-block rounded-full px-4 py-1.5 text-sm font-medium mb-5"
-                style={{ backgroundColor: "#D4EAD0", color: "#2C3528" }}
+                className="inline-block rounded-full px-4 py-1.5 text-sm font-bold mb-5"
+                style={{ backgroundColor: "#16352E", color: "#5FE0BC", border: "1px solid rgba(255,255,255,0.1)" }}
               >
                 👧 아이 화면
               </span>
-              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight text-center md:text-left" style={{ color: "#2C3528" }}>
+              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 아이가 직접<br />탐색하는 공간
               </h3>
               <ul className="space-y-3 w-full max-w-xs">
                 {["나이에 맞는 안전한 영상만 추천", "AI 친구 키디와 언제든 대화", "배지를 모으며 성장하는 재미", "차단 키워드 검색 자동 방지"].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#6B7A65" }}>
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ backgroundColor: "#6DAB60" }}>✓</span>
+                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#B5C9C0" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
                     {item}
                   </li>
                 ))}
@@ -586,18 +590,18 @@ export default function Landing() {
           <div className={`flex flex-col md:flex-row-reverse gap-10 md:gap-16 mb-20 md:mb-24 transition-all duration-700 delay-200 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <span
-                className="inline-block rounded-full px-4 py-1.5 text-sm font-medium mb-5"
-                style={{ backgroundColor: "#D4EAD0", color: "#2C3528" }}
+                className="inline-block rounded-full px-4 py-1.5 text-sm font-bold mb-5"
+                style={{ backgroundColor: "#16352E", color: "#5FE0BC", border: "1px solid rgba(255,255,255,0.1)" }}
               >
                 🤖 키디 AI 채팅
               </span>
-              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight text-center md:text-left" style={{ color: "#2C3528" }}>
+              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 언제든 키디에게<br />물어보세요
               </h3>
               <ul className="space-y-3 w-full max-w-xs">
                 {["모르는 것 뭐든지 키디에게 질문", "영상 소감·감정 대화 가능", "아이 눈높이 맞춤 친절한 답변", "24시간 항상 대기 중"].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#6B7A65" }}>
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ backgroundColor: "#6DAB60" }}>✓</span>
+                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#B5C9C0" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
                     {item}
                   </li>
                 ))}
@@ -612,18 +616,18 @@ export default function Landing() {
           <div className={`flex flex-col md:flex-row gap-10 md:gap-16 transition-all duration-700 delay-300 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <span
-                className="inline-block rounded-full px-4 py-1.5 text-sm font-medium mb-5"
-                style={{ backgroundColor: "#D4EAD0", color: "#2C3528" }}
+                className="inline-block rounded-full px-4 py-1.5 text-sm font-bold mb-5"
+                style={{ backgroundColor: "#16352E", color: "#5FE0BC", border: "1px solid rgba(255,255,255,0.1)" }}
               >
                 👨‍👩‍👧 부모 화면
               </span>
-              <h3 className="text-2xl md:text-3xl font-medium mb-5 leading-tight text-center md:text-left" style={{ color: "#2C3528" }}>
+              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 부모님이 한눈에<br />확인하는 공간
               </h3>
               <ul className="space-y-3 w-full max-w-xs">
                 {["시청 패턴 차트로 한눈에 파악", "위험 영상 알림 실시간 수신", "프로필별 안전도 기준 커스텀", "차단 키워드 직접 관리"].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#6B7A65" }}>
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ backgroundColor: "#6DAB60" }}>✓</span>
+                  <li key={item} className="flex items-center gap-3 text-sm justify-center md:justify-start" style={{ color: "#B5C9C0" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
                     {item}
                   </li>
                 ))}
@@ -642,29 +646,29 @@ export default function Landing() {
       </section>
 
       {/* ⑤ 숫자로 보는 KidSafe */}
-      <section ref={statsRef} className="px-4 py-20 md:py-24" style={{ backgroundColor: "#F8F7F2" }}>
+      <section ref={statsRef} className="px-4 py-20 md:py-24" style={{ backgroundColor: "#0B1F1B" }}>
         <div className="mx-auto max-w-4xl">
           <div className={`text-center mb-12 transition-all duration-700 ${statsInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6DAB60" }}>By the numbers</p>
-            <h2 className="text-3xl md:text-4xl font-medium" style={{ color: "#2C3528" }}>숫자로 보는 KidSafe</h2>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>By the numbers</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>숫자로 보는 KidSafe</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { count: count1, suffix: "개", label: "배지 시스템", desc: "시청·안전·장르별 배지 21개", color: "#6DAB60" },
-              { count: count2, suffix: "단계", label: "안전 등급", desc: "안전·주의·위험 3단계 분류", color: "#2E9E50" },
-              { count: count3, suffix: "명", label: "프로필 관리", desc: "가족 최대 4명까지 지원", color: "#EF9F27" },
+              { count: count1, suffix: "개", label: "배지 시스템", desc: "시청·안전·장르별 배지 21개", color: "#18C49A" },
+              { count: count2, suffix: "단계", label: "안전 등급", desc: "안전·주의·위험 3단계 분류", color: "#2BE0B4" },
+              { count: count3, suffix: "명", label: "프로필 관리", desc: "가족 최대 4명까지 지원", color: "#F5B829" },
             ].map((stat, i) => (
               <div
                 key={stat.label}
-                className={`bg-white p-7 text-center transition-all duration-700 ${statsInView ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
-                style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0", transitionDelay: `${i * 150}ms` }}
+                className={`p-7 text-center transition-all duration-700 ${statsInView ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+                style={{ borderRadius: "18px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", transitionDelay: `${i * 150}ms` }}
               >
-                <p className="text-5xl md:text-6xl font-medium" style={{ color: stat.color }}>
+                <p className="text-5xl md:text-6xl font-black" style={{ color: stat.color }}>
                   {stat.count}<span className="text-2xl md:text-3xl">{stat.suffix}</span>
                 </p>
-                <p className="mt-2 text-base font-medium" style={{ color: "#2C3528" }}>{stat.label}</p>
-                <p className="mt-1 text-xs" style={{ color: "#9BA89A" }}>{stat.desc}</p>
+                <p className="mt-2 text-base font-bold" style={{ color: "#EAF5F1" }}>{stat.label}</p>
+                <p className="mt-1 text-xs" style={{ color: "#8FA89F" }}>{stat.desc}</p>
               </div>
             ))}
           </div>
@@ -672,32 +676,32 @@ export default function Landing() {
       </section>
 
       {/* ⑥ 이렇게 사용해요 */}
-      <section ref={stepsRef} className="px-4 py-20 md:py-28" style={{ backgroundColor: "#F0F5ED" }}>
+      <section ref={stepsRef} className="px-4 py-20 md:py-28" style={{ backgroundColor: "#0F2A24" }}>
         <div className="mx-auto max-w-5xl">
           <div className={`text-center mb-12 transition-all duration-700 ${stepsInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6DAB60" }}>How it works</p>
-            <h2 className="text-3xl md:text-4xl font-medium" style={{ color: "#2C3528" }}>이렇게 사용해요</h2>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>How it works</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>이렇게 사용해요</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
-            <div className="hidden md:block absolute top-10 left-[12%] right-[12%] h-px" style={{ backgroundColor: "#B8D8B2" }} />
+            <div className="hidden md:block absolute top-10 left-[12%] right-[12%] h-px" style={{ backgroundColor: "rgba(255,255,255,0.12)" }} />
             {steps.map((step, i) => (
               <div
                 key={step.num}
                 className={`flex flex-col items-center text-center transition-all duration-700 ${stepsInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
                 style={{ transitionDelay: `${i * 150}ms` }}
               >
-                <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full text-3xl z-10" style={{ backgroundColor: "white", border: "0.5px solid #E4EAE0" }}>
+                <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full text-3xl z-10" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
                   {step.emoji}
                   <span
-                    className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-white"
-                    style={{ backgroundColor: "#6DAB60" }}
+                    className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white"
+                    style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}
                   >
                     {i + 1}
                   </span>
                 </div>
-                <h3 className="text-sm font-medium" style={{ color: "#2C3528" }}>{step.title}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#6B7A65" }}>{step.desc}</p>
+                <h3 className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{step.title}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#8FA89F" }}>{step.desc}</p>
               </div>
             ))}
           </div>
@@ -705,31 +709,35 @@ export default function Landing() {
       </section>
 
       {/* ⑦ 최하단 CTA */}
-      <section ref={ctaRef} className="px-4 py-20 md:py-28 text-center" style={{ backgroundColor: "#2C3528" }}>
-        <div className={`mx-auto max-w-3xl transition-all duration-700 ${ctaInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
+      <section ref={ctaRef} className="relative px-4 py-20 md:py-28 text-center overflow-hidden" style={{ background: "radial-gradient(120% 100% at 50% 100%, #123129 0%, #0B1F1B 55%, #08160F 100%)" }}>
+        {/* 배경 글로우 */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-72 w-[28rem] rounded-full opacity-20" style={{ backgroundColor: "#18C49A", filter: "blur(110px)" }} />
+        <div className={`relative mx-auto max-w-3xl transition-all duration-700 ${ctaInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
           <div className="flex justify-center mb-4">
             <KiddyImg pose="jump" size={180} animate />
           </div>
-          <h2 className="text-3xl md:text-4xl font-medium leading-tight text-white">
+          <h2 className="text-4xl md:text-6xl font-black leading-[1.08] tracking-tight text-white">
             지금 바로 KidSafe와
             <br />
-            <span style={{ color: "#6DAB60" }}>함께 시작해요</span>
+            <span style={{ background: "linear-gradient(110deg, #2BE0B4, #18C49A 45%, #14B8C4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              함께 시작해요
+            </span>
           </h2>
-          <p className="mt-4 text-base text-white/60">
+          <p className="mt-5 text-base md:text-lg font-medium text-white/60">
             아이가 안전하게 즐기는 미디어 환경, KidSafe가 함께할게요.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row justify-center">
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row justify-center">
             <button
               onClick={() => navigate("/profiles")}
-              className="rounded-[10px] px-8 py-4 text-base font-medium text-white transition hover:opacity-90"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="rounded-ks-md px-8 py-4 text-base font-extrabold text-white transition hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 12px 30px rgba(20,184,196,0.35)" }}
             >
               🚀 아이모드 시작하기
             </button>
             <button
               onClick={() => navigate("/parent")}
-              className="rounded-[10px] px-8 py-4 text-base font-medium text-white transition"
-              style={{ border: "1px solid rgba(255,255,255,0.2)", backgroundColor: "rgba(255,255,255,0.05)" }}
+              className="rounded-ks-md px-8 py-4 text-base font-bold text-white transition hover:bg-white/10"
+              style={{ border: "1px solid rgba(255,255,255,0.18)", backgroundColor: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)" }}
             >
               📊 부모 대시보드
             </button>
@@ -738,14 +746,14 @@ export default function Landing() {
       </section>
 
       {/* 푸터 */}
-      <footer className="px-4 py-8 text-center" style={{ backgroundColor: "#1a2019" }}>
+      <footer className="px-4 py-8 text-center" style={{ backgroundColor: "#060F0C" }}>
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-[8px]" style={{ backgroundColor: "#6DAB60" }}>
+          <div className="flex h-7 w-7 items-center justify-center rounded-[8px]" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>
             <FaShieldAlt className="text-white text-xs" />
           </div>
-          <span className="font-medium text-white">KidSafe</span>
+          <span className="font-bold text-white">KidSafe</span>
         </div>
-        <p className="text-xs" style={{ color: "#6B7A65" }}>어린이를 위한 안전한 미디어 플랫폼</p>
+        <p className="text-xs" style={{ color: "#8FA89F" }}>어린이를 위한 안전한 미디어 플랫폼</p>
         <p className="mt-1 text-xs" style={{ color: "#4a5548" }}>© 2026 KidSafe. All rights reserved.</p>
       </footer>
 

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KidSafe 디자인 톤 비교 — 넷플릭스 키즈 vs 다크 OTT</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  /* ───────── 공통 디자인 토큰 (두 톤이 공유하는 한 시스템) ───────── */
+  :root {
+    --green: #6DAB60;
+    --green-deep: #4a7c44;
+    --green-light: #B8D8B2;
+    --mint: #8FD3B6;
+    --bg: #F8F7F2;
+    --section: #F0F5ED;
+    --dark: #2C3528;
+    --dark-2: #1f2a1c;
+    --dark-3: #141a12;
+    --gold: #EF9F27;
+    --red: #C84B47;
+    --text: #2C3528;
+    --sub: #6B7A65;
+    --r-card: 18px;
+    --r-pill: 999px;
+    --shadow-soft: 0 6px 20px rgba(44,53,40,0.10);
+    --shadow-pop: 0 16px 40px rgba(44,53,40,0.22);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #e9ece6; color: var(--text); -webkit-font-smoothing: antialiased; }
+
+  /* 안내 바 */
+  .guide {
+    position: sticky; top: 0; z-index: 50;
+    background: #1a1f17; color: #fff;
+    padding: 14px 20px; text-align: center;
+    font-size: 14px; font-weight: 600; letter-spacing: -0.2px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+  .guide span { color: var(--green-light); }
+
+  .label {
+    max-width: 1100px; margin: 0 auto; padding: 40px 24px 14px;
+    font-size: 13px; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--green-deep);
+  }
+  .label small { display:block; margin-top:6px; font-size:13px; font-weight:600; letter-spacing:-0.2px; text-transform:none; color:var(--sub); }
+
+  .stage { max-width: 1100px; margin: 0 auto 30px; padding: 0 24px; }
+
+  /* ───────── 공통 화면 셸(폰 프레임) ───────── */
+  .screen {
+    border-radius: 28px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+
+  /* 캐러셀 공통 */
+  .row-title { font-size: 19px; font-weight: 800; letter-spacing:-0.4px; display:flex; align-items:center; gap:8px; }
+  .row { display:flex; gap:14px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; }
+  .row::-webkit-scrollbar { display:none; }
+  .card {
+    flex: 0 0 auto; width: 186px; cursor:pointer;
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+  }
+  .card:hover { transform: translateY(-6px) scale(1.04); }
+  .thumb {
+    position:relative; width:100%; aspect-ratio:16/9;
+    border-radius: var(--r-card); overflow:hidden;
+    display:flex; align-items:center; justify-content:center; font-size:46px;
+    box-shadow: var(--shadow-soft);
+  }
+  .card:hover .thumb { box-shadow: var(--shadow-pop); }
+  .dur { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,0.78); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:7px; }
+  .safe { position:absolute; left:8px; top:8px; background:var(--green); color:#fff; font-size:11px; font-weight:800; padding:3px 9px; border-radius:var(--r-pill); box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+  .c-title { margin-top:9px; font-size:14px; font-weight:700; letter-spacing:-0.3px; line-height:1.3; }
+  .c-ch { margin-top:3px; font-size:12px; }
+
+  /* ════════════ 톤 A : 밝은 그린 OTT (넷플릭스 키즈식) ════════════ */
+  .A .hero {
+    padding: 30px 24px 26px;
+    background: linear-gradient(135deg, #7BC47F 0%, #6DAB60 45%, #8FD3B6 100%);
+    position:relative; overflow:hidden;
+  }
+  .A .hero::before { content:"☁️"; position:absolute; top:14px; right:30px; font-size:30px; opacity:.5; }
+  .A .hero::after  { content:"⭐"; position:absolute; bottom:18px; left:36px; font-size:20px; opacity:.55; }
+  .A .kiddy {
+    width:84px; height:84px; border-radius:50%; background:rgba(255,255,255,0.92);
+    display:flex; align-items:center; justify-content:center; font-size:46px;
+    box-shadow:0 8px 22px rgba(0,0,0,0.18); margin:0 auto;
+  }
+  .A .bubble {
+    margin:14px auto 0; max-width:300px; text-align:center;
+    background:#fff; color:var(--text); font-weight:800; font-size:16px; letter-spacing:-0.4px;
+    padding:13px 18px; border-radius:20px; box-shadow:0 6px 18px rgba(0,0,0,0.14); position:relative;
+  }
+  .A .bubble::after { content:""; position:absolute; top:-8px; left:50%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-bottom:9px solid #fff; }
+  .A .search {
+    margin:18px auto 0; max-width:420px; display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.95); border-radius:var(--r-pill); padding:13px 18px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.12); font-size:15px; color:#9BA89A; font-weight:600;
+  }
+  .A .body { background:var(--bg); padding:24px; }
+  .A .rowblock { margin-bottom:24px; }
+  .A .row-title { color:var(--text); margin-bottom:14px; }
+  .A .thumb { border-radius:20px; }
+  .A .card { width:190px; }
+  .A .c-title { color:var(--text); }
+  .A .c-ch { color:var(--sub); }
+
+  /* 톤 A 칩 */
+  .A .chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none; }
+  .A .chips::-webkit-scrollbar{display:none;}
+  .A .chip { flex:0 0 auto; padding:8px 16px; border-radius:var(--r-pill); font-size:13px; font-weight:700; background:#fff; color:var(--sub); border:1.5px solid var(--green-light); }
+  .A .chip.on { background:var(--green); color:#fff; border-color:var(--green); }
+
+  /* ════════════ 톤 B : 다크 OTT (어른/부모식) ════════════ */
+  .B .screen { border:1px solid rgba(255,255,255,0.06); }
+  .B .hero {
+    padding: 0; position:relative; height:300px; overflow:hidden;
+    background: linear-gradient(115deg, #2C3528 0%, #3d5238 55%, #4a7c44 100%);
+  }
+  .B .hero-img { position:absolute; inset:0; display:flex; align-items:center; justify-content:flex-end; font-size:150px; opacity:.5; padding-right:40px; }
+  .B .hero-fade { position:absolute; inset:0; background:linear-gradient(90deg, var(--dark-2) 8%, rgba(20,26,18,0.65) 45%, transparent 75%), linear-gradient(0deg, var(--dark-2) 2%, transparent 30%); }
+  .B .hero-inner { position:absolute; left:34px; bottom:30px; max-width:60%; z-index:2; }
+  .B .hero-badge { display:inline-block; background:var(--green); color:#fff; font-size:11px; font-weight:800; letter-spacing:1px; padding:4px 10px; border-radius:6px; text-transform:uppercase; }
+  .B .hero-h { color:#fff; font-size:34px; font-weight:800; letter-spacing:-0.8px; margin-top:12px; line-height:1.1; }
+  .B .hero-p { color:rgba(255,255,255,0.72); font-size:14px; margin-top:10px; line-height:1.5; }
+  .B .hero-btns { margin-top:18px; display:flex; gap:10px; }
+  .B .btn-play { background:var(--green); color:#fff; font-weight:800; font-size:14px; padding:11px 24px; border:none; border-radius:10px; cursor:pointer; }
+  .B .btn-info { background:rgba(255,255,255,0.16); color:#fff; font-weight:700; font-size:14px; padding:11px 22px; border:none; border-radius:10px; cursor:pointer; backdrop-filter:blur(6px); }
+  .B .body { background:var(--dark-2); padding:24px 24px 30px; }
+  .B .rowblock { margin-bottom:24px; }
+  .B .row-title { color:#fff; margin-bottom:14px; }
+  .B .row-title small { color:var(--green-light); font-size:12px; font-weight:700; }
+  .B .thumb { border-radius:12px; }
+  .B .c-title { color:rgba(255,255,255,0.92); }
+  .B .c-ch { color:rgba(255,255,255,0.45); }
+  .B .chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:16px; scrollbar-width:none; }
+  .B .chips::-webkit-scrollbar{display:none;}
+  .B .chip { flex:0 0 auto; padding:7px 15px; border-radius:var(--r-pill); font-size:13px; font-weight:600; background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.12); }
+  .B .chip.on { background:#fff; color:var(--dark); border-color:#fff; }
+
+  /* 썸네일 색 팔레트 */
+  .t1{background:linear-gradient(135deg,#4a7c59,#2f5740);} .t2{background:linear-gradient(135deg,#5a8f6a,#3d6b4f);}
+  .t3{background:linear-gradient(135deg,#7BA86A,#4a7c44);} .t4{background:linear-gradient(135deg,#C9A14A,#8a6d22);}
+  .t5{background:linear-gradient(135deg,#6a9bd1,#3a5f8a);} .t6{background:linear-gradient(135deg,#b56a8f,#7a3d5a);}
+
+  .note { max-width:1100px; margin:0 auto; padding:6px 24px 0; font-size:13px; color:var(--sub); line-height:1.6; }
+  .foot { text-align:center; padding:40px 24px 60px; color:#9BA89A; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="guide">
+  🎨 KidSafe 디자인 톤 비교 데모 &nbsp;·&nbsp; 같은 영상 콘텐츠를 <span>두 가지 톤</span>으로 — 스크롤해서 위/아래를 비교하세요 &nbsp;·&nbsp; 카드에 <span>마우스를 올려보세요</span>
+</div>
+
+<!-- ══════════ 톤 A ══════════ -->
+<div class="label">TONE A · 밝은 그린 OTT (넷플릭스 키즈식)
+  <small>아이 홈에 어울리는 톤 — 밝은 그린 그라데, 키디가 큐레이터, 크고 둥근 카드, 통통 튀는 인터랙션</small>
+</div>
+<div class="stage A">
+  <div class="screen">
+    <div class="hero">
+      <div class="kiddy">🦊</div>
+      <div class="bubble">오늘은 공룡 영상 어때? 내가 골라봤어! 🦕</div>
+      <div class="search">🔍 보고 싶은 영상을 검색해봐!</div>
+    </div>
+    <div class="body">
+      <div class="chips">
+        <div class="chip on">전체</div><div class="chip">공룡</div><div class="chip">우주</div>
+        <div class="chip">동물</div><div class="chip">동요</div><div class="chip">과학</div><div class="chip">만들기</div>
+      </div>
+      <div class="rowblock">
+        <div class="row-title">🦕 공룡 친구들</div>
+        <div class="row">
+          <div class="card"><div class="thumb t1"><span class="safe">안전 97</span><span class="dur">12:30</span>🦕</div><div class="c-title">공룡과 떠나는 우주여행</div><div class="c-ch">키즈사이언스</div></div>
+          <div class="card"><div class="thumb t2"><span class="safe">안전 92</span><span class="dur">8:15</span>🦖</div><div class="c-title">신기한 공룡 백과사전</div><div class="c-ch">어린이TV</div></div>
+          <div class="card"><div class="thumb t3"><span class="safe">안전 88</span><span class="dur">15:02</span>🦴</div><div class="c-title">공룡이 살던 시대 탐험</div><div class="c-ch">탐험대</div></div>
+          <div class="card"><div class="thumb t1"><span class="safe">안전 95</span><span class="dur">6:40</span>🌋</div><div class="c-title">화산과 공룡 이야기</div><div class="c-ch">키즈사이언스</div></div>
+        </div>
+      </div>
+      <div class="rowblock">
+        <div class="row-title">🚀 우주 대모험</div>
+        <div class="row">
+          <div class="card"><div class="thumb t5"><span class="safe">안전 94</span><span class="dur">10:20</span>🚀</div><div class="c-title">달나라로 가는 로켓</div><div class="c-ch">우주탐험대</div></div>
+          <div class="card"><div class="thumb t5"><span class="safe">안전 91</span><span class="dur">9:00</span>🪐</div><div class="c-title">토성의 고리 비밀</div><div class="c-ch">별빛과학</div></div>
+          <div class="card"><div class="thumb t4"><span class="safe">안전 89</span><span class="dur">7:30</span>🌟</div><div class="c-title">반짝이는 별자리 찾기</div><div class="c-ch">밤하늘TV</div></div>
+          <div class="card"><div class="thumb t5"><span class="safe">안전 96</span><span class="dur">11:10</span>👨‍🚀</div><div class="c-title">우주인은 어떻게 살아요?</div><div class="c-ch">키즈사이언스</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">▸ 베이스가 밝고 그린이라 <b>따뜻하고 놀고 싶은</b> 인상. 키디가 말풍선으로 큐레이션을 이끎. 카드가 크고 둥글어 아이가 누르기 쉬움.</div>
+
+<!-- ══════════ 톤 B ══════════ -->
+<div class="label">TONE B · 다크 OTT (어른 / 부모 / 랜딩식)
+  <small>부모·랜딩에 어울리는 톤 — 다크 카키 베이스, 풀블리드 히어로 배너, 절제된 타이포, 콘텐츠가 주인공</small>
+</div>
+<div class="stage B">
+  <div class="screen">
+    <div class="hero">
+      <div class="hero-img">🦕</div>
+      <div class="hero-fade"></div>
+      <div class="hero-inner">
+        <span class="hero-badge">오늘의 추천</span>
+        <div class="hero-h">공룡과 떠나는<br>우주여행</div>
+        <div class="hero-p">AI 안전도 97점 · 키즈사이언스 · 12분<br>3~7세에게 딱 맞는 안전한 과학 콘텐츠</div>
+        <div class="hero-btns">
+          <button class="btn-play">▶ 재생</button>
+          <button class="btn-info">ⓘ 상세정보</button>
+        </div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="chips">
+        <div class="chip on">전체</div><div class="chip">공룡</div><div class="chip">우주</div>
+        <div class="chip">동물</div><div class="chip">동요</div><div class="chip">과학</div><div class="chip">만들기</div>
+      </div>
+      <div class="rowblock">
+        <div class="row-title">공룡 친구들 <small>· 12개</small></div>
+        <div class="row">
+          <div class="card"><div class="thumb t1"><span class="safe">안전 97</span><span class="dur">12:30</span>🦕</div><div class="c-title">공룡과 떠나는 우주여행</div><div class="c-ch">키즈사이언스</div></div>
+          <div class="card"><div class="thumb t2"><span class="safe">안전 92</span><span class="dur">8:15</span>🦖</div><div class="c-title">신기한 공룡 백과사전</div><div class="c-ch">어린이TV</div></div>
+          <div class="card"><div class="thumb t3"><span class="safe">안전 88</span><span class="dur">15:02</span>🦴</div><div class="c-title">공룡이 살던 시대 탐험</div><div class="c-ch">탐험대</div></div>
+          <div class="card"><div class="thumb t1"><span class="safe">안전 95</span><span class="dur">6:40</span>🌋</div><div class="c-title">화산과 공룡 이야기</div><div class="c-ch">키즈사이언스</div></div>
+        </div>
+      </div>
+      <div class="rowblock">
+        <div class="row-title">우주 대모험 <small>· 9개</small></div>
+        <div class="row">
+          <div class="card"><div class="thumb t5"><span class="safe">안전 94</span><span class="dur">10:20</span>🚀</div><div class="c-title">달나라로 가는 로켓</div><div class="c-ch">우주탐험대</div></div>
+          <div class="card"><div class="thumb t5"><span class="safe">안전 91</span><span class="dur">9:00</span>🪐</div><div class="c-title">토성의 고리 비밀</div><div class="c-ch">별빛과학</div></div>
+          <div class="card"><div class="thumb t4"><span class="safe">안전 89</span><span class="dur">7:30</span>🌟</div><div class="c-title">반짝이는 별자리 찾기</div><div class="c-ch">밤하늘TV</div></div>
+          <div class="card"><div class="thumb t5"><span class="safe">안전 96</span><span class="dur">11:10</span>👨‍🚀</div><div class="c-title">우주인은 어떻게 살아요?</div><div class="c-ch">키즈사이언스</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">▸ 베이스가 다크라 <b>썸네일이 튀고 프로페셔널</b>한 인상. 풀블리드 히어로 배너가 "넷플릭스 같다". 포트폴리오 임팩트 최강.</div>
+
+<div class="foot">
+  ※ 이 파일은 방향 결정을 위한 <b>데모</b>입니다 (실제 코드 아님). 키디는 🦊 이모지로 대체, 썸네일은 색박스+이모지로 표현.<br>
+  두 톤 모두 <b>같은 폰트(Pretendard)·같은 그린·같은 카드 구조·같은 캐러셀</b>을 공유 → 한 디자인 시스템.
+</div>
+
+</body>
+</html>

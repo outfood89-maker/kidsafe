@@ -78,17 +78,17 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center px-4 py-10" style={{ backgroundColor: "#2C3528" }}>
-      {/* 배경 장식 */}
-      <div className="absolute top-16 left-8 h-48 w-48 rounded-full opacity-10" style={{ backgroundColor: "#6DAB60", filter: "blur(40px)" }} />
-      <div className="absolute bottom-24 right-12 h-72 w-72 rounded-full opacity-10" style={{ backgroundColor: "#6DAB60", filter: "blur(60px)" }} />
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-10 overflow-hidden" style={{ background: "radial-gradient(120% 90% at 50% 0%, #123129 0%, #0B1F1B 55%, #08160F 100%)" }}>
+      {/* 배경 장식 — 에메랄드·청록 글로우 */}
+      <div className="absolute top-10 left-4 h-56 w-56 rounded-full opacity-20" style={{ backgroundColor: "#18C49A", filter: "blur(90px)" }} />
+      <div className="absolute bottom-16 right-6 h-72 w-72 rounded-full opacity-20" style={{ backgroundColor: "#14B8C4", filter: "blur(110px)" }} />
 
       {/* 로고 (홈으로) */}
-      <Link to="/" className="relative z-10 flex items-center gap-2 mb-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-[10px]" style={{ backgroundColor: "#6DAB60" }}>
+      <Link to="/" className="relative z-10 flex items-center gap-2.5 mb-6">
+        <div className="flex h-9 w-9 items-center justify-center rounded-[11px]" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 6px 18px rgba(20,184,196,0.35)" }}>
           <FaShieldAlt className="text-white text-sm" />
         </div>
-        <span className="text-xl font-medium text-white">KidSafe</span>
+        <span className="text-xl font-extrabold tracking-tight text-white">KidSafe</span>
       </Link>
 
       {/* 키디 */}
@@ -97,90 +97,90 @@ export default function Login() {
       </div>
 
       {/* 카드 */}
-      <div className="relative z-10 w-full max-w-sm bg-white p-7" style={{ borderRadius: "24px", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}>
+      <div className="relative z-10 w-full max-w-sm p-7" style={{ borderRadius: "24px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 16px 50px rgba(0,0,0,0.5)" }}>
         {/* 탭 */}
-        <div className="flex mb-6 rounded-xl p-1" style={{ backgroundColor: "#F0F5ED" }}>
+        <div className="flex mb-6 rounded-xl p-1" style={{ backgroundColor: "#16352E" }}>
           <button
             onClick={() => switchMode("login")}
-            className="flex-1 rounded-lg py-2 text-sm font-semibold transition"
-            style={{ backgroundColor: !isSignup ? "#6DAB60" : "transparent", color: !isSignup ? "white" : "#6B7A65" }}
+            className="flex-1 rounded-lg py-2 text-sm font-bold transition"
+            style={{ background: !isSignup ? "linear-gradient(135deg, #18C49A, #14B8C4)" : "transparent", color: !isSignup ? "white" : "#8FA89F" }}
           >
             로그인
           </button>
           <button
             onClick={() => switchMode("signup")}
-            className="flex-1 rounded-lg py-2 text-sm font-semibold transition"
-            style={{ backgroundColor: isSignup ? "#6DAB60" : "transparent", color: isSignup ? "white" : "#6B7A65" }}
+            className="flex-1 rounded-lg py-2 text-sm font-bold transition"
+            style={{ background: isSignup ? "linear-gradient(135deg, #18C49A, #14B8C4)" : "transparent", color: isSignup ? "white" : "#8FA89F" }}
           >
             회원가입
           </button>
         </div>
 
-        <h1 className="text-xl font-bold mb-1" style={{ color: "#2C3528" }}>
+        <h1 className="text-xl font-black mb-1" style={{ color: "#EAF5F1" }}>
           {isSignup ? "KidSafe 회원가입" : "다시 오셨네요!"}
         </h1>
-        <p className="text-sm mb-5" style={{ color: "#9BA89A" }}>
+        <p className="text-sm mb-5" style={{ color: "#8FA89F" }}>
           {isSignup ? "보호자 계정을 만들어주세요." : "보호자 계정으로 로그인해주세요."}
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* 보호자 이름 (가입 시에만) */}
           {isSignup && (
-            <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#F8F7F2", border: "1px solid #E4EAE0" }}>
-              <FaUser style={{ color: "#9BA89A" }} />
+            <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <FaUser style={{ color: "#8FA89F" }} />
               <input
                 type="text"
                 placeholder="보호자 이름 (닉네임)"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="flex-1 bg-transparent py-3 text-sm outline-none"
-                style={{ color: "#2C3528" }}
+                className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-white/35"
+                style={{ color: "#EAF5F1" }}
               />
             </div>
           )}
 
           {/* 이메일 */}
-          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#F8F7F2", border: "1px solid #E4EAE0" }}>
-            <FaEnvelope style={{ color: "#9BA89A" }} />
+          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <FaEnvelope style={{ color: "#8FA89F" }} />
             <input
               type="email"
               placeholder="이메일"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              className="flex-1 bg-transparent py-3 text-sm outline-none"
-              style={{ color: "#2C3528" }}
+              className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-white/35"
+              style={{ color: "#EAF5F1" }}
             />
           </div>
 
           {/* 비밀번호 */}
-          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#F8F7F2", border: "1px solid #E4EAE0" }}>
-            <FaLock style={{ color: "#9BA89A" }} />
+          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <FaLock style={{ color: "#8FA89F" }} />
             <input
               type="password"
               placeholder={isSignup ? "비밀번호 (6자 이상)" : "비밀번호"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={isSignup ? "new-password" : "current-password"}
-              className="flex-1 bg-transparent py-3 text-sm outline-none"
-              style={{ color: "#2C3528" }}
+              className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-white/35"
+              style={{ color: "#EAF5F1" }}
             />
           </div>
 
           {/* 에러 / 안내 메시지 */}
           {errorMsg && (
-            <p className="text-sm px-1" style={{ color: "#C84B47" }}>⚠️ {errorMsg}</p>
+            <p className="text-sm px-1" style={{ color: "#F2655C" }}>⚠️ {errorMsg}</p>
           )}
           {infoMsg && (
-            <p className="text-sm px-1" style={{ color: "#2E9E50" }}>✅ {infoMsg}</p>
+            <p className="text-sm px-1" style={{ color: "#18C49A" }}>✅ {infoMsg}</p>
           )}
 
           {/* 제출 버튼 */}
           <button
             type="submit"
             disabled={status === "loading"}
-            className="mt-2 rounded-xl py-3.5 text-base font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: "#6DAB60" }}
+            className="mt-2 rounded-xl py-3.5 text-base font-extrabold text-white transition hover:scale-[1.02] disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 10px 26px rgba(20,184,196,0.3)" }}
           >
             {status === "loading"
               ? (isSignup ? "가입 중..." : "로그인 중...")
@@ -189,12 +189,12 @@ export default function Login() {
         </form>
 
         {/* 하단 전환 안내 */}
-        <p className="text-center text-sm mt-5" style={{ color: "#9BA89A" }}>
+        <p className="text-center text-sm mt-5" style={{ color: "#8FA89F" }}>
           {isSignup ? "이미 계정이 있으신가요? " : "아직 회원이 아니신가요? "}
           <button
             onClick={() => switchMode(isSignup ? "login" : "signup")}
-            className="font-semibold"
-            style={{ color: "#6DAB60" }}
+            className="font-bold"
+            style={{ color: "#18C49A" }}
           >
             {isSignup ? "로그인" : "회원가입"}
           </button>

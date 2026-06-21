@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>썸네일 충돌 테스트 — 다크 vs 밝은 배경</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{ --emerald:#18C49A; --teal:#14B8C4; --spring:#16BEAF; --gold:#F5B829; font-family:"Pretendard Variable",Pretendard,sans-serif; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{-webkit-font-smoothing:antialiased;}
+  .guide{position:sticky;top:0;z-index:50;background:#05110e;color:#fff;padding:13px 20px;text-align:center;font-size:14px;font-weight:600;}
+  .guide b{color:#7BE0B0;}
+  .sec{padding:30px;}
+  .sec h2{font-size:20px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;}
+  .sec p{font-size:14px;margin-bottom:20px;opacity:.65;}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1100px;}
+  @media(max-width:820px){.grid{grid-template-columns:repeat(2,1fr);}}
+
+  .card{cursor:pointer;transition:transform .2s;}
+  .card:hover{transform:translateY(-5px);}
+  .th{position:relative;width:100%;aspect-ratio:16/9;border-radius:13px;overflow:hidden;
+      display:flex;align-items:center;justify-content:center;text-align:center;
+      font-size:13px;font-weight:900;box-shadow:0 8px 22px rgba(0,0,0,0.3);}
+  .ct{margin-top:9px;font-size:14px;font-weight:700;letter-spacing:-0.3px;}
+  .cc{margin-top:3px;font-size:12px;opacity:.55;}
+
+  /* 일부러 자극적인 '진짜 유튜브 키즈 썸네일' 색들 */
+  .yt1{background:linear-gradient(135deg,#FF1E1E,#FF6A00);color:#FFE600;}
+  .yt2{background:linear-gradient(135deg,#FFE600,#FF00A8);color:#0033FF;}
+  .yt3{background:linear-gradient(135deg,#00E0FF,#7B00FF);color:#FFE600;}
+  .yt4{background:linear-gradient(135deg,#39FF14,#00B0FF);color:#FF0066;}
+  .yt5{background:linear-gradient(135deg,#FF6A00,#FFD500);color:#222;}
+  .yt6{background:linear-gradient(135deg,#FF00A8,#7B00FF);color:#FFE600;}
+  .yt7{background:linear-gradient(135deg,#0033FF,#00E0FF);color:#FFE600;}
+  .yt8{background:linear-gradient(135deg,#FF1E1E,#FFD500);color:#fff;}
+
+  /* 안전점수 뱃지 3가지 처리법 */
+  .badge-a{position:absolute;left:8px;top:8px;background:var(--emerald);color:#fff;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;}
+  .badge-b{position:absolute;left:8px;top:8px;background:rgba(0,0,0,0.72);color:#fff;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;}
+  .badge-b .d{width:7px;height:7px;border-radius:50%;background:var(--spring);}
+  .badge-c{position:absolute;left:8px;top:8px;background:rgba(255,255,255,0.95);color:#0E9E7E;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+  .dur{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,0.8);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;}
+</style>
+</head>
+<body>
+<div class="guide">🎨 실제 <b>알록달록 유튜브식 썸네일</b>을 다크 vs 밝은 배경에 똑같이 올려봤어 &nbsp;·&nbsp; 어느 쪽이 덜 정신없는지 비교 &nbsp;·&nbsp; 맨 아래는 <b>뱃지 처리법</b></div>
+
+<!-- 다크 -->
+<div class="sec" style="background:#0B1F1B;color:#EAF5F1;">
+  <h2>① 다크 배경 (우리가 가려는 방향)</h2>
+  <p>강한 색 썸네일이 배경과 분리돼서 "액자 속 그림"처럼 보임. 배경이 채도 싸움을 안 함.</p>
+  <div class="grid">
+    <div class="card"><div class="th yt1"><span class="badge-b"><span class="d"></span>안전 97</span><span class="dur">12:30</span>공룡 배틀!!</div><div class="ct">공룡과 떠나는 우주여행</div><div class="cc">키즈사이언스</div></div>
+    <div class="card"><div class="th yt2"><span class="badge-b"><span class="d"></span>안전 92</span><span class="dur">8:15</span>대공개!</div><div class="ct">신기한 공룡 백과사전</div><div class="cc">어린이TV</div></div>
+    <div class="card"><div class="th yt3"><span class="badge-b"><span class="d"></span>안전 88</span><span class="dur">15:02</span>우주탐험</div><div class="ct">우주인은 어떻게 살아요?</div><div class="cc">탐험대</div></div>
+    <div class="card"><div class="th yt4"><span class="badge-b"><span class="d"></span>안전 95</span><span class="dur">6:40</span>실험 성공</div><div class="ct">집에서 하는 과학실험</div><div class="cc">키즈사이언스</div></div>
+    <div class="card"><div class="th yt5"><span class="badge-b"><span class="d"></span>안전 94</span><span class="dur">10:20</span>출발!</div><div class="ct">달나라로 가는 로켓</div><div class="cc">우주탐험대</div></div>
+    <div class="card"><div class="th yt6"><span class="badge-b"><span class="d"></span>안전 91</span><span class="dur">9:00</span>비밀 공개</div><div class="ct">토성의 고리 비밀</div><div class="cc">별빛과학</div></div>
+    <div class="card"><div class="th yt7"><span class="badge-b"><span class="d"></span>안전 96</span><span class="dur">5:20</span>신나는 율동</div><div class="ct">신나는 율동 동요</div><div class="cc">키즈뮤직</div></div>
+    <div class="card"><div class="th yt8"><span class="badge-b"><span class="d"></span>안전 90</span><span class="dur">13:40</span>거북이!</div><div class="ct">바다거북 친구 이야기</div><div class="cc">동물탐험</div></div>
+  </div>
+</div>
+
+<!-- 밝은 -->
+<div class="sec" style="background:#F8F7F2;color:#2C3528;">
+  <h2>② 밝은 배경 (비교용 — 기존 방향)</h2>
+  <p>같은 썸네일인데 배경 흰색이 썸네일 색과 경쟁해서 전체가 더 들뜨고 산만해 보임. 흰 여백이 썸네일 채도를 더 강조함.</p>
+  <div class="grid">
+    <div class="card"><div class="th yt1"><span class="badge-b"><span class="d"></span>안전 97</span><span class="dur">12:30</span>공룡 배틀!!</div><div class="ct">공룡과 떠나는 우주여행</div><div class="cc">키즈사이언스</div></div>
+    <div class="card"><div class="th yt2"><span class="badge-b"><span class="d"></span>안전 92</span><span class="dur">8:15</span>대공개!</div><div class="ct">신기한 공룡 백과사전</div><div class="cc">어린이TV</div></div>
+    <div class="card"><div class="th yt3"><span class="badge-b"><span class="d"></span>안전 88</span><span class="dur">15:02</span>우주탐험</div><div class="ct">우주인은 어떻게 살아요?</div><div class="cc">탐험대</div></div>
+    <div class="card"><div class="th yt4"><span class="badge-b"><span class="d"></span>안전 95</span><span class="dur">6:40</span>실험 성공</div><div class="ct">집에서 하는 과학실험</div><div class="cc">키즈사이언스</div></div>
+    <div class="card"><div class="th yt5"><span class="badge-b"><span class="d"></span>안전 94</span><span class="dur">10:20</span>출발!</div><div class="ct">달나라로 가는 로켓</div><div class="cc">우주탐험대</div></div>
+    <div class="card"><div class="th yt6"><span class="badge-b"><span class="d"></span>안전 91</span><span class="dur">9:00</span>비밀 공개</div><div class="ct">토성의 고리 비밀</div><div class="cc">별빛과학</div></div>
+    <div class="card"><div class="th yt7"><span class="badge-b"><span class="d"></span>안전 96</span><span class="dur">5:20</span>신나는 율동</div><div class="ct">신나는 율동 동요</div><div class="cc">키즈뮤직</div></div>
+    <div class="card"><div class="th yt8"><span class="badge-b"><span class="d"></span>안전 90</span><span class="dur">13:40</span>거북이!</div><div class="ct">바다거북 친구 이야기</div><div class="cc">동물탐험</div></div>
+  </div>
+</div>
+
+<!-- 뱃지 처리법 -->
+<div class="sec" style="background:#0F2A24;color:#EAF5F1;">
+  <h2>③ 진짜 관건 — 안전점수 뱃지 처리법 (다크 배경 위)</h2>
+  <p>썸네일 위 뱃지가 묻히지 않게 하는 3가지 방법. A는 색끼리 충돌, B·C가 안정적.</p>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr);max-width:840px;">
+    <div class="card">
+      <div class="th yt1"><span class="badge-a">안전 97</span><span class="dur">12:30</span>공룡 배틀!!</div>
+      <div class="ct">A · 에메랄드 단색</div><div class="cc" style="color:#FF9A9A;">✗ 빨강·초록 썸네일 위에서 싸우거나 묻힘</div>
+    </div>
+    <div class="card">
+      <div class="th yt1"><span class="badge-b"><span class="d"></span>안전 97</span><span class="dur">12:30</span>공룡 배틀!!</div>
+      <div class="ct">B · 다크 글래스 + 색점</div><div class="cc" style="color:#7BE0B0;">✓ 어떤 썸네일에도 안정적 (추천)</div>
+    </div>
+    <div class="card">
+      <div class="th yt1"><span class="badge-c">안전 97</span><span class="dur">12:30</span>공룡 배틀!!</div>
+      <div class="ct">C · 흰 받침 + 그린 글씨</div><div class="cc" style="color:#7BE0B0;">✓ 깔끔, 밝게 튐 (대안)</div>
+    </div>
+  </div>
+  <p style="margin-top:22px;opacity:.8;">결론: <b style="color:#7BE0B0;">브랜드색은 UI(버튼·칩·텍스트)에만, 썸네일 위 뱃지는 '다크 글래스(B)'로</b> 통일 →
+  알록달록 썸네일과 브랜드색이 절대 안 싸움. 넷플릭스도 정확히 이렇게 함.</p>
+</div>
+
+</body>
+</html>

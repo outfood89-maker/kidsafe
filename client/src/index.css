@@ -10,9 +10,57 @@ body, #root {
   min-height: 100vh;
   overflow-x: hidden;
   background-color: #2C3528;
+  /* Pretendard 전역 적용 — 시스템 기본 폰트 교체 (올드함 해결) */
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @theme {
+  /* ───────── 폰트 ───────── */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  /* ═════════ 신규 디자인 시스템 (다크 OTT · 2026-06 개편) ═════════ */
+  /* 사용법: bg-ks-base, text-ks-emerald 등. 키디 캐릭터에서 추출한 팔레트. */
+
+  /* 브랜드 메인 — 에메랄드↔청록 (키디 몸 색) */
+  --color-ks-emerald: #18C49A;   /* 메인 (버튼·강조) */
+  --color-ks-teal:    #14B8C4;   /* 청록 (그라데 끝) */
+  --color-ks-spring:  #16BEAF;   /* 중간값 (단색 필요 시) */
+
+  /* 액센트 — 키디 별(골드)·망토(코랄) */
+  --color-ks-accent-gold:  #F5B829;
+  --color-ks-accent-coral: #F2655C;
+
+  /* 다크 베이스 — 순검정 아님, 딥 틸-그린 (브랜드 정체성) */
+  --color-ks-base:      #0B1F1B;  /* 최하단 배경 */
+  --color-ks-surface:   #0F2A24;  /* 카드/본문 영역 */
+  --color-ks-surface-2: #16352E;  /* 칩·보더·올라온 면 */
+
+  /* 텍스트 (다크 위) */
+  --color-ks-ink:     #EAF5F1;    /* 본문 */
+  --color-ks-ink-sub: #8FA89F;    /* 보조 (투명도 대신 불투명값) */
+
+  /* 상태색 (다크 톤에 맞춰 채도 조정) */
+  --color-ks-danger:  #F2655C;
+  --color-ks-warn:    #F5B829;
+  --color-ks-success: #18C49A;
+
+  /* 모서리 스케일 (제각각 10·12·14·16·20·36 → 통일) */
+  --radius-ks-sm:   10px;
+  --radius-ks-md:   14px;
+  --radius-ks-lg:   18px;
+  --radius-ks-xl:   24px;
+  --radius-ks-pill: 999px;
+
+  /* 그림자 스케일 (다크 위 깊이감) */
+  --shadow-ks-card: 0 8px 22px rgba(0,0,0,0.35);
+  --shadow-ks-pop:  0 16px 40px rgba(0,0,0,0.45);
+  --shadow-ks-glow: 0 12px 36px rgba(20,184,196,0.30);
+
+  /* ═════════ 레거시 토큰 (라이트 화면 — 점진 마이그레이션 중, 삭제 금지) ═════════ */
   --color-ks-bg: #F8F7F2;
   --color-ks-section: #F0F5ED;
   --color-ks-green: #6DAB60;

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KidSafe 색 팔레트 추천 — 키디 기반</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Pretendard Variable",Pretendard,sans-serif; background:#eef1ec; color:#2C3528; -webkit-font-smoothing:antialiased; padding-bottom:60px; }
+  .guide { position:sticky; top:0; z-index:50; background:#1a1f17; color:#fff; padding:14px 20px; text-align:center; font-size:14px; font-weight:600; }
+  .guide b { color:#7BE0B0; }
+
+  .intro { max-width:1080px; margin:30px auto 10px; padding:0 24px; display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+  .intro img { width:140px; height:140px; object-fit:contain; filter:drop-shadow(0 8px 20px rgba(0,0,0,0.15)); }
+  .intro .swatches { display:flex; gap:10px; flex-wrap:wrap; }
+  .sw { width:64px; text-align:center; font-size:11px; font-weight:700; color:#6B7A65; }
+  .sw .chip { width:64px; height:64px; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.12); margin-bottom:6px; }
+
+  .pal { max-width:1080px; margin:34px auto 0; padding:0 24px; }
+  .pal h2 { font-size:22px; font-weight:800; letter-spacing:-0.5px; display:flex; align-items:center; gap:10px; }
+  .pal h2 .tag { font-size:12px; font-weight:700; padding:4px 11px; border-radius:999px; color:#fff; }
+  .pal .desc { margin:8px 0 16px; font-size:14px; color:#6B7A65; line-height:1.6; }
+  .palrow { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .pc { text-align:center; font-size:11px; font-weight:700; color:#6B7A65; }
+  .pc .b { width:88px; height:60px; border-radius:12px; margin-bottom:5px; box-shadow:0 3px 10px rgba(0,0,0,0.1); display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px; font-size:10px; color:rgba(255,255,255,0.85); }
+
+  /* 미니 아이홈 프리뷰 */
+  .preview { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:720px){ .preview{grid-template-columns:1fr;} }
+  .mini { border-radius:18px; overflow:hidden; box-shadow:0 14px 36px rgba(0,0,0,0.14); }
+  .mini .h { padding:20px 18px; position:relative; overflow:hidden; }
+  .mini .kid { width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.92); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 5px 14px rgba(0,0,0,0.16); }
+  .mini .kid img{ width:46px; height:46px; object-fit:contain; }
+  .mini .bub { margin-top:10px; background:#fff; display:inline-block; padding:8px 13px; border-radius:14px; font-size:13px; font-weight:800; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+  .mini .b { padding:16px 18px; }
+  .mini .cards { display:flex; gap:10px; }
+  .mini .card { flex:1; }
+  .mini .th { aspect-ratio:16/9; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:26px; position:relative; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+  .mini .sc { position:absolute; left:6px; top:6px; font-size:9px; font-weight:800; color:#fff; padding:2px 7px; border-radius:999px; }
+  .mini .ct { font-size:11px; font-weight:700; margin-top:6px; line-height:1.25; }
+  .mini .lbl { font-size:11px; font-weight:800; letter-spacing:0.5px; padding:7px 14px; color:#fff; }
+  .pillbtn { display:inline-block; padding:8px 16px; border-radius:999px; font-size:12px; font-weight:800; color:#fff; margin-top:12px; }
+</style>
+</head>
+<body>
+
+<div class="guide">🎨 키디에서 뽑은 색 팔레트 3가지 &nbsp;·&nbsp; 각 팔레트를 <b>밝은 톤 / 다크 톤</b> 미니 아이홈에 입혀봤어 &nbsp;·&nbsp; 스크롤해서 비교</div>
+
+<div class="intro">
+  <img src="../client/public/images/kiddy_hello.png" alt="키디" onerror="this.style.display='none'">
+  <div>
+    <div style="font-size:15px; font-weight:800; margin-bottom:12px;">키디가 이미 가진 색 → 이걸 브랜드 팔레트로</div>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#18C49A"></div>몸 그린</div>
+      <div class="sw"><div class="chip" style="background:#FDF3DA"></div>배 크림</div>
+      <div class="sw"><div class="chip" style="background:#F2655C"></div>망토 코랄</div>
+      <div class="sw"><div class="chip" style="background:#F5B829"></div>별 골드</div>
+      <div class="sw"><div class="chip" style="background:#3FB8C9"></div>눈 청록</div>
+    </div>
+  </div>
+</div>
+
+<!-- 팔레트 1 -->
+<div class="pal">
+  <h2><span class="tag" style="background:#0E9E7E">추천</span> 팔레트 ① · 비비드 에메랄드</h2>
+  <div class="desc"><b>키디 몸 색 그대로.</b> 올리브 → 밝은 에메랄드/민트로 점프. 캐릭터-브랜드 일체감 100%, 가장 안전하면서 확실히 밝아짐. 액센트는 키디 별(골드)·망토(코랄).</div>
+  <div class="palrow">
+    <div class="pc"><div class="b" style="background:#0E9E7E">deep</div>#0E9E7E</div>
+    <div class="pc"><div class="b" style="background:#18C49A">primary</div>#18C49A</div>
+    <div class="pc"><div class="b" style="background:#5FE0BC">light</div>#5FE0BC</div>
+    <div class="pc"><div class="b" style="background:#A7F3D8;color:#0a5">soft</div>#A7F3D8</div>
+    <div class="pc"><div class="b" style="background:#F5B829">gold</div>#F5B829</div>
+    <div class="pc"><div class="b" style="background:#F2655C">coral</div>#F2655C</div>
+  </div>
+  <div class="preview">
+    <!-- 밝은 -->
+    <div class="mini">
+      <div class="lbl" style="background:#0E9E7E">밝은 톤 (아이홈)</div>
+      <div class="h" style="background:linear-gradient(135deg,#22D3A8,#18C49A 50%,#5FE0BC);">
+        <div class="kid"><img src="../client/public/images/kiddy_search.png" onerror="this.parentElement.innerHTML='🦖'"></div>
+        <div class="bub">오늘은 공룡 어때? 🦕</div>
+      </div>
+      <div class="b" style="background:#F7FBF8;">
+        <div class="cards">
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#18C49A,#0E9E7E)"><span class="sc" style="background:#0E9E7E">안전 97</span>🦕</div><div class="ct">공룡 우주여행</div></div>
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#5FE0BC,#18C49A)"><span class="sc" style="background:#0E9E7E">안전 92</span>🚀</div><div class="ct">달나라 로켓</div></div>
+        </div>
+        <span class="pillbtn" style="background:#18C49A">▶ 재생하기</span>
+      </div>
+    </div>
+    <!-- 다크 -->
+    <div class="mini">
+      <div class="lbl" style="background:#0a1f1a">다크 톤 (부모·랜딩)</div>
+      <div class="h" style="background:linear-gradient(115deg,#0F2A22,#14463a 60%,#18C49A);">
+        <div class="kid"><img src="../client/public/images/kiddy_search.png" onerror="this.parentElement.innerHTML='🦖'"></div>
+        <div class="bub" style="background:#18C49A;color:#fff;">AI 안전도 97점 ✓</div>
+      </div>
+      <div class="b" style="background:#0F2A22;">
+        <div class="cards">
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#18C49A,#0E9E7E)"><span class="sc" style="background:#18C49A">안전 97</span>🦕</div><div class="ct" style="color:#fff">공룡 우주여행</div></div>
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#1a5c4c,#0E9E7E)"><span class="sc" style="background:#18C49A">안전 92</span>🚀</div><div class="ct" style="color:#fff">달나라 로켓</div></div>
+        </div>
+        <span class="pillbtn" style="background:#18C49A">▶ 재생하기</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 팔레트 2 -->
+<div class="pal">
+  <h2><span class="tag" style="background:#F2655C">화려함</span> 팔레트 ② · 트로피컬 트리오</h2>
+  <div class="desc"><b>에메랄드 + 코랄 + 골드를 공동 주연으로.</b> 키디 3색(몸·망토·별)을 다 살림. 가장 활기차고 눈에 띔. 컬러풀 = 아이 친화 최강, 단 색이 많아 절제가 중요.</div>
+  <div class="palrow">
+    <div class="pc"><div class="b" style="background:#13B58C">green</div>#13B58C</div>
+    <div class="pc"><div class="b" style="background:#FF7A6E">coral</div>#FF7A6E</div>
+    <div class="pc"><div class="b" style="background:#FFB22E">gold</div>#FFB22E</div>
+    <div class="pc"><div class="b" style="background:#3FB8C9">teal</div>#3FB8C9</div>
+    <div class="pc"><div class="b" style="background:#FFF1D6;color:#a80">cream</div>#FFF1D6</div>
+  </div>
+  <div class="preview">
+    <div class="mini">
+      <div class="lbl" style="background:#13B58C">밝은 톤 (아이홈)</div>
+      <div class="h" style="background:linear-gradient(135deg,#13B58C,#3FB8C9 55%,#FFB22E);">
+        <div class="kid"><img src="../client/public/images/kiddy_jump.png" onerror="this.parentElement.innerHTML='🎉'"></div>
+        <div class="bub">신나는 영상 찾았어! 🎉</div>
+      </div>
+      <div class="b" style="background:#FFFDF7;">
+        <div class="cards">
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#13B58C,#0e8a6a)"><span class="sc" style="background:#FF7A6E">안전 97</span>🦕</div><div class="ct">공룡 우주여행</div></div>
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#FF9A6E,#FF7A6E)"><span class="sc" style="background:#13B58C">안전 92</span>🚀</div><div class="ct">달나라 로켓</div></div>
+        </div>
+        <span class="pillbtn" style="background:#FF7A6E">▶ 재생하기</span>
+      </div>
+    </div>
+    <div class="mini">
+      <div class="lbl" style="background:#1a1410">다크 톤 (부모·랜딩)</div>
+      <div class="h" style="background:linear-gradient(115deg,#1e1a14,#3a2e1a 55%,#13B58C);">
+        <div class="kid"><img src="../client/public/images/kiddy_jump.png" onerror="this.parentElement.innerHTML='🎉'"></div>
+        <div class="bub" style="background:#FFB22E;color:#3a2a00;">⭐ 오늘의 추천</div>
+      </div>
+      <div class="b" style="background:#1a1610;">
+        <div class="cards">
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#13B58C,#0e8a6a)"><span class="sc" style="background:#FF7A6E">안전 97</span>🦕</div><div class="ct" style="color:#fff">공룡 우주여행</div></div>
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#FF9A6E,#FF7A6E)"><span class="sc" style="background:#FFB22E;color:#3a2a00">안전 92</span>🚀</div><div class="ct" style="color:#fff">달나라 로켓</div></div>
+        </div>
+        <span class="pillbtn" style="background:#FFB22E;color:#3a2a00;">▶ 재생하기</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 팔레트 3 -->
+<div class="pal">
+  <h2><span class="tag" style="background:#0E97B0">모던</span> 팔레트 ③ · 아쿠아 틸 (청록 점프)</h2>
+  <div class="desc"><b>키디 눈 색(청록) 기준으로 그린→청록으로 이동.</b> 가장 트렌디·테크/프리미엄 느낌. "어린이 같다"보다 "세련됐다"에 가까워 포트폴리오 임팩트 큼. 단 따뜻함은 ①·②보다 약함.</div>
+  <div class="palrow">
+    <div class="pc"><div class="b" style="background:#0E97B0">deep</div>#0E97B0</div>
+    <div class="pc"><div class="b" style="background:#14B8C4">primary</div>#14B8C4</div>
+    <div class="pc"><div class="b" style="background:#2DD4BF">mint</div>#2DD4BF</div>
+    <div class="pc"><div class="b" style="background:#7FE8E0;color:#066">light</div>#7FE8E0</div>
+    <div class="pc"><div class="b" style="background:#FBBF24">gold</div>#FBBF24</div>
+  </div>
+  <div class="preview">
+    <div class="mini">
+      <div class="lbl" style="background:#0E97B0">밝은 톤 (아이홈)</div>
+      <div class="h" style="background:linear-gradient(135deg,#14B8C4,#2DD4BF 55%,#7FE8E0);">
+        <div class="kid"><img src="../client/public/images/kiddy_hello.png" onerror="this.parentElement.innerHTML='👋'"></div>
+        <div class="bub">뭐 볼지 같이 골라보자! 👋</div>
+      </div>
+      <div class="b" style="background:#F5FCFC;">
+        <div class="cards">
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#14B8C4,#0E97B0)"><span class="sc" style="background:#0E97B0">안전 97</span>🦕</div><div class="ct">공룡 우주여행</div></div>
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#2DD4BF,#14B8C4)"><span class="sc" style="background:#0E97B0">안전 92</span>🚀</div><div class="ct">달나라 로켓</div></div>
+        </div>
+        <span class="pillbtn" style="background:#14B8C4">▶ 재생하기</span>
+      </div>
+    </div>
+    <div class="mini">
+      <div class="lbl" style="background:#06222a">다크 톤 (부모·랜딩)</div>
+      <div class="h" style="background:linear-gradient(115deg,#06222a,#0a3f49 60%,#14B8C4);">
+        <div class="kid"><img src="../client/public/images/kiddy_hello.png" onerror="this.parentElement.innerHTML='👋'"></div>
+        <div class="bub" style="background:#14B8C4;color:#fff;">AI 안전도 97점 ✓</div>
+      </div>
+      <div class="b" style="background:#06222a;">
+        <div class="cards">
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#14B8C4,#0E97B0)"><span class="sc" style="background:#14B8C4">안전 97</span>🦕</div><div class="ct" style="color:#fff">공룡 우주여행</div></div>
+          <div class="card"><div class="th" style="background:linear-gradient(135deg,#0a6b78,#0E97B0)"><span class="sc" style="background:#14B8C4">안전 92</span>🚀</div><div class="ct" style="color:#fff">달나라 로켓</div></div>
+        </div>
+        <span class="pillbtn" style="background:#14B8C4">▶ 재생하기</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="max-width:1080px; margin:40px auto 0; padding:0 24px; font-size:13px; color:#6B7A65; line-height:1.7;">
+  ※ 데모용 파일(실제 코드 아님). 모든 팔레트가 키디에서 추출됨 → 어느 걸 골라도 캐릭터와 안 싸움.<br>
+  ※ 다크 톤은 각 팔레트의 메인색을 어둡게 깐 버전 → "같은 색, 밝게/어둡게"라서 하이브리드가 자연스럽게 성립.
+</div>
+
+</body>
+</html>

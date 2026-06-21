@@ -115,18 +115,18 @@ export default function ProfileSelect() {
   });
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8F7F2" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#0B1F1B" }}>
 
       {/* NavBar */}
       <nav
-        className="flex items-center justify-between px-6 py-4 bg-white"
-        style={{ borderBottom: "1px solid #E4EAE0" }}
+        className="flex items-center justify-between px-6 py-4"
+        style={{ backgroundColor: "#0F2A24", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         {/* 왼쪽: 뒤로가기 */}
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-base font-medium transition"
-          style={{ backgroundColor: "#F0F5ED", color: "#2C3528" }}
+          className="flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-base font-bold transition hover:opacity-80"
+          style={{ backgroundColor: "#16352E", color: "#EAF5F1" }}
         >
           ← 홈으로
         </button>
@@ -135,20 +135,20 @@ export default function ProfileSelect() {
         <div className="flex items-center gap-2">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-[12px]"
-            style={{ backgroundColor: "#6DAB60" }}
+            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 6px 18px rgba(20,184,196,0.35)" }}
           >
             <FaShieldAlt className="text-white text-lg" />
           </div>
-          <span className="text-xl font-semibold" style={{ color: "#2C3528" }}>KidSafe</span>
+          <span className="text-xl font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
         </div>
 
-        {/* 오른쪽: 부모 대시보드 자물쇠 */}
+        {/* 오른쪽: 부모 대시보드 자물쇠 (추후 PIN 잠금 연결 예정) */}
         <button
           onClick={() => navigate("/parent")}
-          className="flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-base font-medium transition"
-          style={{ backgroundColor: "#F0F5ED", color: "#2C3528" }}
+          className="flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-base font-bold transition hover:opacity-80"
+          style={{ backgroundColor: "#16352E", color: "#EAF5F1" }}
         >
-          <FaLock style={{ color: "#6DAB60" }} />
+          <FaLock style={{ color: "#18C49A" }} />
           <span className="hidden sm:block">부모님</span>
         </button>
       </nav>
@@ -163,17 +163,17 @@ export default function ProfileSelect() {
           </div>
           <div
             className="flex flex-col items-center gap-1 rounded-2xl px-8 py-4 mt-2"
-            style={{ backgroundColor: "#ffffff", border: "1.5px solid #E4EAE0", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+            style={{ backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 28px rgba(0,0,0,0.35)" }}
           >
-            <h1 className="text-3xl font-bold" style={{ color: "#2C3528" }}>
+            <h1 className="text-3xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
               누가 볼 건가요? 👀
             </h1>
-            <p className="text-sm" style={{ color: "#6B7A65" }}>프로필을 선택해주세요</p>
+            <p className="text-sm" style={{ color: "#8FA89F" }}>프로필을 선택해주세요</p>
           </div>
         </div>
 
         {loading && (
-          <p className="text-center text-sm" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+          <p className="text-center text-sm" style={{ color: "#8FA89F" }}>불러오는 중...</p>
         )}
 
         {!loading && (
@@ -187,11 +187,12 @@ export default function ProfileSelect() {
                   <button
                     key={profile.id}
                     onClick={() => handleProfileClick(profile)}
-                    className="flex flex-col items-center py-8 px-6 bg-white transition"
+                    className="flex flex-col items-center py-8 px-6 transition hover:-translate-y-1"
                     style={{
                       borderRadius: "20px",
-                      border: isSelected ? "2px solid #6DAB60" : "0.5px solid #E4EAE0",
-                      boxShadow: isSelected ? "0 0 0 4px rgba(109,171,96,0.15)" : "none",
+                      backgroundColor: "#0F2A24",
+                      border: isSelected ? "2px solid #18C49A" : "1px solid rgba(255,255,255,0.08)",
+                      boxShadow: isSelected ? "0 0 0 4px rgba(24,196,154,0.2), 0 12px 36px rgba(20,184,196,0.25)" : "0 8px 24px rgba(0,0,0,0.3)",
                     }}
                   >
                     {/* 아바타 */}
@@ -199,7 +200,7 @@ export default function ProfileSelect() {
                       className="rounded-full overflow-hidden mb-4"
                       style={{
                         width: "120px", height: "120px",
-                        border: "3px solid #F0F5ED",
+                        border: "3px solid #16352E",
                       }}
                     >
                       <img
@@ -209,13 +210,13 @@ export default function ProfileSelect() {
                       />
                     </div>
                     {/* 이름 */}
-                    <p className="text-xl font-semibold mb-2" style={{ color: "#2C3528" }}>
+                    <p className="text-xl font-bold mb-2" style={{ color: "#EAF5F1" }}>
                       {profile.name}
                     </p>
                     {/* 나이 배지 */}
                     <span
-                      className="text-sm rounded-full px-3.5 py-1 mb-3"
-                      style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                      className="text-sm font-bold rounded-full px-3.5 py-1 mb-3"
+                      style={{ backgroundColor: "#16352E", color: "#5FE0BC" }}
                     >
                       {profile.age}세
                     </span>
@@ -228,9 +229,9 @@ export default function ProfileSelect() {
                     ) : (
                       <div
                         className="rounded-full px-3 py-1"
-                        style={{ backgroundColor: "#F8F7F2" }}
+                        style={{ backgroundColor: "#16352E" }}
                       >
-                        <span className="text-xs" style={{ color: "#B8D8B2" }}>배지 없음</span>
+                        <span className="text-xs" style={{ color: "#6B8378" }}>배지 없음</span>
                       </div>
                     )}
                   </button>
@@ -241,23 +242,24 @@ export default function ProfileSelect() {
               {profiles.length < 4 && (
                 <button
                   onClick={() => navigate("/parent")}
-                  className="flex flex-col items-center justify-center py-8 px-6 bg-white transition"
+                  className="flex flex-col items-center justify-center py-8 px-6 transition hover:-translate-y-1"
                   style={{
                     borderRadius: "20px",
-                    border: "1.5px dashed #D4EAD0",
+                    backgroundColor: "rgba(255,255,255,0.02)",
+                    border: "1.5px dashed rgba(255,255,255,0.15)",
                     minHeight: "280px",
                   }}
                 >
                   <div
                     className="flex items-center justify-center rounded-full mb-4"
-                    style={{ width: "72px", height: "72px", backgroundColor: "#F0F5ED" }}
+                    style={{ width: "72px", height: "72px", backgroundColor: "#16352E" }}
                   >
-                    <FaPlus style={{ color: "#6DAB60", fontSize: "24px" }} />
+                    <FaPlus style={{ color: "#18C49A", fontSize: "24px" }} />
                   </div>
-                  <p className="text-base font-medium" style={{ color: "#6B7A65" }}>
+                  <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>
                     프로필 추가
                   </p>
-                  <p className="text-sm mt-1" style={{ color: "#B8D8B2" }}>
+                  <p className="text-sm mt-1" style={{ color: "#6B8378" }}>
                     부모모드에서 추가
                   </p>
                 </button>
@@ -266,8 +268,8 @@ export default function ProfileSelect() {
 
             {profiles.length === 0 && (
               <div className="text-center py-6">
-                <p className="text-sm" style={{ color: "#6B7A65" }}>아직 프로필이 없어요.</p>
-                <p className="text-sm mt-1" style={{ color: "#6B7A65" }}>부모모드에서 프로필을 만들어주세요!</p>
+                <p className="text-sm" style={{ color: "#8FA89F" }}>아직 프로필이 없어요.</p>
+                <p className="text-sm mt-1" style={{ color: "#8FA89F" }}>부모모드에서 프로필을 만들어주세요!</p>
               </div>
             )}
           </>
