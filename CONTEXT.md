@@ -1,6 +1,6 @@
 # KidSafe 프로젝트 컨텍스트
 
-> 마지막 업데이트: 2026-06-18
+> 마지막 업데이트: 2026-06-21
 
 ## 프로젝트 개요
 
@@ -211,9 +211,9 @@ kidsafe/
 ```
 영상 검수 요청
    ↓
-[캐시 확인] analysis-cache.json
-   ├── 캐시 있음 + 룰 파일보다 최신 → 즉시 반환 (비용 0)
-   ├── 캐시 있음 + 룰 파일이 더 최신 → 재분석 (룰 자동 무효화) ← 핵심
+[캐시 확인] analysis_cache (DB)
+   ├── 캐시 있음 + prompt_rules.updated_at보다 최신 → 즉시 반환 (비용 0)
+   ├── 캐시 있음 + 룰이 더 최신 → 재분석 (룰 자동 무효화) ← 핵심
    └── 캐시 없음 ↓
    
 [Tier 0+1] 키워드 + 채널 분석 (무료, 즉시)
@@ -222,13 +222,18 @@ kidsafe/
    • 채널 화이트리스트 + 자동 신뢰 학습 (90+점 3회 → 자동 등록)
    • 총점 = (폭력 + 언어 + 선정성) / 3 (교육성 제외)
    
-[Tier 2] AI 정밀 분석 (자막 + Claude Haiku)
+[Tier 2] AI 정밀 분석 (자막 + 썸네일 비전 + Claude Haiku)
    • youtube-transcript-api로 자막 추출 (한국어/영어)
-   • 자막 없으면 메타데이터만으로 분석
+   • 썸네일 이미지를 Claude Vision으로 함께 분석 → 엘사게이트·위장 콘텐츠 탐지
+   • 자막·썸네일 없으면 메타데이터만으로 분석 (폴백)
    • Claude가 7개 카테고리 점수 + 사유 + 요약 생성
    • 총점 = (폭력 + 언어 + 선정성 + 공포 + 모방위험) / 5
    
-[캐싱] analysis-cache.json 저장
+[배틀 안전장치] 제목에 배틀/VS/대결 신호 → ageRating 5↑ + violence 86 상한 강제
+   • 작은 모델(Haiku)이 신뢰채널·madeForKids 맥락에 압도돼 룰을 무시하는 것을
+     코드 레벨에서 보강하는 AI+규칙 하이브리드. 검색(analyze)·검수(deep) 양쪽 적용
+   
+[캐싱] analysis_cache (DB) 저장
 ```
 
 ### 7개 검수 카테고리
@@ -245,24 +250,28 @@ kidsafe/
 
 > 교육성·상업성은 위험 지표가 아니라 정보 지표 → 총점 미반영, 모달에 별도 표시
 
-### prompt-rules.json — 외부 판단 기준 룰
+### prompt_rules — AI 판단 기준 룰 (DB, `rules_store.py`)
 
-- `server/data/prompt-rules.json`에 카테고리별 exemptions / penalties / bonuses 정의
+- `prompt_rules` 테이블(jsonb)에 카테고리별 exemptions / penalties / bonuses 정의
 - Claude 시스템 프롬프트에 런타임으로 주입 → **서버 재시작 없이 즉시 반영**
-- 룰 수정 시 mtime 기반으로 기존 캐시 자동 무효화
-- 현재 6개 카테고리 룰 정의: scary / violence / language / educational / commercialism / imitation_risk
+- 룰 수정 시 `updated_at` 갱신 → 그보다 오래된 검수 캐시 자동 무효화(재분석)
+- 현재 6개 카테고리 룰: scary / violence / language / educational / commercialism / imitation_risk
+- analyze.py·feedback.py가 `rules_store` 공용 모듈로 읽고 씀 (순환참조 방지)
 
 ### 피드백 자동화 파이프라인 (`POST /feedback/pipeline`)
 
 ```
 사용자 "이 점수 이상해요" 클릭
-   → 피드백 저장 (feedback.json)
+   → 피드백 저장 (feedback 테이블)
    → Claude가 방향 판단 (점수가 낮아야 하는지 / 높아야 하는지)
-   → exemptions 또는 penalties에 룰 1줄 자동 추가
-   → analysis-cache.json에서 해당 영상 캐시 삭제
+   → exemptions 또는 penalties에 룰 1줄 자동 추가 (prompt_rules)
+   → analysis_cache(DB)에서 해당 영상 캐시 삭제
    → 모달에서 자동 재분석 트리거
    → 새 점수로 즉시 업데이트
 ```
+
+> 현재 영상 모달의 피드백 버튼은 단순 신고(`POST /feedback`, 관리자 검토용)로 동작.
+> 파이프라인(즉시 자동 룰 생성+재분석)은 별도 엔드포인트로 구현돼 있음.
 
 ---
 
@@ -279,7 +288,21 @@ kidsafe/
 
 > 총점 기준은 프로필 연령/커스텀값(getEffectiveThreshold)을 따름 — 하드코딩 금지
 > 교육성은 정보 지표라 게이팅 대상 아님 (CSM·COPPA: 교육성 ≠ 안전)
-> 비상업성 임계값 50 = prompt-rules.json penalties "언박싱 → 50 이하"와 정합
+> 비상업성 임계값 50 = prompt_rules penalties "언박싱 → 50 이하"와 정합
+
+## 검색 위험영상 숨김 (safetyFilter.js `filterByAge`)
+
+아이 화면(검색·추천)에서 위험/고연령 영상을 아예 노출하지 않는다. 부모 대시보드는 영향 없음.
+
+| 조건 | 결과 |
+|---|---|
+| 총점 < 프로필 기준점수 | 숨김 (기존) |
+| 권장 연령(ageRating) > 아이 나이 | 숨김 (confidence 무관 — 배틀 가드 등 명시 신호 신뢰) |
+| AI 정밀분석(high) + 위험 카테고리 < 60 | 숨김 |
+| AI 정밀분석(high) + 비상업성 ≤ 50 | 숨김 |
+
+> ⚠️ 위험 카테고리/상업성은 `confidence==='high'`(AI 분석)일 때만 숨김 — 키워드(low)만으로 숨기면 오탐.
+> 처음 보는 영상은 모달에서 deep 분석되면 캐시에 기록 → **다음 검색부터 자동으로 걸러짐**(시간이 지날수록 깨끗해짐).
 
 ---
 
@@ -316,12 +339,13 @@ kidsafe/
 - 시청 시간 제한 + 게임 보너스 시간
 - **음성 검색** (Web Speech API, ko-KR — 마이크 버튼 → 발화 → 자동 검색 실행)
 - **개인화 추천 엔진** (`GET /search/history-recommend`) — 시청 기록 preferred_channels 가중치 + 연령 필터 + 시청 완료 영상 제외
+- **검색 위험영상 숨김** (filterByAge) — high 위험/고연령 영상을 아이 화면에서 제외
 
 ### 영상 모달 (VideoModal.jsx)
-- Tier 2 AI 정밀 분석 (모달 열 때 자동 실행)
+- **Tier 2 AI 정밀 분석** (모달 열 때 자동 실행) — 자막 + **썸네일 비전(Claude Vision)** 종합
 - AI 요약 + ageRating 표시
 - 7개 카테고리 점수 그리드 (긍정형 라벨)
-- 피드백 버튼 → 자동화 파이프라인 실행 → 재분석
+- 피드백 버튼 → 단순 신고 접수(관리자 검토용)
 - 재생 게이팅 (총점 ≥ 프로필 기준 AND 위험 카테고리 60+ AND 비상업성 50 초과)
 
 ### 부모 화면 (ParentDashboard.jsx)
@@ -410,6 +434,7 @@ kidsafe/
   - 검수 캐시·신뢰채널·usage (기존 캐시 228개 마이그레이션)
   - 피드백·룰·감사로그 + 관리자 통계 집계
 - ✅ 음성 검색 (Web Speech API) + 개인화 추천 엔진
+- ✅ **검수 고도화**: 썸네일 비전(Claude Vision 멀티모달) + 배틀 안전장치(AI+규칙 하이브리드) + 검색 위험영상 숨김
 
 ## 남은 작업
 
