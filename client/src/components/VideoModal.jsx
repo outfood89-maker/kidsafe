@@ -91,16 +91,23 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
   const v = deepResult ? { ...video, ...deepResult } : video;
   const isDeep = deepResult?.confidence === "high";
 
+  // 다크 OTT용 등급 색 (밝은 톤) + 다크글래스 배지 (B안 — 썸네일 색과 충돌 방지)
   const getSafetyBadge = (score) => {
-    if (score >= 90) return { text: "안전", color: "#2E9E50" };
-    if (score >= 70) return { text: "주의", color: "#C47A00" };
-    return { text: "위험", color: "#C84B47" };
+    if (score >= 90) return { text: "안전", color: "#3FE08A" };
+    if (score >= 70) return { text: "주의", color: "#F5B829" };
+    return { text: "위험", color: "#F2655C" };
   };
 
   const getBarColor = (score) => {
-    if (score >= 90) return "#2E9E50";
-    if (score >= 70) return "#EF9F27";
-    return "#C84B47";
+    if (score >= 90) return "#3FE08A";
+    if (score >= 70) return "#F5B829";
+    return "#F2655C";
+  };
+
+  const safetyGlassStyle = {
+    backgroundColor: "rgba(0,0,0,0.68)",
+    backdropFilter: "blur(4px)",
+    WebkitBackdropFilter: "blur(4px)",
   };
 
   const badge = getSafetyBadge(v.totalScore);
@@ -150,9 +157,11 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full sm:max-w-lg bg-white sm:rounded-3xl overflow-hidden"
+        className="relative w-full sm:max-w-lg sm:rounded-3xl overflow-hidden"
         style={{
           borderRadius: "24px 24px 0 0",
+          backgroundColor: "#0F2A24",
+          border: "1px solid rgba(255,255,255,0.08)",
           maxHeight: "92vh",
           overflowY: "auto",
           transform: visible ? "translateY(0)" : "translateY(100%)",
@@ -171,8 +180,8 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
         <div className="relative">
           <img src={video.thumbnail} alt={video.title} className="w-full object-cover" style={{ height: "140px" }} />
           <div
-            className="absolute left-3 bottom-3 rounded-full px-3 py-1 text-xs font-bold text-white"
-            style={{ backgroundColor: badge.color }}
+            className="absolute left-3 bottom-3 rounded-full px-3 py-1 text-xs font-bold"
+            style={{ ...safetyGlassStyle, color: badge.color }}
           >
             {badge.text} {v.totalScore}점
           </div>
@@ -182,10 +191,10 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
         <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
           {/* 채널명 + 제목 */}
           <div>
-            <p className="text-xs font-bold" style={{ color: "#E91E8C" }}>{video.channelTitle}</p>
+            <p className="text-xs font-bold" style={{ color: "#5FE0BC" }}>{video.channelTitle}</p>
             <h2
               className="mt-0.5 font-extrabold leading-snug"
-              style={{ fontSize: "15px", color: "#2C3528",
+              style={{ fontSize: "15px", color: "#EAF5F1",
                 display: "-webkit-box", WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
@@ -197,35 +206,35 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
           <div className="flex items-center gap-2 flex-wrap">
             {deepLoading ? (
               <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: "#EFF6FF", color: "#1D6FAA" }}>
+                style={{ backgroundColor: "#13344A", color: "#7FC4F0" }}>
                 <span className="inline-block h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 AI가 영상을 분석 중...
               </span>
             ) : isDeep ? (
               <span className="rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: "#E8F5E4", color: "#2E9E50" }}>
+                style={{ backgroundColor: "#163A2E", color: "#3FE08A" }}>
                 🤖 AI 정밀 분석됨
               </span>
             ) : (
               <span className="rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: "#F8F7F2", color: "#9BA89A" }}>
+                style={{ backgroundColor: "#16352E", color: "#8FA89F" }}>
                 간이 분석
               </span>
             )}
             {v.ageRating && (
               <span className="rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: "#FFF4E5", color: "#C47A00" }}>
+                style={{ backgroundColor: "#3A2F14", color: "#F5B829" }}>
                 👶 {v.ageRating}세 이상 권장
               </span>
             )}
           </div>
 
           {/* AI 요약 */}
-          <div className="rounded-xl px-3 py-2" style={{ backgroundColor: "#EFF6FF" }}>
-            <p className="text-xs font-medium mb-0.5" style={{ color: "#1D6FAA" }}>🤖 AI 요약</p>
+          <div className="rounded-xl px-3 py-2" style={{ backgroundColor: "#13344A", border: "1px solid rgba(127,196,240,0.15)" }}>
+            <p className="text-xs font-medium mb-0.5" style={{ color: "#7FC4F0" }}>🤖 AI 요약</p>
             <p
               className="text-xs leading-relaxed"
-              style={{ color: "#374151" }}
+              style={{ color: "#C9DCEA" }}
             >
               {deepLoading && !deepResult ? "영상 내용을 자세히 살펴보고 있어요..." : v.summary}
             </p>
@@ -242,20 +251,20 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                   key={item.label}
                   onClick={hasNote ? () => setExpandedNote(isOpen ? null : item.catKey) : undefined}
                   className="rounded-xl px-3 py-2"
-                  style={{ backgroundColor: "#F8F7F2", cursor: hasNote ? "pointer" : "default" }}
+                  style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)", cursor: hasNote ? "pointer" : "default" }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#6B7A65" }}>
+                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#8FA89F" }}>
                       {item.icon} {item.label}
                       {hasNote && (
                         <FaInfoCircle
-                          style={{ fontSize: "10px", color: isOpen ? "#C47A00" : "#C4BBA8" }}
+                          style={{ fontSize: "10px", color: isOpen ? "#F5B829" : "#6B8378" }}
                         />
                       )}
                     </span>
-                    <span className="text-xs font-bold" style={{ color: "#2C3528" }}>{item.score}</span>
+                    <span className="text-xs font-bold" style={{ color: "#EAF5F1" }}>{item.score}</span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: "#E4EAE0" }}>
+                  <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${Math.min(item.score, 100)}%`, backgroundColor: getBarColor(item.score) }}
@@ -263,7 +272,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                   </div>
                   {/* 사유 — 탭하면 펼침 */}
                   {hasNote && isOpen && (
-                    <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#8A7B5C" }}>
+                    <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#B8A77E" }}>
                       {item.note}
                     </p>
                   )}
@@ -279,17 +288,17 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                 <button
                   onClick={() => setFeedbackOpen(true)}
                   className="w-full text-xs font-medium py-2 rounded-xl"
-                  style={{ color: "#9BA89A", backgroundColor: "#F8F7F2" }}
+                  style={{ color: "#8FA89F", backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)" }}
                 >
                   🤔 이 점수가 이상한 것 같아요
                 </button>
               ) : feedbackStatus === "done" ? (
-                <div className="text-center text-sm font-medium py-3" style={{ color: "#2E9E50" }}>
+                <div className="text-center text-sm font-medium py-3" style={{ color: "#3FE08A" }}>
                   ✅ 신고가 접수됐어요. 검토 후 반영할게요!
                 </div>
               ) : (
-                <div className="rounded-xl p-3" style={{ backgroundColor: "#F8F7F2" }}>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "#2C3528" }}>어떤 점수가 이상한가요?</p>
+                <div className="rounded-xl p-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "#EAF5F1" }}>어떤 점수가 이상한가요?</p>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {[
                       { key: "scary", label: "공포 안전" },
@@ -305,9 +314,9 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                         onClick={() => setFeedbackCategory(key)}
                         className="rounded-full px-3 py-1 text-xs font-medium"
                         style={{
-                          backgroundColor: feedbackCategory === key ? "#6DAB60" : "#fff",
-                          color: feedbackCategory === key ? "#fff" : "#6B7A65",
-                          border: feedbackCategory === key ? "none" : "1px solid #E4EAE0",
+                          backgroundColor: feedbackCategory === key ? "#18C49A" : "#0F2A24",
+                          color: feedbackCategory === key ? "#08160F" : "#8FA89F",
+                          border: feedbackCategory === key ? "none" : "1px solid rgba(255,255,255,0.12)",
                         }}
                       >
                         {label}
@@ -319,22 +328,22 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                     value={feedbackReason}
                     onChange={(e) => setFeedbackReason(e.target.value)}
                     rows={2}
-                    className="w-full text-xs rounded-lg p-2 resize-none outline-none"
-                    style={{ border: "1px solid #E4EAE0", color: "#2C3528" }}
+                    className="w-full text-xs rounded-lg p-2 resize-none outline-none placeholder:text-white/30"
+                    style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#EAF5F1", backgroundColor: "#0F2A24" }}
                   />
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => setFeedbackOpen(false)}
                       className="flex-1 rounded-lg py-1.5 text-xs font-medium"
-                      style={{ backgroundColor: "#fff", color: "#9BA89A", border: "1px solid #E4EAE0" }}
+                      style={{ backgroundColor: "#0F2A24", color: "#8FA89F", border: "1px solid rgba(255,255,255,0.12)" }}
                     >
                       취소
                     </button>
                     <button
                       onClick={handleFeedbackSubmit}
                       disabled={feedbackStatus === "loading"}
-                      className="flex-1 rounded-lg py-1.5 text-xs font-bold text-white disabled:opacity-60"
-                      style={{ backgroundColor: "#6DAB60" }}
+                      className="flex-1 rounded-lg py-1.5 text-xs font-bold disabled:opacity-60"
+                      style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
                     >
                       {feedbackStatus === "loading" ? "접수 중..." : feedbackStatus === "error" ? "오류 발생" : "신고하기"}
                     </button>
@@ -348,22 +357,22 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
           {isDangerous ? (
             <div
               className="w-full rounded-2xl py-3.5 text-base font-bold text-center"
-              style={{ backgroundColor: "#FFF0EF", color: "#C84B47", border: "1.5px solid #F5C6C5" }}
+              style={{ backgroundColor: "rgba(242,101,92,0.12)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}
             >
               🚫 어린이에게 적합하지 않은 영상이에요
             </div>
           ) : isPending ? (
             <div
               className="w-full rounded-2xl py-3.5 text-base font-bold text-center"
-              style={{ backgroundColor: "#F8F7F2", color: "#9BA89A", border: "1.5px solid #E4EAE0" }}
+              style={{ backgroundColor: "#16352E", color: "#8FA89F", border: "1.5px solid rgba(255,255,255,0.1)" }}
             >
               🔍 AI 분석 완료 후 시청 가능해요
             </div>
           ) : (
             <button
               onClick={handleWatchClick}
-              className="w-full rounded-2xl py-3.5 text-base font-bold text-white"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="w-full rounded-2xl py-3.5 text-base font-bold"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
             >
               ▶ KidSafe에서 보기
             </button>

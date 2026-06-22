@@ -95,9 +95,20 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
 
   // 뒤로가기(모바일 오른쪽 슬라이드)를 가로채 라우트 이탈 대신 플레이어만 닫는다.
   // → onClose가 실행돼 시청 시간이 부모로 전달되고 홈에서 즉시 차감된다.
+  // StrictMode(개발) 이중 마운트 대비: 1차 cleanup의 history.back()이 만든 popstate가
+  // 2차 마운트의 리스너에 잡혀 플레이어를 즉시 닫는 race를 막는다.
+  // cleanup이 유발한 pop은 selfPopRef로 식별 → 닫지 않고 더미 항목만 복구하고 무시.
+  // (X버튼 닫기인 requestClose는 이 플래그를 세우지 않으므로 정상적으로 닫힘 — 구분됨)
+  const selfPopRef = useRef(false);
   useEffect(() => {
-    window.history.pushState({ vp: true }, "");
+    if (!window.history.state?.vp) window.history.pushState({ vp: true }, "");
     const onPop = async () => {
+      if (selfPopRef.current) {
+        selfPopRef.current = false;
+        // 우리 cleanup이 유발한 pop — 닫지 말고 더미 항목만 복구
+        window.history.pushState({ vp: true }, "");
+        return;
+      }
       // 닫기(시청시간 저장 + 부모 차감) 완료 후, 예약된 이동이 있으면 라우트 변경
       await onCloseRef.current();
       if (pendingNavRef.current) {
@@ -110,7 +121,10 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
     return () => {
       window.removeEventListener("popstate", onPop);
       // 외부 사유로 언마운트돼 더미 history 항목이 남아있으면 정리 (리스너 제거 후라 안전)
-      if (window.history.state?.vp) window.history.back();
+      if (window.history.state?.vp) {
+        selfPopRef.current = true; // 이 back()이 유발할 popstate는 무시 대상으로 표시
+        window.history.back();
+      }
     };
   }, []);
 
@@ -177,36 +191,72 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   // 시간 초과 화면
   if (timeLimitReached) {
     return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
-        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8 bg-white" style={{ borderRadius: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
+        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
           <div className="relative inline-block">
             <KiddyImg pose="help" size={160} />
             <div className="absolute" style={{ top: "-12px", right: "-72px" }}>
               <div className="relative rounded-2xl px-3 py-2 text-sm font-bold"
-                style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", width: "88px", wordBreak: "keep-all" }}>
+                style={{ backgroundColor: "#16352E", border: "2px solid rgba(255,255,255,0.12)", color: "#EAF5F1", boxShadow: "0 2px 8px rgba(0,0,0,0.3)", width: "88px", wordBreak: "keep-all" }}>
                 오늘 시청 시간이 끝났어! 영상 재미있었어? 😄
-                <div className="absolute" style={{ bottom: "-9px", left: "14px", width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid #E4EAE0" }} />
-                <div className="absolute" style={{ bottom: "-6px", left: "16px", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #fff" }} />
+                <div className="absolute" style={{ bottom: "-9px", left: "14px", width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid rgba(255,255,255,0.12)" }} />
+                <div className="absolute" style={{ bottom: "-6px", left: "16px", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #16352E" }} />
               </div>
             </div>
           </div>
-          <p className="mt-6 text-2xl font-extrabold" style={{ color: "#2C3528" }}>오늘 시청 시간이 끝났어요!</p>
-          <p className="mt-3 text-base font-medium" style={{ color: "#C84B47" }}>오늘 {usedMinutes}분을 다 봤어요 ⏰</p>
-          <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>
+          <p className="mt-6 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>오늘 시청 시간이 끝났어요!</p>
+          <p className="mt-3 text-base font-medium" style={{ color: "#F2655C" }}>오늘 {usedMinutes}분을 다 봤어요 ⏰</p>
+          <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
             부모님이 설정한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
           </p>
           <button
             onClick={() => requestClose("/games")}
-            className="mt-6 w-full rounded-2xl py-4 text-base font-bold text-white"
-            style={{ backgroundColor: "#6DAB60" }}
+            className="mt-6 w-full rounded-2xl py-4 text-base font-bold"
+            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
           >
             🎮 퀴즈 풀고 시간 더 받기!
           </button>
-          <button onClick={handleKiddyChat} className="mt-3 w-full rounded-2xl py-3 text-sm font-bold" style={{ backgroundColor: "#EEF7EC", color: "#2E9E50" }}>
+          <button onClick={handleKiddyChat} className="mt-3 w-full rounded-2xl py-3 text-sm font-bold" style={{ backgroundColor: "#163A2E", color: "#3FE08A" }}>
             💬 키디에게 소감 말해보자~!
           </button>
-          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}>
+          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#16352E", color: "#8FA89F" }}>
             확인
+          </button>
+        </div>
+        {chatMounted && (
+          <ChatWidget
+            isOpen={chatOpen}
+            initialMessage={`아까 [${video.title}] 봤지? 어땠어? 키디한테 소감 말해봐! 😊`}
+            onClose={() => { setChatMounted(false); setChatOpen(false); }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // 영상 완료 화면 — 가운데 오버레이 (웹/모바일 공통)
+  // ⚠️ 기존엔 portrait 정보패널 안에서만 표시 → 데스크톱(항상 landscape)에선 16:9 영상이
+  //    화면을 다 차지해 완료 화면이 화면 밖으로 밀려 안 보이던 버그. 가운데 모달로 분리해 해결.
+  if (videoEnded) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
+        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+          <KiddyImg pose="success" size={140} />
+          <p className="mt-5 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>다 봤어! 재미있었어? 🎉</p>
+          <p className="mt-2 text-sm" style={{ color: "#8FA89F" }}>총 {formatTime(watchSeconds)} 시청했어요</p>
+          <button
+            onClick={handleKiddyChat}
+            className="mt-6 w-full rounded-2xl py-3.5 text-base font-bold"
+            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
+          >
+            💬 키디에게 소감 말하기
+          </button>
+          <button
+            onClick={() => requestClose()}
+            className="mt-2 w-full rounded-2xl py-3 text-sm font-medium"
+            style={{ backgroundColor: "#16352E", color: "#8FA89F" }}
+          >
+            목록으로 돌아가기
           </button>
         </div>
         {chatMounted && (
@@ -252,8 +302,8 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
             <p className="text-xs" style={{ color: "#9BA89A" }}>채널 설정에 따라 임베드가 제한된 영상이에요.</p>
             <button
               onClick={() => window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank")}
-              className="rounded-2xl px-5 py-2.5 text-sm font-bold text-white"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="rounded-2xl px-5 py-2.5 text-sm font-bold"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
             >
               YouTube에서 보기
             </button>
@@ -288,7 +338,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
           >
             <span
               className="text-xl font-bold"
-              style={{ color: isPlaying ? "#6DAB60" : "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums" }}
+              style={{ color: isPlaying ? "#3FE08A" : "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums" }}
             >
               ⏱ {formatTime(watchSeconds)}
             </span>
@@ -330,8 +380,8 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
             </p>
             <button
               onClick={handleKiddyChat}
-              className="w-full rounded-2xl py-3.5 text-sm font-bold text-white mt-2"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="w-full rounded-2xl py-3.5 text-sm font-bold mt-2"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
             >
               💬 키디에게 소감 말하기
             </button>
@@ -350,7 +400,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
               <div className="flex flex-col gap-1">
                 <span
                   className="text-3xl font-bold"
-                  style={{ color: isPlaying ? "#6DAB60" : "rgba(255,255,255,0.4)", fontVariantNumeric: "tabular-nums" }}
+                  style={{ color: isPlaying ? "#3FE08A" : "rgba(255,255,255,0.4)", fontVariantNumeric: "tabular-nums" }}
                 >
                   ⏱ {formatTime(watchSeconds)}
                 </span>
@@ -372,8 +422,8 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
             </div>
             <button
               onClick={handleKiddyChat}
-              className="w-full rounded-2xl py-3.5 text-sm font-bold text-white mt-auto"
-              style={{ backgroundColor: "#6DAB60" }}
+              className="w-full rounded-2xl py-3.5 text-sm font-bold mt-auto"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
             >
               💬 키디에게 물어보기
             </button>
