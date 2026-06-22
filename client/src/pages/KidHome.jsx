@@ -100,6 +100,7 @@ export default function KidHome() {
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [playingVideo, setPlayingVideo] = useState(null);
+  const [playQueue, setPlayQueue] = useState([]); // 연속재생용 — 영상이 속한 목록(다음 영상 찾기)
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [recommendedVideos, setRecommendedVideos] = useState([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
@@ -495,10 +496,12 @@ export default function KidHome() {
 
   // ─── 영상 카드 ───────────────────────────────────────────
   // listOnMobile=true면 모바일에서 가로형 리스트(검색 결과용), false면 항상 세로형(가로 스크롤 캐러셀용)
-  const VideoCard = ({ video, listOnMobile = false }) => {
+  const VideoCard = ({ video, listOnMobile = false, queue = null }) => {
     const { grade, color } = getSafetyGrade(video.totalScore);
     const isFavorited = favorites.some((f) => f.itemId === video.videoId);
     const durationLabel = formatDuration(video.duration);
+    // 영상 클릭 시 상세 모달 열기 + 연속재생용 큐(이 영상이 속한 목록) 저장
+    const openVideo = () => { setSelectedVideo(video); setPlayQueue(queue || []); };
     return (
       <>
       {/* ─ 모바일: 유튜브식 풀폭 세로 카드 (listOnMobile일 때만) ─ */}
@@ -510,7 +513,7 @@ export default function KidHome() {
         <div
           className="relative w-full cursor-pointer overflow-hidden"
           style={{ aspectRatio: "16 / 9" }}
-          onClick={() => setSelectedVideo(video)}
+          onClick={openVideo}
         >
           <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
           {/* 안전 배지 — 좌상단 */}
@@ -544,7 +547,7 @@ export default function KidHome() {
             <h3
               className="text-sm font-semibold cursor-pointer mb-1"
               style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}
-              onClick={() => setSelectedVideo(video)}
+              onClick={openVideo}
             >
               {video.title}
             </h3>
@@ -585,7 +588,7 @@ export default function KidHome() {
         <div
           className="relative overflow-hidden cursor-pointer"
           style={{ height: "180px" }}
-          onClick={() => setSelectedVideo(video)}
+          onClick={openVideo}
         >
           <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
           {/* 안전 배지 */}
@@ -644,7 +647,7 @@ export default function KidHome() {
           <h3
             className="text-sm font-bold cursor-pointer mb-1.5"
             style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
-            onClick={() => setSelectedVideo(video)}
+            onClick={openVideo}
           >
             {video.title}
           </h3>
@@ -831,7 +834,7 @@ export default function KidHome() {
           <PlaylistModal
             playlist={selectedPlaylist}
             onClose={() => setSelectedPlaylist(null)}
-            onSelectVideo={(video) => { setSelectedPlaylist(null); setSelectedVideo(video); }}
+            onSelectVideo={(video) => { setSelectedPlaylist(null); setPlayQueue([]); setSelectedVideo(video); }}
           />
         )}
 
@@ -849,6 +852,17 @@ export default function KidHome() {
             video={playingVideo}
             timeLimit={selectedProfile?.timeLimit || null}
             usedMinutes={todayMinutes - bonusMinutes}
+            queue={playQueue}
+            continuousPlay={selectedProfile?.continuousPlay || false}
+            safetyThreshold={getEffectiveThreshold(selectedProfile?.age, selectedProfile?.safetyThreshold)}
+            onPlayNext={(next, finishedSeconds) => {
+              // 연속재생 — 끝난 영상의 시청시간을 하루 카운터에 반영 후 다음 영상으로 전환
+              if (finishedSeconds > 0) {
+                setTodayMinutes((prev) => prev + Math.floor(finishedSeconds / 60));
+                setTodaySeconds((prev) => prev + finishedSeconds);
+              }
+              setPlayingVideo({ ...next, profileId: selectedProfile?.id || null });
+            }}
             onClose={(seconds) => {
               if (seconds > 0) {
                 setTodayMinutes((prev) => prev + Math.floor(seconds / 60));
@@ -1222,7 +1236,7 @@ export default function KidHome() {
                       <div className="flex flex-col gap-3 lg:flex-row lg:overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                         {recommendedVideos.map((v) => (
                           <div key={v.videoId} className="w-full lg:w-[200px] lg:shrink-0">
-                            <VideoCard video={v} listOnMobile />
+                            <VideoCard video={v} listOnMobile queue={recommendedVideos} />
                           </div>
                         ))}
                       </div>
@@ -1244,7 +1258,7 @@ export default function KidHome() {
                       <div className="flex flex-col gap-3 lg:flex-row lg:overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                         {historyVideos.map((v) => (
                           <div key={v.videoId} className="w-full lg:w-[200px] lg:shrink-0">
-                            <VideoCard video={v} listOnMobile />
+                            <VideoCard video={v} listOnMobile queue={historyVideos} />
                           </div>
                         ))}
                       </div>
@@ -1275,7 +1289,7 @@ export default function KidHome() {
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold" style={{ backgroundColor: "#16352E", color: "#5FE0BC" }}>{videos.length}개</span>
                 </div>
                 <div className="grid gap-3 grid-cols-1 lg:grid-cols-3">
-                  {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} listOnMobile />)}
+                  {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} listOnMobile queue={videos} />)}
                 </div>
                 {visibleCount < videos.length && (
                   <div className="mt-6 flex justify-center">
@@ -1324,6 +1338,7 @@ export default function KidHome() {
                   key={fav.id}
                   onClick={() => {
                     if (fav.type === "video") {
+                      setPlayQueue([]); // 찜에서 연 영상은 연속재생 큐 없음
                       setSelectedVideo({
                         videoId: fav.itemId,
                         title: fav.title,

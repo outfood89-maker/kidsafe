@@ -34,6 +34,7 @@ def _to_api(row: dict) -> dict:
         "timeLimit": row.get("time_limit"),
         "safetyThreshold": row.get("safety_threshold"),
         "maxBonusMinutes": row.get("max_bonus_minutes"),
+        "continuousPlay": row.get("continuous_play") or False,  # 연속재생 (부모 토글, 기본 꺼짐)
         "createdAt": row.get("created_at"),
     }
 
@@ -102,6 +103,7 @@ class ProfileUpdate(BaseModel):
     timeLimit: Optional[int] = None
     safetyThreshold: Optional[int] = None
     maxBonusMinutes: Optional[int] = None
+    continuousPlay: Optional[bool] = None
 
 
 # PUT /profiles/{id}
@@ -126,6 +128,8 @@ async def update_profile(profile_id: str, data: ProfileUpdate, user: dict = Depe
         patch["safety_threshold"] = data.safetyThreshold
     if data.maxBonusMinutes is not None:
         patch["max_bonus_minutes"] = data.maxBonusMinutes
+    if data.continuousPlay is not None:
+        patch["continuous_play"] = data.continuousPlay
 
     if not patch:
         # 변경할 내용 없으면 현재 값 그대로 반환

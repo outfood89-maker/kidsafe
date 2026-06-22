@@ -856,6 +856,29 @@ export default function ParentDashboard() {
                       </div>
                     </div>
 
+                    {/* 연속재생 토글 — 영상 끝나면 다음 영상을 검수 후 자동재생 (참을성 기른 아이용) */}
+                    <div className="mt-3 w-full flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-600">연속재생</p>
+                        <p className="text-[11px] text-gray-400 leading-tight">끝나면 다음 영상을 검수 후 자동 재생</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const next = !profile.continuousPlay;
+                          setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, continuousPlay: next } : p));
+                          updateProfile(profile.id, { continuousPlay: next });
+                        }}
+                        className="relative shrink-0 rounded-full transition-colors"
+                        style={{ width: "44px", height: "24px", backgroundColor: profile.continuousPlay ? "#6DAB60" : "#D1D5DB" }}
+                        aria-label="연속재생 토글"
+                      >
+                        <span
+                          className="absolute top-0.5 rounded-full bg-white transition-all"
+                          style={{ width: "20px", height: "20px", left: profile.continuousPlay ? "22px" : "2px" }}
+                        />
+                      </button>
+                    </div>
+
                   </div>
                 ))}
               </div>

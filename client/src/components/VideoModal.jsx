@@ -122,11 +122,42 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
     { label: "선정성 안전", icon: "🔞", score: v.sexual,        catKey: "sexual" },
     { label: "공포 안전",   icon: "👻", score: v.scary,         catKey: "scary" },
     { label: "모방 안전",   icon: "⚠️", score: v.imitationRisk, catKey: "imitation_risk" },
-    { label: "교육성",      icon: "📚", score: v.educational,   catKey: "educational" },
-    { label: "비상업성",    icon: "🛒", score: v.commercialism, catKey: "commercialism" },
+    // 교육성·비상업성은 '정보 지표' — 총점(안전 5개 평균)에는 미반영. UI에서 분리 표시.
+    { label: "교육성",      icon: "📚", score: v.educational,   catKey: "educational",   isInfo: true },
+    { label: "비상업성",    icon: "🛒", score: v.commercialism, catKey: "commercialism", isInfo: true },
   ]
     .filter(item => item.score !== undefined)
     .map(item => ({ ...item, note: (cats[item.catKey] || {}).note || "" }));
+
+  // 점수 카드 렌더러 (안전 그룹·참고 그룹 공용)
+  const renderScoreCard = (item) => {
+    const hasNote = item.score < 90 && !!item.note;
+    const isOpen = expandedNote === item.catKey;
+    return (
+      <div
+        key={item.label}
+        onClick={hasNote ? () => setExpandedNote(isOpen ? null : item.catKey) : undefined}
+        className="rounded-xl px-3 py-2"
+        style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)", cursor: hasNote ? "pointer" : "default" }}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#8FA89F" }}>
+            {item.icon} {item.label}
+            {hasNote && (
+              <FaInfoCircle style={{ fontSize: "10px", color: isOpen ? "#F5B829" : "#6B8378" }} />
+            )}
+          </span>
+          <span className="text-xs font-bold" style={{ color: "#EAF5F1" }}>{item.score}</span>
+        </div>
+        <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(item.score, 100)}%`, backgroundColor: getBarColor(item.score) }} />
+        </div>
+        {hasNote && isOpen && (
+          <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#B8A77E" }}>{item.note}</p>
+        )}
+      </div>
+    );
+  };
 
   // 재생 게이팅 룰
   // - YouTube 인증(madeForKids): 즉시 재생
@@ -240,46 +271,23 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
             </p>
           </div>
 
-          {/* 안전도 점수 — 그리드 */}
-          <div className="grid grid-cols-2 gap-2">
-            {scoreItems.map((item) => {
-              // 90 미만 + 사유 있을 때만 ⓘ 노출 (90+는 초록=안전이라 설명 불필요)
-              const hasNote = item.score < 90 && !!item.note;
-              const isOpen = expandedNote === item.catKey;
-              return (
-                <div
-                  key={item.label}
-                  onClick={hasNote ? () => setExpandedNote(isOpen ? null : item.catKey) : undefined}
-                  className="rounded-xl px-3 py-2"
-                  style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)", cursor: hasNote ? "pointer" : "default" }}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#8FA89F" }}>
-                      {item.icon} {item.label}
-                      {hasNote && (
-                        <FaInfoCircle
-                          style={{ fontSize: "10px", color: isOpen ? "#F5B829" : "#6B8378" }}
-                        />
-                      )}
-                    </span>
-                    <span className="text-xs font-bold" style={{ color: "#EAF5F1" }}>{item.score}</span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${Math.min(item.score, 100)}%`, backgroundColor: getBarColor(item.score) }}
-                    />
-                  </div>
-                  {/* 사유 — 탭하면 펼침 */}
-                  {hasNote && isOpen && (
-                    <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#B8A77E" }}>
-                      {item.note}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+          {/* 안전도 점수 — 안전 5개(총점 반영) */}
+          <div>
+            <p className="text-xs font-bold mb-2" style={{ color: "#8FA89F" }}>🛡️ 안전 종합 · 이 5개 평균이 총점이에요</p>
+            <div className="grid grid-cols-2 gap-2">
+              {scoreItems.filter((i) => !i.isInfo).map(renderScoreCard)}
+            </div>
           </div>
+
+          {/* 참고 지표 — 교육성·비상업성 (총점 미반영) */}
+          {scoreItems.some((i) => i.isInfo) && (
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: "#6B8378" }}>📊 참고 지표 · 총점에 미반영</p>
+              <div className="grid grid-cols-2 gap-2">
+                {scoreItems.filter((i) => i.isInfo).map(renderScoreCard)}
+              </div>
+            </div>
+          )}
 
           {/* 점수 피드백 */}
           {isDeep && (

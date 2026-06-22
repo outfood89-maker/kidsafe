@@ -25,6 +25,7 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
     if (onSelectVideo) onSelectVideo(video);
   };
 
+  // 안전점수 배지 — 솔리드 색 + 흰 글씨 (다크 배경에서 잘 읽힘)
   const getSafetyBadgeStyle = (color) => {
     if (color === "green") return { backgroundColor: "#2E9E50" };
     if (color === "yellow") return { backgroundColor: "#C47A00" };
@@ -39,9 +40,11 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full sm:max-w-lg bg-white sm:rounded-3xl overflow-hidden"
+        className="relative w-full sm:max-w-lg sm:rounded-3xl overflow-hidden"
         style={{
           borderRadius: "24px 24px 0 0",
+          backgroundColor: "#0F2A24",
+          border: "1px solid rgba(255,255,255,0.08)",
           maxHeight: "88vh",
           display: "flex",
           flexDirection: "column",
@@ -60,13 +63,13 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
           {playlist.thumbnail ? (
             <img src={playlist.thumbnail} alt={playlist.title} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#EDE9FE" }}>
-              <FaList className="text-5xl" style={{ color: "#7C3AED" }} />
+            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#2A2540" }}>
+              <FaList className="text-5xl" style={{ color: "#A78BFA" }} />
             </div>
           )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75), transparent)" }} />
           <div className="absolute bottom-3 left-3 right-10">
-            <p className="text-xs font-bold text-purple-300">{playlist.channelTitle}</p>
+            <p className="text-xs font-bold" style={{ color: "#C4B5FD" }}>{playlist.channelTitle}</p>
             <h2
               className="mt-0.5 font-extrabold text-white leading-snug"
               style={{ fontSize: "15px", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}
@@ -84,8 +87,8 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
         </div>
 
         {/* 안내 문구 */}
-        <div className="flex-shrink-0 px-4 py-2.5" style={{ backgroundColor: "#F5F3FF", borderBottom: "1px solid #EDE9FE" }}>
-          <p className="text-xs" style={{ color: "#6D28D9" }}>
+        <div className="flex-shrink-0 px-4 py-2.5" style={{ backgroundColor: "#1E1B2E", borderBottom: "1px solid rgba(196,181,253,0.15)" }}>
+          <p className="text-xs" style={{ color: "#C4B5FD" }}>
             🔍 영상을 클릭하면 AI 안전 검수 후 시청할 수 있어요. 재생목록 전체를 YouTube에서 바로 여는 기능은 제공하지 않아요.
           </p>
         </div>
@@ -93,18 +96,18 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
         {/* 영상 목록 */}
         <div className="flex-1 overflow-y-auto px-4 py-3" style={{ gap: "10px", display: "flex", flexDirection: "column" }}>
           {loading && (
-            <div className="flex flex-col items-center gap-3 py-10" style={{ color: "#7C3AED" }}>
+            <div className="flex flex-col items-center gap-3 py-10" style={{ color: "#A78BFA" }}>
               <FaSpinner className="animate-spin text-3xl" />
               <p className="text-sm font-medium">영상 목록 불러오는 중...</p>
             </div>
           )}
 
           {!loading && error && (
-            <p className="text-center text-sm py-10" style={{ color: "#9CA3AF" }}>{error}</p>
+            <p className="text-center text-sm py-10" style={{ color: "#8FA89F" }}>{error}</p>
           )}
 
           {!loading && !error && videos.length === 0 && (
-            <p className="text-center text-sm py-10" style={{ color: "#9CA3AF" }}>영상이 없어요.</p>
+            <p className="text-center text-sm py-10" style={{ color: "#8FA89F" }}>영상이 없어요.</p>
           )}
 
           {!loading && videos.map((video, idx) => {
@@ -114,8 +117,8 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
                 key={video.videoId}
                 onClick={() => handleVideoClick(video)}
                 className="flex gap-3 cursor-pointer rounded-2xl p-2 transition"
-                style={{ border: "1px solid #EDE9FE" }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F5F3FF"}
+                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#16352E"}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ""}
               >
                 {/* 썸네일 */}
@@ -123,7 +126,7 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
                   {video.thumbnail ? (
                     <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full" style={{ backgroundColor: "#EDE9FE" }} />
+                    <div className="w-full h-full" style={{ backgroundColor: "#2A2540" }} />
                   )}
                   <div
                     className="absolute left-1.5 top-1.5 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold text-white"
@@ -146,14 +149,14 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
                   <p
                     className="font-semibold leading-snug"
                     style={{
-                      fontSize: "12px", color: "#2C3528",
+                      fontSize: "12px", color: "#EAF5F1",
                       display: "-webkit-box", WebkitLineClamp: 2,
                       WebkitBoxOrient: "vertical", overflow: "hidden",
                     }}
                   >
                     {video.title}
                   </p>
-                  <p className="mt-1 text-xs" style={{ color: "#9BA89A" }}>{video.channelTitle}</p>
+                  <p className="mt-1 text-xs" style={{ color: "#8FA89F" }}>{video.channelTitle}</p>
                 </div>
               </div>
             );
