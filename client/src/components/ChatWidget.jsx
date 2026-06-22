@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { FaChevronDown, FaPaperPlane } from "react-icons/fa";
 import { sendChatMessage } from "../utils/api";
-import KiddyImg from "./KiddyImg";
 
 export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", desktopClass = "", initialMessage = null }) {
   const [chatMessages, setChatMessages] = useState([
@@ -97,15 +96,16 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
     />
     <div
       ref={containerRef}
-      className={`fixed z-50 flex flex-col overflow-hidden bg-white
+      className={`fixed z-50 flex flex-col overflow-hidden
         right-2 w-[calc(100vw-16px)]
         md:bottom-6 md:right-20 md:w-[520px] md:h-[700px]`}
       style={{
         bottom: `${70 + keyboardOffset}px`,
         height: `calc(85vh - ${140 + keyboardOffset}px)`,
         borderRadius: "24px",
-        border: "0.5px solid #E4EAE0",
-        boxShadow: "0 12px 48px rgba(44,53,40,0.16)",
+        backgroundColor: "#0F2A24",
+        border: "1px solid rgba(255,255,255,0.1)",
+        boxShadow: "0 16px 50px rgba(0,0,0,0.5)",
         transform: visible ? "translateY(0)" : "translateY(110%)",
         transition: keyboardOffset > 0
           ? "bottom 0.15s ease, height 0.15s ease"
@@ -113,14 +113,14 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       }}
     >
       {/* 헤더 */}
-      <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: "#6DAB60" }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>
         <div className="flex items-center gap-2.5">
-          <div className="rounded-full overflow-hidden bg-white shadow" style={{ width: "36px", height: "36px" }}>
-            <KiddyImg pose="chat" size={36} bg="#D4EAD0" />
+          <div className="rounded-full overflow-hidden shadow" style={{ width: "42px", height: "42px", backgroundColor: "#EAF7F1" }}>
+            <img src="/images/kiddy_chat.png" alt="키디" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "47% center", transform: "scale(1.2) translateY(18%)", transformOrigin: "center center" }} />
           </div>
           <div>
-            <p className="text-sm font-medium text-white">키디</p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>AI 친구</p>
+            <p className="text-sm font-bold text-white">키디</p>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>AI 친구</p>
           </div>
         </div>
         <button onClick={handleClose} className="text-white">
@@ -129,17 +129,19 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" style={{ backgroundColor: "#F8F7F2", overscrollBehavior: "contain" }}>
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" style={{ backgroundColor: "#0B1F1B", overscrollBehavior: "contain" }}>
         {chatMessages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
             {msg.role === "assistant" && (
-              <div className="shrink-0"><KiddyImg pose="chat" size={28} bg="#6DAB60" /></div>
+              <div className="shrink-0 rounded-full overflow-hidden" style={{ width: "34px", height: "34px", backgroundColor: "#EAF7F1" }}>
+              <img src="/images/kiddy_chat.png" alt="키디" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "47% center", transform: "scale(1.2) translateY(18%)", transformOrigin: "center center" }} />
+            </div>
             )}
             <div
               className="max-w-[75%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed"
               style={msg.role === "user"
-                ? { backgroundColor: "#6DAB60", color: "white", borderBottomRightRadius: "4px" }
-                : { backgroundColor: "white", color: "#2C3528", borderBottomLeftRadius: "4px", border: "0.5px solid #E4EAE0" }
+                ? { backgroundColor: "#18C49A", color: "white", borderBottomRightRadius: "4px" }
+                : { backgroundColor: "#16352E", color: "#EAF5F1", borderBottomLeftRadius: "4px", border: "1px solid rgba(255,255,255,0.08)" }
               }
             >
               {msg.content}
@@ -148,12 +150,14 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
         ))}
         {chatLoading && (
           <div className="flex justify-start gap-2">
-            <div className="shrink-0"><KiddyImg pose="chat" size={28} bg="#6DAB60" /></div>
-            <div className="rounded-2xl rounded-bl-sm bg-white px-4 py-3" style={{ border: "0.5px solid #E4EAE0" }}>
+            <div className="shrink-0 rounded-full overflow-hidden" style={{ width: "34px", height: "34px", backgroundColor: "#EAF7F1" }}>
+              <img src="/images/kiddy_chat.png" alt="키디" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "47% center", transform: "scale(1.2) translateY(18%)", transformOrigin: "center center" }} />
+            </div>
+            <div className="rounded-2xl rounded-bl-sm px-4 py-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex gap-1 items-center">
-                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#6DAB60", animationDelay: "0ms" }} />
-                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#6DAB60", animationDelay: "150ms" }} />
-                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#6DAB60", animationDelay: "300ms" }} />
+                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#18C49A", animationDelay: "0ms" }} />
+                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#18C49A", animationDelay: "150ms" }} />
+                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#18C49A", animationDelay: "300ms" }} />
               </div>
             </div>
           </div>
@@ -163,8 +167,8 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
 
       {/* 빠른 질문 */}
       {chatMessages.length <= 1 && (
-        <div className="flex flex-col gap-1.5 px-3 py-2.5" style={{ backgroundColor: "#F8F7F2", borderTop: "0.5px solid #E4EAE0" }}>
-          <p className="text-xs font-medium" style={{ color: "#6DAB60" }}>👇 눌러서 바로 물어봐!</p>
+        <div className="flex flex-col gap-1.5 px-3 py-2.5" style={{ backgroundColor: "#0B1F1B", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-xs font-bold" style={{ color: "#5FE0BC" }}>👇 눌러서 바로 물어봐!</p>
           {[
             { label: "🎬 재미있는 영상 키워드 추천해줘!", text: "재미있는 영상 키워드 추천해줘!" },
             { label: "🧩 오늘의 퀴즈 내줘!", text: "오늘의 퀴즈 내줘!" },
@@ -173,8 +177,8 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
             <button
               key={q.text}
               onClick={() => sendMessage(q.text)}
-              className="w-full rounded-[10px] px-3 py-2 text-left text-xs bg-white transition"
-              style={{ border: "0.5px solid #E4EAE0", color: "#2C3528" }}
+              className="w-full rounded-[10px] px-3 py-2 text-left text-xs transition"
+              style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)", color: "#EAF5F1" }}
             >
               {q.label}
             </button>
@@ -183,7 +187,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       )}
 
       {/* 입력창 */}
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-white" style={{ borderTop: "0.5px solid #E4EAE0" }}>
+      <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: "#0F2A24", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <input
           ref={inputRef}
           type="text"
@@ -191,14 +195,14 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage(chatInput)}
           placeholder="키디한테 물어봐!"
-          className="flex-1 rounded-[10px] px-3 py-2 outline-none transition"
-          style={{ fontSize: "16px", border: "2px solid #B8D8B2", color: "#2C3528", backgroundColor: "#F8F7F2" }}
+          className="flex-1 rounded-[10px] px-3 py-2 outline-none transition placeholder:text-white/35"
+          style={{ fontSize: "16px", border: "2px solid rgba(255,255,255,0.12)", color: "#EAF5F1", backgroundColor: "#16352E" }}
         />
         <button
           onClick={() => sendMessage(chatInput)}
           disabled={!chatInput.trim() || chatLoading}
           className="flex h-9 w-9 items-center justify-center rounded-full text-white transition disabled:opacity-40"
-          style={{ backgroundColor: "#6DAB60" }}
+          style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}
         >
           <FaPaperPlane className="text-xs" />
         </button>

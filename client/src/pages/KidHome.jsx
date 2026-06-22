@@ -488,6 +488,11 @@ export default function KidHome() {
     return { backgroundColor: "#C84B47" };
   };
 
+  // 썸네일 위 안전점수 뱃지 — 다크글래스(B안): 검정 반투명 + 등급색 글씨 + 흰 점수.
+  // 어떤 색 썸네일 위에서도 안 묻히고 안 싸움.
+  const gradeHex = (color) => (color === "green" ? "#3FE08A" : color === "yellow" ? "#F5B829" : "#F2655C");
+  const safetyGlassStyle = { backgroundColor: "rgba(0,0,0,0.68)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" };
+
   // ─── 영상 카드 ───────────────────────────────────────────
   // listOnMobile=true면 모바일에서 가로형 리스트(검색 결과용), false면 항상 세로형(가로 스크롤 캐러셀용)
   const VideoCard = ({ video, listOnMobile = false }) => {
@@ -510,11 +515,11 @@ export default function KidHome() {
           <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
           {/* 안전 배지 — 좌상단 */}
           <div
-            className="absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-white flex items-baseline gap-1"
-            style={getSafetyBadgeStyle(color)}
+            className="absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 flex items-baseline gap-1"
+            style={safetyGlassStyle}
           >
-            <span style={{ fontSize: "13px", fontWeight: 700 }}>{grade}</span>
-            <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.85 }}>{video.totalScore}</span>
+            <span style={{ fontSize: "13px", fontWeight: 800, color: gradeHex(color) }}>{grade}</span>
+            <span style={{ fontSize: "10px", fontWeight: 600, color: "#fff", opacity: 0.9 }}>{video.totalScore}</span>
           </div>
           {/* 길이 배지 — 우하단 */}
           {durationLabel && (
@@ -549,10 +554,10 @@ export default function KidHome() {
               </span>
               {/* 채널 신뢰 — YouTube 공식 아동용 인증 */}
               {video.madeForKids && (
-                <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 600, backgroundColor: "#EAF3F9", color: "#1D6FAA" }}>✅ 인증</span>
+                <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#13344A", color: "#7FC4F0" }}>✅ 인증</span>
               )}
               {video.educational >= 80 && (
-                <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 600, backgroundColor: "#FFF3E0", color: "#E07B00" }}>📚 교육</span>
+                <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#3A2F14", color: "#F5B829" }}>📚 교육</span>
               )}
             </div>
           </div>
@@ -585,17 +590,17 @@ export default function KidHome() {
           <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
           {/* 안전 배지 */}
           <div
-            className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-white flex items-baseline gap-1"
-            style={getSafetyBadgeStyle(color)}
+            className="absolute left-3 top-3 rounded-full px-2.5 py-1 flex items-baseline gap-1"
+            style={safetyGlassStyle}
           >
-            <span style={{ fontSize: "13px", fontWeight: 700 }}>{grade}</span>
-            <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.85 }}>{video.totalScore}</span>
+            <span style={{ fontSize: "13px", fontWeight: 800, color: gradeHex(color) }}>{grade}</span>
+            <span style={{ fontSize: "10px", fontWeight: 600, color: "#fff", opacity: 0.9 }}>{video.totalScore}</span>
           </div>
           {/* YouTube 공식 아동용 인증 뱃지 */}
           {video.madeForKids && (
             <div
-              className="absolute left-3 top-10 rounded-full px-2.5 py-1 text-xs font-medium"
-              style={{ backgroundColor: "rgba(255,255,255,0.92)", color: "#1D6FAA" }}
+              className="absolute left-3 top-10 rounded-full px-2.5 py-1 text-xs font-bold"
+              style={{ backgroundColor: "rgba(0,0,0,0.68)", backdropFilter: "blur(4px)", color: "#7FC4F0" }}
             >
               ✅ YouTube 인증
             </div>
@@ -633,7 +638,7 @@ export default function KidHome() {
               {video.channelTitle}
             </p>
             {video.educational >= 80 && (
-              <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "10px", fontWeight: 600, backgroundColor: "#FFF3E0", color: "#E07B00" }}>📚 교육적</span>
+              <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ fontSize: "10px", fontWeight: 700, backgroundColor: "#3A2F14", color: "#F5B829" }}>📚 교육적</span>
             )}
           </div>
           <h3
@@ -1024,23 +1029,23 @@ export default function KidHome() {
                           style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>검색</button>
                       </div>
                       {showSearchHistory && searchHistory.length > 0 && (
-                        <div className="absolute left-0 right-0 z-20 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
-                          <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "0.5px solid #E4EAE0" }}>
-                            <span className="text-xs font-medium" style={{ color: "#6B7A65" }}>최근 검색어</span>
-                            <button onClick={handleDeleteAllSearchHistory} className="text-xs" style={{ color: "#C84B47" }}>전체 삭제</button>
+                        <div className="absolute left-0 right-0 z-20 mt-1.5 overflow-hidden" style={{ borderRadius: "14px", backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 12px 30px rgba(0,0,0,0.45)" }}>
+                          <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                            <span className="text-xs font-bold" style={{ color: "#8FA89F" }}>최근 검색어</span>
+                            <button onClick={handleDeleteAllSearchHistory} className="text-xs font-bold" style={{ color: "#F2655C" }}>전체 삭제</button>
                           </div>
                           <ul>
                             {searchHistory.map((item) => (
                               <li key={item.id} onClick={() => handleHistoryKeywordClick(item.keyword)}
                                 className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
-                                style={{ borderBottom: "0.5px solid #E4EAE0" }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F8F7F2")}
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")}
                                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
                                 <div className="flex items-center gap-2.5">
-                                  <FaSearch style={{ color: "#B8D8B2", fontSize: "11px" }} />
-                                  <span className="text-sm" style={{ color: "#2C3528" }}>{item.keyword}</span>
+                                  <FaSearch style={{ color: "#6B8378", fontSize: "11px" }} />
+                                  <span className="text-sm" style={{ color: "#EAF5F1" }}>{item.keyword}</span>
                                 </div>
-                                <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#B8D8B2" }}>
+                                <button onClick={(e) => handleDeleteSearchHistory(e, item.id)} style={{ color: "#6B8378" }}>
                                   <FaTimes className="text-xs" />
                                 </button>
                               </li>
@@ -1345,8 +1350,8 @@ export default function KidHome() {
                     {fav.thumbnail ? (
                       <img src={fav.thumbnail} alt={fav.title} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: "#F0F5ED" }}>
-                        <FaHeart className="text-4xl" style={{ color: "#B8D8B2" }} />
+                      <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: "#16352E" }}>
+                        <FaHeart className="text-4xl" style={{ color: "#6B8378" }} />
                       </div>
                     )}
                     {fav.type === "playlist" && (
@@ -1359,10 +1364,11 @@ export default function KidHome() {
                     )}
                     {fav.type === "video" && fav.totalScore != null && (
                       <div
-                        className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium text-white"
-                        style={getSafetyBadgeStyle(getSafetyGrade(fav.totalScore).color)}
+                        className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold flex items-baseline gap-1"
+                        style={safetyGlassStyle}
                       >
-                        {getSafetyGrade(fav.totalScore).grade} {fav.totalScore}점
+                        <span style={{ color: gradeHex(getSafetyGrade(fav.totalScore).color) }}>{getSafetyGrade(fav.totalScore).grade}</span>
+                        <span style={{ color: "#fff", opacity: 0.9 }}>{fav.totalScore}점</span>
                       </div>
                     )}
                     <button
