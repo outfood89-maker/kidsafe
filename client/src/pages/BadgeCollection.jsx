@@ -37,13 +37,14 @@ const ALL_BADGES = [
 
 const CATEGORY_ORDER = ["시청", "안전", "장르", "찜", "탐험", "마스터"];
 
+// 다크 테마용 — 카테고리별 액센트색 유지 (밝은 톤 + 어두운 틴트 배경)
 const CATEGORY_COLORS = {
-  시청:   { bg: "bg-blue-50",   border: "border-blue-200",   text: "text-blue-600",   badge: "bg-blue-100 text-blue-700" },
-  안전:   { bg: "bg-green-50",  border: "border-green-200",  text: "text-green-600",  badge: "bg-green-100 text-green-700" },
-  장르:   { bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-600", badge: "bg-yellow-100 text-yellow-700" },
-  찜:     { bg: "bg-pink-50",   border: "border-pink-200",   text: "text-pink-600",   badge: "bg-pink-100 text-pink-700" },
-  탐험:   { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-600", badge: "bg-purple-100 text-purple-700" },
-  마스터: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-600", badge: "bg-orange-100 text-orange-700" },
+  시청:   { accent: "#7FC4F0", tint: "rgba(127,196,240,0.12)", tagBg: "#13344A" },
+  안전:   { accent: "#3FE08A", tint: "rgba(63,224,138,0.12)",  tagBg: "#163A2E" },
+  장르:   { accent: "#F5B829", tint: "rgba(245,184,41,0.12)",  tagBg: "#3A2F14" },
+  찜:     { accent: "#FF8A82", tint: "rgba(242,101,92,0.12)",  tagBg: "#3A1E22" },
+  탐험:   { accent: "#C4B5FD", tint: "rgba(196,181,253,0.12)", tagBg: "#1E1B2E" },
+  마스터: { accent: "#FB923C", tint: "rgba(251,146,60,0.12)",  tagBg: "#3A2A16" },
 };
 
 export default function BadgeCollection() {
@@ -95,16 +96,16 @@ export default function BadgeCollection() {
     `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
   return (
-    <div className="min-h-screen pb-24 md:pb-0 bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50">
+    <div className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: "#0A1E1E" }}>
       <NavBar backTo="/kids" backLabel="홈으로" title="배지 컬렉션" />
 
       <div className="mx-auto max-w-4xl px-4 py-10">
 
         {/* 프로필 + 진행도 */}
-        <div className="mb-10 rounded-3xl bg-white p-6 shadow-xl text-center">
+        <div className="mb-10 rounded-3xl p-6 text-center" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
           {profile && (
             <div className="flex flex-col items-center gap-3">
-              <div className="overflow-hidden rounded-full shadow-lg" style={{ width: "80px", height: "80px" }}>
+              <div className="overflow-hidden rounded-full" style={{ width: "80px", height: "80px", border: "3px solid #163635" }}>
                 <img
                   src={getAvatarUrl(profile)}
                   alt={profile.name}
@@ -117,23 +118,23 @@ export default function BadgeCollection() {
                   }}
                 />
               </div>
-              <p className="text-xl font-extrabold text-gray-800">{profile.name}의 배지 컬렉션</p>
+              <p className="text-xl font-extrabold" style={{ color: "#EAF5F1" }}>{profile.name}의 배지 컬렉션</p>
             </div>
           )}
 
           {/* 진행도 바 */}
           <div className="mt-6">
-            <div className="mb-2 flex justify-between text-sm font-bold text-gray-500">
+            <div className="mb-2 flex justify-between text-sm font-bold" style={{ color: "#90A9A8" }}>
               <span>획득한 배지</span>
-              <span className="text-pink-500">{earnedCount} / {totalCount}</span>
+              <span style={{ color: "#FF8A82" }}>{earnedCount} / {totalCount}</span>
             </div>
-            <div className="h-4 w-full overflow-hidden rounded-full bg-gray-100">
+            <div className="h-4 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
               <div
-                className="h-full rounded-full bg-gradient-to-r from-pink-400 to-yellow-400 transition-all duration-700"
-                style={{ width: `${(earnedCount / totalCount) * 100}%` }}
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${(earnedCount / totalCount) * 100}%`, background: "linear-gradient(90deg, #F2655C, #F5B829)" }}
               />
             </div>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm" style={{ color: "#90A9A8" }}>
               {earnedCount === 0
                 ? "아직 배지가 없어요. 영상을 시청하고 첫 배지를 받아봐요!"
                 : earnedCount === totalCount
@@ -145,24 +146,27 @@ export default function BadgeCollection() {
 
         {/* 카테고리 탭 */}
         <div className="mb-6 flex flex-wrap gap-2 justify-center">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
-                selectedCategory === cat
-                  ? "bg-pink-500 text-white shadow-lg scale-105"
-                  : "bg-white text-gray-600 shadow hover:bg-pink-50"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const active = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className="rounded-full px-4 py-2 text-sm font-bold transition-all"
+                style={active
+                  ? { backgroundColor: "#18C49A", color: "#08160F", transform: "scale(1.05)", boxShadow: "0 6px 16px rgba(20,184,196,0.3)" }
+                  : { backgroundColor: "#163635", color: "#8FA89F", border: "1px solid rgba(255,255,255,0.08)" }
+                }
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
 
         {/* 배지 그리드 */}
         {loading ? (
-          <div className="flex justify-center py-20 text-pink-400 text-lg font-bold">불러오는 중...</div>
+          <div className="flex justify-center py-20 text-lg font-bold" style={{ color: "#FF8A82" }}>불러오는 중...</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {filtered.map((badge) => {
@@ -172,15 +176,15 @@ export default function BadgeCollection() {
               return (
                 <div
                   key={badge.id}
-                  className={`relative rounded-3xl border-2 p-5 shadow-md transition-all duration-300 ${
-                    earned
-                      ? `${colors.bg} ${colors.border} hover:-translate-y-1 hover:shadow-lg`
-                      : "bg-gray-50 border-gray-200 opacity-50"
-                  }`}
+                  className={`relative rounded-3xl p-5 transition-all duration-300 ${earned ? "hover:-translate-y-1" : ""}`}
+                  style={earned
+                    ? { backgroundColor: colors.tint, border: `1.5px solid ${colors.accent}`, boxShadow: "0 6px 18px rgba(0,0,0,0.3)" }
+                    : { backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)", opacity: 0.55 }
+                  }
                 >
                   {/* 획득 여부 표시 */}
                   {earned && (
-                    <div className="absolute top-3 right-3 text-xs font-bold text-green-500">✓ 획득</div>
+                    <div className="absolute top-3 right-3 text-xs font-bold" style={{ color: "#3FE08A" }}>✓ 획득</div>
                   )}
 
                   {/* 이모지 */}
@@ -189,25 +193,26 @@ export default function BadgeCollection() {
                   </div>
 
                   {/* 배지 이름 */}
-                  <p className={`text-center text-sm font-extrabold mb-1 ${earned ? colors.text : "text-gray-400"}`}>
+                  <p className="text-center text-sm font-extrabold mb-1" style={{ color: earned ? colors.accent : "#6B8378" }}>
                     {badge.name}
                   </p>
 
                   {/* 설명 */}
-                  <p className="text-center text-xs text-gray-500 leading-relaxed">
+                  <p className="text-center text-xs leading-relaxed" style={{ color: earned ? "#90A9A8" : "#6B8378" }}>
                     {badge.description}
                   </p>
 
                   {/* 카테고리 태그 */}
                   <div className="mt-3 flex justify-center">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${earned ? colors.badge : "bg-gray-100 text-gray-400"}`}>
+                    <span className="rounded-full px-2 py-0.5 text-xs font-bold"
+                      style={earned ? { backgroundColor: colors.tagBg, color: colors.accent } : { backgroundColor: "#0E2A2A", color: "#6B8378" }}>
                       {badge.category}
                     </span>
                   </div>
 
                   {/* 획득 날짜 */}
                   {earned && earnedInfo?.earnedAt && (
-                    <p className="mt-2 text-center text-xs text-gray-400">
+                    <p className="mt-2 text-center text-xs" style={{ color: "#6B8378" }}>
                       {new Date(earnedInfo.earnedAt).toLocaleDateString("ko-KR")} 획득
                     </p>
                   )}

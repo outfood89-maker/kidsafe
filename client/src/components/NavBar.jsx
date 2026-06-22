@@ -36,10 +36,16 @@ export default function NavBar({
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "보호자";
 
+  // 다크 메뉴 항목 hover 헬퍼
+  const itemHover = {
+    onMouseEnter: (e) => (e.currentTarget.style.backgroundColor = "#163635"),
+    onMouseLeave: (e) => (e.currentTarget.style.backgroundColor = "transparent"),
+  };
+
   return (
     <header
-      className="sticky top-0 z-50 bg-white"
-      style={{ borderBottom: "0.5px solid #E4EAE0" }}
+      className="sticky top-0 z-50"
+      style={{ backgroundColor: "#0E2A2A", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
     >
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-6">
 
@@ -49,8 +55,8 @@ export default function NavBar({
             <button
               onClick={() => navigate(backTo)}
               className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium transition"
-              style={{ color: "#6B7A65" }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F0F5ED")}
+              style={{ color: "#90A9A8" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#163635")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
               <FaArrowLeft className="text-xs" />
@@ -63,7 +69,7 @@ export default function NavBar({
 
         {/* 가운데 타이틀 */}
         <div className="flex-1 text-center">
-          <h1 className="truncate text-base font-medium" style={{ color: "#2C3528" }}>
+          <h1 className="truncate text-base font-medium" style={{ color: "#EAF5F1" }}>
             {title || "KidSafe"}
           </h1>
         </div>
@@ -74,8 +80,8 @@ export default function NavBar({
             <button
               onClick={() => navigate("/favorites")}
               className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition"
-              style={{ color: "#C84B47" }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F0F5ED")}
+              style={{ color: "#FF8A82" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#163635")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
               <FaHeart className="text-sm" />
@@ -89,58 +95,62 @@ export default function NavBar({
               <button
                 onClick={() => setMenuOpen((p) => !p)}
                 className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition"
-                style={{ color: "#2C3528" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F0F5ED")}
+                style={{ color: "#EAF5F1" }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#163635")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
-                <FaUserCircle style={{ color: "#6DAB60", fontSize: "18px" }} />
+                <FaUserCircle style={{ color: "#18C49A", fontSize: "18px" }} />
                 <span className="hidden sm:block max-w-[80px] truncate">{displayName}</span>
                 <FaChevronDown
                   className="text-xs transition-transform"
-                  style={{ color: "#9BA89A", transform: menuOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  style={{ color: "#8FA89F", transform: menuOpen ? "rotate(180deg)" : "rotate(0deg)" }}
                 />
               </button>
 
               {/* 드롭다운 메뉴 */}
               {menuOpen && (
                 <div
-                  className="absolute right-0 top-full mt-1 w-44 bg-white py-1.5 z-50"
-                  style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}
+                  className="absolute right-0 top-full mt-1 w-44 py-1.5 z-50"
+                  style={{ backgroundColor: "#0E2A2A", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
                 >
                   {/* 이름 표시 */}
-                  <div className="px-4 py-2 border-b" style={{ borderColor: "#E4EAE0" }}>
-                    <p className="text-xs font-medium truncate" style={{ color: "#2C3528" }}>{displayName}</p>
-                    <p className="text-xs truncate mt-0.5" style={{ color: "#9BA89A" }}>{user.email}</p>
+                  <div className="px-4 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                    <p className="text-xs font-medium truncate" style={{ color: "#EAF5F1" }}>{displayName}</p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: "#8FA89F" }}>{user.email}</p>
                   </div>
 
                   <button
                     onClick={() => { setMenuOpen(false); navigate("/account"); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition hover:bg-gray-50"
-                    style={{ color: "#2C3528" }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition"
+                    style={{ color: "#EAF5F1" }}
+                    {...itemHover}
                   >
                     👤 내 계정
                   </button>
                   <button
                     onClick={() => { setMenuOpen(false); navigate("/profiles"); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition hover:bg-gray-50"
-                    style={{ color: "#2C3528" }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition"
+                    style={{ color: "#EAF5F1" }}
+                    {...itemHover}
                   >
                     👶 자녀 프로필 관리
                   </button>
                   <button
                     onClick={() => { setMenuOpen(false); navigate("/account?tab=membership"); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition hover:bg-gray-50"
-                    style={{ color: "#2C3528" }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition"
+                    style={{ color: "#EAF5F1" }}
+                    {...itemHover}
                   >
                     💎 멤버십 관리
                   </button>
 
-                  <div className="border-t my-1" style={{ borderColor: "#E4EAE0" }} />
+                  <div className="my-1" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }} />
 
                   <button
                     onClick={() => { setMenuOpen(false); handleSignOut(); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition hover:bg-gray-50"
-                    style={{ color: "#C84B47" }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition"
+                    style={{ color: "#FF8A82" }}
+                    {...itemHover}
                   >
                     🚪 로그아웃
                   </button>
@@ -152,11 +162,11 @@ export default function NavBar({
             <div className="flex items-center gap-1.5">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-                style={{ backgroundColor: "#6DAB60" }}
+                style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}
               >
                 <FaShieldAlt className="text-white text-sm" />
               </div>
-              <span className="hidden text-sm font-medium sm:block" style={{ color: "#2C3528" }}>
+              <span className="hidden text-sm font-medium sm:block" style={{ color: "#EAF5F1" }}>
                 KidSafe
               </span>
             </div>
