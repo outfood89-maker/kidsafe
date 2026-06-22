@@ -81,11 +81,9 @@ export default function Favorites() {
     );
   };
 
-  const getBadgeStyle = (color) => {
-    if (color === "green") return "bg-green-500";
-    if (color === "yellow") return "bg-yellow-500";
-    return "bg-red-500";
-  };
+  // 안전 점수 뱃지 — 다크글래스(B안): 검정 반투명 + 등급색 글씨 (어떤 썸네일 위에서도 안 묻힘)
+  const gradeHex = (color) => (color === "green" ? "#3FE08A" : color === "yellow" ? "#F5B829" : "#F2655C");
+  const safetyGlassStyle = { backgroundColor: "rgba(0,0,0,0.68)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" };
 
   const videoFavorites = favorites.filter((f) => f.type === "video");
   const playlistFavorites = favorites.filter((f) => f.type === "playlist");
@@ -96,27 +94,28 @@ export default function Favorites() {
     return (
       <div
         onClick={() => handleCardClick(fav)}
-        className="cursor-pointer overflow-hidden rounded-3xl bg-white shadow-xl transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
+        className="cursor-pointer overflow-hidden rounded-3xl transition duration-300 hover:-translate-y-2"
+        style={{ backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}
       >
         <div className="relative h-48 overflow-hidden">
           {fav.thumbnail ? (
             <img src={fav.thumbnail} alt={fav.title} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-pink-100">
-              <FaHeart className="text-5xl text-pink-300" />
+            <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: "#2B1B1E" }}>
+              <FaHeart className="text-5xl" style={{ color: "#F2655C" }} />
             </div>
           )}
 
-          {/* 안전 점수 뱃지 (영상만) */}
+          {/* 안전 점수 뱃지 (영상만) — 다크글래스 */}
           {safetyInfo && (
-            <div className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-bold text-white shadow ${getBadgeStyle(safetyInfo.color)}`}>
+            <div className="absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-bold" style={{ ...safetyGlassStyle, color: gradeHex(safetyInfo.color) }}>
               {safetyInfo.grade} {fav.totalScore}점
             </div>
           )}
 
           {/* 재생목록 뱃지 */}
           {fav.type === "playlist" && (
-            <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-purple-500 px-3 py-1 text-xs font-bold text-white shadow">
+            <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold text-white shadow" style={{ backgroundColor: "#7C3AED" }}>
               <FaList style={{ fontSize: "10px" }} /> 재생목록
             </div>
           )}
@@ -124,7 +123,8 @@ export default function Favorites() {
           {/* 찜 해제 버튼 */}
           <button
             onClick={(e) => handleRemove(e, fav.id)}
-            className="absolute right-4 top-4 rounded-full bg-pink-500 p-2 text-white shadow-md transition hover:bg-pink-600"
+            className="absolute right-4 top-4 rounded-full p-2 text-white shadow-md transition hover:opacity-85"
+            style={{ backgroundColor: "#F2655C" }}
             title="찜 해제"
           >
             <FaTrash className="text-xs" />
@@ -132,9 +132,9 @@ export default function Favorites() {
         </div>
 
         <div className="p-5">
-          <p className="text-sm font-bold text-pink-500 truncate">{fav.channelTitle}</p>
-          <h3 className="mt-2 line-clamp-2 text-base font-extrabold text-gray-800">{fav.title}</h3>
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="text-sm font-bold truncate" style={{ color: "#FF8A82" }}>{fav.channelTitle}</p>
+          <h3 className="mt-2 line-clamp-2 text-base font-extrabold" style={{ color: "#EAF5F1" }}>{fav.title}</h3>
+          <p className="mt-2 text-xs" style={{ color: "#6B8378" }}>
             {new Date(fav.savedAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })} 저장
           </p>
         </div>
@@ -143,26 +143,26 @@ export default function Favorites() {
   };
 
   return (
-    <div className="min-h-screen pb-24 md:pb-0 bg-gradient-to-br from-pink-100 via-yellow-50 to-sky-100">
+    <div className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: "#0B1F1B" }}>
       <NavBar backTo="/kids" backLabel="홈으로" title="내 찜 목록" />
 
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
 
         {/* 헤더 */}
         <section className="flex flex-col items-center text-center mb-12">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-2xl">
-            <FaHeart className="text-4xl text-pink-500" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 28px rgba(0,0,0,0.4)" }}>
+            <FaHeart className="text-4xl" style={{ color: "#F2655C" }} />
           </div>
-          <h1 className="mt-6 text-3xl md:text-4xl font-extrabold text-gray-800">
+          <h1 className="mt-6 text-3xl md:text-4xl font-extrabold" style={{ color: "#EAF5F1" }}>
             {selectedProfile ? `${selectedProfile.name}의 찜 목록` : "내 찜 목록"}
           </h1>
-          <p className="mt-2 text-base text-gray-500">
+          <p className="mt-2 text-base" style={{ color: "#8FA89F" }}>
             {favorites.length > 0 ? `총 ${favorites.length}개의 콘텐츠를 찜했어요!` : "아직 찜한 콘텐츠가 없어요."}
           </p>
         </section>
 
         {loading && (
-          <div className="flex flex-col items-center gap-4 text-pink-500 py-20">
+          <div className="flex flex-col items-center gap-4 py-20" style={{ color: "#F2655C" }}>
             <FaSpinner className="animate-spin text-5xl" />
             <p className="text-lg font-bold">찜 목록을 불러오는 중이에요...</p>
           </div>
@@ -171,8 +171,8 @@ export default function Favorites() {
         {!loading && favorites.length === 0 && (
           <div className="flex flex-col items-center gap-4 py-20 text-center">
             <p className="text-6xl">💔</p>
-            <p className="text-xl font-extrabold text-gray-600">아직 찜한 콘텐츠가 없어요</p>
-            <p className="text-base text-gray-400">영상이나 재생목록의 하트를 눌러 찜해보세요!</p>
+            <p className="text-xl font-extrabold" style={{ color: "#EAF5F1" }}>아직 찜한 콘텐츠가 없어요</p>
+            <p className="text-base" style={{ color: "#8FA89F" }}>영상이나 재생목록의 하트를 눌러 찜해보세요!</p>
           </div>
         )}
 
@@ -180,9 +180,9 @@ export default function Favorites() {
         {!loading && videoFavorites.length > 0 && (
           <section className="mb-16">
             <div className="mb-6 flex items-center gap-3">
-              <FaPlay className="text-2xl text-pink-500" />
-              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">찜한 영상</h2>
-              <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-bold text-pink-600">{videoFavorites.length}개</span>
+              <FaPlay className="text-2xl" style={{ color: "#F2655C" }} />
+              <h2 className="text-2xl md:text-3xl font-extrabold" style={{ color: "#EAF5F1" }}>찜한 영상</h2>
+              <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ backgroundColor: "#3A1E22", color: "#FF8A82" }}>{videoFavorites.length}개</span>
             </div>
             <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {videoFavorites.map((fav) => (
@@ -196,9 +196,9 @@ export default function Favorites() {
         {!loading && playlistFavorites.length > 0 && (
           <section>
             <div className="mb-6 flex items-center gap-3">
-              <FaList className="text-2xl text-purple-500" />
-              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">찜한 재생목록</h2>
-              <span className="rounded-full bg-purple-100 px-3 py-1 text-sm font-bold text-purple-600">{playlistFavorites.length}개</span>
+              <FaList className="text-2xl" style={{ color: "#A78BFA" }} />
+              <h2 className="text-2xl md:text-3xl font-extrabold" style={{ color: "#EAF5F1" }}>찜한 재생목록</h2>
+              <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ backgroundColor: "#1E1B2E", color: "#C4B5FD" }}>{playlistFavorites.length}개</span>
             </div>
             <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {playlistFavorites.map((fav) => (
