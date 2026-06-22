@@ -104,13 +104,13 @@ export default function ProfileSelect() {
   const getAvatarUrl = (profile) =>
     `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
-  const AVATAR_OFFSET_X = { 5: "43%" };
-  const getAvatarStyle = (profile) => ({
+  // 아바타 이미지는 재가공 완료(정사각·상반신·머리위 여백 통일) → CSS는 단순 cover면 충분
+  const getAvatarStyle = () => ({
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
-    transform: "scale(1.35) translateY(5%)",
+    objectPosition: "center top",
+    transform: "scale(1.04)", // 원 테두리 미세 흰선 방지
     transformOrigin: "center top",
   });
 
@@ -206,7 +206,7 @@ export default function ProfileSelect() {
                       <img
                         src={getAvatarUrl(profile)}
                         alt={profile.name}
-                        style={getAvatarStyle(profile)}
+                        style={getAvatarStyle()}
                       />
                     </div>
                     {/* 이름 */}
@@ -222,9 +222,9 @@ export default function ProfileSelect() {
                     </span>
                     {/* 대표 배지 */}
                     {topBadge ? (
-                      <div className={`${getBadgeTierClass(topBadge.badgeId)} flex items-center gap-1.5 rounded-full px-3 py-1.5 max-w-full overflow-hidden`}>
-                        <span className="text-base leading-none shrink-0">{topBadge.emoji}</span>
-                        <span className="text-xs font-bold whitespace-nowrap overflow-hidden text-ellipsis">{topBadge.name}</span>
+                      <div className={`${getBadgeTierClass(topBadge.badgeId)} flex items-center justify-center gap-1 rounded-full px-2.5 py-1.5 w-full overflow-hidden`}>
+                        <span className="text-sm leading-none shrink-0">{topBadge.emoji}</span>
+                        <span className="text-[11px] font-bold whitespace-nowrap overflow-hidden text-ellipsis">{topBadge.name}</span>
                       </div>
                     ) : (
                       <div
