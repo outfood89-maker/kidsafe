@@ -54,32 +54,32 @@ const TAB_TITLE = {
   audit: "📜 감사 로그",
 }
 
-// 감사 로그 액션별 색상
+// 감사 로그 액션별 색상 (다크 — 밝은 글자 + 반투명 배경)
 const AUDIT_ACTION_MAP = {
-  "역할 변경":      { color: "#7C3AED", bg: "#EDE9FE" },
-  "프리미엄 부여":  { color: "#D97706", bg: "#FEF3C7" },
-  "프리미엄 해제":  { color: "#9BA89A", bg: "#F1F1ED" },
-  "룰 승인":        { color: "#059669", bg: "#ECFDF5" },
-  "룰 거부":        { color: "#EF5350", bg: "#FFEBEE" },
-  "룰 일괄 승인":   { color: "#059669", bg: "#ECFDF5" },
-  "룰 일괄 거부":   { color: "#EF5350", bg: "#FFEBEE" },
-  "AI 룰 제안 생성": { color: "#3B82F6", bg: "#EFF6FF" },
+  "역할 변경":      { color: "#A78BFA", bg: "rgba(167,139,250,0.15)" },
+  "프리미엄 부여":  { color: "#F5B829", bg: "rgba(245,184,41,0.15)" },
+  "프리미엄 해제":  { color: "#90A9A8", bg: "rgba(144,169,168,0.15)" },
+  "룰 승인":        { color: "#34D399", bg: "rgba(52,211,153,0.15)" },
+  "룰 거부":        { color: "#F2655C", bg: "rgba(242,101,92,0.15)" },
+  "룰 일괄 승인":   { color: "#34D399", bg: "rgba(52,211,153,0.15)" },
+  "룰 일괄 거부":   { color: "#F2655C", bg: "rgba(242,101,92,0.15)" },
+  "AI 룰 제안 생성": { color: "#60A5FA", bg: "rgba(96,165,250,0.15)" },
 }
 
 const CATEGORY_MAP = {
-  scary:         { label: "👻 공포",    color: "#7C3AED", bg: "#EDE9FE" },
-  violence:      { label: "🛡️ 폭력",   color: "#DC2626", bg: "#FEE2E2" },
-  language:      { label: "💬 언어",    color: "#EA580C", bg: "#FFEDD5" },
-  sexual:        { label: "🔞 선정성",  color: "#DB2777", bg: "#FCE7F3" },
-  educational:   { label: "📚 교육성",  color: "#0369A1", bg: "#E0F2FE" },
-  commercialism: { label: "🛒 상업성",  color: "#B45309", bg: "#FEF3C7" },
-  imitation_risk:{ label: "⚠️ 모방위험", color: "#065F46", bg: "#D1FAE5" },
+  scary:         { label: "👻 공포",    color: "#A78BFA", bg: "rgba(167,139,250,0.15)" },
+  violence:      { label: "🛡️ 폭력",   color: "#F87171", bg: "rgba(248,113,113,0.15)" },
+  language:      { label: "💬 언어",    color: "#FB923C", bg: "rgba(251,146,60,0.15)" },
+  sexual:        { label: "🔞 선정성",  color: "#F472B6", bg: "rgba(244,114,182,0.15)" },
+  educational:   { label: "📚 교육성",  color: "#38BDF8", bg: "rgba(56,189,248,0.15)" },
+  commercialism: { label: "🛒 상업성",  color: "#FBBF24", bg: "rgba(251,191,36,0.15)" },
+  imitation_risk:{ label: "⚠️ 모방위험", color: "#34D399", bg: "rgba(52,211,153,0.15)" },
 }
 
 const STATUS_MAP = {
-  pending:          { label: "미처리",   color: "#D97706", bg: "#FEF3C7" },
-  "auto-processed": { label: "자동처리", color: "#3B82F6", bg: "#EFF6FF" },
-  processed:        { label: "처리완료", color: "#059669", bg: "#ECFDF5" },
+  pending:          { label: "미처리",   color: "#FBBF24", bg: "rgba(251,191,36,0.15)" },
+  "auto-processed": { label: "자동처리", color: "#60A5FA", bg: "rgba(96,165,250,0.15)" },
+  processed:        { label: "처리완료", color: "#34D399", bg: "rgba(52,211,153,0.15)" },
 }
 
 export default function AdminPage() {
@@ -320,15 +320,15 @@ export default function AdminPage() {
   // 403 화면
   if (forbidden) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F3EE" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A1E1E" }}>
         <div className="text-center p-8">
           <div className="text-5xl mb-4">🔒</div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "#2C3528" }}>관리자 전용 페이지</h2>
-          <p className="text-sm mb-6" style={{ color: "#9BA89A" }}>접근 권한이 없어요</p>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "#EAF5F1" }}>관리자 전용 페이지</h2>
+          <p className="text-sm mb-6" style={{ color: "#90A9A8" }}>접근 권한이 없어요</p>
           <button
             onClick={() => navigate("/parent")}
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ backgroundColor: "#6DAB60" }}
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ backgroundColor: "#18C49A", color: "#08160F" }}
           >
             돌아가기
           </button>
@@ -338,29 +338,31 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F5F3EE" }}>
+    <div className="min-h-screen flex" style={{ background: "#0A1E1E" }}>
       {/* ── 모바일 드로어 오버레이 ── */}
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
           className="fixed inset-0 z-30 md:hidden"
-          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         />
       )}
 
-      {/* ── 사이드바 ── */}
+      {/* ── 사이드바 ──
+          Tailwind v4는 translate 유틸이 `translate` 속성으로 컴파일됨 → 인라인 transform과 충돌하므로
+          열림/닫힘을 같은 속성 계열인 translate 클래스로 토글 (md 이상은 항상 표시) */}
       <aside
-        className="fixed inset-y-0 left-0 z-40 w-64 flex flex-col transform -translate-x-full transition-transform duration-200 md:static md:translate-x-0 md:w-60 md:shrink-0"
+        className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col transition-transform duration-200 md:static md:translate-x-0 md:w-60 md:shrink-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{
-          background: "linear-gradient(180deg, #2C3528 0%, #3a4a35 100%)",
-          transform: sidebarOpen ? "translateX(0)" : undefined,
+          background: "linear-gradient(180deg, #0E2A2A 0%, #0B2422 100%)",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
         }}
         data-open={sidebarOpen}
       >
         {/* 로고 */}
         <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <h1 className="text-base font-bold text-white">🛡 KidSafe Admin</h1>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>관리자 대시보드</p>
+          <h1 className="text-base font-bold" style={{ color: "#EAF5F1" }}>🛡 KidSafe Admin</h1>
+          <p className="text-xs mt-0.5" style={{ color: "#6B7E7C" }}>관리자 대시보드</p>
         </div>
 
         {/* 메뉴 */}
@@ -369,7 +371,7 @@ export default function AdminPage() {
             <div key={section.group}>
               <p
                 className="text-xs font-semibold px-2 mb-1.5 uppercase tracking-wide"
-                style={{ color: "rgba(255,255,255,0.35)" }}
+                style={{ color: "#6B7E7C" }}
               >
                 {section.group}
               </p>
@@ -382,8 +384,8 @@ export default function AdminPage() {
                       onClick={() => goTab(item.id)}
                       className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left"
                       style={{
-                        backgroundColor: active ? "#6DAB60" : "transparent",
-                        color: active ? "#fff" : "rgba(255,255,255,0.7)",
+                        backgroundColor: active ? "#18C49A" : "transparent",
+                        color: active ? "#08160F" : "#90A9A8",
                       }}
                     >
                       <span className="text-base">{item.icon}</span>
@@ -401,7 +403,7 @@ export default function AdminPage() {
           <button
             onClick={() => navigate("/parent")}
             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left hover:opacity-80"
-            style={{ color: "rgba(255,255,255,0.55)" }}
+            style={{ color: "#90A9A8" }}
           >
             ← 부모 페이지로
           </button>
@@ -410,39 +412,30 @@ export default function AdminPage() {
 
       {/* ── 메인 영역 ── */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* 상단 헤더 (모바일 햄버거 + 타이틀) */}
-        <header
-          className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3.5"
-          style={{ backgroundColor: "white", borderBottom: "1px solid #E4EAE0" }}
-        >
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-1.5 rounded-lg transition hover:opacity-70"
-            style={{ color: "#2C3528" }}
-            aria-label="메뉴 열기"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <h2 className="text-base font-bold" style={{ color: "#2C3528" }}>
-            {TAB_TITLE[tab]}
-          </h2>
-        </header>
-
         {/* 토스트 */}
         {toast && (
           <div
             className="mx-4 mt-4 px-4 py-3 rounded-xl text-sm font-medium text-center"
-            style={{ backgroundColor: "#E8F5E4", color: "#4a6741" }}
+            style={{ backgroundColor: "rgba(24,196,154,0.15)", color: "#3FE0B0" }}
           >
             ✅ {toast}
           </div>
         )}
 
-        <main className="flex-1 p-4 md:p-6 max-w-4xl w-full mx-auto pb-12">
+        <main className="flex-1 p-4 md:p-6 max-w-4xl w-full mx-auto pb-28 md:pb-12">
+          {/* 모바일 전용 관리자 배지 — 사이드바가 숨겨져 관리자 모드 표시가 안 되는 문제 보완 (데스크톱은 사이드바에 있음) */}
+          <div
+            className="md:hidden inline-flex items-center gap-2 mb-4 rounded-2xl px-4 py-2.5 text-lg font-extrabold"
+            style={{ backgroundColor: "rgba(24,196,154,0.15)", color: "#3FE0B0", border: "1px solid rgba(24,196,154,0.3)" }}
+          >
+            🛡 KidSafe Admin
+          </div>
+
+          {/* 탭 제목 (상단 헤더 제거 → 본문 상단으로 이동, 부모 페이지와 동일 규칙) */}
+          <h2 className="text-xl md:text-2xl font-bold mb-5" style={{ color: "#EAF5F1" }}>
+            {TAB_TITLE[tab]}
+          </h2>
+
           {/* ── 대시보드 ── */}
           {tab === "dashboard" && (
             <DashboardView stats={stats} onRefresh={() => loadStats(true)} refreshing={statsRefreshing} />
@@ -451,22 +444,22 @@ export default function AdminPage() {
           {/* ── 피드백 목록 ── */}
           {tab === "feedbacks" && (
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-medium mb-1" style={{ color: "#9BA89A" }}>
+              <p className="text-xs font-medium mb-1" style={{ color: "#90A9A8" }}>
                 총 {feedbacks.length}건 · 최신순
               </p>
               {feedbacks.length === 0 && (
-                <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>
+                <p className="text-center py-12 text-sm" style={{ color: "#6B7E7C" }}>
                   피드백이 없어요
                 </p>
               )}
               {feedbacks.map((fb, i) => {
-                const cat = CATEGORY_MAP[fb.category] || { label: fb.category, color: "#888", bg: "#eee" }
-                const st = STATUS_MAP[fb.status] || { label: fb.status, color: "#888", bg: "#eee" }
+                const cat = CATEGORY_MAP[fb.category] || { label: fb.category, color: "#90A9A8", bg: "rgba(144,169,168,0.15)" }
+                const st = STATUS_MAP[fb.status] || { label: fb.status, color: "#90A9A8", bg: "rgba(144,169,168,0.15)" }
                 return (
                   <div
                     key={i}
                     className="rounded-2xl p-4"
-                    style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}
+                    style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex gap-1.5 flex-wrap items-center">
@@ -482,18 +475,18 @@ export default function AdminPage() {
                         >
                           {st.label}
                         </span>
-                        <span className="text-xs font-bold" style={{ color: "#2C3528" }}>
+                        <span className="text-xs font-bold" style={{ color: "#EAF5F1" }}>
                           {fb.currentScore}점
                         </span>
                       </div>
-                      <span className="text-xs shrink-0" style={{ color: "#C4CFBF" }}>
+                      <span className="text-xs shrink-0" style={{ color: "#6B7E7C" }}>
                         {new Date(fb.reportedAt).toLocaleDateString("ko-KR")}
                       </span>
                     </div>
                     <p
                       className="text-sm font-semibold mb-0.5"
                       style={{
-                        color: "#2C3528",
+                        color: "#EAF5F1",
                         display: "-webkit-box",
                         WebkitLineClamp: 1,
                         WebkitBoxOrient: "vertical",
@@ -502,9 +495,9 @@ export default function AdminPage() {
                     >
                       {fb.title}
                     </p>
-                    <p className="text-xs" style={{ color: "#6B7A65" }}>{fb.channelTitle}</p>
+                    <p className="text-xs" style={{ color: "#90A9A8" }}>{fb.channelTitle}</p>
                     {fb.reason && (
-                      <p className="text-xs mt-2 italic" style={{ color: "#9BA89A" }}>
+                      <p className="text-xs mt-2 italic" style={{ color: "#90A9A8" }}>
                         "{fb.reason}"
                       </p>
                     )}
@@ -519,30 +512,30 @@ export default function AdminPage() {
             <div className="flex flex-col gap-4">
               <div
                 className="rounded-2xl p-4 text-center"
-                style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}
+                style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                <p className="text-xs mb-3" style={{ color: "#9BA89A" }}>
+                <p className="text-xs mb-3" style={{ color: "#90A9A8" }}>
                   미처리 피드백을 분석해서 새 룰을 제안해요
                 </p>
                 <button
                   onClick={handleSuggest}
                   disabled={suggesting}
-                  className="w-full py-3 rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: "#6DAB60" }}
+                  className="w-full py-3 rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: "#18C49A", color: "#08160F" }}
                 >
                   {suggesting ? "🤖 Claude가 분석 중..." : "🤖 AI 룰 제안 받기"}
                 </button>
               </div>
 
               {pendingRules.length === 0 ? (
-                <p className="text-center py-8 text-sm" style={{ color: "#C4CFBF" }}>
+                <p className="text-center py-8 text-sm" style={{ color: "#6B7E7C" }}>
                   승인 대기 중인 룰이 없어요
                 </p>
               ) : (
                 <>
                   {/* 필터 바 */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium" style={{ color: "#9BA89A" }}>
+                    <span className="text-xs font-medium" style={{ color: "#90A9A8" }}>
                       대기 {pendingRules.length}건 · 표시 {visibleRules.length}건
                     </span>
                     <div className="flex-1" />
@@ -550,14 +543,14 @@ export default function AdminPage() {
                       value={ruleFilterCat}
                       onChange={(e) => setRuleFilterCat(e.target.value)}
                       className="text-xs rounded-lg px-2.5 py-1.5"
-                      style={{ backgroundColor: "white", border: "1px solid #E4EAE0", color: "#2C3528" }}
+                      style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.1)", color: "#EAF5F1" }}
                     >
                       <option value="all">전체 카테고리</option>
                       {Object.entries(CATEGORY_MAP).map(([key, c]) => (
                         <option key={key} value={key}>{c.label}</option>
                       ))}
                     </select>
-                    <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #E4EAE0" }}>
+                    <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
                       {[
                         { id: "all", label: "전체" },
                         { id: "exemptions", label: "면제" },
@@ -568,8 +561,8 @@ export default function AdminPage() {
                           onClick={() => setRuleFilterType(t.id)}
                           className="text-xs px-2.5 py-1.5 font-medium transition"
                           style={{
-                            backgroundColor: ruleFilterType === t.id ? "#6DAB60" : "white",
-                            color: ruleFilterType === t.id ? "white" : "#9BA89A",
+                            backgroundColor: ruleFilterType === t.id ? "#18C49A" : "#163635",
+                            color: ruleFilterType === t.id ? "#08160F" : "#90A9A8",
                           }}
                         >
                           {t.label}
@@ -582,28 +575,28 @@ export default function AdminPage() {
                   {visibleRules.length > 0 && (
                     <div
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                      style={{ backgroundColor: "#F0F5ED", border: "1px solid #D1E8CC" }}
+                      style={{ backgroundColor: "#163635", border: "1px solid rgba(24,196,154,0.25)" }}
                     >
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium" style={{ color: "#4a6741" }}>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium" style={{ color: "#3FE0B0" }}>
                         <input
                           type="checkbox"
                           checked={allVisibleSelected}
                           onChange={toggleSelectAll}
-                          style={{ accentColor: "#6DAB60", width: 16, height: 16 }}
+                          style={{ accentColor: "#18C49A", width: 16, height: 16 }}
                         />
                         전체 선택
                       </label>
                       <div className="flex-1" />
                       {selectedRules.size > 0 && (
                         <>
-                          <span className="text-xs font-semibold" style={{ color: "#4a6741" }}>
+                          <span className="text-xs font-semibold" style={{ color: "#3FE0B0" }}>
                             {selectedRules.size}개 선택
                           </span>
                           <button
                             onClick={handleApproveBulk}
                             disabled={bulkLoading}
-                            className="text-xs font-bold px-3 py-1.5 rounded-lg text-white transition hover:opacity-90 disabled:opacity-50"
-                            style={{ backgroundColor: "#6DAB60" }}
+                            className="text-xs font-bold px-3 py-1.5 rounded-lg transition hover:opacity-90 disabled:opacity-50"
+                            style={{ backgroundColor: "#18C49A", color: "#08160F" }}
                           >
                             ✓ 선택 승인
                           </button>
@@ -611,7 +604,7 @@ export default function AdminPage() {
                             onClick={handleRejectBulk}
                             disabled={bulkLoading}
                             className="text-xs font-bold px-3 py-1.5 rounded-lg transition hover:opacity-80 disabled:opacity-50"
-                            style={{ backgroundColor: "white", color: "#EF5350", border: "1px solid #FECACA" }}
+                            style={{ backgroundColor: "#0E2A2A", color: "#F2655C", border: "1px solid rgba(242,101,92,0.4)" }}
                           >
                             ✗ 선택 거부
                           </button>
@@ -621,14 +614,14 @@ export default function AdminPage() {
                   )}
 
                   {visibleRules.length === 0 && (
-                    <p className="text-center py-8 text-sm" style={{ color: "#C4CFBF" }}>
+                    <p className="text-center py-8 text-sm" style={{ color: "#6B7E7C" }}>
                       필터에 해당하는 룰이 없어요
                     </p>
                   )}
 
                   {/* 룰 카드 목록 (원본 인덱스 기준) */}
                   {visibleRules.map(({ rule, idx }) => {
-                    const cat = CATEGORY_MAP[rule.category] || { label: rule.category, color: "#888", bg: "#eee" }
+                    const cat = CATEGORY_MAP[rule.category] || { label: rule.category, color: "#90A9A8", bg: "rgba(144,169,168,0.15)" }
                     const isExemption = rule.type === "exemptions"
                     const checked = selectedRules.has(idx)
                     return (
@@ -636,8 +629,8 @@ export default function AdminPage() {
                         key={idx}
                         className="rounded-2xl p-4"
                         style={{
-                          backgroundColor: "white",
-                          border: checked ? "1px solid #6DAB60" : "1px solid #E4EAE0",
+                          backgroundColor: "#0E2A2A",
+                          border: checked ? "1px solid #18C49A" : "1px solid rgba(255,255,255,0.08)",
                         }}
                       >
                         <div className="flex items-start gap-3">
@@ -646,7 +639,7 @@ export default function AdminPage() {
                             checked={checked}
                             onChange={() => toggleSelect(idx)}
                             className="mt-0.5 shrink-0"
-                            style={{ accentColor: "#6DAB60", width: 18, height: 18 }}
+                            style={{ accentColor: "#18C49A", width: 18, height: 18 }}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex gap-1.5 mb-2">
@@ -659,31 +652,31 @@ export default function AdminPage() {
                               <span
                                 className="text-xs font-medium px-2 py-0.5 rounded-full"
                                 style={{
-                                  color: isExemption ? "#059669" : "#EF5350",
-                                  backgroundColor: isExemption ? "#ECFDF5" : "#FFEBEE",
+                                  color: isExemption ? "#34D399" : "#F2655C",
+                                  backgroundColor: isExemption ? "rgba(52,211,153,0.15)" : "rgba(242,101,92,0.15)",
                                 }}
                               >
                                 {isExemption ? "면제" : "감점"}
                               </span>
                             </div>
-                            <p className="text-sm font-semibold mb-1" style={{ color: "#2C3528" }}>
+                            <p className="text-sm font-semibold mb-1" style={{ color: "#EAF5F1" }}>
                               {rule.rule}
                             </p>
                             {rule.reason && (
-                              <p className="text-xs mb-3" style={{ color: "#9BA89A" }}>{rule.reason}</p>
+                              <p className="text-xs mb-3" style={{ color: "#90A9A8" }}>{rule.reason}</p>
                             )}
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleApprove(idx)}
-                                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition hover:opacity-90"
-                                style={{ backgroundColor: "#6DAB60" }}
+                                className="flex-1 py-2.5 rounded-xl text-xs font-bold transition hover:opacity-90"
+                                style={{ backgroundColor: "#18C49A", color: "#08160F" }}
                               >
                                 ✓ 승인
                               </button>
                               <button
                                 onClick={() => handleReject(idx)}
                                 className="flex-1 py-2.5 rounded-xl text-xs font-bold transition hover:opacity-80"
-                                style={{ backgroundColor: "#F8F7F2", color: "#9BA89A", border: "1px solid #E4EAE0" }}
+                                style={{ backgroundColor: "#163635", color: "#90A9A8", border: "1px solid rgba(255,255,255,0.08)" }}
                               >
                                 ✗ 거부
                               </button>
@@ -702,35 +695,35 @@ export default function AdminPage() {
           {tab === "current" && (
             <div className="flex flex-col gap-3">
               {Object.keys(currentRules).length === 0 && (
-                <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>
+                <p className="text-center py-12 text-sm" style={{ color: "#6B7E7C" }}>
                   룰이 없어요
                 </p>
               )}
               {Object.entries(currentRules).map(([category, data]) => {
-                const cat = CATEGORY_MAP[category] || { label: category, color: "#6B7A65", bg: "#F1F1ED" }
+                const cat = CATEGORY_MAP[category] || { label: category, color: "#90A9A8", bg: "rgba(144,169,168,0.15)" }
                 const sections = [
-                  { key: "exemptions", label: "면제", icon: "✅", color: "#059669", itemBg: "#F0FDF4", border: "#86EFAC" },
-                  { key: "penalties",  label: "감점", icon: "🚫", color: "#DC2626", itemBg: "#FFF5F5", border: "#FCA5A5" },
-                  { key: "bonuses",    label: "보너스", icon: "⭐", color: "#B45309", itemBg: "#FFFBEB", border: "#FCD34D" },
+                  { key: "exemptions", label: "면제", icon: "✅", color: "#34D399", itemBg: "rgba(52,211,153,0.1)", border: "rgba(52,211,153,0.4)" },
+                  { key: "penalties",  label: "감점", icon: "🚫", color: "#F87171", itemBg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.4)" },
+                  { key: "bonuses",    label: "보너스", icon: "⭐", color: "#FBBF24", itemBg: "rgba(251,191,36,0.1)", border: "rgba(251,191,36,0.4)" },
                 ]
                 const totalItems = sections.reduce((n, s) => n + (data[s.key]?.length || 0), 0)
                 return (
-                  <div key={category} className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${cat.color}33` }}>
+                  <div key={category} className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
                     {/* 카테고리 헤더 */}
                     <div className="px-4 py-3 flex items-start justify-between gap-2" style={{ backgroundColor: cat.bg }}>
                       <div>
                         <span className="text-sm font-extrabold" style={{ color: cat.color }}>{cat.label}</span>
                         {data.description && (
-                          <p className="text-xs mt-0.5 leading-snug" style={{ color: "#4B5563" }}>{data.description}</p>
+                          <p className="text-xs mt-0.5 leading-snug" style={{ color: "#90A9A8" }}>{data.description}</p>
                         )}
                       </div>
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5"
-                        style={{ backgroundColor: cat.color + "22", color: cat.color }}>
+                        style={{ backgroundColor: cat.bg, color: cat.color }}>
                         {totalItems}개
                       </span>
                     </div>
                     {/* 섹션별 룰 */}
-                    <div className="bg-white px-4 py-3 flex flex-col gap-4">
+                    <div className="px-4 py-3 flex flex-col gap-4" style={{ backgroundColor: "#0E2A2A" }}>
                       {sections.map(({ key, label, icon, color, itemBg, border }) => {
                         const items = data[key] || []
                         if (items.length === 0) return null
@@ -751,7 +744,7 @@ export default function AdminPage() {
                                   className="text-xs py-2 px-3 rounded-lg leading-relaxed"
                                   style={{
                                     backgroundColor: itemBg,
-                                    color: "#1F2937",
+                                    color: "#EAF5F1",
                                     borderLeft: `3px solid ${border}`,
                                   }}
                                 >
@@ -773,20 +766,20 @@ export default function AdminPage() {
           {tab === "members" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium" style={{ color: "#9BA89A" }}>
+                <p className="text-xs font-medium" style={{ color: "#90A9A8" }}>
                   총 {members.length}명
                 </p>
                 <button
                   onClick={loadMembers}
                   className="text-xs px-3 py-1.5 rounded-xl font-medium transition hover:opacity-80"
-                  style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                  style={{ backgroundColor: "rgba(24,196,154,0.15)", color: "#3FE0B0" }}
                 >
                   새로고침
                 </button>
               </div>
 
               {members.length === 0 && (
-                <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>
+                <p className="text-center py-12 text-sm" style={{ color: "#6B7E7C" }}>
                   회원이 없어요
                 </p>
               )}
@@ -799,18 +792,18 @@ export default function AdminPage() {
                   <div
                     key={m.user_id}
                     className="rounded-2xl p-4"
-                    style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}
+                    style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
                     {/* 이메일 + 뱃지 */}
                     <div className="flex items-center justify-between gap-2 mb-3">
                       <div className="flex-1 min-w-0">
                         <p
                           className="text-sm font-semibold truncate"
-                          style={{ color: "#2C3528" }}
+                          style={{ color: "#EAF5F1" }}
                         >
                           {m.email || "(이메일 없음)"}
                         </p>
-                        <p className="text-xs mt-0.5" style={{ color: "#C4CFBF" }}>
+                        <p className="text-xs mt-0.5" style={{ color: "#6B7E7C" }}>
                           {m.created_at ? new Date(m.created_at).toLocaleDateString("ko-KR") : ""}
                         </p>
                       </div>
@@ -818,7 +811,7 @@ export default function AdminPage() {
                         {isAdmin && (
                           <span
                             className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                            style={{ color: "#7C3AED", backgroundColor: "#EDE9FE" }}
+                            style={{ color: "#A78BFA", backgroundColor: "rgba(167,139,250,0.15)" }}
                           >
                             관리자
                           </span>
@@ -826,7 +819,7 @@ export default function AdminPage() {
                         {m.is_premium && (
                           <span
                             className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                            style={{ color: "#D97706", backgroundColor: "#FEF3C7" }}
+                            style={{ color: "#F5B829", backgroundColor: "rgba(245,184,41,0.15)" }}
                           >
                             💎 프리미엄
                           </span>
@@ -841,9 +834,9 @@ export default function AdminPage() {
                         disabled={roleLoading}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80 disabled:opacity-40"
                         style={{
-                          backgroundColor: isAdmin ? "#EDE9FE" : "#F0F5ED",
-                          color: isAdmin ? "#7C3AED" : "#6DAB60",
-                          border: `1px solid ${isAdmin ? "#DDD6FE" : "#D1E8CC"}`,
+                          backgroundColor: isAdmin ? "rgba(167,139,250,0.15)" : "rgba(24,196,154,0.15)",
+                          color: isAdmin ? "#A78BFA" : "#3FE0B0",
+                          border: `1px solid ${isAdmin ? "rgba(167,139,250,0.3)" : "rgba(24,196,154,0.3)"}`,
                         }}
                       >
                         {roleLoading ? "처리 중..." : isAdmin ? "관리자 해제" : "관리자 지정"}
@@ -853,9 +846,9 @@ export default function AdminPage() {
                         disabled={premiumLoading}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80 disabled:opacity-40"
                         style={{
-                          backgroundColor: m.is_premium ? "#FEF3C7" : "#F8F7F2",
-                          color: m.is_premium ? "#D97706" : "#9BA89A",
-                          border: `1px solid ${m.is_premium ? "#FDE68A" : "#E4EAE0"}`,
+                          backgroundColor: m.is_premium ? "rgba(245,184,41,0.15)" : "#163635",
+                          color: m.is_premium ? "#F5B829" : "#90A9A8",
+                          border: `1px solid ${m.is_premium ? "rgba(245,184,41,0.3)" : "rgba(255,255,255,0.08)"}`,
                         }}
                       >
                         {premiumLoading ? "처리 중..." : m.is_premium ? "프리미엄 해제" : "프리미엄 부여"}
@@ -871,31 +864,31 @@ export default function AdminPage() {
           {tab === "audit" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium" style={{ color: "#9BA89A" }}>
+                <p className="text-xs font-medium" style={{ color: "#90A9A8" }}>
                   총 {auditLogs.length}건 · 최신순
                 </p>
                 <button
                   onClick={loadAudit}
                   className="text-xs px-3 py-1.5 rounded-xl font-medium transition hover:opacity-80"
-                  style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                  style={{ backgroundColor: "rgba(24,196,154,0.15)", color: "#3FE0B0" }}
                 >
                   새로고침
                 </button>
               </div>
 
               {auditLogs.length === 0 && (
-                <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>
+                <p className="text-center py-12 text-sm" style={{ color: "#6B7E7C" }}>
                   기록된 관리자 활동이 없어요
                 </p>
               )}
 
               {auditLogs.map((log, i) => {
-                const a = AUDIT_ACTION_MAP[log.action] || { color: "#6B7A65", bg: "#F1F1ED" }
+                const a = AUDIT_ACTION_MAP[log.action] || { color: "#90A9A8", bg: "rgba(144,169,168,0.15)" }
                 return (
                   <div
                     key={i}
                     className="rounded-2xl p-4"
-                    style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}
+                    style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <span
@@ -904,7 +897,7 @@ export default function AdminPage() {
                       >
                         {log.action}
                       </span>
-                      <span className="text-xs shrink-0" style={{ color: "#C4CFBF" }}>
+                      <span className="text-xs shrink-0" style={{ color: "#6B7E7C" }}>
                         {log.timestamp
                           ? new Date(log.timestamp).toLocaleString("ko-KR", {
                               month: "2-digit", day: "2-digit",
@@ -914,18 +907,18 @@ export default function AdminPage() {
                       </span>
                     </div>
                     {log.detail && (
-                      <p className="text-sm mb-1" style={{ color: "#2C3528" }}>{log.detail}</p>
+                      <p className="text-sm mb-1" style={{ color: "#EAF5F1" }}>{log.detail}</p>
                     )}
                     {log.target && (
                       <p
                         className="text-xs truncate"
-                        style={{ color: "#9BA89A" }}
+                        style={{ color: "#90A9A8" }}
                         title={log.target}
                       >
                         대상: {log.target}
                       </p>
                     )}
-                    <p className="text-xs mt-1.5" style={{ color: "#C4CFBF" }}>
+                    <p className="text-xs mt-1.5" style={{ color: "#6B7E7C" }}>
                       👤 {log.actorEmail || log.actorId || "(알 수 없음)"}
                     </p>
                   </div>
@@ -935,6 +928,18 @@ export default function AdminPage() {
           )}
         </main>
       </div>
+
+      {/* ── 모바일 메뉴 버튼 (하단 고정 = 엄지존, 스크롤해도 항상 닿음) ── */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="md:hidden fixed left-4 z-30 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-xl transition hover:opacity-90"
+          style={{ bottom: "20px", background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+          aria-label="메뉴 열기"
+        >
+          <span className="text-base">☰</span> 메뉴
+        </button>
+      )}
     </div>
   )
 }
@@ -944,7 +949,7 @@ export default function AdminPage() {
 function DashboardView({ stats, onRefresh, refreshing }) {
   if (!stats) {
     return (
-      <p className="text-center py-16 text-sm" style={{ color: "#C4CFBF" }}>
+      <p className="text-center py-16 text-sm" style={{ color: "#6B7E7C" }}>
         통계를 불러오는 중...
       </p>
     )
@@ -952,11 +957,11 @@ function DashboardView({ stats, onRefresh, refreshing }) {
 
   const c = stats.cards
   const cards = [
-    { label: "누적 검색", value: c.totalSearches, suffix: "회", color: "#6DAB60" },
-    { label: "분석한 영상", value: c.analyzedVideos, suffix: "개", color: "#42A5F5" },
-    { label: "평균 안전도", value: c.avgScore, suffix: "점", color: "#F59E0B" },
-    { label: "위험 영상 비율", value: c.dangerRatio, suffix: "%", color: "#EF5350" },
-    { label: "대기 중 피드백", value: c.pendingFeedback, suffix: "건", color: "#7C3AED" },
+    { label: "누적 검색", value: c.totalSearches, suffix: "회", color: "#18C49A" },
+    { label: "분석한 영상", value: c.analyzedVideos, suffix: "개", color: "#60A5FA" },
+    { label: "평균 안전도", value: c.avgScore, suffix: "점", color: "#FBBF24" },
+    { label: "위험 영상 비율", value: c.dangerRatio, suffix: "%", color: "#F87171" },
+    { label: "대기 중 피드백", value: c.pendingFeedback, suffix: "건", color: "#A78BFA" },
   ]
 
   const hasDistribution = stats.safetyDistribution.some((d) => d.value > 0)
@@ -970,12 +975,12 @@ function DashboardView({ stats, onRefresh, refreshing }) {
           <div
             key={card.label}
             className="rounded-2xl p-4"
-            style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}
+            style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            <p className="text-xs mb-1.5" style={{ color: "#9BA89A" }}>{card.label}</p>
+            <p className="text-xs mb-1.5" style={{ color: "#90A9A8" }}>{card.label}</p>
             <p className="text-2xl font-bold" style={{ color: card.color }}>
               {card.value}
-              <span className="text-sm font-medium ml-0.5" style={{ color: "#9BA89A" }}>
+              <span className="text-sm font-medium ml-0.5" style={{ color: "#90A9A8" }}>
                 {card.suffix}
               </span>
             </p>
@@ -986,7 +991,7 @@ function DashboardView({ stats, onRefresh, refreshing }) {
           onClick={onRefresh}
           disabled={refreshing}
           className="rounded-2xl p-4 flex items-center justify-center text-sm font-semibold transition hover:opacity-80 disabled:opacity-60"
-          style={{ backgroundColor: "#F0F5ED", color: "#6DAB60", border: "1px dashed #C4DCBC" }}
+          style={{ backgroundColor: "#163635", color: "#3FE0B0", border: "1px dashed rgba(24,196,154,0.4)" }}
         >
           {refreshing ? "⏳ 새로고침 중..." : "🔄 새로고침"}
         </button>
@@ -995,8 +1000,8 @@ function DashboardView({ stats, onRefresh, refreshing }) {
       {/* 차트 영역 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* 안전도 분포 도넛 */}
-        <div className="rounded-2xl p-4" style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}>
-          <p className="text-sm font-bold mb-3" style={{ color: "#2C3528" }}>안전도 분포</p>
+        <div className="rounded-2xl p-4" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>안전도 분포</p>
           {hasDistribution ? (
             <>
               <div style={{ width: "100%", height: 180 }}>
@@ -1024,7 +1029,7 @@ function DashboardView({ stats, onRefresh, refreshing }) {
                 {stats.safetyDistribution.map((d) => (
                   <div key={d.name} className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                    <span className="text-xs" style={{ color: "#6B7A65" }}>
+                    <span className="text-xs" style={{ color: "#90A9A8" }}>
                       {d.name} {d.value}
                     </span>
                   </div>
@@ -1032,25 +1037,25 @@ function DashboardView({ stats, onRefresh, refreshing }) {
               </div>
             </>
           ) : (
-            <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>분석 데이터가 없어요</p>
+            <p className="text-center py-12 text-sm" style={{ color: "#6B7E7C" }}>분석 데이터가 없어요</p>
           )}
         </div>
 
         {/* 최근 7일 검색 추이 */}
-        <div className="rounded-2xl p-4" style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}>
-          <p className="text-sm font-bold mb-3" style={{ color: "#2C3528" }}>최근 7일 검색 추이</p>
+        <div className="rounded-2xl p-4" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>최근 7일 검색 추이</p>
           {hasTrend ? (
             <div style={{ width: "100%", height: 180 }}>
               <ResponsiveContainer>
                 <BarChart data={stats.searchTrend}>
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9BA89A" }} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: "#F0F5ED" }} />
-                  <Bar dataKey="count" fill="#6DAB60" radius={[4, 4, 0, 0]} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#90A9A8" }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(255,255,255,0.06)" }} />
+                  <Bar dataKey="count" fill="#18C49A" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-center py-12 text-sm" style={{ color: "#C4CFBF" }}>검색 데이터가 없어요</p>
+            <p className="text-center py-12 text-sm" style={{ color: "#6B7E7C" }}>검색 데이터가 없어요</p>
           )}
         </div>
       </div>
@@ -1068,10 +1073,10 @@ function DashboardView({ stats, onRefresh, refreshing }) {
 
 function TopList({ title, items, labelKey }) {
   return (
-    <div className="rounded-2xl p-4" style={{ backgroundColor: "white", border: "1px solid #E4EAE0" }}>
-      <p className="text-sm font-bold mb-3" style={{ color: "#2C3528" }}>{title}</p>
+    <div className="rounded-2xl p-4" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>{title}</p>
       {(!items || items.length === 0) ? (
-        <p className="text-center py-8 text-sm" style={{ color: "#C4CFBF" }}>데이터가 없어요</p>
+        <p className="text-center py-8 text-sm" style={{ color: "#6B7E7C" }}>데이터가 없어요</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {items.map((item, i) => (
@@ -1079,16 +1084,16 @@ function TopList({ title, items, labelKey }) {
               <span
                 className="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-md shrink-0"
                 style={{
-                  color: i < 3 ? "#6DAB60" : "#C4CFBF",
-                  backgroundColor: i < 3 ? "#F0F5ED" : "#F8F7F2",
+                  color: i < 3 ? "#3FE0B0" : "#6B7E7C",
+                  backgroundColor: i < 3 ? "rgba(24,196,154,0.15)" : "#163635",
                 }}
               >
                 {i + 1}
               </span>
-              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "#2C3528" }}>
+              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "#EAF5F1" }}>
                 {item[labelKey] || "(이름 없음)"}
               </span>
-              <span className="text-xs font-semibold shrink-0" style={{ color: "#9BA89A" }}>
+              <span className="text-xs font-semibold shrink-0" style={{ color: "#90A9A8" }}>
                 {item.count}회
               </span>
             </li>

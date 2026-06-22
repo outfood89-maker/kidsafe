@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt } from "react-icons/fa";
+import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
 import { getProfiles, getBadges } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -145,8 +145,17 @@ export default function ProfileSelect() {
           <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
         </div>
 
-        {/* 오른쪽: 계정 액션 묶음 (로그아웃 + 부모님) — 관습대로 우측 정렬 */}
+        {/* 오른쪽: 계정 액션 묶음 (계정 + 로그아웃 + 부모님) — 관습대로 우측 정렬
+            계정 설정을 프로필 선택 단계에 둠 → 향후 프로필별 개별 부모페이지+PIN(멀티테넌시) 대비 */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/account")}
+            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
+            style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <FaUserCircle style={{ color: "#18C49A" }} />
+            <span className="hidden sm:block">계정</span>
+          </button>
           <button
             onClick={handleSignOut}
             className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
