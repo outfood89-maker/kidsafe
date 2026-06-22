@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaShieldAlt, FaLock } from "react-icons/fa";
+import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
 import { getProfiles, getBadges } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -48,7 +48,7 @@ const getBadgeTierClass = (badgeId) => {
 
 export default function ProfileSelect() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -101,6 +101,17 @@ export default function ProfileSelect() {
     setTimeout(() => navigate("/kids"), 150);
   };
 
+  // 로그아웃 → 세션 종료 후 랜딩으로 (로그인 전용 화면이라 랜딩 복귀가 맞음)
+  const handleSignOut = async () => {
+    try {
+      localStorage.removeItem("selectedProfile");
+      await signOut();
+      navigate("/");
+    } catch (e) {
+      console.error("로그아웃 실패:", e);
+    }
+  };
+
   const getAvatarUrl = (profile) =>
     `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
@@ -117,41 +128,46 @@ export default function ProfileSelect() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0A1E1E" }}>
 
-      {/* NavBar */}
-      <nav
-        className="flex items-center justify-between px-6 py-4"
+      {/* NavBar — 키즈 페이지와 동일 틀 (h-14 / max-w-7xl / px-4) */}
+      <header
+        className="sticky top-0 z-50"
         style={{ backgroundColor: "#0E2A2A", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
-        {/* 왼쪽: 뒤로가기 */}
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-base font-bold transition hover:opacity-80"
-          style={{ backgroundColor: "#163635", color: "#EAF5F1" }}
-        >
-          ← 홈으로
-        </button>
-
-        {/* 가운데: 로고 */}
-        <div className="flex items-center gap-2">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+        {/* 왼쪽: 로고 (키즈 페이지와 규격 통일 — h-8 w-8 / text-sm) */}
+        <div className="flex items-center gap-1.5">
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-[12px]"
-            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 6px 18px rgba(20,184,196,0.35)" }}
+            className="flex h-8 w-8 items-center justify-center rounded-[10px]"
+            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 4px 14px rgba(20,184,196,0.35)" }}
           >
-            <FaShieldAlt className="text-white text-lg" />
+            <FaShieldAlt className="text-white text-sm" />
           </div>
-          <span className="text-xl font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
+          <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
         </div>
 
-        {/* 오른쪽: 부모 대시보드 자물쇠 (추후 PIN 잠금 연결 예정) */}
-        <button
-          onClick={() => navigate("/parent")}
-          className="flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-base font-bold transition hover:opacity-80"
-          style={{ backgroundColor: "#163635", color: "#EAF5F1" }}
-        >
-          <FaLock style={{ color: "#18C49A" }} />
-          <span className="hidden sm:block">부모님</span>
-        </button>
-      </nav>
+        {/* 오른쪽: 계정 액션 묶음 (로그아웃 + 부모님) — 관습대로 우측 정렬 */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
+            style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <FaSignOutAlt style={{ color: "#18C49A" }} />
+            <span className="hidden sm:block">로그아웃</span>
+          </button>
+
+          {/* 부모 대시보드 자물쇠 (추후 PIN 잠금 연결 예정) */}
+          <button
+            onClick={() => navigate("/parent")}
+            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
+            style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <FaLock style={{ color: "#18C49A" }} />
+            <span className="hidden sm:block">부모님</span>
+          </button>
+        </div>
+        </div>
+      </header>
 
       <div className="mx-auto max-w-2xl px-5 py-8">
 

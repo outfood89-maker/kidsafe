@@ -420,7 +420,7 @@ export default function ParentDashboard() {
       )}
 
       {/* 상단 네비게이션 바 */}
-      <NavBar backTo="/" backLabel="홈으로" title="부모 대시보드" showAccountMenu />
+      <NavBar backTo="/profiles" backLabel="프로필 선택" title="부모 대시보드" showAccountMenu />
 
       {/* ── 모바일 드로어 어두운 배경 (열렸을 때) ── */}
       {sidebarOpen && (
@@ -490,7 +490,7 @@ export default function ParentDashboard() {
             <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
           </section>
 
-        {loading && <p className="text-center text-sm" style={{ color: "#6B7A65" }}>불러오는 중...</p>}
+        {loading && <p className="text-center text-sm" style={{ color: "#90A9A8" }}>불러오는 중...</p>}
         {error && (
           <div
             className="mb-6 px-4 py-3 text-center text-sm"
@@ -505,17 +505,17 @@ export default function ParentDashboard() {
             {todaySummaryData.map((item) => (
               <div
                 key={item.id}
-                className="bg-white p-4 md:p-5"
-                style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+                className="p-4 md:p-5"
+                style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium" style={{ color: "#6B7A65" }}>{item.title}</p>
-                    <h2 className="mt-1.5 text-2xl md:text-3xl font-medium" style={{ color: "#2C3528" }}>{item.value}</h2>
+                    <p className="text-xs font-medium" style={{ color: "#90A9A8" }}>{item.title}</p>
+                    <h2 className="mt-1.5 text-2xl md:text-3xl font-medium" style={{ color: "#EAF5F1" }}>{item.value}</h2>
                   </div>
                   <div
                     className="flex h-12 w-12 items-center justify-center rounded-[10px]"
-                    style={{ backgroundColor: "#F0F5ED" }}
+                    style={{ backgroundColor: "#163635" }}
                   >
                     {item.icon}
                   </div>
@@ -528,13 +528,13 @@ export default function ParentDashboard() {
         {/* 이번 주 리포트 */}
         {mainTab === "overview" && !loading && (
           <section
-            className="bg-white p-4 md:p-6 mb-5"
-            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+            className="p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             <div className="flex items-center gap-2 mb-4">
               <span className="text-lg">📋</span>
-              <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>이번 주 리포트</h2>
-              <span className="ml-auto text-xs" style={{ color: "#9BA89A" }}>최근 7일 기준</span>
+              <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>이번 주 리포트</h2>
+              <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>최근 7일 기준</span>
             </div>
 
             {/* 아이 선택 탭 */}
@@ -543,8 +543,8 @@ export default function ParentDashboard() {
                 onClick={() => setReportTab("all")}
                 className="rounded-[10px] px-3 py-2 text-xs font-medium transition"
                 style={reportTab === "all"
-                  ? { backgroundColor: "#6DAB60", color: "white" }
-                  : { backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+                  ? { backgroundColor: "#18C49A", color: "#08160F" }
+                  : { backgroundColor: "#163635", color: "#90A9A8" }}
               >전체</button>
               {profiles.map(profile => (
                 <button
@@ -552,8 +552,8 @@ export default function ParentDashboard() {
                   onClick={() => setReportTab(profile.id)}
                   className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
                   style={reportTab === profile.id
-                    ? { backgroundColor: "#6DAB60", color: "white" }
-                    : { backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+                    ? { backgroundColor: "#18C49A", color: "#08160F" }
+                    : { backgroundColor: "#163635", color: "#90A9A8" }}
                 >
                   <img src={getAvatarUrl(profile)} alt={profile.name} className="h-5 w-5 rounded-full bg-white" />
                   {profile.name}
@@ -562,7 +562,7 @@ export default function ParentDashboard() {
             </div>
 
             {reportHistory.length === 0 ? (
-              <p className="py-8 text-center text-sm" style={{ color: "#9BA89A" }}>이번 주 시청 기록이 없어요.</p>
+              <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>이번 주 시청 기록이 없어요.</p>
             ) : (<>
               {/* 요약 카드 3개 */}
               <div className="grid grid-cols-3 gap-2 mb-4">
@@ -571,28 +571,28 @@ export default function ParentDashboard() {
                   { label: "시청 시간", value: formatWatchTime(reportWatchSeconds), icon: "⏱️" },
                   { label: "평균 안전도", value: reportAvgScore !== null ? `${reportAvgScore}점` : "-", icon: "🛡️" },
                 ].map(item => (
-                  <div key={item.label} className="rounded-xl px-2 py-3 text-center" style={{ backgroundColor: "#F8F7F2" }}>
+                  <div key={item.label} className="rounded-xl px-2 py-3 text-center" style={{ backgroundColor: "#163635" }}>
                     <p className="text-lg mb-1">{item.icon}</p>
-                    <p className="text-sm font-bold" style={{ color: "#2C3528" }}>{item.value}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#9BA89A" }}>{item.label}</p>
+                    <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{item.value}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#90A9A8" }}>{item.label}</p>
                   </div>
                 ))}
               </div>
 
               {/* 항목별 평균 점수 */}
               <div className="mb-4">
-                <p className="text-xs font-medium mb-2" style={{ color: "#6B7A65" }}>항목별 평균 점수</p>
+                <p className="text-xs font-medium mb-2" style={{ color: "#90A9A8" }}>항목별 평균 점수</p>
                 <div className="flex flex-col gap-2">
                   {reportCategoryData.map(cat => (
                     <div key={cat.label} className="flex items-center gap-2">
-                      <span className="text-xs w-14 shrink-0" style={{ color: "#6B7A65" }}>{cat.label}</span>
-                      <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: "#E4EAE0" }}>
+                      <span className="text-xs w-14 shrink-0" style={{ color: "#90A9A8" }}>{cat.label}</span>
+                      <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: "#163635" }}>
                         <div
                           className="h-full rounded-full"
                           style={{ width: `${cat.score}%`, backgroundColor: cat.color }}
                         />
                       </div>
-                      <span className="text-xs font-bold w-8 text-right" style={{ color: "#2C3528" }}>{cat.score}</span>
+                      <span className="text-xs font-bold w-8 text-right" style={{ color: "#EAF5F1" }}>{cat.score}</span>
                     </div>
                   ))}
                 </div>
@@ -601,13 +601,13 @@ export default function ParentDashboard() {
               {/* 이번 주 획득 배지 */}
               {reportBadges.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium mb-2" style={{ color: "#6B7A65" }}>이번 주 획득 배지</p>
+                  <p className="text-xs font-medium mb-2" style={{ color: "#90A9A8" }}>이번 주 획득 배지</p>
                   <div className="flex flex-wrap gap-2">
                     {reportBadges.map((badge, i) => (
                       <div key={i} className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
-                        style={{ backgroundColor: "#FFF4E5", border: "1px solid #FDDCAA" }}>
+                        style={{ backgroundColor: "rgba(245,184,41,0.12)", border: "1px solid rgba(245,184,41,0.3)" }}>
                         <span>{badge.emoji}</span>
-                        <span className="text-xs font-medium" style={{ color: "#C47A00" }}>{badge.name}</span>
+                        <span className="text-xs font-medium" style={{ color: "#F5B829" }}>{badge.name}</span>
                       </div>
                     ))}
                   </div>
@@ -619,13 +619,13 @@ export default function ParentDashboard() {
 
         {mainTab === "children" && !loading && (
           <section
-            className="bg-white p-4 md:p-6 mb-5"
-            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+            className="p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FaChild className="text-lg" style={{ color: "#6DAB60" }} />
-                <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>자녀 프로필</h2>
+                <FaChild className="text-lg" style={{ color: "#18C49A" }} />
+                <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>자녀 프로필</h2>
               </div>
               {profiles.length < 4 && (
                 <button
@@ -636,8 +636,8 @@ export default function ParentDashboard() {
                       setShowCreateForm(!showCreateForm);
                     }
                   }}
-                  className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-white transition"
-                  style={{ backgroundColor: "#6DAB60" }}
+                  className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium transition"
+                  style={{ backgroundColor: "#18C49A", color: "#08160F" }}
                 >
                   <FaPlus className="text-xs" />
                   프로필 추가
@@ -646,18 +646,18 @@ export default function ParentDashboard() {
             </div>
 
             {showCreateForm && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
-                <div className="bg-white w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden" }}>
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4">
+                <div className="w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold" style={{ color: "#2C3528" }}>새 프로필 만들기</h3>
-                    <button onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }} className="text-xl" style={{ color: "#6B7A65" }}>
+                    <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>새 프로필 만들기</h3>
+                    <button onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }} className="text-xl" style={{ color: "#90A9A8" }}>
                       <FaTimes />
                     </button>
                   </div>
 
                   {/* 아바타 선택 */}
                   <div className="mb-6">
-                    <p className="mb-3 text-base font-semibold" style={{ color: "#6B7A65" }}>캐릭터</p>
+                    <p className="mb-3 text-base font-semibold" style={{ color: "#90A9A8" }}>캐릭터</p>
                     {/* 큰 미리보기 */}
                     <div className="flex justify-center mb-5">
                       <div
@@ -665,8 +665,8 @@ export default function ParentDashboard() {
                         style={{
                           width: "260px", height: "260px",
                           borderRadius: "28px",
-                          border: "4px solid #6DAB60",
-                          backgroundColor: "#F8F7F2",
+                          border: "4px solid #18C49A",
+                          backgroundColor: "#163635",
                         }}
                       >
                         <img
@@ -699,8 +699,8 @@ export default function ParentDashboard() {
                           style={{
                             width: "90px", height: "90px",
                             borderRadius: "16px",
-                            border: newAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
-                            backgroundColor: "#F8F7F2",
+                            border: newAvatarId === id ? "3px solid #18C49A" : "2px solid rgba(255,255,255,0.1)",
+                            backgroundColor: "#163635",
                           }}
                         >
                           <img
@@ -709,7 +709,7 @@ export default function ParentDashboard() {
                             style={getAvatarStyleById(id)}
                           />
                           {newAvatarId === id && (
-                            <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: "#6DAB60" }}>
+                            <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: "#18C49A" }}>
                               <span className="text-white font-bold" style={{ fontSize: "10px" }}>✓</span>
                             </div>
                           )}
@@ -720,20 +720,20 @@ export default function ParentDashboard() {
 
                   {/* 이름 */}
                   <div className="mb-5">
-                    <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>이름</label>
+                    <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>이름</label>
                     <input
                       type="text"
                       placeholder="아이 이름 입력"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       className="w-full rounded-[12px] px-4 py-3 text-base outline-none"
-                      style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
+                      style={{ border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#163635", color: "#EAF5F1" }}
                     />
                   </div>
 
                   {/* 나이 */}
                   <div className="mb-5">
-                    <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>나이</label>
+                    <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>나이</label>
                     <div className="flex gap-2">
                       {AGE_OPTIONS.map((age) => (
                         <button
@@ -741,8 +741,8 @@ export default function ParentDashboard() {
                           onClick={() => setNewAge(age)}
                           className="rounded-[10px] px-5 py-2.5 text-base font-medium transition"
                           style={newAge === age
-                            ? { backgroundColor: "#6DAB60", color: "white" }
-                            : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                            ? { backgroundColor: "#18C49A", color: "#08160F" }
+                            : { border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#163635", color: "#90A9A8" }
                           }
                         >
                           {age}세
@@ -753,7 +753,7 @@ export default function ParentDashboard() {
 
                   {/* 성별 */}
                   <div className="mb-6">
-                    <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>성별</label>
+                    <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>성별</label>
                     <div className="flex gap-2">
                       {["남자", "여자"].map((g) => (
                         <button
@@ -761,8 +761,8 @@ export default function ParentDashboard() {
                           onClick={() => setNewGender(g)}
                           className="rounded-[10px] px-6 py-2.5 text-base font-medium transition"
                           style={newGender === g
-                            ? { backgroundColor: "#6DAB60", color: "white" }
-                            : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                            ? { backgroundColor: "#18C49A", color: "#08160F" }
+                            : { border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#163635", color: "#90A9A8" }
                           }
                         >
                           {g}
@@ -771,20 +771,20 @@ export default function ParentDashboard() {
                     </div>
                   </div>
 
-                  {createError && <p className="mb-3 text-base" style={{ color: "#C84B47" }}>{createError}</p>}
+                  {createError && <p className="mb-3 text-base" style={{ color: "#F2655C" }}>{createError}</p>}
 
                   <div className="flex gap-3">
                     <button
                       onClick={handleCreateProfile}
-                      className="flex-1 rounded-[12px] py-3 text-base font-semibold text-white"
-                      style={{ backgroundColor: "#6DAB60" }}
+                      className="flex-1 rounded-[12px] py-3 text-base font-semibold"
+                      style={{ backgroundColor: "#18C49A", color: "#08160F" }}
                     >
                       저장하기
                     </button>
                     <button
                       onClick={() => { setShowCreateForm(false); setCreateError(""); setNewName(""); }}
                       className="rounded-[12px] px-6 py-3 text-base font-medium"
-                      style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+                      style={{ backgroundColor: "#163635", color: "#90A9A8" }}
                     >
                       취소
                     </button>
@@ -794,20 +794,20 @@ export default function ParentDashboard() {
             )}
 
             {profiles.length === 0 ? (
-              <p className="py-8 text-center text-sm" style={{ color: "#6B7A65" }}>아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
+              <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
               <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                 {profiles.map((profile) => (
                   <div
                     key={profile.id}
-                    className="relative flex flex-col items-center bg-white p-4"
-                    style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+                    className="relative flex flex-col items-center p-4"
+                    style={{ borderRadius: "14px", backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
                     {/* 편집 버튼 — z-10으로 아바타 위에 항상 표시 */}
                     <button
                       onClick={() => openEditModal(profile)}
                       className="absolute left-3 top-3 z-10 rounded-full p-2 shadow-sm transition"
-                      style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                      style={{ backgroundColor: "rgba(24,196,154,0.18)", color: "#3FE0B0" }}
                     >
                       <FaPen className="text-xs" />
                     </button>
@@ -836,8 +836,8 @@ export default function ParentDashboard() {
                         }}
                       />
                     </div>
-                    <p className="mt-3 text-base md:text-lg font-extrabold text-gray-800">{profile.name}</p>
-                    <p className="text-xs md:text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
+                    <p className="mt-3 text-base md:text-lg font-extrabold" style={{ color: "#EAF5F1" }}>{profile.name}</p>
+                    <p className="text-xs md:text-sm" style={{ color: "#90A9A8" }}>{profile.age}세 · {profile.gender}</p>
 
                     {/* 자녀 프로필 카드에서 배지 노출 비활성화 (요청) — 복구 가능하게 주석처리
                     {profileBadges[profile.id]?.length > 0 && (
@@ -858,11 +858,10 @@ export default function ParentDashboard() {
                             <button
                               key={option.value}
                               onClick={() => handleSaveTimeLimit(profile.id, option.value)}
-                              className={`rounded-xl py-2 text-sm font-bold transition ${
-                                profile.timeLimit === option.value
-                                  ? "bg-blue-500 text-white"
-                                  : "bg-white text-gray-600 border border-gray-200 hover:bg-blue-50"
-                              }`}
+                              className="rounded-xl py-2 text-sm font-bold transition"
+                              style={profile.timeLimit === option.value
+                                ? { backgroundColor: "#18C49A", color: "#08160F" }
+                                : { backgroundColor: "#0E2A2A", color: "#90A9A8", border: "1px solid rgba(255,255,255,0.1)" }}
                             >
                               {option.label}
                             </button>
@@ -873,7 +872,8 @@ export default function ParentDashboard() {
                               placeholder="분 입력"
                               value={customMinutes}
                               onChange={(e) => setCustomMinutes(e.target.value)}
-                              className="w-full rounded-xl border border-gray-200 px-2 py-2 text-sm font-bold text-gray-700 outline-none focus:border-blue-400"
+                              className="w-full rounded-xl px-2 py-2 text-sm font-bold outline-none"
+                              style={{ backgroundColor: "#0E2A2A", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
                               min="1"
                               max="300"
                             />
@@ -885,14 +885,16 @@ export default function ParentDashboard() {
                                   setCustomMinutes("");
                                 }
                               }}
-                              className="rounded-xl bg-blue-500 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-600"
+                              className="rounded-xl px-3 py-2 text-sm font-bold transition"
+                              style={{ backgroundColor: "#18C49A", color: "#08160F" }}
                             >
                               확인
                             </button>
                           </div>
                           <button
                             onClick={() => setEditingTimeLimitId(null)}
-                            className="rounded-xl py-2 text-sm font-bold text-gray-400 hover:text-gray-600"
+                            className="rounded-xl py-2 text-sm font-bold transition"
+                            style={{ color: "#90A9A8" }}
                           >
                             취소
                           </button>
@@ -901,7 +903,7 @@ export default function ParentDashboard() {
                         <button
                           onClick={() => setEditingTimeLimitId(profile.id)}
                           className="flex w-full items-center justify-center gap-1.5 rounded-[10px] py-2 text-xs font-medium transition"
-                          style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                          style={{ backgroundColor: "rgba(24,196,154,0.18)", color: "#3FE0B0" }}
                         >
                           <FaClock />
                           {profile.timeLimit ? `${profile.timeLimit}분 제한` : "시청 시간 설정"}
@@ -912,10 +914,10 @@ export default function ParentDashboard() {
                     {/* 안전도 기준 점수 슬라이더 */}
                     <div className="mt-3 w-full">
                       <div className="flex justify-between mb-1">
-                        <span className="text-xs font-bold text-gray-500">허용 안전도 기준</span>
+                        <span className="text-xs font-bold" style={{ color: "#90A9A8" }}>허용 안전도 기준</span>
                         <span className={`text-xs font-extrabold ${
-                          (profile.safetyThreshold || 70) >= 85 ? "text-green-500" :
-                          (profile.safetyThreshold || 70) >= 70 ? "text-yellow-500" : "text-red-500"
+                          (profile.safetyThreshold || 70) >= 85 ? "text-green-400" :
+                          (profile.safetyThreshold || 70) >= 70 ? "text-yellow-400" : "text-red-400"
                         }`}>
                           {profile.safetyThreshold || 70}점 이상
                         </span>
@@ -932,7 +934,7 @@ export default function ParentDashboard() {
                         onTouchEnd={(e) => updateProfile(profile.id, { safetyThreshold: Number(e.target.value) })}
                         className="w-full accent-green-500"
                       />
-                      <div className="flex justify-between text-xs text-gray-300 mt-0.5">
+                      <div className="flex justify-between text-xs mt-0.5" style={{ color: "#6B7E7C" }}>
                         <span>50 (관대)</span><span>95 (엄격)</span>
                       </div>
                     </div>
@@ -940,8 +942,8 @@ export default function ParentDashboard() {
                     {/* 연속재생 토글 — 영상 끝나면 다음 영상을 검수 후 자동재생 (참을성 기른 아이용) */}
                     <div className="mt-3 w-full flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-gray-600">연속재생</p>
-                        <p className="text-[11px] text-gray-400 leading-tight">끝나면 다음 영상을 검수 후 자동 재생</p>
+                        <p className="text-xs font-bold" style={{ color: "#EAF5F1" }}>연속재생</p>
+                        <p className="text-[11px] leading-tight" style={{ color: "#90A9A8" }}>끝나면 다음 영상을 검수 후 자동 재생</p>
                       </div>
                       <button
                         onClick={() => {
@@ -950,7 +952,7 @@ export default function ParentDashboard() {
                           updateProfile(profile.id, { continuousPlay: next });
                         }}
                         className="relative shrink-0 rounded-full transition-colors"
-                        style={{ width: "44px", height: "24px", backgroundColor: profile.continuousPlay ? "#6DAB60" : "#D1D5DB" }}
+                        style={{ width: "44px", height: "24px", backgroundColor: profile.continuousPlay ? "#18C49A" : "#2A4544" }}
                         aria-label="연속재생 토글"
                       >
                         <span
@@ -969,20 +971,20 @@ export default function ParentDashboard() {
 
         {mainTab === "history" && !loading && (
           <section
-            className="bg-white p-4 md:p-6 mb-5"
-            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+            className="p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             {/* 헤더 */}
             <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-2">
-                <FaHistory className="text-base" style={{ color: "#6DAB60" }} />
-                <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>최근 시청 기록</h2>
+                <FaHistory className="text-base" style={{ color: "#18C49A" }} />
+                <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>최근 시청 기록</h2>
               </div>
               {filteredHistory.length > 0 && (
                 <button
                   onClick={handleDeleteAllHistory}
                   className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
-                  style={{ backgroundColor: "#FFF0EF", color: "#C84B47" }}
+                  style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C" }}
                 >
                   <FaTrash className="text-xs" /> 전체 삭제
                 </button>
@@ -995,8 +997,8 @@ export default function ParentDashboard() {
                 onClick={() => { setActiveTab("전체"); setVisibleCount(10); }}
                 className="rounded-[10px] px-3 py-2 text-xs font-medium transition"
                 style={activeTab === "전체"
-                  ? { backgroundColor: "#6DAB60", color: "white" }
-                  : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                  ? { backgroundColor: "#18C49A", color: "#08160F" }
+                  : { backgroundColor: "#163635", color: "#90A9A8" }
                 }
               >
                 전체
@@ -1007,8 +1009,8 @@ export default function ParentDashboard() {
                   onClick={() => { setActiveTab(profile.id); setVisibleCount(10); }}
                   className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
                   style={activeTab === profile.id
-                    ? { backgroundColor: "#6DAB60", color: "white" }
-                    : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                    ? { backgroundColor: "#18C49A", color: "#08160F" }
+                    : { backgroundColor: "#163635", color: "#90A9A8" }
                   }
                 >
                   <img
@@ -1022,7 +1024,7 @@ export default function ParentDashboard() {
             </div>
 
             {filteredHistory.length === 0 ? (
-              <p className="py-8 text-center text-sm" style={{ color: "#6B7A65" }}>
+              <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>
                 {activeTab === "전체" ? "아직 시청 기록이 없어요." : "이 프로필의 시청 기록이 없어요."}
               </p>
             ) : (
@@ -1036,7 +1038,7 @@ export default function ParentDashboard() {
                       <div
                         key={`${item.videoId}-${index}`}
                         className="flex flex-col gap-2 p-3 md:flex-row md:items-center md:justify-between"
-                        style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0", backgroundColor: "#F8F7F2" }}
+                        style={{ borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", backgroundColor: "#163635" }}
                       >
                         {/* 썸네일 + 정보 — 클릭 시 모달 */}
                         <button
@@ -1045,9 +1047,9 @@ export default function ParentDashboard() {
                         >
                           <img src={item.thumbnail || null} alt={item.title} className="h-14 w-24 md:h-16 md:w-28 rounded-xl object-cover shrink-0 bg-gray-100" />
                           <div className="min-w-0">
-                            <h3 className="line-clamp-1 text-sm font-medium transition" style={{ color: "#2C3528" }}>{item.title}</h3>
-                            <p className="mt-0.5 text-xs" style={{ color: "#6B7A65" }}>{item.channelTitle}</p>
-                            <p className="mt-0.5 text-xs" style={{ color: "#9BA89A" }}>
+                            <h3 className="line-clamp-1 text-sm font-medium transition" style={{ color: "#EAF5F1" }}>{item.title}</h3>
+                            <p className="mt-0.5 text-xs" style={{ color: "#90A9A8" }}>{item.channelTitle}</p>
+                            <p className="mt-0.5 text-xs" style={{ color: "#6B7E7C" }}>
                               {new Date(item.watchedAt).toLocaleString("ko-KR")}
                             </p>
                           </div>
@@ -1063,7 +1065,8 @@ export default function ParentDashboard() {
                           </div>
                           <button
                             onClick={() => handleDeleteHistoryItem(item)}
-                            className="rounded-full bg-gray-100 p-2 text-gray-400 transition hover:bg-red-100 hover:text-red-500"
+                            className="rounded-full p-2 transition"
+                            style={{ backgroundColor: "#0E2A2A", color: "#90A9A8" }}
                           >
                             <FaTrash className="text-xs" />
                           </button>
@@ -1078,7 +1081,7 @@ export default function ParentDashboard() {
                   <button
                     onClick={() => setVisibleCount(prev => prev + 10)}
                     className="mt-4 w-full rounded-[10px] py-2.5 text-sm font-medium transition"
-                    style={{ border: "0.5px solid #E4EAE0", color: "#6B7A65", backgroundColor: "white" }}
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#90A9A8", backgroundColor: "#163635" }}
                   >
                     더보기 ({filteredHistory.length - visibleCount}개 남음)
                   </button>
@@ -1090,21 +1093,21 @@ export default function ParentDashboard() {
 
         {mainTab === "analysis" && !loading && history.length === 0 && (
           <section
-            className="bg-white p-8 md:p-10 mb-5 text-center"
-            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+            className="p-8 md:p-10 mb-5 text-center"
+            style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            <p className="text-sm" style={{ color: "#6B7A65" }}>아직 분석할 시청 기록이 없어요.</p>
+            <p className="text-sm" style={{ color: "#90A9A8" }}>아직 분석할 시청 기록이 없어요.</p>
           </section>
         )}
 
         {mainTab === "analysis" && !loading && history.length > 0 && (
           <section
-            className="bg-white p-4 md:p-6 mb-5"
-            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+            className="p-4 md:p-6 mb-5"
+            style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             <div className="flex items-center gap-2 mb-4">
-              <FaChartBar className="text-base" style={{ color: "#6DAB60" }} />
-              <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>시청 패턴 분석</h2>
+              <FaChartBar className="text-base" style={{ color: "#18C49A" }} />
+              <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>시청 패턴 분석</h2>
             </div>
 
             {/* 차트 전용 프로필 탭 */}
@@ -1113,8 +1116,8 @@ export default function ParentDashboard() {
                 onClick={() => setChartTab("전체")}
                 className="rounded-[10px] px-3 py-2 text-xs font-medium transition"
                 style={chartTab === "전체"
-                  ? { backgroundColor: "#6DAB60", color: "white" }
-                  : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                  ? { backgroundColor: "#18C49A", color: "#08160F" }
+                  : { backgroundColor: "#163635", color: "#90A9A8" }
                 }
               >
                 전체
@@ -1125,8 +1128,8 @@ export default function ParentDashboard() {
                   onClick={() => setChartTab(profile.id)}
                   className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
                   style={chartTab === profile.id
-                    ? { backgroundColor: "#6DAB60", color: "white" }
-                    : { backgroundColor: "#F0F5ED", color: "#6B7A65" }
+                    ? { backgroundColor: "#18C49A", color: "#08160F" }
+                    : { backgroundColor: "#163635", color: "#90A9A8" }
                   }
                 >
                   <img
@@ -1140,14 +1143,14 @@ export default function ParentDashboard() {
             </div>
 
             {chartFilteredHistory.length === 0 ? (
-              <p className="py-8 text-center text-sm" style={{ color: "#6B7A65" }}>시청 기록이 없어요.</p>
+              <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>시청 기록이 없어요.</p>
             ) : (<>
 
             {/* 안전도 분포 + 최다 시청 채널 — 2열 그리드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
               {/* 안전도 분포 PieChart */}
               <div>
-                <h3 className="text-base font-extrabold text-gray-700 mb-4">🛡️ 안전도 분포</h3>
+                <h3 className="text-base font-extrabold mb-4" style={{ color: "#EAF5F1" }}>🛡️ 안전도 분포</h3>
                 <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height={220} debounce={50}>
                     <PieChart>
@@ -1178,7 +1181,7 @@ export default function ParentDashboard() {
                   ].map(item => (
                     <div key={item.label} className="flex items-center gap-1.5">
                       <span className={`h-3 w-3 rounded-full ${item.color}`} />
-                      <span className="text-sm font-bold text-gray-600">{item.label} {item.count}개</span>
+                      <span className="text-sm font-bold" style={{ color: "#90A9A8" }}>{item.label} {item.count}개</span>
                     </div>
                   ))}
                 </div>
@@ -1186,24 +1189,24 @@ export default function ParentDashboard() {
 
               {/* 최다 시청 채널 TOP 5 */}
               <div>
-                <h3 className="text-base font-extrabold text-gray-700 mb-4">📺 최다 시청 채널 TOP 5</h3>
+                <h3 className="text-base font-extrabold mb-4" style={{ color: "#EAF5F1" }}>📺 최다 시청 채널 TOP 5</h3>
                 {topChannelsData.length === 0 ? (
-                  <p className="text-sm text-gray-400 py-10 text-center">데이터가 없어요.</p>
+                  <p className="text-sm py-10 text-center" style={{ color: "#90A9A8" }}>데이터가 없어요.</p>
                 ) : (
                   <div>
                     <ResponsiveContainer width="100%" height={220} debounce={50}>
                       <BarChart data={topChannelsData} layout="vertical" margin={{ left: 8, right: 24 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.08)" />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: "#90A9A8" }} />
                         <YAxis
                           type="category"
                           dataKey="name"
                           width={140}
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 12, fill: "#90A9A8" }}
                           tickFormatter={(v) => truncateByDisplayWidth(v, 20)}
                         />
                         <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
-                        <Bar dataKey="count" name="시청 횟수" radius={[0, 8, 8, 0]} fill="#6DAB60" />
+                        <Bar dataKey="count" name="시청 횟수" radius={[0, 8, 8, 0]} fill="#18C49A" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1213,47 +1216,47 @@ export default function ParentDashboard() {
 
             {/* 시간대별 시청 분포 */}
             <div>
-              <h3 className="text-base font-extrabold text-gray-700 mb-4">🕐 시간대별 시청 분포</h3>
+              <h3 className="text-base font-extrabold mb-4" style={{ color: "#EAF5F1" }}>🕐 시간대별 시청 분포</h3>
               {hourChartData.length === 0 ? (
-                <p className="text-sm text-gray-400 py-6 text-center">데이터가 없어요.</p>
+                <p className="text-sm py-6 text-center" style={{ color: "#90A9A8" }}>데이터가 없어요.</p>
               ) : (
                 <div>
                   <ResponsiveContainer width="100%" height={200} debounce={50}>
                     <BarChart data={hourChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                      <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "#90A9A8" }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#90A9A8" }} />
                       <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
                       <Bar
                         dataKey="count"
                         name="시청 횟수"
                         radius={[6, 6, 0, 0]}
-                        fill="#B8D8B2"
+                        fill="#14B8C4"
                       />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
-              <p className="text-xs text-gray-400 mt-2 text-right">* 시청 기록이 있는 시간대만 표시돼요.</p>
+              <p className="text-xs mt-2 text-right" style={{ color: "#6B7E7C" }}>* 시청 기록이 있는 시간대만 표시돼요.</p>
             </div>
 
             {/* 최근 7일 시청 추이 */}
             <div className="mt-10">
-              <h3 className="text-base font-extrabold text-gray-700 mb-4">📅 최근 7일 시청 추이</h3>
+              <h3 className="text-base font-extrabold mb-4" style={{ color: "#EAF5F1" }}>📅 최근 7일 시청 추이</h3>
               <div>
                 <ResponsiveContainer width="100%" height={200} debounce={50}>
                   <LineChart data={weeklyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#90A9A8" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#90A9A8" }} />
                     <Tooltip formatter={(value) => [`${value}회`, '시청 횟수']} />
                     <Line
                       type="monotone"
                       dataKey="count"
                       name="시청 횟수"
-                      stroke="#6DAB60"
+                      stroke="#18C49A"
                       strokeWidth={3}
-                      dot={{ r: 5, fill: "#6DAB60" }}
+                      dot={{ r: 5, fill: "#18C49A" }}
                       activeDot={{ r: 7 }}
                     />
                   </LineChart>
@@ -1267,51 +1270,53 @@ export default function ParentDashboard() {
         {mainTab === "safety" && (<>
         {/* 위험 영상 알림 */}
         <section
-          className="bg-white p-4 md:p-6 mb-5"
-          style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          className="p-4 md:p-6 mb-5"
+          style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <FaBell className="text-orange-500 text-xl md:text-2xl" />
+                <FaBell className="text-orange-400 text-xl md:text-2xl" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
                     {unreadCount}
                   </span>
                 )}
               </div>
-              <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">위험 영상 알림</h2>
+              <h2 className="text-xl md:text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>위험 영상 알림</h2>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAlertSettings(v => !v)}
-                className="flex items-center gap-2 rounded-2xl border-2 border-gray-200 px-3 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
+                className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-bold transition"
+                style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#90A9A8", backgroundColor: "#163635" }}
               >
                 <FaSlidersH /> 알림 설정
               </button>
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className="flex items-center gap-2 rounded-2xl bg-orange-100 px-3 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-200"
+                  className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-bold transition"
+                  style={{ backgroundColor: "rgba(245,184,41,0.15)", color: "#F5B829" }}
                 >
                   <FaCheck /> 전체 읽음
                 </button>
               )}
             </div>
           </div>
-          <p className="text-sm md:text-base text-gray-500 mb-4">
+          <p className="text-sm md:text-base mb-4" style={{ color: "#90A9A8" }}>
             안전도 {alertSettings.threshold}점 미만 영상을 시청하면 알림이 생성돼요.
           </p>
 
           {/* 알림 설정 패널 */}
           {showAlertSettings && (
-            <div className="mb-6 rounded-2xl border-2 border-orange-100 bg-orange-50 p-4">
-              <p className="text-sm font-extrabold text-orange-700 mb-4">알림 기준 설정</p>
+            <div className="mb-6 rounded-2xl p-4" style={{ backgroundColor: "#163635", border: "1px solid rgba(245,184,41,0.25)" }}>
+              <p className="text-sm font-extrabold mb-4" style={{ color: "#F5B829" }}>알림 기준 설정</p>
               <div className="flex flex-col gap-4">
                 <div>
                   <div className="flex justify-between mb-1">
-                    <label className="text-sm font-bold text-gray-700">위험 기준 점수</label>
-                    <span className="text-sm font-extrabold text-orange-600">{alertSettings.threshold}점 미만</span>
+                    <label className="text-sm font-bold" style={{ color: "#EAF5F1" }}>위험 기준 점수</label>
+                    <span className="text-sm font-extrabold" style={{ color: "#F5B829" }}>{alertSettings.threshold}점 미만</span>
                   </div>
                   <input
                     type="range" min={50} max={90} step={5}
@@ -1319,18 +1324,19 @@ export default function ParentDashboard() {
                     onChange={(e) => setAlertSettings(prev => ({ ...prev, threshold: Number(e.target.value) }))}
                     className="w-full accent-orange-500"
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div className="flex justify-between text-xs mt-1" style={{ color: "#6B7E7C" }}>
                     <span>50점 (관대)</span><span>90점 (엄격)</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-gray-700">늦은 시간 시청 알림</p>
-                    <p className="text-xs text-gray-400">{alertSettings.lateNightHour}시 이후 시청 시 알림</p>
+                    <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>늦은 시간 시청 알림</p>
+                    <p className="text-xs" style={{ color: "#90A9A8" }}>{alertSettings.lateNightHour}시 이후 시청 시 알림</p>
                   </div>
                   <button
                     onClick={() => setAlertSettings(prev => ({ ...prev, lateNightAlert: !prev.lateNightAlert }))}
-                    className={`w-12 h-6 rounded-full transition-colors ${alertSettings.lateNightAlert ? "bg-orange-500" : "bg-gray-300"}`}
+                    className={`w-12 h-6 rounded-full transition-colors ${alertSettings.lateNightAlert ? "bg-orange-500" : ""}`}
+                    style={alertSettings.lateNightAlert ? {} : { backgroundColor: "#2A4544" }}
                   >
                     <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform mx-0.5 ${alertSettings.lateNightAlert ? "translate-x-6" : "translate-x-0"}`} />
                   </button>
@@ -1347,19 +1353,21 @@ export default function ParentDashboard() {
 
           {/* 알림 목록 */}
           {alerts.length === 0 ? (
-            <div className="rounded-2xl bg-gray-50 px-6 py-8 text-center">
+            <div className="rounded-2xl px-6 py-8 text-center" style={{ backgroundColor: "#163635" }}>
               <p className="text-3xl mb-2">✅</p>
-              <p className="text-sm font-bold text-gray-500">위험 영상 알림이 없어요. 안전하게 시청 중이에요!</p>
+              <p className="text-sm font-bold" style={{ color: "#90A9A8" }}>위험 영상 알림이 없어요. 안전하게 시청 중이에요!</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               {alerts.map((alert) => (
                 <div
                   key={alert.id}
-                  className={`rounded-2xl border-2 p-4 transition ${
-                    alert.read ? "border-gray-100 bg-gray-50 opacity-60" :
-                    alert.severity === 'danger' ? "border-red-200 bg-red-50" : "border-yellow-200 bg-yellow-50"
-                  }`}
+                  className="rounded-2xl p-4 transition"
+                  style={alert.read
+                    ? { backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)", opacity: 0.6 }
+                    : alert.severity === 'danger'
+                      ? { backgroundColor: "rgba(242,101,92,0.12)", border: "1px solid rgba(242,101,92,0.35)" }
+                      : { backgroundColor: "rgba(245,184,41,0.1)", border: "1px solid rgba(245,184,41,0.35)" }}
                 >
                   <div className="flex items-start gap-3">
                     {/* 썸네일 */}
@@ -1381,29 +1389,31 @@ export default function ParentDashboard() {
                         )}
                       </div>
                       {/* 제목 */}
-                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{alert.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{alert.channelTitle}</p>
+                      <p className="text-sm font-bold line-clamp-1" style={{ color: "#EAF5F1" }}>{alert.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#90A9A8" }}>{alert.channelTitle}</p>
                       {/* 이유 */}
                       <div className="flex flex-wrap gap-1 mt-2">
                         {alert.reasons.map((r, i) => (
-                          <span key={i} className="rounded-full bg-white border border-gray-200 px-2 py-0.5 text-xs text-gray-600">{r}</span>
+                          <span key={i} className="rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.12)", color: "#90A9A8" }}>{r}</span>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(alert.watchedAt).toLocaleString("ko-KR")}</p>
+                      <p className="text-xs mt-1" style={{ color: "#6B7E7C" }}>{new Date(alert.watchedAt).toLocaleString("ko-KR")}</p>
                     </div>
                     {/* 액션 버튼 */}
                     <div className="flex flex-col gap-1 shrink-0">
                       {!alert.read && (
                         <button
                           onClick={() => handleMarkRead(alert.id)}
-                          className="rounded-xl bg-white border border-gray-200 px-2 py-1 text-xs font-bold text-gray-600 transition hover:bg-gray-100"
+                          className="rounded-xl px-2 py-1 text-xs font-bold transition"
+                          style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.12)", color: "#90A9A8" }}
                         >
                           읽음
                         </button>
                       )}
                       <button
                         onClick={() => handleBlockChannel(alert.channelTitle)}
-                        className="rounded-xl bg-red-100 px-2 py-1 text-xs font-bold text-red-600 transition hover:bg-red-200"
+                        className="rounded-xl px-2 py-1 text-xs font-bold transition"
+                        style={{ backgroundColor: "rgba(242,101,92,0.18)", color: "#F2655C" }}
                       >
                         채널 차단
                       </button>
@@ -1417,18 +1427,18 @@ export default function ParentDashboard() {
 
         {/* 차단 키워드 관리 */}
         <section
-          className="bg-white p-4 md:p-6 mb-5"
-          style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          className="p-4 md:p-6 mb-5"
+          style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           <div className="flex items-center gap-3 mb-2">
-            <FaBan className="text-red-500 text-xl md:text-2xl" />
-            <h2 className="text-xl md:text-3xl font-extrabold text-gray-900">차단 키워드 관리</h2>
+            <FaBan className="text-red-400 text-xl md:text-2xl" />
+            <h2 className="text-xl md:text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>차단 키워드 관리</h2>
           </div>
-          <p className="text-sm md:text-base text-gray-500 mb-6">아이가 검색하면 안 되는 키워드를 설정해요. 검색 시 차단 메시지가 표시돼요.</p>
+          <p className="text-sm md:text-base mb-6" style={{ color: "#90A9A8" }}>아이가 검색하면 안 되는 키워드를 설정해요. 검색 시 차단 메시지가 표시돼요.</p>
 
           {/* 커스텀 키워드 추가 */}
           <div className="mb-6">
-            <p className="text-sm font-bold text-gray-700 mb-2">커스텀 차단 키워드 추가</p>
+            <p className="text-sm font-bold mb-2" style={{ color: "#EAF5F1" }}>커스텀 차단 키워드 추가</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1436,7 +1446,8 @@ export default function ParentDashboard() {
                 onChange={(e) => setNewBlockedKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddBlockedKeyword()}
                 placeholder="차단할 키워드 입력..."
-                className="flex-1 rounded-2xl border-2 border-red-200 px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-red-400 transition"
+                className="flex-1 rounded-2xl px-4 py-2.5 text-sm font-semibold outline-none transition"
+                style={{ backgroundColor: "#163635", border: "1px solid rgba(242,101,92,0.4)", color: "#EAF5F1" }}
               />
               <button
                 onClick={handleAddBlockedKeyword}
@@ -1445,22 +1456,23 @@ export default function ParentDashboard() {
                 <FaPlus /> 추가
               </button>
             </div>
-            {blockError && <p className="mt-2 text-xs text-red-500 font-semibold">{blockError}</p>}
+            {blockError && <p className="mt-2 text-xs text-red-400 font-semibold">{blockError}</p>}
           </div>
 
           {/* 커스텀 키워드 목록 */}
           <div className="mb-6">
-            <p className="text-sm font-bold text-gray-700 mb-3">내가 추가한 차단 키워드 ({blockedKeywords.custom.length}개)</p>
+            <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>내가 추가한 차단 키워드 ({blockedKeywords.custom.length}개)</p>
             {blockedKeywords.custom.length === 0 ? (
-              <p className="text-sm text-gray-400 rounded-2xl bg-gray-50 px-4 py-3">아직 추가한 키워드가 없어요.</p>
+              <p className="text-sm rounded-2xl px-4 py-3" style={{ color: "#90A9A8", backgroundColor: "#163635" }}>아직 추가한 키워드가 없어요.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {blockedKeywords.custom.map((kw) => (
-                  <div key={kw} className="flex items-center gap-2 rounded-full bg-red-100 px-3 py-1.5">
-                    <span className="text-sm font-bold text-red-700">{kw}</span>
+                  <div key={kw} className="flex items-center gap-2 rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(242,101,92,0.18)" }}>
+                    <span className="text-sm font-bold" style={{ color: "#F2655C" }}>{kw}</span>
                     <button
                       onClick={() => handleDeleteBlockedKeyword(kw)}
-                      className="text-red-400 hover:text-red-600 transition"
+                      className="transition"
+                      style={{ color: "#F2655C" }}
                     >
                       <FaTrash className="text-xs" />
                     </button>
@@ -1472,10 +1484,10 @@ export default function ParentDashboard() {
 
           {/* 기본 차단 키워드 (시스템) */}
           <div>
-            <p className="text-sm font-bold text-gray-700 mb-3">기본 차단 키워드 ({blockedKeywords.system.length}개) — 수정 불가</p>
+            <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>기본 차단 키워드 ({blockedKeywords.system.length}개) — 수정 불가</p>
             <div className="flex flex-wrap gap-2">
               {blockedKeywords.system.map((kw) => (
-                <span key={kw} className="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-500">
+                <span key={kw} className="rounded-full px-3 py-1.5 text-sm font-semibold" style={{ backgroundColor: "#163635", color: "#90A9A8" }}>
                   {kw}
                 </span>
               ))}
@@ -1501,18 +1513,18 @@ export default function ParentDashboard() {
 
       {/* 프로필 편집 모달 */}
       {editingProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
-          <div className="bg-white w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4">
+          <div className="w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold" style={{ color: "#2C3528" }}>프로필 수정</h3>
-              <button onClick={() => setEditingProfile(null)} className="text-xl" style={{ color: "#6B7A65" }}>
+              <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>프로필 수정</h3>
+              <button onClick={() => setEditingProfile(null)} className="text-xl" style={{ color: "#90A9A8" }}>
                 <FaTimes />
               </button>
             </div>
 
             {/* 아바타 선택 */}
             <div className="mb-6">
-              <p className="mb-3 text-base font-semibold" style={{ color: "#6B7A65" }}>캐릭터</p>
+              <p className="mb-3 text-base font-semibold" style={{ color: "#90A9A8" }}>캐릭터</p>
               {/* 선택된 아바타 크게 미리보기 */}
               <div className="flex justify-center mb-5">
                 <div
@@ -1520,8 +1532,8 @@ export default function ParentDashboard() {
                   style={{
                     width: "260px", height: "260px",
                     borderRadius: "28px",
-                    border: "4px solid #6DAB60",
-                    backgroundColor: "#F8F7F2",
+                    border: "4px solid #18C49A",
+                    backgroundColor: "#163635",
                   }}
                 >
                   <img
@@ -1554,8 +1566,8 @@ export default function ParentDashboard() {
                     style={{
                       width: "90px", height: "90px",
                       borderRadius: "16px",
-                      border: editAvatarId === id ? "3px solid #6DAB60" : "2px solid #E4EAE0",
-                      backgroundColor: "#F8F7F2",
+                      border: editAvatarId === id ? "3px solid #18C49A" : "2px solid rgba(255,255,255,0.1)",
+                      backgroundColor: "#163635",
                     }}
                   >
                     <img
@@ -1564,7 +1576,7 @@ export default function ParentDashboard() {
                       style={getAvatarStyleById(id)}
                     />
                     {editAvatarId === id && (
-                      <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: "#6DAB60" }}>
+                      <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: "#18C49A" }}>
                         <span className="text-white font-bold" style={{ fontSize: "10px" }}>✓</span>
                       </div>
                     )}
@@ -1575,19 +1587,19 @@ export default function ParentDashboard() {
 
             {/* 이름 */}
             <div className="mb-5">
-              <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>이름</label>
+              <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>이름</label>
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 className="w-full rounded-[12px] px-4 py-3 text-base outline-none"
-                style={{ border: "2px solid #B8D8B2", backgroundColor: "#F8F7F2", color: "#2C3528" }}
+                style={{ border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#163635", color: "#EAF5F1" }}
               />
             </div>
 
             {/* 나이 */}
             <div className="mb-5">
-              <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>나이</label>
+              <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>나이</label>
               <div className="flex gap-2">
                 {AGE_OPTIONS.map((age) => (
                   <button
@@ -1595,8 +1607,8 @@ export default function ParentDashboard() {
                     onClick={() => setEditAge(age)}
                     className="rounded-[10px] px-5 py-2.5 text-base font-medium transition"
                     style={editAge === age
-                      ? { backgroundColor: "#6DAB60", color: "white" }
-                      : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                      ? { backgroundColor: "#18C49A", color: "#08160F" }
+                      : { border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#163635", color: "#90A9A8" }
                     }
                   >
                     {age}세
@@ -1607,7 +1619,7 @@ export default function ParentDashboard() {
 
             {/* 성별 */}
             <div className="mb-6">
-              <label className="mb-2 block text-base font-semibold" style={{ color: "#6B7A65" }}>성별</label>
+              <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>성별</label>
               <div className="flex gap-2">
                 {["남자", "여자"].map((g) => (
                   <button
@@ -1615,8 +1627,8 @@ export default function ParentDashboard() {
                     onClick={() => setEditGender(g)}
                     className="rounded-[10px] px-6 py-2.5 text-base font-medium transition"
                     style={editGender === g
-                      ? { backgroundColor: "#6DAB60", color: "white" }
-                      : { border: "1px solid #E4EAE0", backgroundColor: "white", color: "#6B7A65" }
+                      ? { backgroundColor: "#18C49A", color: "#08160F" }
+                      : { border: "1px solid rgba(255,255,255,0.12)", backgroundColor: "#163635", color: "#90A9A8" }
                     }
                   >
                     {g}
@@ -1625,20 +1637,20 @@ export default function ParentDashboard() {
               </div>
             </div>
 
-            {editError && <p className="mb-3 text-base" style={{ color: "#C84B47" }}>{editError}</p>}
+            {editError && <p className="mb-3 text-base" style={{ color: "#F2655C" }}>{editError}</p>}
 
             <div className="flex gap-3">
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 rounded-[12px] py-3 text-base font-semibold text-white"
-                style={{ backgroundColor: "#6DAB60" }}
+                className="flex-1 rounded-[12px] py-3 text-base font-semibold"
+                style={{ backgroundColor: "#18C49A", color: "#08160F" }}
               >
                 저장
               </button>
               <button
                 onClick={() => setEditingProfile(null)}
                 className="rounded-[12px] px-6 py-3 text-base font-medium"
-                style={{ backgroundColor: "#F0F5ED", color: "#6B7A65" }}
+                style={{ backgroundColor: "#163635", color: "#90A9A8" }}
               >
                 취소
               </button>

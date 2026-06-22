@@ -765,7 +765,7 @@ export default function KidHome() {
   const p = JSON.parse(localStorage.getItem("selectedProfile") || "{}");
   if (p.id) sessionStorage.removeItem(`kidsafe_search_${p.id}`);
   localStorage.removeItem("selectedProfile");
-  navigate("/");
+  navigate("/profiles");
 }}
               className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
               style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
