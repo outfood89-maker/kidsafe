@@ -78,7 +78,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-10 overflow-hidden" style={{ background: "radial-gradient(120% 90% at 50% 0%, #123129 0%, #0B1F1B 55%, #08160F 100%)" }}>
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-10 overflow-hidden" style={{ background: "radial-gradient(120% 90% at 50% 0%, #123129 0%, #0A1E1E 55%, #08160F 100%)" }}>
       {/* 배경 장식 — 에메랄드·청록 글로우 */}
       <div className="absolute top-10 left-4 h-56 w-56 rounded-full opacity-20" style={{ backgroundColor: "#18C49A", filter: "blur(90px)" }} />
       <div className="absolute bottom-16 right-6 h-72 w-72 rounded-full opacity-20" style={{ backgroundColor: "#14B8C4", filter: "blur(110px)" }} />
@@ -97,20 +97,20 @@ export default function Login() {
       </div>
 
       {/* 카드 */}
-      <div className="relative z-10 w-full max-w-sm p-7" style={{ borderRadius: "24px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 16px 50px rgba(0,0,0,0.5)" }}>
+      <div className="relative z-10 w-full max-w-sm p-7" style={{ borderRadius: "24px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 16px 50px rgba(0,0,0,0.5)" }}>
         {/* 탭 */}
-        <div className="flex mb-6 rounded-xl p-1" style={{ backgroundColor: "#16352E" }}>
+        <div className="flex mb-6 rounded-xl p-1" style={{ backgroundColor: "#163635" }}>
           <button
             onClick={() => switchMode("login")}
             className="flex-1 rounded-lg py-2 text-sm font-bold transition"
-            style={{ background: !isSignup ? "linear-gradient(135deg, #18C49A, #14B8C4)" : "transparent", color: !isSignup ? "white" : "#8FA89F" }}
+            style={{ background: !isSignup ? "linear-gradient(135deg, #18C49A, #14B8C4)" : "transparent", color: !isSignup ? "white" : "#90A9A8" }}
           >
             로그인
           </button>
           <button
             onClick={() => switchMode("signup")}
             className="flex-1 rounded-lg py-2 text-sm font-bold transition"
-            style={{ background: isSignup ? "linear-gradient(135deg, #18C49A, #14B8C4)" : "transparent", color: isSignup ? "white" : "#8FA89F" }}
+            style={{ background: isSignup ? "linear-gradient(135deg, #18C49A, #14B8C4)" : "transparent", color: isSignup ? "white" : "#90A9A8" }}
           >
             회원가입
           </button>
@@ -119,15 +119,15 @@ export default function Login() {
         <h1 className="text-xl font-black mb-1" style={{ color: "#EAF5F1" }}>
           {isSignup ? "KidSafe 회원가입" : "다시 오셨네요!"}
         </h1>
-        <p className="text-sm mb-5" style={{ color: "#8FA89F" }}>
+        <p className="text-sm mb-5" style={{ color: "#90A9A8" }}>
           {isSignup ? "보호자 계정을 만들어주세요." : "보호자 계정으로 로그인해주세요."}
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* 보호자 이름 (가입 시에만) */}
           {isSignup && (
-            <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <FaUser style={{ color: "#8FA89F" }} />
+            <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <FaUser style={{ color: "#90A9A8" }} />
               <input
                 type="text"
                 placeholder="보호자 이름 (닉네임)"
@@ -140,8 +140,8 @@ export default function Login() {
           )}
 
           {/* 이메일 */}
-          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <FaEnvelope style={{ color: "#8FA89F" }} />
+          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <FaEnvelope style={{ color: "#90A9A8" }} />
             <input
               type="email"
               placeholder="이메일"
@@ -154,8 +154,8 @@ export default function Login() {
           </div>
 
           {/* 비밀번호 */}
-          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <FaLock style={{ color: "#8FA89F" }} />
+          <div className="flex items-center gap-2 rounded-xl px-3" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <FaLock style={{ color: "#90A9A8" }} />
             <input
               type="password"
               placeholder={isSignup ? "비밀번호 (6자 이상)" : "비밀번호"}
@@ -189,7 +189,7 @@ export default function Login() {
         </form>
 
         {/* 하단 전환 안내 */}
-        <p className="text-center text-sm mt-5" style={{ color: "#8FA89F" }}>
+        <p className="text-center text-sm mt-5" style={{ color: "#90A9A8" }}>
           {isSignup ? "이미 계정이 있으신가요? " : "아직 회원이 아니신가요? "}
           <button
             onClick={() => switchMode(isSignup ? "login" : "signup")}

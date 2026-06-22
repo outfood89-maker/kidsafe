@@ -6,6 +6,8 @@ import WordMatch from "../components/games/WordMatch";
 import PuzzleGame from "../components/games/PuzzleGame";
 import MemoryGame from "../components/games/MemoryGame";
 import KiddyImg from "../components/KiddyImg";
+import BottomTabBar from "../components/BottomTabBar";
+import ChatWidget from "../components/ChatWidget";
 import { getGameBonus, saveGameBonus } from "../utils/api";
 
 // 듀오링고 스타일 애니메이션 주입
@@ -99,6 +101,7 @@ export default function MiniGame() {
   const [maxBonus, setMaxBonus] = useState(20);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [bonusMessage, setBonusMessage] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
@@ -231,24 +234,24 @@ export default function MiniGame() {
 
   // 허브 화면
   return (
-    <div className="min-h-screen pb-28" style={{ backgroundColor: "#fff" }}>
+    <div className="min-h-screen pb-28" style={{ backgroundColor: "#0A1E1E" }}>
 
       {/* 헤더 */}
       <div
         className="flex items-center justify-between px-4 sticky top-0 z-10"
-        style={{ backgroundColor: "#fff", borderBottom: "2px solid #E5E5E5", height: "56px" }}
+        style={{ backgroundColor: "#0E2A2A", borderBottom: "1px solid rgba(255,255,255,0.08)", height: "56px" }}
       >
-        <button onClick={() => navigate("/kids")} style={{ color: "#AFAFAF" }}>
+        <button onClick={() => navigate("/kids")} style={{ color: "#90A9A8" }}>
           <FaArrowLeft style={{ fontSize: "18px" }} />
         </button>
-        <span className="text-base font-extrabold" style={{ color: "#3C3C3C" }}>
+        <span className="text-base font-extrabold" style={{ color: "#EAF5F1" }}>
           미니게임
         </span>
         {/* 스트릭 */}
         <div className="flex items-center gap-1 rounded-full px-3 py-1.5"
-          style={{ backgroundColor: "#FFF0D6" }}>
-          <FaFire style={{ color: "#FF9600", fontSize: "14px" }} />
-          <span className="text-sm font-extrabold" style={{ color: "#FF9600" }}>
+          style={{ backgroundColor: "#3A2F14" }}>
+          <FaFire style={{ color: "#F5B829", fontSize: "14px" }} />
+          <span className="text-sm font-extrabold" style={{ color: "#F5B829" }}>
             {todayBonus >= maxBonus ? "오늘 완료!" : "도전 중"}
           </span>
         </div>
@@ -259,12 +262,12 @@ export default function MiniGame() {
         <div className="duo-pop">
           <KiddyImg pose={todayBonus >= maxBonus ? "success" : "hello"} size={100} bg="transparent" />
         </div>
-        <p className="mt-3 text-xl font-extrabold text-center" style={{ color: "#3C3C3C" }}>
+        <p className="mt-3 text-xl font-extrabold text-center" style={{ color: "#EAF5F1" }}>
           {todayBonus >= maxBonus
             ? "오늘 최대 보너스 달성! 🎉"
             : `${profile?.name || "친구"}야, 퀴즈 도전해볼까?`}
         </p>
-        <p className="mt-1 text-sm text-center" style={{ color: "#AFAFAF" }}>
+        <p className="mt-1 text-sm text-center" style={{ color: "#90A9A8" }}>
           {todayBonus >= maxBonus
             ? "게임은 계속 즐길 수 있어요 😊"
             : "맞힐수록 영상 시간이 늘어나요!"}
@@ -274,12 +277,12 @@ export default function MiniGame() {
       {/* 보너스 진행 바 — 듀오링고 XP 바 스타일 */}
       <div className="px-5 py-4">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-xs font-bold" style={{ color: "#AFAFAF" }}>오늘 보너스</span>
-          <span className="text-xs font-extrabold" style={{ color: "#58CC02" }}>
+          <span className="text-xs font-bold" style={{ color: "#90A9A8" }}>오늘 보너스</span>
+          <span className="text-xs font-extrabold" style={{ color: "#5FE0BC" }}>
             {todayBonus}분 / {maxBonus}분
           </span>
         </div>
-        <div className="w-full rounded-full overflow-hidden" style={{ backgroundColor: "#E5E5E5", height: "16px" }}>
+        <div className="w-full rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)", height: "16px" }}>
           <div
             className="rounded-full transition-all duration-700 flex items-center justify-end pr-2"
             style={{
@@ -295,9 +298,9 @@ export default function MiniGame() {
         <div className="flex gap-1 mt-2 justify-center">
           {[3, 7].map((v) => (
             <div key={v} className="flex items-center gap-1 rounded-full px-2 py-0.5"
-              style={{ backgroundColor: "#F7F7F7", border: "1px solid #E5E5E5" }}>
+              style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)" }}>
               <FaStar style={{ color: "#FFD700", fontSize: "10px" }} />
-              <span className="text-xs font-bold" style={{ color: "#3C3C3C" }}>+{v}분</span>
+              <span className="text-xs font-bold" style={{ color: "#EAF5F1" }}>+{v}분</span>
             </div>
           ))}
         </div>
@@ -307,21 +310,21 @@ export default function MiniGame() {
       {bonusMessage && (
         <div className="duo-pop mx-5 mb-4 rounded-2xl px-5 py-4 text-center"
           style={{
-            backgroundColor: bonusMessage.earned > 0 ? "#F0FBE8" : "#FFF0F0",
-            border: `2px solid ${bonusMessage.earned > 0 ? "#58CC02" : "#FF4B4B"}`,
+            backgroundColor: bonusMessage.earned > 0 ? "rgba(88,204,2,0.12)" : "rgba(242,101,92,0.12)",
+            border: `1.5px solid ${bonusMessage.earned > 0 ? "#58CC02" : "#F2655C"}`,
           }}
         >
           <p className="font-extrabold text-base"
-            style={{ color: bonusMessage.earned > 0 ? "#58CC02" : "#FF4B4B" }}>
+            style={{ color: bonusMessage.earned > 0 ? "#5FE0BC" : "#F2655C" }}>
             {bonusMessage.earned > 0
               ? `🎉 +${bonusMessage.earned}분 획득했어요!`
               : "아쉽지만 오늘 보너스는 이미 받았어요!"}
           </p>
-          <p className="text-sm mt-0.5" style={{ color: "#AFAFAF" }}>
+          <p className="text-sm mt-0.5" style={{ color: "#90A9A8" }}>
             {bonusMessage.earned > 0 ? "게임은 계속 즐길 수 있어요 😊" : "그래도 게임은 계속 즐길 수 있어요!"}
           </p>
           <button onClick={() => setBonusMessage(null)}
-            className="mt-2 text-xs font-bold underline" style={{ color: "#AFAFAF" }}>
+            className="mt-2 text-xs font-bold underline" style={{ color: "#90A9A8" }}>
             닫기
           </button>
         </div>
@@ -329,7 +332,7 @@ export default function MiniGame() {
 
       {/* 게임 카드 목록 */}
       <div className="px-5 flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#AFAFAF" }}>
+        <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#90A9A8" }}>
           게임 선택
         </p>
         {GAMES.map((game, idx) => (
@@ -392,16 +395,16 @@ export default function MiniGame() {
       </div>
 
       {/* 하단 보상 안내 */}
-      <div className="mx-5 mt-5 rounded-2xl overflow-hidden" style={{ border: "2px solid #E5E5E5" }}>
-        <div className="px-4 py-3" style={{ backgroundColor: "#F7F7F7" }}>
-          <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#AFAFAF" }}>
+      <div className="mx-5 mt-5 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)", backgroundColor: "#0E2A2A" }}>
+        <div className="px-4 py-3" style={{ backgroundColor: "#163635" }}>
+          <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#90A9A8" }}>
             🏆 보상 기준
           </p>
         </div>
-        <div style={{ borderTop: "2px solid #E5E5E5" }}>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           {/* OX 퀴즈 */}
-          <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #F0F0F0" }}>
-            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#AFAFAF" }}>🧠 OX 퀴즈 (10문제)</p>
+          <div className="px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#90A9A8" }}>🧠 OX 퀴즈 (10문제)</p>
             <div className="flex gap-3">
               <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#F0FBE8" }}>
                 <p className="text-sm font-extrabold" style={{ color: "#58CC02" }}>+3분</p>
@@ -411,7 +414,7 @@ export default function MiniGame() {
           </div>
           {/* 단어 맞추기 */}
           <div className="px-4 py-2.5">
-            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#AFAFAF" }}>🔤 단어 맞추기 (10문제)</p>
+            <p className="text-xs font-extrabold mb-1.5" style={{ color: "#90A9A8" }}>🔤 단어 맞추기 (10문제)</p>
             <div className="flex gap-3">
               <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFF8ED" }}>
                 <p className="text-sm font-extrabold" style={{ color: "#FF9600" }}>+3분</p>
@@ -424,6 +427,14 @@ export default function MiniGame() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 키디 챗 (탭바에서 열림) */}
+      {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
+
+      {/* 하단 탭바 — 모바일 (게임 플레이 화면은 전체화면이라 미표시) */}
+      <div className="md:hidden">
+        <BottomTabBar activeTab="games" chatOpen={chatOpen} onChatToggle={() => setChatOpen((p) => !p)} />
       </div>
 
     </div>

@@ -103,7 +103,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
         bottom: `${70 + keyboardOffset}px`,
         height: `calc(85vh - ${140 + keyboardOffset}px)`,
         borderRadius: "24px",
-        backgroundColor: "#0F2A24",
+        backgroundColor: "#0E2A2A",
         border: "1px solid rgba(255,255,255,0.1)",
         boxShadow: "0 16px 50px rgba(0,0,0,0.5)",
         transform: visible ? "translateY(0)" : "translateY(110%)",
@@ -129,7 +129,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" style={{ backgroundColor: "#0B1F1B", overscrollBehavior: "contain" }}>
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" style={{ backgroundColor: "#0A1E1E", overscrollBehavior: "contain" }}>
         {chatMessages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
             {msg.role === "assistant" && (
@@ -141,7 +141,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
               className="max-w-[75%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed"
               style={msg.role === "user"
                 ? { backgroundColor: "#18C49A", color: "white", borderBottomRightRadius: "4px" }
-                : { backgroundColor: "#16352E", color: "#EAF5F1", borderBottomLeftRadius: "4px", border: "1px solid rgba(255,255,255,0.08)" }
+                : { backgroundColor: "#163635", color: "#EAF5F1", borderBottomLeftRadius: "4px", border: "1px solid rgba(255,255,255,0.08)" }
               }
             >
               {msg.content}
@@ -153,7 +153,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
             <div className="shrink-0 rounded-full overflow-hidden" style={{ width: "34px", height: "34px", backgroundColor: "#EAF7F1" }}>
               <img src="/images/kiddy_chat.png" alt="키디" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "47% center", transform: "scale(1.2) translateY(18%)", transformOrigin: "center center" }} />
             </div>
-            <div className="rounded-2xl rounded-bl-sm px-4 py-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-2xl rounded-bl-sm px-4 py-3" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex gap-1 items-center">
                 <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#18C49A", animationDelay: "0ms" }} />
                 <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: "#18C49A", animationDelay: "150ms" }} />
@@ -167,7 +167,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
 
       {/* 빠른 질문 */}
       {chatMessages.length <= 1 && (
-        <div className="flex flex-col gap-1.5 px-3 py-2.5" style={{ backgroundColor: "#0B1F1B", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex flex-col gap-1.5 px-3 py-2.5" style={{ backgroundColor: "#0A1E1E", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <p className="text-xs font-bold" style={{ color: "#5FE0BC" }}>👇 눌러서 바로 물어봐!</p>
           {[
             { label: "🎬 재미있는 영상 키워드 추천해줘!", text: "재미있는 영상 키워드 추천해줘!" },
@@ -178,7 +178,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
               key={q.text}
               onClick={() => sendMessage(q.text)}
               className="w-full rounded-[10px] px-3 py-2 text-left text-xs transition"
-              style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)", color: "#EAF5F1" }}
+              style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.1)", color: "#EAF5F1" }}
             >
               {q.label}
             </button>
@@ -187,7 +187,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
       )}
 
       {/* 입력창 */}
-      <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: "#0F2A24", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: "#0E2A2A", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <input
           ref={inputRef}
           type="text"
@@ -196,7 +196,7 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
           onKeyDown={(e) => e.key === "Enter" && sendMessage(chatInput)}
           placeholder="키디한테 물어봐!"
           className="flex-1 rounded-[10px] px-3 py-2 outline-none transition placeholder:text-white/35"
-          style={{ fontSize: "16px", border: "2px solid rgba(255,255,255,0.12)", color: "#EAF5F1", backgroundColor: "#16352E" }}
+          style={{ fontSize: "16px", border: "2px solid rgba(255,255,255,0.12)", color: "#EAF5F1", backgroundColor: "#163635" }}
         />
         <button
           onClick={() => sendMessage(chatInput)}

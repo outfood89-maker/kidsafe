@@ -299,21 +299,21 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   if (timeLimitReached) {
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
-        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
           <div className="relative inline-block">
             <KiddyImg pose="help" size={160} />
             <div className="absolute" style={{ top: "-12px", right: "-72px" }}>
               <div className="relative rounded-2xl px-3 py-2 text-sm font-bold"
-                style={{ backgroundColor: "#16352E", border: "2px solid rgba(255,255,255,0.12)", color: "#EAF5F1", boxShadow: "0 2px 8px rgba(0,0,0,0.3)", width: "88px", wordBreak: "keep-all" }}>
+                style={{ backgroundColor: "#163635", border: "2px solid rgba(255,255,255,0.12)", color: "#EAF5F1", boxShadow: "0 2px 8px rgba(0,0,0,0.3)", width: "88px", wordBreak: "keep-all" }}>
                 오늘 시청 시간이 끝났어! 영상 재미있었어? 😄
                 <div className="absolute" style={{ bottom: "-9px", left: "14px", width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid rgba(255,255,255,0.12)" }} />
-                <div className="absolute" style={{ bottom: "-6px", left: "16px", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #16352E" }} />
+                <div className="absolute" style={{ bottom: "-6px", left: "16px", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #163635" }} />
               </div>
             </div>
           </div>
           <p className="mt-6 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>오늘 시청 시간이 끝났어요!</p>
           <p className="mt-3 text-base font-medium" style={{ color: "#F2655C" }}>오늘 {usedMinutes}분을 다 봤어요 ⏰</p>
-          <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
+          <p className="mt-1 text-sm" style={{ color: "#90A9A8" }}>
             부모님이 설정한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
           </p>
           <button
@@ -326,7 +326,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
           <button onClick={handleKiddyChat} className="mt-3 w-full rounded-2xl py-3 text-sm font-bold" style={{ backgroundColor: "#163A2E", color: "#3FE08A" }}>
             💬 키디에게 소감 말해보자~!
           </button>
-          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#16352E", color: "#8FA89F" }}>
+          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#163635", color: "#90A9A8" }}>
             확인
           </button>
         </div>
@@ -357,9 +357,9 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       { label: "비상업성", score: nextResult.commercialism },
     ].filter((i) => i.score !== undefined) : [];
     const renderBar = (item) => (
-      <div key={item.label} className="rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div key={item.label} className="rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[11px] font-medium" style={{ color: "#8FA89F" }}>{item.label}</span>
+          <span className="text-[11px] font-medium" style={{ color: "#90A9A8" }}>{item.label}</span>
           <span className="text-[11px] font-bold" style={{ color: "#EAF5F1" }}>{item.score}</span>
         </div>
         <div className="h-1 w-full rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
@@ -369,7 +369,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
     );
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
-        <div className="flex flex-col w-full max-w-sm py-6 px-6" style={{ borderRadius: "28px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" }}>
+        <div className="flex flex-col w-full max-w-sm py-6 px-6" style={{ borderRadius: "28px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" }}>
           <p className="text-xs font-bold mb-3" style={{ color: "#5FE0BC" }}>
             {nextStage === "analyzing" ? "🔍 다음 영상 검수 중..."
               : nextStage === "scored" ? "✅ 검수 완료 — 안전해요!"
@@ -394,7 +394,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold leading-snug" style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{nextVideo.title}</p>
-              <p className="mt-1 text-xs" style={{ color: "#8FA89F" }}>{nextVideo.channelTitle}</p>
+              <p className="mt-1 text-xs" style={{ color: "#90A9A8" }}>{nextVideo.channelTitle}</p>
             </div>
           </div>
 
@@ -404,23 +404,23 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
               <button onClick={startNextInspection} className="w-full rounded-2xl py-3.5 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>
                 🔍 다음 영상 검수 후 보기
               </button>
-              <p className="text-center text-xs mt-2" style={{ color: "#8FA89F" }}>
+              <p className="text-center text-xs mt-2" style={{ color: "#90A9A8" }}>
                 <span className="font-black" style={{ color: "#5FE0BC" }}>{countdown}</span>초 후 자동으로 검수해요
               </p>
             </>
           )}
 
           {nextStage === "analyzing" && (
-            <p className="text-center text-sm py-2" style={{ color: "#8FA89F" }}>AI가 다음 영상을 검수하고 있어요...</p>
+            <p className="text-center text-sm py-2" style={{ color: "#90A9A8" }}>AI가 다음 영상을 검수하고 있어요...</p>
           )}
 
           {/* scored — 검수 결과 그래프(7개 카테고리) 보여준 뒤 5초 후 자동재생 */}
           {nextStage === "scored" && (
             <>
-              <p className="text-center text-xs font-bold mb-1" style={{ color: "#8FA89F" }}>안전 종합 점수</p>
+              <p className="text-center text-xs font-bold mb-1" style={{ color: "#90A9A8" }}>안전 종합 점수</p>
               <div className="flex items-center justify-center gap-1.5 mb-3">
                 <span className="text-3xl font-black" style={{ color: getBarColor(score) }}>{score}</span>
-                <span className="text-sm font-bold" style={{ color: "#8FA89F" }}>점 · {getSafetyLabel(score)}</span>
+                <span className="text-sm font-bold" style={{ color: "#90A9A8" }}>점 · {getSafetyLabel(score)}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5 mb-2.5">
                 {safetyItems.map(renderBar)}
@@ -433,7 +433,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
                   </div>
                 </>
               )}
-              <p className="text-center text-sm" style={{ color: "#8FA89F" }}>
+              <p className="text-center text-sm" style={{ color: "#90A9A8" }}>
                 <span className="text-2xl font-black" style={{ color: "#3FE08A" }}>{countdown}</span>초 후 재생돼요
               </p>
             </>
@@ -445,7 +445,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
             </div>
           )}
 
-          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#16352E", color: "#8FA89F" }}>
+          <button onClick={() => requestClose()} className="mt-2 w-full rounded-2xl py-3 text-sm font-medium" style={{ backgroundColor: "#163635", color: "#90A9A8" }}>
             그만 볼래요 (목록으로)
           </button>
         </div>
@@ -459,10 +459,10 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   if (videoEnded) {
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
-        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+        <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
           <KiddyImg pose="success" size={140} />
           <p className="mt-5 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>다 봤어! 재미있었어? 🎉</p>
-          <p className="mt-2 text-sm" style={{ color: "#8FA89F" }}>총 {formatTime(watchSeconds)} 시청했어요</p>
+          <p className="mt-2 text-sm" style={{ color: "#90A9A8" }}>총 {formatTime(watchSeconds)} 시청했어요</p>
           <button
             onClick={handleKiddyChat}
             className="mt-6 w-full rounded-2xl py-3.5 text-base font-bold"
@@ -473,7 +473,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
           <button
             onClick={() => requestClose()}
             className="mt-2 w-full rounded-2xl py-3 text-sm font-medium"
-            style={{ backgroundColor: "#16352E", color: "#8FA89F" }}
+            style={{ backgroundColor: "#163635", color: "#90A9A8" }}
           >
             목록으로 돌아가기
           </button>

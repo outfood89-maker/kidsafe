@@ -17,7 +17,7 @@ export default function BottomTabBar({ activeTab = "home", chatOpen = false, onC
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-40 flex"
-      style={{ backgroundColor: "#0F2A24", borderTop: "1px solid rgba(255,255,255,0.08)" }}
+      style={{ backgroundColor: "#0E2A2A", borderTop: "1px solid rgba(255,255,255,0.08)" }}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab || (tab.id === "chat" && chatOpen);

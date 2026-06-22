@@ -138,10 +138,10 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
         key={item.label}
         onClick={hasNote ? () => setExpandedNote(isOpen ? null : item.catKey) : undefined}
         className="rounded-xl px-3 py-2"
-        style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)", cursor: hasNote ? "pointer" : "default" }}
+        style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)", cursor: hasNote ? "pointer" : "default" }}
       >
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#8FA89F" }}>
+          <span className="text-xs font-medium flex items-center gap-1" style={{ color: "#90A9A8" }}>
             {item.icon} {item.label}
             {hasNote && (
               <FaInfoCircle style={{ fontSize: "10px", color: isOpen ? "#F5B829" : "#6B8378" }} />
@@ -191,7 +191,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
         className="relative w-full sm:max-w-lg sm:rounded-3xl overflow-hidden"
         style={{
           borderRadius: "24px 24px 0 0",
-          backgroundColor: "#0F2A24",
+          backgroundColor: "#0E2A2A",
           border: "1px solid rgba(255,255,255,0.08)",
           maxHeight: "92vh",
           overflowY: "auto",
@@ -248,7 +248,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
               </span>
             ) : (
               <span className="rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: "#16352E", color: "#8FA89F" }}>
+                style={{ backgroundColor: "#163635", color: "#90A9A8" }}>
                 간이 분석
               </span>
             )}
@@ -273,7 +273,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
 
           {/* 안전도 점수 — 안전 5개(총점 반영) */}
           <div>
-            <p className="text-xs font-bold mb-2" style={{ color: "#8FA89F" }}>🛡️ 안전 종합 · 이 5개 평균이 총점이에요</p>
+            <p className="text-xs font-bold mb-2" style={{ color: "#90A9A8" }}>🛡️ 안전 종합 · 이 5개 평균이 총점이에요</p>
             <div className="grid grid-cols-2 gap-2">
               {scoreItems.filter((i) => !i.isInfo).map(renderScoreCard)}
             </div>
@@ -296,7 +296,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                 <button
                   onClick={() => setFeedbackOpen(true)}
                   className="w-full text-xs font-medium py-2 rounded-xl"
-                  style={{ color: "#8FA89F", backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{ color: "#90A9A8", backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}
                 >
                   🤔 이 점수가 이상한 것 같아요
                 </button>
@@ -305,7 +305,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                   ✅ 신고가 접수됐어요. 검토 후 반영할게요!
                 </div>
               ) : (
-                <div className="rounded-xl p-3" style={{ backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="rounded-xl p-3" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="text-xs font-semibold mb-2" style={{ color: "#EAF5F1" }}>어떤 점수가 이상한가요?</p>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {[
@@ -322,8 +322,8 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                         onClick={() => setFeedbackCategory(key)}
                         className="rounded-full px-3 py-1 text-xs font-medium"
                         style={{
-                          backgroundColor: feedbackCategory === key ? "#18C49A" : "#0F2A24",
-                          color: feedbackCategory === key ? "#08160F" : "#8FA89F",
+                          backgroundColor: feedbackCategory === key ? "#18C49A" : "#0E2A2A",
+                          color: feedbackCategory === key ? "#08160F" : "#90A9A8",
                           border: feedbackCategory === key ? "none" : "1px solid rgba(255,255,255,0.12)",
                         }}
                       >
@@ -337,13 +337,13 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                     onChange={(e) => setFeedbackReason(e.target.value)}
                     rows={2}
                     className="w-full text-xs rounded-lg p-2 resize-none outline-none placeholder:text-white/30"
-                    style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#EAF5F1", backgroundColor: "#0F2A24" }}
+                    style={{ border: "1px solid rgba(255,255,255,0.12)", color: "#EAF5F1", backgroundColor: "#0E2A2A" }}
                   />
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => setFeedbackOpen(false)}
                       className="flex-1 rounded-lg py-1.5 text-xs font-medium"
-                      style={{ backgroundColor: "#0F2A24", color: "#8FA89F", border: "1px solid rgba(255,255,255,0.12)" }}
+                      style={{ backgroundColor: "#0E2A2A", color: "#90A9A8", border: "1px solid rgba(255,255,255,0.12)" }}
                     >
                       취소
                     </button>
@@ -372,7 +372,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
           ) : isPending ? (
             <div
               className="w-full rounded-2xl py-3.5 text-base font-bold text-center"
-              style={{ backgroundColor: "#16352E", color: "#8FA89F", border: "1.5px solid rgba(255,255,255,0.1)" }}
+              style={{ backgroundColor: "#163635", color: "#90A9A8", border: "1.5px solid rgba(255,255,255,0.1)" }}
             >
               🔍 AI 분석 완료 후 시청 가능해요
             </div>

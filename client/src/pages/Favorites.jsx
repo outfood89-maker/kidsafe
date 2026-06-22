@@ -95,7 +95,7 @@ export default function Favorites() {
       <div
         onClick={() => handleCardClick(fav)}
         className="cursor-pointer overflow-hidden rounded-3xl transition duration-300 hover:-translate-y-2"
-        style={{ backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}
+        style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}
       >
         <div className="relative h-48 overflow-hidden">
           {fav.thumbnail ? (
@@ -143,20 +143,20 @@ export default function Favorites() {
   };
 
   return (
-    <div className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: "#0B1F1B" }}>
+    <div className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: "#0A1E1E" }}>
       <NavBar backTo="/kids" backLabel="홈으로" title="내 찜 목록" />
 
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
 
         {/* 헤더 */}
         <section className="flex flex-col items-center text-center mb-12">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 28px rgba(0,0,0,0.4)" }}>
+          <div className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 28px rgba(0,0,0,0.4)" }}>
             <FaHeart className="text-4xl" style={{ color: "#F2655C" }} />
           </div>
           <h1 className="mt-6 text-3xl md:text-4xl font-extrabold" style={{ color: "#EAF5F1" }}>
             {selectedProfile ? `${selectedProfile.name}의 찜 목록` : "내 찜 목록"}
           </h1>
-          <p className="mt-2 text-base" style={{ color: "#8FA89F" }}>
+          <p className="mt-2 text-base" style={{ color: "#90A9A8" }}>
             {favorites.length > 0 ? `총 ${favorites.length}개의 콘텐츠를 찜했어요!` : "아직 찜한 콘텐츠가 없어요."}
           </p>
         </section>
@@ -172,7 +172,7 @@ export default function Favorites() {
           <div className="flex flex-col items-center gap-4 py-20 text-center">
             <p className="text-6xl">💔</p>
             <p className="text-xl font-extrabold" style={{ color: "#EAF5F1" }}>아직 찜한 콘텐츠가 없어요</p>
-            <p className="text-base" style={{ color: "#8FA89F" }}>영상이나 재생목록의 하트를 눌러 찜해보세요!</p>
+            <p className="text-base" style={{ color: "#90A9A8" }}>영상이나 재생목록의 하트를 눌러 찜해보세요!</p>
           </div>
         )}
 

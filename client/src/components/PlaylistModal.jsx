@@ -43,7 +43,7 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
         className="relative w-full sm:max-w-lg sm:rounded-3xl overflow-hidden"
         style={{
           borderRadius: "24px 24px 0 0",
-          backgroundColor: "#0F2A24",
+          backgroundColor: "#0E2A2A",
           border: "1px solid rgba(255,255,255,0.08)",
           maxHeight: "88vh",
           display: "flex",
@@ -103,11 +103,11 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
           )}
 
           {!loading && error && (
-            <p className="text-center text-sm py-10" style={{ color: "#8FA89F" }}>{error}</p>
+            <p className="text-center text-sm py-10" style={{ color: "#90A9A8" }}>{error}</p>
           )}
 
           {!loading && !error && videos.length === 0 && (
-            <p className="text-center text-sm py-10" style={{ color: "#8FA89F" }}>영상이 없어요.</p>
+            <p className="text-center text-sm py-10" style={{ color: "#90A9A8" }}>영상이 없어요.</p>
           )}
 
           {!loading && videos.map((video, idx) => {
@@ -118,7 +118,7 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
                 onClick={() => handleVideoClick(video)}
                 className="flex gap-3 cursor-pointer rounded-2xl p-2 transition"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#16352E"}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#163635"}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ""}
               >
                 {/* 썸네일 */}
@@ -156,7 +156,7 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
                   >
                     {video.title}
                   </p>
-                  <p className="mt-1 text-xs" style={{ color: "#8FA89F" }}>{video.channelTitle}</p>
+                  <p className="mt-1 text-xs" style={{ color: "#90A9A8" }}>{video.channelTitle}</p>
                 </div>
               </div>
             );

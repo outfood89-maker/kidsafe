@@ -35,13 +35,13 @@ body, #root {
   --color-ks-accent-coral: #F2655C;
 
   /* 다크 베이스 — 순검정 아님, 딥 틸-그린 (브랜드 정체성) */
-  --color-ks-base:      #0B1F1B;  /* 최하단 배경 */
-  --color-ks-surface:   #0F2A24;  /* 카드/본문 영역 */
-  --color-ks-surface-2: #16352E;  /* 칩·보더·올라온 면 */
+  --color-ks-base:      #0A1E1E;  /* 최하단 배경 */
+  --color-ks-surface:   #0E2A2A;  /* 카드/본문 영역 */
+  --color-ks-surface-2: #163635;  /* 칩·보더·올라온 면 */
 
   /* 텍스트 (다크 위) */
   --color-ks-ink:     #EAF5F1;    /* 본문 */
-  --color-ks-ink-sub: #8FA89F;    /* 보조 (투명도 대신 불투명값) */
+  --color-ks-ink-sub: #90A9A8;    /* 보조 (투명도 대신 불투명값) */
 
   /* 상태색 (다크 톤에 맞춰 채도 조정) */
   --color-ks-danger:  #F2655C;
