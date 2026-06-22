@@ -498,8 +498,8 @@ export default function KidHome() {
       <>
       {/* ─ 모바일: 유튜브식 풀폭 세로 카드 (listOnMobile일 때만) ─ */}
       <div
-        className={`${listOnMobile ? "block lg:hidden" : "hidden"} bg-white overflow-hidden`}
-        style={{ borderRadius: "16px", border: "0.5px solid #E4EAE0" }}
+        className={`${listOnMobile ? "block lg:hidden" : "hidden"} overflow-hidden`}
+        style={{ borderRadius: "16px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)" }}
       >
         {/* 큰 썸네일 (16:9) */}
         <div
@@ -538,13 +538,13 @@ export default function KidHome() {
           <div className="flex-1 min-w-0">
             <h3
               className="text-sm font-semibold cursor-pointer mb-1"
-              style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}
+              style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}
               onClick={() => setSelectedVideo(video)}
             >
               {video.title}
             </h3>
             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-              <span className="text-xs font-medium truncate" style={{ color: "#6B7A65", maxWidth: "100%" }}>
+              <span className="text-xs font-medium truncate" style={{ color: "#8FA89F", maxWidth: "100%" }}>
                 {video.channelTitle}
               </span>
               {/* 채널 신뢰 — YouTube 공식 아동용 인증 */}
@@ -561,8 +561,8 @@ export default function KidHome() {
             onClick={(e) => { e.stopPropagation(); toggleFavorite(video, "video"); }}
             className="shrink-0 self-start rounded-full transition-all active:scale-110 flex items-center justify-center"
             style={{
-              backgroundColor: isFavorited ? "#C84B47" : "#F8F7F2",
-              color: isFavorited ? "#fff" : "#C84B47",
+              backgroundColor: isFavorited ? "#F2655C" : "#16352E",
+              color: isFavorited ? "#fff" : "#F2655C",
               width: "34px", height: "34px",
             }}
           >
@@ -573,8 +573,8 @@ export default function KidHome() {
 
       {/* ─ 세로형 카드 (기존) — 데스크톱 + 캐러셀 ─ */}
       <div
-        className={`${listOnMobile ? "hidden lg:block" : "block"} overflow-hidden bg-white transition duration-200 hover:-translate-y-0.5`}
-        style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+        className={`${listOnMobile ? "hidden lg:block" : "block"} overflow-hidden transition duration-200 hover:-translate-y-1`}
+        style={{ borderRadius: "14px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)" }}
       >
         {/* 썸네일 */}
         <div
@@ -629,7 +629,7 @@ export default function KidHome() {
         {/* 텍스트 */}
         <div className="p-3.5">
           <div className="flex items-center gap-1.5 mb-1">
-            <p className="text-xs font-medium truncate" style={{ color: "#6DAB60" }}>
+            <p className="text-xs font-bold truncate" style={{ color: "#5FE0BC" }}>
               {video.channelTitle}
             </p>
             {video.educational >= 80 && (
@@ -637,15 +637,15 @@ export default function KidHome() {
             )}
           </div>
           <h3
-            className="text-sm font-medium cursor-pointer mb-1.5"
-            style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            className="text-sm font-bold cursor-pointer mb-1.5"
+            style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             onClick={() => setSelectedVideo(video)}
           >
             {video.title}
           </h3>
           <p
             className="text-xs"
-            style={{ color: "#6B7A65", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            style={{ color: "#8FA89F", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
           >
             {video.summary}
           </p>
@@ -662,13 +662,13 @@ export default function KidHome() {
     return (
       <div
         onClick={() => setSelectedPlaylist(playlist)}
-        className="cursor-pointer bg-white transition duration-200 hover:-translate-y-0.5"
-        style={{ width: "280px", flexShrink: 0, borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+        className="cursor-pointer transition duration-200 hover:-translate-y-1"
+        style={{ width: "280px", flexShrink: 0, borderRadius: "14px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)" }}
       >
         {/* 썸네일 */}
         <div
           className="relative rounded-t-[14px] overflow-hidden"
-          style={{ width: "280px", height: "175px", backgroundColor: "#F0F5ED" }}
+          style={{ width: "280px", height: "175px", backgroundColor: "#16352E" }}
         >
           {thumbs.length > 0 ? (
             <>
@@ -716,12 +716,12 @@ export default function KidHome() {
         </div>
         {/* 텍스트 */}
         <div className="p-3.5 overflow-hidden" style={{ width: "280px", boxSizing: "border-box" }}>
-          <p className="text-xs font-medium truncate mb-1" style={{ color: "#6DAB60" }}>
+          <p className="text-xs font-bold truncate mb-1" style={{ color: "#5FE0BC" }}>
             {playlist.channelTitle}
           </p>
           <h3
-            className="text-sm font-medium"
-            style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word", maxWidth: "248px" }}
+            className="text-sm font-bold"
+            style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word", maxWidth: "248px" }}
           >
             {playlist.title}
           </h3>
@@ -731,14 +731,14 @@ export default function KidHome() {
   };
 
   return (
-    <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#F8F7F2" }}>
+    <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#0B1F1B" }}>
 
 
 
       {/* 커스텀 NavBar */}
       <header
-        className="sticky top-0 z-50 bg-white"
-        style={{ borderBottom: "0.5px solid #E4EAE0" }}
+        className="sticky top-0 z-50"
+        style={{ backgroundColor: "#0F2A24", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           {/* 로고 + 로그아웃 */}
@@ -746,11 +746,11 @@ export default function KidHome() {
             <div className="flex items-center gap-1.5">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-                style={{ backgroundColor: "#6DAB60" }}
+                style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 4px 14px rgba(20,184,196,0.35)" }}
               >
                 <FaShieldAlt className="text-white text-sm" />
               </div>
-              <span className="text-sm font-medium" style={{ color: "#2C3528" }}>KidSafe</span>
+              <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
             </div>
             <button
               onClick={() => {
@@ -759,10 +759,10 @@ export default function KidHome() {
   localStorage.removeItem("selectedProfile");
   navigate("/");
 }}
-              className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-semibold transition"
-              style={{ backgroundColor: "#F0F5ED", color: "#2C3528", border: "1.5px solid #6DAB60" }}
+              className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
+              style={{ backgroundColor: "#16352E", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
             >
-              <FaSignOutAlt style={{ color: "#6DAB60" }} />
+              <FaSignOutAlt style={{ color: "#18C49A" }} />
               나가기
             </button>
           </div>
@@ -772,8 +772,8 @@ export default function KidHome() {
             {earnedBadges.length > 0 && (
               <button
                 onClick={() => navigate("/badges")}
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold"
-                style={{ backgroundColor: "#6DAB60", color: "#ffffff" }}
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}
               >
                 <FaMedal />
                 {earnedBadges.length}/{21}
@@ -783,7 +783,7 @@ export default function KidHome() {
               <button
                 onClick={() => navigate("/profiles")}
                 className="overflow-hidden rounded-full"
-                style={{ width: "36px", height: "36px", border: "2.5px solid #6DAB60" }}
+                style={{ width: "36px", height: "36px", border: "2.5px solid #18C49A" }}
               >
                 <img
                   src={getAvatarUrl(selectedProfile)}
@@ -791,8 +791,8 @@ export default function KidHome() {
                   style={{
                     width: "100%", height: "100%",
                     objectFit: "cover",
-                    objectPosition: `${AVATAR_OFFSET_X[selectedProfile?.avatarId] ?? "center"} 0%`,
-                    transform: "scale(1.35) translateY(5%)",
+                    objectPosition: "center top",
+                    transform: "scale(1.04)",
                     transformOrigin: "center top",
                   }}
                 />
@@ -801,7 +801,7 @@ export default function KidHome() {
               <button
                 onClick={() => navigate("/profiles")}
                 className="flex items-center justify-center rounded-full text-sm"
-                style={{ width: "32px", height: "32px", backgroundColor: "#F0F5ED", color: "#6DAB60" }}
+                style={{ width: "32px", height: "32px", backgroundColor: "#16352E", color: "#18C49A" }}
               >
                 <FaRobot />
               </button>
@@ -973,17 +973,19 @@ export default function KidHome() {
               const usedPct = tl ? Math.min(100, Math.max(0, (effectiveUsedSec / tlSec) * 100)) : 0;
               const remainingLabel = remainingSec != null ? formatMMSS(remainingSec) : null;
               const usedMinLabel = Math.max(0, Math.floor(effectiveUsedSec / 60));
-              const timerColor = timeLimitReached ? "#C84B47" : remainingSec !== null && remainingSec / tlSec <= 0.2 ? "#E8900A" : "#6DAB60";
+              const timerColor = timeLimitReached ? "#F2655C" : remainingSec !== null && remainingSec / tlSec <= 0.2 ? "#F5B829" : "#18C49A";
               return (
-                <div className="flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8"
-                  style={{ background: "linear-gradient(135deg, #2C3528 0%, #4a6741 100%)", borderRadius: "24px", minHeight: "220px" }}>
+                <div className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
+                  style={{ background: "linear-gradient(135deg, #0E2A23 0%, #14463C 50%, #1A9180 100%)", borderRadius: "24px", minHeight: "220px" }}>
+                  {/* 배경 글로우 */}
+                  <div className="absolute -top-10 -right-10 h-56 w-56 rounded-full opacity-25 pointer-events-none" style={{ backgroundColor: "#18C49A", filter: "blur(80px)" }} />
 
                   {/* 좌: 인사 + 검색창 */}
-                  <div className="z-10" style={{ flex: "57", minWidth: 0 }}>
-                    <p className="text-base font-bold mb-1" style={{ color: "#B8D8B2" }}>
+                  <div className="z-10 w-full md:w-auto" style={{ flex: "57", minWidth: 0 }}>
+                    <p className="text-base font-bold mb-1" style={{ color: "#5FE0BC" }}>
                       {selectedProfile ? `${selectedProfile.name}아, 안녕! 👋` : "안녕 친구야~ 👋"}
                     </p>
-                    <p className="text-2xl font-extrabold mb-5" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
+                    <p className="text-2xl font-black mb-5 tracking-tight" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
                     <div ref={searchBoxRef} className="relative">
                       <div className="flex items-center gap-2"
                         style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
@@ -992,7 +994,7 @@ export default function KidHome() {
                           onChange={(e) => setSearchKeyword(e.target.value)}
                           onFocus={() => searchHistory.length > 0 && setShowSearchHistory(true)}
                           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                          className="flex-1 bg-transparent outline-none font-semibold"
+                          className="flex-1 min-w-0 bg-transparent outline-none font-semibold"
                           style={{ color: "#fff", fontSize: "16px" }}
                         />
                         {/* 검색 결과/입력 있을 때만 X(지우기) — 누르면 홈(추천) 화면으로 복귀 */}
@@ -1019,7 +1021,7 @@ export default function KidHome() {
                         </button>
                         <button onClick={() => handleSearch()} disabled={loading}
                           className="rounded-[10px] px-4 py-2 text-sm font-bold text-white disabled:opacity-50 whitespace-nowrap shrink-0"
-                          style={{ backgroundColor: "#6DAB60" }}>검색</button>
+                          style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>검색</button>
                       </div>
                       {showSearchHistory && searchHistory.length > 0 && (
                         <div className="absolute left-0 right-0 z-20 mt-1.5 bg-white overflow-hidden" style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}>
@@ -1170,10 +1172,10 @@ export default function KidHome() {
                 <div className="flex items-center gap-2.5 mb-3">
                   <KiddyImg pose="point" size={44} />
                   <div className="min-w-0">
-                    <p className="text-base font-extrabold" style={{ color: "#2C3528" }}>
+                    <p className="text-base font-extrabold" style={{ color: "#EAF5F1" }}>
                       오늘 {selectedProfile?.name ?? "친구"}를 위한 영상 🌿
                     </p>
-                    <p className="text-xs" style={{ color: "#6B7A65" }}>키디가 안전하게 골라봤어요</p>
+                    <p className="text-xs" style={{ color: "#8FA89F" }}>키디가 안전하게 골라봤어요</p>
                   </div>
                 </div>
               )}
@@ -1186,9 +1188,9 @@ export default function KidHome() {
                       onClick={() => { setSearchKeyword(c.label); handleSearch(c.label); }}
                       className="shrink-0 rounded-full px-3.5 py-2 text-sm font-bold active:scale-95 transition"
                       style={{
-                        border: active ? "1.5px solid #6DAB60" : "1.5px solid #E4EAE0",
-                        backgroundColor: active ? "#6DAB60" : "#fff",
-                        color: active ? "#fff" : "#2C3528",
+                        border: active ? "1.5px solid #18C49A" : "1.5px solid rgba(255,255,255,0.1)",
+                        backgroundColor: active ? "#18C49A" : "#16352E",
+                        color: active ? "#fff" : "#8FA89F",
                       }}
                     >
                       {c.emoji} {c.label}
@@ -1206,11 +1208,11 @@ export default function KidHome() {
                   <section className="mb-6">
                     <div className="mb-3 flex items-center gap-2">
                       <FaStar style={{ color: "#EF9F27", fontSize: "14px" }} />
-                      <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>오늘의 추천</h2>
-                      {recommendKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{recommendKeyword}</span>}
+                      <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>오늘의 추천</h2>
+                      {recommendKeyword && <span className="text-xs" style={{ color: "#5FE0BC" }}>#{recommendKeyword}</span>}
                     </div>
                     {recommendLoading ? (
-                      <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+                      <p className="text-sm py-4" style={{ color: "#8FA89F" }}>불러오는 중...</p>
                     ) : (
                       <div className="flex flex-col gap-3 lg:flex-row lg:overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                         {recommendedVideos.map((v) => (
@@ -1227,12 +1229,12 @@ export default function KidHome() {
                 {(historyLoading || historyVideos.length > 0) && (
                   <section className="mb-6">
                     <div className="mb-3 flex items-center gap-2">
-                      <FaHeart style={{ color: "#C84B47", fontSize: "14px" }} />
-                      <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>내가 좋아할 것 같아요</h2>
-                      {historyKeyword && <span className="text-xs" style={{ color: "#6DAB60" }}>#{historyKeyword} 기반</span>}
+                      <FaHeart style={{ color: "#F2655C", fontSize: "14px" }} />
+                      <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>내가 좋아할 것 같아요</h2>
+                      {historyKeyword && <span className="text-xs" style={{ color: "#5FE0BC" }}>#{historyKeyword} 기반</span>}
                     </div>
                     {historyLoading ? (
-                      <p className="text-sm py-4" style={{ color: "#6B7A65" }}>불러오는 중...</p>
+                      <p className="text-sm py-4" style={{ color: "#8FA89F" }}>불러오는 중...</p>
                     ) : (
                       <div className="flex flex-col gap-3 lg:flex-row lg:overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                         {historyVideos.map((v) => (
@@ -1263,9 +1265,9 @@ export default function KidHome() {
             {videos.length > 0 && (
               <section className="mt-4 mb-6">
                 <div className="mb-4 flex items-center gap-2">
-                  <FaSearch style={{ color: "#6DAB60", fontSize: "14px" }} />
-                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>검색 결과</h2>
-                  <span className="rounded-full px-2.5 py-0.5 text-xs" style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}>{videos.length}개</span>
+                  <FaSearch style={{ color: "#18C49A", fontSize: "14px" }} />
+                  <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>검색 결과</h2>
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold" style={{ backgroundColor: "#16352E", color: "#5FE0BC" }}>{videos.length}개</span>
                 </div>
                 <div className="grid gap-3 grid-cols-1 lg:grid-cols-3">
                   {videos.slice(0, visibleCount).map((video) => <VideoCard key={video.videoId} video={video} listOnMobile />)}
@@ -1273,8 +1275,8 @@ export default function KidHome() {
                 {visibleCount < videos.length && (
                   <div className="mt-6 flex justify-center">
                     <button onClick={() => setVisibleCount((p) => p + 9)}
-                      className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-white"
-                      style={{ borderRadius: "10px", border: "0.5px solid #E4EAE0", color: "#6B7A65" }}>
+                      className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold"
+                      style={{ borderRadius: "10px", backgroundColor: "#16352E", border: "1px solid rgba(255,255,255,0.1)", color: "#EAF5F1" }}>
                       더보기 ({videos.length - visibleCount}개 남음) ↓
                     </button>
                   </div>
@@ -1284,8 +1286,8 @@ export default function KidHome() {
             {playlists.length > 0 && (
               <section className="mb-6">
                 <div className="mb-4 flex items-center gap-2">
-                  <FaList style={{ color: "#6DAB60", fontSize: "14px" }} />
-                  <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>관련 재생목록</h2>
+                  <FaList style={{ color: "#18C49A", fontSize: "14px" }} />
+                  <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>관련 재생목록</h2>
                 </div>
                 <div className="flex flex-nowrap gap-3 overflow-x-auto pb-3" style={{ WebkitOverflowScrolling: "touch" }}>
                   {playlists.map((playlist) => <PlaylistCard key={playlist.playlistId} playlist={playlist} />)}
@@ -1300,13 +1302,13 @@ export default function KidHome() {
           <section className="mb-6">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FaHeart style={{ color: "#C84B47", fontSize: "14px" }} />
-                <h2 className="text-base font-medium" style={{ color: "#2C3528" }}>내 찜 목록</h2>
+                <FaHeart style={{ color: "#F2655C", fontSize: "14px" }} />
+                <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>내 찜 목록</h2>
               </div>
               <button
                 onClick={() => navigate("/favorites")}
-                className="text-xs"
-                style={{ color: "#6DAB60" }}
+                className="text-xs font-bold"
+                style={{ color: "#5FE0BC" }}
               >
                 전체 보기 →
               </button>
@@ -1336,8 +1338,8 @@ export default function KidHome() {
                       });
                     }
                   }}
-                  className="cursor-pointer overflow-hidden bg-white transition duration-200 hover:-translate-y-0.5"
-                  style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+                  className="cursor-pointer overflow-hidden transition duration-200 hover:-translate-y-1"
+                  style={{ borderRadius: "14px", backgroundColor: "#0F2A24", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
                   <div className="relative" style={{ height: "140px", overflow: "hidden" }}>
                     {fav.thumbnail ? (
@@ -1377,10 +1379,10 @@ export default function KidHome() {
                     </button>
                   </div>
                   <div className="p-3">
-                    <p className="text-xs mb-1" style={{ color: "#6DAB60" }}>{fav.channelTitle}</p>
+                    <p className="text-xs font-bold mb-1" style={{ color: "#5FE0BC" }}>{fav.channelTitle}</p>
                     <h3
-                      className="text-sm font-medium"
-                      style={{ color: "#2C3528", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                      className="text-sm font-bold"
+                      style={{ color: "#EAF5F1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
                     >
                       {fav.title}
                     </h3>

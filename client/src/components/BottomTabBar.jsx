@@ -16,8 +16,8 @@ export default function BottomTabBar({ activeTab = "home", chatOpen = false, onC
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-40 flex bg-white"
-      style={{ borderTop: "0.5px solid #E4EAE0" }}
+      className="fixed bottom-0 left-0 right-0 z-40 flex"
+      style={{ backgroundColor: "#0F2A24", borderTop: "1px solid rgba(255,255,255,0.08)" }}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab || (tab.id === "chat" && chatOpen);
@@ -26,7 +26,7 @@ export default function BottomTabBar({ activeTab = "home", chatOpen = false, onC
             key={tab.id}
             onClick={tab.action}
             className="flex flex-1 flex-col items-center gap-1 py-2.5 transition-colors"
-            style={{ color: isActive ? "#6DAB60" : "#9BA89A" }}
+            style={{ color: isActive ? "#18C49A" : "#6B8378" }}
           >
             <span className="text-xl">{tab.icon}</span>
             <span className="text-[10px] font-medium">{tab.label}</span>
