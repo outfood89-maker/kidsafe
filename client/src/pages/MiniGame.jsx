@@ -6,6 +6,7 @@ import WordMatch from "../components/games/WordMatch";
 import PuzzleGame from "../components/games/PuzzleGame";
 import MemoryGame from "../components/games/MemoryGame";
 import SortGame from "../components/games/SortGame";
+import MathQuiz from "../components/games/MathQuiz";
 import KiddyImg from "../components/KiddyImg";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
@@ -64,11 +65,11 @@ const GAMES = [
     name: "수학 퀴즈",
     emoji: "➕",
     description: "덧셈·뺄셈 문제 도전!",
-    reward: "곧 출시",
-    difficulty: "쉬움",
+    reward: "최대 +7분",
+    difficulty: "쉬움~보통",
     color: "#1CB0F6",
     bg: "#EAF6FF",
-    available: false,
+    available: true,
   },
   {
     id: "word-match",
@@ -138,6 +139,7 @@ export default function MiniGame() {
   // 게임별 보너스 기준
   const BONUS_THRESHOLDS = {
     "ox-quiz":     { full: 8,  partial: 0,  fullBonus: 3, partialBonus: 0 },
+    "math-quiz":   { full: 9,  partial: 6,  fullBonus: 7, partialBonus: 3 },
     "sort-game":   { full: 24, partial: 15, fullBonus: 7, partialBonus: 3 },
     "word-match":  { full: 10, partial: 6,  fullBonus: 7, partialBonus: 3 },
     "puzzle":      { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
@@ -238,6 +240,23 @@ export default function MiniGame() {
         </div>
         <div className="flex-1 overflow-y-auto">
           <OXQuiz onComplete={handleGameComplete} />
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === "math-quiz") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#2563EB" }}>
+        <div className="flex items-center gap-3 px-4 shrink-0"
+          style={{ backgroundColor: "#2563EB", borderBottom: "1px solid rgba(255,255,255,0.2)", height: "56px" }}>
+          <button onClick={() => setSelectedGame(null)} className="p-2 rounded-full" style={{ color: "rgba(255,255,255,0.85)" }}>
+            <FaArrowLeft style={{ fontSize: "18px" }} />
+          </button>
+          <span className="font-extrabold text-base" style={{ color: "white" }}>➕ 수학 퀴즈</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <MathQuiz onComplete={handleGameComplete} />
         </div>
       </div>
     );
