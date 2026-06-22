@@ -5,6 +5,7 @@ import OXQuiz from "../components/games/OXQuiz";
 import WordMatch from "../components/games/WordMatch";
 import PuzzleGame from "../components/games/PuzzleGame";
 import MemoryGame from "../components/games/MemoryGame";
+import SortGame from "../components/games/SortGame";
 import KiddyImg from "../components/KiddyImg";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
@@ -45,6 +46,17 @@ const GAMES = [
     difficulty: "쉬움",
     color: "#58CC02",
     bg: "#F0FBE8",
+    available: true,
+  },
+  {
+    id: "sort-game",
+    name: "분류 놀이",
+    emoji: "🧺",
+    description: "같은 친구끼리 모아요!",
+    reward: "최대 +7분",
+    difficulty: "쉬움",
+    color: "#14B8A6",
+    bg: "#E6FBF7",
     available: true,
   },
   {
@@ -126,6 +138,7 @@ export default function MiniGame() {
   // 게임별 보너스 기준
   const BONUS_THRESHOLDS = {
     "ox-quiz":     { full: 8,  partial: 0,  fullBonus: 3, partialBonus: 0 },
+    "sort-game":   { full: 24, partial: 15, fullBonus: 7, partialBonus: 3 },
     "word-match":  { full: 10, partial: 6,  fullBonus: 7, partialBonus: 3 },
     "puzzle":      { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
     "memory-card": { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
@@ -225,6 +238,23 @@ export default function MiniGame() {
         </div>
         <div className="flex-1 overflow-y-auto">
           <OXQuiz onComplete={handleGameComplete} />
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === "sort-game") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0D9488" }}>
+        <div className="flex items-center gap-3 px-4 shrink-0"
+          style={{ backgroundColor: "#0D9488", borderBottom: "1px solid rgba(255,255,255,0.2)", height: "56px" }}>
+          <button onClick={() => setSelectedGame(null)} className="p-2 rounded-full" style={{ color: "rgba(255,255,255,0.85)" }}>
+            <FaArrowLeft style={{ fontSize: "18px" }} />
+          </button>
+          <span className="font-extrabold text-base" style={{ color: "white" }}>🧺 분류 놀이</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <SortGame onComplete={handleGameComplete} />
         </div>
       </div>
     );
