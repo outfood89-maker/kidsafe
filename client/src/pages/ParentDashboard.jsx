@@ -75,8 +75,19 @@ const truncateByDisplayWidth = (str, maxWidth) => {
 }
 
 
+// 좌측 사이드바 탭 — 한 페이지 스크롤 → 목적별 탭으로 분리 (부모 편의)
+const MAIN_NAV = [
+  { id: "overview", icon: "📊", label: "한눈에 보기", short: "개요" },
+  { id: "children", icon: "👶", label: "자녀 설정", short: "자녀" },
+  { id: "history",  icon: "📺", label: "시청 기록", short: "기록" },
+  { id: "analysis", icon: "📈", label: "시청 분석", short: "분석" },
+  { id: "safety",   icon: "🔔", label: "안전 알림", short: "알림" },
+];
+
 export default function ParentDashboard() {
   const { isPremium } = useAuth();
+  const [mainTab, setMainTab] = useState("overview"); // 좌측 사이드바 활성 탭
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768); // 접이식 사이드바 (데스크톱 기본 열림)
   const [history, setHistory] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -402,7 +413,7 @@ export default function ParentDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8F7F2" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#0A1E1E" }}>
       {/* 프로필 추가 한도 초과 paywall */}
       {showProfilePaywall && (
         <PaywallModal reason="profile" onClose={() => setShowProfilePaywall(false)} />
@@ -411,12 +422,73 @@ export default function ParentDashboard() {
       {/* 상단 네비게이션 바 */}
       <NavBar backTo="/" backLabel="홈으로" title="부모 대시보드" showAccountMenu />
 
-      <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-8">
+      {/* ── 모바일 드로어 어두운 배경 (열렸을 때) ── */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 md:hidden"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", top: "56px" }}
+        />
+      )}
 
-        <section className="mb-8 md:mb-10">
-          <h1 className="text-xl md:text-2xl font-medium" style={{ color: "#2C3528" }}>부모 대시보드</h1>
-          <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
-        </section>
+      {/* ── 좌측 접이식 사이드바 (드로어 — 무한 확장 가능) ── */}
+      <aside
+        className="fixed left-0 z-40 flex flex-col w-60"
+        style={{
+          top: "56px", bottom: 0,
+          backgroundColor: "#0E2A2A",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
+          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.25s ease",
+        }}
+      >
+        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <span className="text-sm font-bold" style={{ color: "#EAF5F1" }}>메뉴</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center gap-1 text-xs font-bold rounded-lg px-2 py-1 transition hover:opacity-80"
+            style={{ color: "#8FA89F", backgroundColor: "#163635" }}
+          >
+            « 접기
+          </button>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
+          {MAIN_NAV.map((t) => {
+            const active = mainTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setMainTab(t.id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold transition text-left"
+                style={active
+                  ? { backgroundColor: "#18C49A", color: "#08160F" }
+                  : { backgroundColor: "transparent", color: "#8FA89F" }}
+              >
+                <span className="text-base">{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* ── 메인 영역 (사이드바 열리면 데스크톱에서 밀림) ── */}
+      <div className={`transition-all duration-200 ${sidebarOpen ? "md:ml-60" : ""}`}>
+        <div className="mx-auto max-w-6xl px-4 md:px-6 pt-6 md:py-8 pb-28 md:pb-8">
+
+          <section className="mb-6">
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="hidden md:inline-flex mb-3 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+              >
+                ☰ 메뉴
+              </button>
+            )}
+            <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
+            <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
+          </section>
 
         {loading && <p className="text-center text-sm" style={{ color: "#6B7A65" }}>불러오는 중...</p>}
         {error && (
@@ -428,7 +500,7 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {!loading && (
+        {mainTab === "overview" && !loading && (
           <section className="grid gap-3 grid-cols-1 md:grid-cols-3 mb-5">
             {todaySummaryData.map((item) => (
               <div
@@ -454,7 +526,7 @@ export default function ParentDashboard() {
         )}
 
         {/* 이번 주 리포트 */}
-        {!loading && (
+        {mainTab === "overview" && !loading && (
           <section
             className="bg-white p-4 md:p-6 mb-5"
             style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
@@ -545,7 +617,7 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {!loading && (
+        {mainTab === "children" && !loading && (
           <section
             className="bg-white p-4 md:p-6 mb-5"
             style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
@@ -731,35 +803,43 @@ export default function ParentDashboard() {
                     className="relative flex flex-col items-center bg-white p-4"
                     style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
                   >
-                    {/* 편집 버튼 */}
+                    {/* 편집 버튼 — z-10으로 아바타 위에 항상 표시 */}
                     <button
                       onClick={() => openEditModal(profile)}
-                      className="absolute left-3 top-3 rounded-full p-2 transition"
+                      className="absolute left-3 top-3 z-10 rounded-full p-2 shadow-sm transition"
                       style={{ backgroundColor: "#F0F5ED", color: "#6DAB60" }}
                     >
                       <FaPen className="text-xs" />
                     </button>
-                    {/* 삭제 버튼 */}
+                    {/* 삭제 버튼 — z-10으로 아바타 위에 항상 표시 */}
                     <button
                       onClick={() => handleDeleteProfile(profile.id)}
-                      className="absolute right-3 top-3 rounded-full bg-red-100 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
+                      className="absolute right-3 top-3 z-10 rounded-full bg-red-100 p-2 text-red-400 shadow-sm transition hover:bg-red-500 hover:text-white"
                     >
                       <FaTrash className="text-xs" />
                     </button>
-                    {/* 아바타 이미지 */}
+                    {/* 아바타 이미지 — 카드 폭 안에 들어오도록 반응형 (모서리가 버튼 침범 방지) */}
                     <div
-                      className="rounded-2xl bg-white shadow overflow-hidden"
-                      style={{ width: "130px", height: "130px" }}
+                      className="mt-2 rounded-2xl bg-white shadow overflow-hidden"
+                      style={{ width: "100%", maxWidth: "130px", aspectRatio: "1 / 1" }}
                     >
                       <img
                         src={getAvatarUrl(profile)}
                         alt={profile.name}
-                        style={getAvatarStyle(profile)}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
+                          transform: "scale(1.1) translateY(-2%)",
+                          transformOrigin: "center top",
+                        }}
                       />
                     </div>
                     <p className="mt-3 text-base md:text-lg font-extrabold text-gray-800">{profile.name}</p>
                     <p className="text-xs md:text-sm text-gray-400">{profile.age}세 · {profile.gender}</p>
 
+                    {/* 자녀 프로필 카드에서 배지 노출 비활성화 (요청) — 복구 가능하게 주석처리
                     {profileBadges[profile.id]?.length > 0 && (
                       <div className="mt-3 flex flex-wrap justify-center gap-1">
                         {profileBadges[profile.id].map((badge) => (
@@ -769,6 +849,7 @@ export default function ParentDashboard() {
                         ))}
                       </div>
                     )}
+                    */}
 
                     <div className="mt-4 w-full">
                       {editingTimeLimitId === profile.id ? (
@@ -886,7 +967,7 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {!loading && (
+        {mainTab === "history" && !loading && (
           <section
             className="bg-white p-4 md:p-6 mb-5"
             style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
@@ -1007,7 +1088,16 @@ export default function ParentDashboard() {
           </section>
         )}
 
-        {!loading && history.length > 0 && (
+        {mainTab === "analysis" && !loading && history.length === 0 && (
+          <section
+            className="bg-white p-8 md:p-10 mb-5 text-center"
+            style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
+          >
+            <p className="text-sm" style={{ color: "#6B7A65" }}>아직 분석할 시청 기록이 없어요.</p>
+          </section>
+        )}
+
+        {mainTab === "analysis" && !loading && history.length > 0 && (
           <section
             className="bg-white p-4 md:p-6 mb-5"
             style={{ borderRadius: "14px", border: "0.5px solid #E4EAE0" }}
@@ -1174,6 +1264,7 @@ export default function ParentDashboard() {
           </section>
         )}
 
+        {mainTab === "safety" && (<>
         {/* 위험 영상 알림 */}
         <section
           className="bg-white p-4 md:p-6 mb-5"
@@ -1391,8 +1482,22 @@ export default function ParentDashboard() {
             </div>
           </div>
         </section>
+        </>)}
 
+        </div>
       </div>
+
+      {/* ── 모바일 메뉴 버튼 (하단 고정 = 엄지존, 스크롤해도 항상 닿음) ── */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="md:hidden fixed left-4 z-30 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-xl transition hover:opacity-90"
+          style={{ bottom: "20px", background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+          aria-label="메뉴 열기"
+        >
+          <span className="text-base">☰</span> 메뉴
+        </button>
+      )}
 
       {/* 프로필 편집 모달 */}
       {editingProfile && (
