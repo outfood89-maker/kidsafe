@@ -63,7 +63,9 @@ export default function KiddyImg({ pose = "greet", size = 80, bg = null, circle 
 
   const activePose = animate ? ANIMATE_POSES[poseIndex] : pose;
   const { src, fallback } = POSES[activePose] ?? POSES.greet;
-  const showFallback = error || !loaded;
+  // 폴백 이모지는 '진짜 로드 실패(error)'일 때만 — 포즈 전환 중 !loaded 순간에 이모지가
+  // 번쩍이던 문제 방지 (전환은 opacity 페이드로 부드럽게 처리)
+  const showFallback = error;
 
   return (
     <div
