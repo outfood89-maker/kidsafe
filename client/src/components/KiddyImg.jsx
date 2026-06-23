@@ -41,7 +41,7 @@ if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
  * circle : true → 원형 크롭 / false(기본) → 이미지 원본 모양 그대로
  * animate: true → 3초마다 포즈 전환 + float 애니메이션
  */
-export default function KiddyImg({ pose = "greet", size = 80, bg = null, circle = false, animate = false }) {
+export default function KiddyImg({ pose = "greet", size = 80, bg = null, circle = false, animate = false, float = false }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [poseIndex, setPoseIndex] = useState(0);
@@ -80,8 +80,8 @@ export default function KiddyImg({ pose = "greet", size = 80, bg = null, circle 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        // float 애니메이션
-        animation: animate ? "kiddyFloat 2.5s ease-in-out infinite" : "none",
+        // 둥둥 뜨는 float — animate(포즈 순환) 또는 float(포즈 고정) 둘 중 하나면 동작
+        animation: (animate || float) ? "kiddyFloat 2.5s ease-in-out infinite" : "none",
       }}
     >
       {showFallback && (

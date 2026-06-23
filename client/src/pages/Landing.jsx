@@ -461,7 +461,7 @@ export default function Landing() {
 
             {/* 왼쪽: 키디 고정 */}
             <div className="flex flex-col items-center gap-4 shrink-0" style={{ width: "260px" }}>
-              <KiddyImg pose={featurePoses[activeFeat]} size={240} />
+              <KiddyImg pose={featurePoses[activeFeat]} size={240} float />
               <div
                 className="relative text-center px-5 py-3.5"
                 style={{ backgroundColor: "#163635", borderRadius: "14px", maxWidth: "240px", border: "1px solid rgba(255,255,255,0.08)" }}
