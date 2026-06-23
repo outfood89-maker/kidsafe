@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Landing from './pages/Landing'
@@ -35,7 +35,9 @@ function App() {
           <Route path="/login" element={<Login />} />
 
           {/* 회원 전용 라우트 (비로그인 시 /login으로) */}
-          <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
+          {/* 통합 부모페이지 폐기 → 프로필 선택으로 리다이렉트 (부모페이지는 아이별 /parent/:profileId 만) */}
+          <Route path="/parent" element={<Navigate to="/profiles" replace />} />
+          <Route path="/parent/:profileId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
           <Route path="/profiles" element={<ProtectedRoute><ProfileSelect /></ProtectedRoute>} />
           <Route path="/kids" element={<ProtectedRoute><KidHome /></ProtectedRoute>} />
           <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />

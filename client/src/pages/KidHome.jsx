@@ -979,8 +979,8 @@ export default function KidHome() {
 
 
 
-        {/* ── 히어로 배너 (항상 표시, 로딩 중 제외) ── */}
-        {!loading && (
+        {/* ── 히어로 배너 + 검색바 + 카테고리 칩 (항상 표시 — 검색/로딩 중에도 유지) ── */}
+        {(
           <>
             {/* 다크 히어로 배너 */}
             {(() => {
@@ -993,6 +993,11 @@ export default function KidHome() {
               const remainingLabel = remainingSec != null ? formatMMSS(remainingSec) : null;
               const usedMinLabel = Math.max(0, Math.floor(effectiveUsedSec / 60));
               const timerColor = timeLimitReached ? "#F2655C" : remainingSec !== null && remainingSec / tlSec <= 0.2 ? "#F5B829" : "#18C49A";
+              // 검색 중이면 인사 배너 키디가 검색 포즈 + "검색 중이에요"로 전환 (별도 로더 대신)
+              const kiddyPose = loading ? "search" : GREETING_DIALOGUES[greetingIndex].pose;
+              const kiddyText = loading
+                ? "검색 중이에요..."
+                : GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구");
               return (
                 <div className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
                   style={{ background: "linear-gradient(135deg, #0E2A23 0%, #14463C 50%, #1A9180 100%)", borderRadius: "24px", minHeight: "220px" }}>
@@ -1105,7 +1110,7 @@ export default function KidHome() {
                       style={{ backgroundColor: "rgba(255,255,255,0.96)", color: "#2C3528", maxWidth: "280px", height: "68px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <p className="text-sm font-bold text-center leading-snug"
                         style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구")}
+                        {kiddyText}
                       </p>
                       <div className="absolute left-1/2 -translate-x-1/2" style={{
                         bottom: "-10px", width: 0, height: 0,
@@ -1113,11 +1118,11 @@ export default function KidHome() {
                         borderTop: "11px solid rgba(255,255,255,0.96)",
                       }} />
                     </div>
-                    {/* 키디 */}
+                    {/* 키디 — 검색 중이면 검색 포즈 */}
                     <div ref={kiddyMobileRef}>
-                      <KiddyImg pose={GREETING_DIALOGUES[greetingIndex].pose} size={190} />
+                      <KiddyImg pose={kiddyPose} size={190} />
                     </div>
-                    {!kiddyClicked && (
+                    {!loading && !kiddyClicked && (
                       <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>
                         👆 눌러봐!
                       </span>
@@ -1155,13 +1160,13 @@ export default function KidHome() {
                     <div className="relative cursor-pointer select-none" style={{ marginLeft: "-50px" }} onClick={handleKiddyClick}>
                       {/* bounce는 진입 후 1.5초 동안만 */}
                       <div className={kiddyBounce ? "animate-bounce" : ""}>
-                        <KiddyImg pose={GREETING_DIALOGUES[greetingIndex].pose} size={220} />
+                        <KiddyImg pose={kiddyPose} size={220} />
                       </div>
                       {/* 말풍선 — 키디 우측 상단 */}
                       <div className="absolute" style={{ top: "0px", left: "148px" }}>
                         <div className="rounded-xl px-3 py-1.5"
                           style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", lineHeight: "1.6", position: "relative", fontSize: "12px", fontWeight: "700", width: "120px", wordBreak: "keep-all" }}>
-                          {GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구")}
+                          {kiddyText}
                           <div style={{
                             position: "absolute", bottom: "-10px", left: "10px",
                             width: "14px", height: "14px",
@@ -1172,8 +1177,8 @@ export default function KidHome() {
                             borderRadius: "0 0 0 4px",
                           }} />
                         </div>
-                        {/* 첫 클릭 전에만 힌트 표시 */}
-                        {!kiddyClicked && (
+                        {/* 첫 클릭 전에만 힌트 표시 (검색 중엔 숨김) */}
+                        {!loading && !kiddyClicked && (
                           <p className="mt-2 text-center text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>
                             👆 눌러봐!
                           </p>
@@ -1187,7 +1192,7 @@ export default function KidHome() {
 
             {/* 큐레이션 헤더(홈 전용) + 카테고리 칩(검색 후에도 항상 유지) — 모바일 전용 */}
             <div className="lg:hidden mb-5">
-              {videos.length === 0 && playlists.length === 0 && (
+              {!loading && videos.length === 0 && playlists.length === 0 && (
                 <div className="flex items-center gap-2.5 mb-3">
                   <KiddyImg pose="point" size={44} />
                   <div className="min-w-0">
@@ -1219,8 +1224,8 @@ export default function KidHome() {
               </div>
             </div>
 
-            {/* 추천 섹션 — 검색 결과 없을 때만 */}
-            {videos.length === 0 && playlists.length === 0 && (
+            {/* 추천 섹션 — 검색 결과 없고 로딩 중도 아닐 때만 (로더와 겹치지 않게) */}
+            {!loading && videos.length === 0 && playlists.length === 0 && (
               <>
                 {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
                 {(recommendLoading || recommendedVideos.length > 0) && (
@@ -1270,13 +1275,13 @@ export default function KidHome() {
           </>
         )}
 
-        {/* ── 로딩 중 ── */}
+        {/* ── 로딩 중 ── 별도 로더 제거: 인사 배너 키디가 검색 포즈+"검색 중이에요"로 대체 (요청)
         {loading && (
           <div className="flex flex-col items-center gap-3 py-12">
             <KiddyImg pose="search" size={160} />
             <p className="text-sm" style={{ color: "#6B7A65" }}>검색 중이에요...</p>
           </div>
-        )}
+        )} */}
 
         {/* ── 검색 결과 있을 때 ── */}
         {(videos.length > 0 || playlists.length > 0) && (

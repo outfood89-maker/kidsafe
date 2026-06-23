@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   FaClock,
   FaShieldAlt,
@@ -15,6 +16,7 @@ import {
   FaChartBar,
   FaPen,
   FaTimes,
+  FaLock,
 } from "react-icons/fa";
 
 import {
@@ -29,6 +31,7 @@ import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, g
 import { useAuth } from "../contexts/AuthContext";
 import VideoModal from "../components/VideoModal";
 import PaywallModal from "../components/PaywallModal";
+import PinModal from "../components/PinModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 
@@ -86,6 +89,8 @@ const MAIN_NAV = [
 
 export default function ParentDashboard() {
   const { isPremium } = useAuth();
+  // 프로필별 부모페이지 — :profileId 가 있으면 그 아이로 스코프 잠금 (프로필 전환 탭 숨김)
+  const { profileId: scopedId } = useParams();
   const [mainTab, setMainTab] = useState("overview"); // 좌측 사이드바 활성 탭
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768); // 접이식 사이드바 (데스크톱 기본 열림)
   const [history, setHistory] = useState([]);
@@ -93,9 +98,9 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [profileBadges, setProfileBadges] = useState({});
-  const [activeTab, setActiveTab] = useState("전체");
-  const [chartTab, setChartTab] = useState("전체");
-  const [reportTab, setReportTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(scopedId || "전체");
+  const [chartTab, setChartTab] = useState(scopedId || "전체");
+  const [reportTab, setReportTab] = useState(scopedId || "all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showProfilePaywall, setShowProfilePaywall] = useState(false);
   const [newName, setNewName] = useState("");
@@ -119,6 +124,7 @@ export default function ParentDashboard() {
   const [editGender, setEditGender] = useState("남자");
   const [editAvatarId, setEditAvatarId] = useState(1);
   const [editError, setEditError] = useState("");
+  const [showPinChange, setShowPinChange] = useState(false); // 스코프 부모페이지 PIN 변경 모달
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,6 +164,10 @@ export default function ParentDashboard() {
     activeTab === "전체"
       ? history
       : history.filter((item) => item.profileId === activeTab);
+
+  // 스코프 잠금: :profileId 가 있으면 그 아이만 노출 (프로필 전환 탭/추가 숨김)
+  const scopedProfile = scopedId ? profiles.find((p) => p.id === scopedId) : null;
+  const visibleProfiles = scopedId ? profiles.filter((p) => p.id === scopedId) : profiles;
 
   const handleCreateProfile = async () => {
     if (!newName.trim()) {
@@ -487,7 +497,11 @@ export default function ParentDashboard() {
               </button>
             )}
             <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
-            <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>아이의 콘텐츠 시청 기록과 안전도를 확인하세요.</p>
+            <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
+              {scopedProfile
+                ? `${scopedProfile.name} · ${scopedProfile.age}세 전용 부모 페이지`
+                : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
+            </p>
           </section>
 
         {loading && <p className="text-center text-sm" style={{ color: "#90A9A8" }}>불러오는 중...</p>}
@@ -537,7 +551,8 @@ export default function ParentDashboard() {
               <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>최근 7일 기준</span>
             </div>
 
-            {/* 아이 선택 탭 */}
+            {/* 아이 선택 탭 — 스코프 잠금 시 숨김 */}
+            {!scopedId && (
             <div className="flex flex-wrap gap-2 mb-4">
               <button
                 onClick={() => setReportTab("all")}
@@ -560,6 +575,7 @@ export default function ParentDashboard() {
                 </button>
               ))}
             </div>
+            )}
 
             {reportHistory.length === 0 ? (
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>이번 주 시청 기록이 없어요.</p>
@@ -627,7 +643,7 @@ export default function ParentDashboard() {
                 <FaChild className="text-lg" style={{ color: "#18C49A" }} />
                 <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>자녀 프로필</h2>
               </div>
-              {profiles.length < 4 && (
+              {!scopedId && profiles.length < 4 && (
                 <button
                   onClick={() => {
                     if (!isPremium && profiles.length >= 1) {
@@ -797,7 +813,7 @@ export default function ParentDashboard() {
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
               <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                {profiles.map((profile) => (
+                {visibleProfiles.map((profile) => (
                   <div
                     key={profile.id}
                     className="relative flex flex-col items-center p-4"
@@ -966,6 +982,25 @@ export default function ParentDashboard() {
                 ))}
               </div>
             )}
+
+            {/* 부모 PIN 변경 — 이 아이 전용 페이지에서만 (스코프 잠금 시) */}
+            {scopedId && (
+              <div className="mt-5 flex items-center justify-between gap-3 rounded-xl p-4" style={{ backgroundColor: "#163635" }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold flex items-center gap-2" style={{ color: "#EAF5F1" }}>
+                    <FaLock style={{ color: "#18C49A" }} /> 부모 PIN
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#90A9A8" }}>이 아이 부모 페이지 진입용 PIN을 변경해요.</p>
+                </div>
+                <button
+                  onClick={() => setShowPinChange(true)}
+                  className="shrink-0 rounded-[10px] px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
+                  style={{ backgroundColor: "#18C49A", color: "#08160F" }}
+                >
+                  PIN 변경
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -991,7 +1026,8 @@ export default function ParentDashboard() {
               )}
             </div>
 
-            {/* 프로필 탭 */}
+            {/* 프로필 탭 — 스코프 잠금 시 숨김 */}
+            {!scopedId && (
             <div className="mb-5 flex flex-wrap gap-2">
               <button
                 onClick={() => { setActiveTab("전체"); setVisibleCount(10); }}
@@ -1022,6 +1058,7 @@ export default function ParentDashboard() {
                 </button>
               ))}
             </div>
+            )}
 
             {filteredHistory.length === 0 ? (
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>
@@ -1110,7 +1147,8 @@ export default function ParentDashboard() {
               <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>시청 패턴 분석</h2>
             </div>
 
-            {/* 차트 전용 프로필 탭 */}
+            {/* 차트 전용 프로필 탭 — 스코프 잠금 시 숨김 */}
+            {!scopedId && (
             <div className="flex flex-wrap gap-2 mb-5">
               <button
                 onClick={() => setChartTab("전체")}
@@ -1141,6 +1179,7 @@ export default function ParentDashboard() {
                 </button>
               ))}
             </div>
+            )}
 
             {chartFilteredHistory.length === 0 ? (
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>시청 기록이 없어요.</p>
@@ -1668,6 +1707,16 @@ export default function ParentDashboard() {
             window.open(`https://www.youtube.com/watch?v=${v.videoId}`, '_blank')
             setSelectedVideo(null)
           }}
+        />
+      )}
+
+      {/* 부모 PIN 변경 모달 (스코프 부모페이지 전용) */}
+      {showPinChange && scopedId && (
+        <PinModal
+          profileId={scopedId}
+          mode="change"
+          onSuccess={() => setShowPinChange(false)}
+          onClose={() => setShowPinChange(false)}
         />
       )}
     </div>

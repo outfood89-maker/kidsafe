@@ -16,6 +16,7 @@ from typing import Optional
 
 from auth import get_current_user
 from db import sb_select, sb_insert, sb_update, sb_delete
+from pin_utils import hash_pin, verify_pin, validate_pin
 
 router = APIRouter()
 
@@ -142,6 +143,51 @@ async def update_profile(profile_id: str, data: ProfileUpdate, user: dict = Depe
         patch,
     )
     return {"success": True, "profile": _to_api(updated[0])}
+
+
+# ── 프로필별 부모 PIN — 그 아이 부모페이지 진입 보호 (멀티테넌시: 가정별 격리) ──
+
+class PinSet(BaseModel):
+    pin: str
+    currentPin: Optional[str] = None
+
+
+class PinVerify(BaseModel):
+    pin: str
+
+
+# GET /profiles/{id}/pin/status — PIN 설정 여부
+@router.get("/{profile_id}/pin/status")
+async def pin_status(profile_id: str, user: dict = Depends(get_current_user)):
+    row = await get_owned_profile(profile_id, user["user_id"])
+    return {"hasPin": bool(row.get("parent_pin"))}
+
+
+# POST /profiles/{id}/pin/set — 설정/변경 (기존 PIN 있으면 currentPin 확인)
+@router.post("/{profile_id}/pin/set")
+async def pin_set(profile_id: str, body: PinSet, user: dict = Depends(get_current_user)):
+    validate_pin(body.pin)
+    row = await get_owned_profile(profile_id, user["user_id"])
+    stored = row.get("parent_pin")
+    if stored:
+        if not body.currentPin or not verify_pin(body.currentPin, stored):
+            raise HTTPException(status_code=403, detail="현재 PIN이 일치하지 않아요.")
+    await sb_update(
+        "profiles",
+        {"id": f"eq.{profile_id}", "user_id": f"eq.{user['user_id']}"},
+        {"parent_pin": hash_pin(body.pin)},
+    )
+    return {"ok": True}
+
+
+# POST /profiles/{id}/pin/verify — 입력 PIN 검증
+@router.post("/{profile_id}/pin/verify")
+async def pin_verify(profile_id: str, body: PinVerify, user: dict = Depends(get_current_user)):
+    row = await get_owned_profile(profile_id, user["user_id"])
+    stored = row.get("parent_pin")
+    if not stored:
+        return {"ok": False, "hasPin": False}
+    return {"ok": verify_pin(body.pin, stored), "hasPin": True}
 
 
 # DELETE /profiles/{id}

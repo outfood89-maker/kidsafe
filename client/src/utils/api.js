@@ -287,6 +287,24 @@ export const getUserStatus = async () => {
   return response.data // { role, is_premium }
 }
 
+// 프로필별 부모 PIN — 설정 여부 조회
+export const getPinStatus = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/profiles/${profileId}/pin/status`)
+  return response.data // { hasPin }
+}
+
+// 프로필별 부모 PIN 설정/변경 (기존 PIN 있으면 currentPin 필요)
+export const setParentPin = async (profileId, pin, currentPin = null) => {
+  const response = await axios.post(`${BASE_URL}/profiles/${profileId}/pin/set`, { pin, currentPin })
+  return response.data // { ok }
+}
+
+// 프로필별 부모 PIN 검증
+export const verifyParentPin = async (profileId, pin) => {
+  const response = await axios.post(`${BASE_URL}/profiles/${profileId}/pin/verify`, { pin })
+  return response.data // { ok, hasPin }
+}
+
 // ── 관리자 전용 ──────────────────────────────────────────────
 
 export const getAdminFeedbacks = async () => {

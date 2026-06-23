@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
+import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSlidersH } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
-import { getProfiles, getBadges } from "../utils/api";
+import PinModal from "../components/PinModal";
+import ProfileFormModal from "../components/ProfileFormModal";
+import PaywallModal from "../components/PaywallModal";
+import { getProfiles, getBadges, getPinStatus, deleteProfile } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
 
 // 높을수록 희귀 (획득 조건 기준)
@@ -48,8 +51,12 @@ const getBadgeTierClass = (badgeId) => {
 
 export default function ProfileSelect() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isPremium } = useAuth();
   const [profiles, setProfiles] = useState([]);
+  const [pinTarget, setPinTarget] = useState(null); // null | { profileId, mode } — 프로필별 부모 PIN 모달
+  const [showCreate, setShowCreate] = useState(false); // 프로필 생성 모달 (계정 영역)
+  const [showPaywall, setShowPaywall] = useState(false); // 무료 1개 초과 시 paywall
+  const [manage, setManage] = useState(false); // 관리 모드 (켜면 카드에 삭제 노출 — 계정 영역 동작)
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [profileBadges, setProfileBadges] = useState({});
@@ -101,6 +108,27 @@ export default function ProfileSelect() {
     setTimeout(() => navigate("/kids"), 150);
   };
 
+  // 프로필 삭제 (계정 영역 동작) — 종속 데이터는 DB cascade 자동 정리
+  const handleDeleteProfile = async (profile) => {
+    if (!window.confirm(`'${profile.name}' 프로필을 삭제할까요?\n시청기록·찜·배지 등도 함께 삭제되며 복구할 수 없어요.`)) return;
+    try {
+      await deleteProfile(profile.id);
+      setProfiles((prev) => prev.filter((p) => p.id !== profile.id));
+    } catch {
+      alert("삭제에 실패했어요.");
+    }
+  };
+
+  // 특정 아이의 부모 페이지 진입 — 그 프로필 PIN 게이트 (설정돼 있으면 입력, 없으면 최초 설정)
+  const handleParentEnter = async (profile) => {
+    try {
+      const { hasPin } = await getPinStatus(profile.id);
+      setPinTarget({ profileId: profile.id, mode: hasPin ? "verify" : "setup" });
+    } catch {
+      setPinTarget({ profileId: profile.id, mode: "verify" }); // 조회 실패 시 입력 모달로 (검증은 서버가 함)
+    }
+  };
+
   // 로그아웃 → 세션 종료 후 랜딩으로 (로그인 전용 화면이라 랜딩 복귀가 맞음)
   const handleSignOut = async () => {
     try {
@@ -148,6 +176,17 @@ export default function ProfileSelect() {
         {/* 오른쪽: 계정 액션 묶음 (계정 + 로그아웃 + 부모님) — 관습대로 우측 정렬
             계정 설정을 프로필 선택 단계에 둠 → 향후 프로필별 개별 부모페이지+PIN(멀티테넌시) 대비 */}
         <div className="flex items-center gap-2">
+          {/* 관리 모드 토글 — 켜면 카드에 삭제 노출 (프로필 추가/삭제는 계정 영역) */}
+          <button
+            onClick={() => setManage((m) => !m)}
+            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
+            style={manage
+              ? { backgroundColor: "#18C49A", color: "#08160F", border: "1px solid #18C49A" }
+              : { backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <FaSlidersH style={{ color: manage ? "#08160F" : "#18C49A" }} />
+            <span className="hidden sm:block">{manage ? "완료" : "관리"}</span>
+          </button>
           <button
             onClick={() => navigate("/account")}
             className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
@@ -164,16 +203,7 @@ export default function ProfileSelect() {
             <FaSignOutAlt style={{ color: "#18C49A" }} />
             <span className="hidden sm:block">로그아웃</span>
           </button>
-
-          {/* 부모 대시보드 자물쇠 (추후 PIN 잠금 연결 예정) */}
-          <button
-            onClick={() => navigate("/parent")}
-            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
-            style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            <FaLock style={{ color: "#18C49A" }} />
-            <span className="hidden sm:block">부모님</span>
-          </button>
+          {/* 통합 '부모님' 버튼 제거 — 부모페이지는 이제 아이 카드의 🔒(프로필별)로 진입 */}
         </div>
         </div>
       </header>
@@ -209,10 +239,32 @@ export default function ProfileSelect() {
                 const isSelected = selectedId === profile.id;
                 const topBadge = getRarestBadge(profileBadges[profile.id]);
                 return (
+                  <div key={profile.id} className="relative">
+                  {/* 관리 모드일 때만: 삭제 (좌상단) */}
+                  {manage && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile); }}
+                      className="absolute left-3 top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
+                      style={{ width: "36px", height: "36px", backgroundColor: "rgba(242,101,92,0.9)", border: "1px solid rgba(255,255,255,0.2)" }}
+                      aria-label={`${profile.name} 삭제`}
+                      title="프로필 삭제"
+                    >
+                      <FaTrash style={{ color: "#fff", fontSize: "13px" }} />
+                    </button>
+                  )}
+                  {/* 부모 잠금 — 이 아이 전용 부모페이지(PIN 게이트) */}
                   <button
-                    key={profile.id}
+                    onClick={(e) => { e.stopPropagation(); handleParentEnter(profile); }}
+                    className="absolute right-3 top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
+                    style={{ width: "36px", height: "36px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    aria-label={`${profile.name} 부모 설정`}
+                    title="부모 설정"
+                  >
+                    <FaLock style={{ color: "#18C49A", fontSize: "13px" }} />
+                  </button>
+                  <button
                     onClick={() => handleProfileClick(profile)}
-                    className="flex flex-col items-center py-8 px-6 transition hover:-translate-y-1"
+                    className="w-full flex flex-col items-center py-8 px-6 transition hover:-translate-y-1"
                     style={{
                       borderRadius: "20px",
                       backgroundColor: "#0E2A2A",
@@ -260,13 +312,17 @@ export default function ProfileSelect() {
                       </div>
                     )}
                   </button>
+                  </div>
                 );
               })}
 
-              {/* 프로필 추가 카드 */}
+              {/* 프로필 추가 카드 — 계정 영역 동작 (생성 모달, 무료는 1개 초과 시 paywall) */}
               {profiles.length < 4 && (
                 <button
-                  onClick={() => navigate("/parent")}
+                  onClick={() => {
+                    if (!isPremium && profiles.length >= 1) setShowPaywall(true);
+                    else setShowCreate(true);
+                  }}
                   className="flex flex-col items-center justify-center py-8 px-6 transition hover:-translate-y-1"
                   style={{
                     borderRadius: "20px",
@@ -285,7 +341,7 @@ export default function ProfileSelect() {
                     프로필 추가
                   </p>
                   <p className="text-sm mt-1" style={{ color: "#6B8378" }}>
-                    부모모드에서 추가
+                    새 자녀 프로필
                   </p>
                 </button>
               )}
@@ -301,6 +357,27 @@ export default function ProfileSelect() {
         )}
 
       </div>
+
+      {/* 프로필별 부모 PIN 게이트 — 통과 시 그 아이 부모페이지 진입 */}
+      {pinTarget && (
+        <PinModal
+          profileId={pinTarget.profileId}
+          mode={pinTarget.mode}
+          onSuccess={() => { const id = pinTarget.profileId; setPinTarget(null); navigate(`/parent/${id}`); }}
+          onClose={() => setPinTarget(null)}
+        />
+      )}
+
+      {/* 프로필 생성 모달 (계정 영역) */}
+      {showCreate && (
+        <ProfileFormModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(profile) => { setProfiles((prev) => [...prev, profile]); setShowCreate(false); }}
+        />
+      )}
+
+      {/* 무료 1개 초과 paywall */}
+      {showPaywall && <PaywallModal reason="profile" onClose={() => setShowPaywall(false)} />}
     </div>
   );
 }
