@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { FaTimes } from "react-icons/fa";
-import { createProfile } from "../utils/api";
+import { createProfile, updateProfile } from "../utils/api";
 
-// 자녀 프로필 생성 모달 (계정 영역 동작) — ProfileSelect에서 사용
-// onClose(): 닫기 / onCreated(profile): 생성 성공 시 새 프로필 전달
+// 자녀 프로필 생성/수정 겸용 모달 (계정 영역 동작) — ProfileSelect에서 사용
+// onClose(): 닫기
+// onCreated(profile): 생성 성공 시 새 프로필 전달 (생성 모드)
+// profile: 넘기면 수정 모드 (해당 프로필 값으로 프리필)
+// onUpdated(profile): 수정 성공 시 갱신된 프로필 전달 (수정 모드)
 const AGE_OPTIONS = [3, 5, 7, 10];
 const AVATAR_LIST = [1, 2, 3, 4, 5, 6, 7, 8];
 const AVATAR_OFFSET_X = { 5: "43%" };
@@ -17,11 +20,12 @@ const avatarStyle = (id) => ({
   transformOrigin: "center top",
 });
 
-export default function ProfileFormModal({ onClose, onCreated }) {
-  const [name, setName] = useState("");
-  const [age, setAge] = useState(7);
-  const [gender, setGender] = useState("남자");
-  const [avatarId, setAvatarId] = useState(1);
+export default function ProfileFormModal({ onClose, onCreated, profile = null, onUpdated }) {
+  const isEdit = !!profile; // profile 넘어오면 수정 모드
+  const [name, setName] = useState(profile?.name ?? "");
+  const [age, setAge] = useState(profile?.age ?? 7);
+  const [gender, setGender] = useState(profile?.gender ?? "남자");
+  const [avatarId, setAvatarId] = useState(profile?.avatarId ?? 1);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -29,10 +33,15 @@ export default function ProfileFormModal({ onClose, onCreated }) {
     if (!name.trim()) { setError("이름을 입력해주세요!"); return; }
     setBusy(true);
     try {
-      const created = await createProfile({ name: name.trim(), age, gender, avatarId, timeLimit: 60 });
-      onCreated(created);
+      if (isEdit) {
+        const updated = await updateProfile(profile.id, { name: name.trim(), age, gender, avatarId });
+        onUpdated?.(updated);
+      } else {
+        const created = await createProfile({ name: name.trim(), age, gender, avatarId, timeLimit: 60 });
+        onCreated?.(created);
+      }
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.detail || "프로필 생성에 실패했어요.");
+      setError(err.response?.data?.error || err.response?.data?.detail || (isEdit ? "프로필 수정에 실패했어요." : "프로필 생성에 실패했어요."));
       setBusy(false);
     }
   };
@@ -41,7 +50,7 @@ export default function ProfileFormModal({ onClose, onCreated }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
       <div className="w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>새 프로필 만들기</h3>
+          <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>{isEdit ? "프로필 수정" : "새 프로필 만들기"}</h3>
           <button onClick={onClose} className="text-xl" style={{ color: "#90A9A8" }}>
             <FaTimes />
           </button>
@@ -140,7 +149,7 @@ export default function ProfileFormModal({ onClose, onCreated }) {
             className="flex-1 rounded-[12px] py-3 text-base font-semibold transition disabled:opacity-50"
             style={{ backgroundColor: "#18C49A", color: "#08160F" }}
           >
-            {busy ? "저장 중..." : "저장하기"}
+            {busy ? "저장 중..." : isEdit ? "수정하기" : "저장하기"}
           </button>
           <button
             onClick={onClose}

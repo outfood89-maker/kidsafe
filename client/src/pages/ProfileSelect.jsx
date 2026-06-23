@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSlidersH } from "react-icons/fa";
+import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSlidersH, FaPen } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
 import PinModal from "../components/PinModal";
 import ProfileFormModal from "../components/ProfileFormModal";
@@ -55,6 +55,7 @@ export default function ProfileSelect() {
   const [profiles, setProfiles] = useState([]);
   const [pinTarget, setPinTarget] = useState(null); // null | { profileId, mode } — 프로필별 부모 PIN 모달
   const [showCreate, setShowCreate] = useState(false); // 프로필 생성 모달 (계정 영역)
+  const [editTarget, setEditTarget] = useState(null); // null | profile — 프로필 수정 모달 (관리 모드)
   const [showPaywall, setShowPaywall] = useState(false); // 무료 1개 초과 시 paywall
   const [manage, setManage] = useState(false); // 관리 모드 (켜면 카드에 삭제 노출 — 계정 영역 동작)
   const [loading, setLoading] = useState(true);
@@ -240,17 +241,28 @@ export default function ProfileSelect() {
                 const topBadge = getRarestBadge(profileBadges[profile.id]);
                 return (
                   <div key={profile.id} className="relative">
-                  {/* 관리 모드일 때만: 삭제 (좌상단) */}
+                  {/* 관리 모드일 때만: 수정·삭제 (좌상단, 나란히) */}
                   {manage && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile); }}
-                      className="absolute left-3 top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
-                      style={{ width: "36px", height: "36px", backgroundColor: "rgba(242,101,92,0.9)", border: "1px solid rgba(255,255,255,0.2)" }}
-                      aria-label={`${profile.name} 삭제`}
-                      title="프로필 삭제"
-                    >
-                      <FaTrash style={{ color: "#fff", fontSize: "13px" }} />
-                    </button>
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditTarget(profile); }}
+                        className="absolute left-3 top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
+                        style={{ width: "36px", height: "36px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.2)" }}
+                        aria-label={`${profile.name} 수정`}
+                        title="프로필 수정"
+                      >
+                        <FaPen style={{ color: "#18C49A", fontSize: "12px" }} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile); }}
+                        className="absolute left-[56px] top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
+                        style={{ width: "36px", height: "36px", backgroundColor: "rgba(242,101,92,0.9)", border: "1px solid rgba(255,255,255,0.2)" }}
+                        aria-label={`${profile.name} 삭제`}
+                        title="프로필 삭제"
+                      >
+                        <FaTrash style={{ color: "#fff", fontSize: "13px" }} />
+                      </button>
+                    </>
                   )}
                   {/* 부모 잠금 — 이 아이 전용 부모페이지(PIN 게이트) */}
                   <button
@@ -373,6 +385,18 @@ export default function ProfileSelect() {
         <ProfileFormModal
           onClose={() => setShowCreate(false)}
           onCreated={(profile) => { setProfiles((prev) => [...prev, profile]); setShowCreate(false); }}
+        />
+      )}
+
+      {/* 프로필 수정 모달 (관리 모드) */}
+      {editTarget && (
+        <ProfileFormModal
+          profile={editTarget}
+          onClose={() => setEditTarget(null)}
+          onUpdated={(updated) => {
+            setProfiles((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+            setEditTarget(null);
+          }}
         />
       )}
 
