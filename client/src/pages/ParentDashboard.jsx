@@ -17,6 +17,7 @@ import {
   FaPen,
   FaTimes,
   FaLock,
+  FaChevronDown,
 } from "react-icons/fa";
 
 import {
@@ -24,10 +25,12 @@ import {
   BarChart, Bar,
   LineChart, Line,
   PieChart, Pie, Cell,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   CartesianGrid, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach } from "../utils/api";
+import KiddyImg from "../components/KiddyImg";
 import { useAuth } from "../contexts/AuthContext";
 import VideoModal from "../components/VideoModal";
 import PaywallModal from "../components/PaywallModal";
@@ -78,6 +81,15 @@ const truncateByDisplayWidth = (str, maxWidth) => {
 }
 
 
+// AI 코치 톤/등급 → 색상·이모지 매핑
+const TONE_COLOR = { good: "#18C49A", warn: "#F5B829", bad: "#F2655C" };
+const TONE_EMOJI = { good: "👍", warn: "⚠️", bad: "❗" };
+const gradeStyle = (grade) => {
+  if (grade === "좋음" || grade === "양호") return { backgroundColor: "rgba(24,196,154,0.18)", color: "#3FE0B0" };
+  if (grade === "주의") return { backgroundColor: "rgba(245,184,41,0.18)", color: "#F5B829" };
+  return { backgroundColor: "rgba(242,101,92,0.18)", color: "#F2655C" }; // 관심필요 등
+};
+
 // 좌측 사이드바 탭 — 한 페이지 스크롤 → 목적별 탭으로 분리 (부모 편의)
 const MAIN_NAV = [
   { id: "overview", icon: "📊", label: "한눈에 보기", short: "개요" },
@@ -125,6 +137,14 @@ export default function ParentDashboard() {
   const [editAvatarId, setEditAvatarId] = useState(1);
   const [editError, setEditError] = useState("");
   const [showPinChange, setShowPinChange] = useState(false); // 스코프 부모페이지 PIN 변경 모달
+  const [insights, setInsights] = useState(null); // 조인 기반 심화 분석 (서버 pandas 집계)
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [coach, setCoach] = useState(null); // AI 코치 결과 (버튼 클릭 시)
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState("");
+  // 시청 분석 아코디언 — 섹션별 펼침 상태 (기본: 코치만 열림)
+  const [openSec, setOpenSec] = useState({ coach: true, precision: false, habit: false });
+  const toggleSec = (k) => setOpenSec((p) => ({ ...p, [k]: !p[k] }));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -159,6 +179,35 @@ export default function ParentDashboard() {
     };
     fetchData();
   }, []);
+
+  // 시청 분석 탭 진입/프로필 전환 시 서버 심화 분석(조인+pandas) 조회
+  useEffect(() => {
+    if (mainTab !== "analysis") return;
+    let cancelled = false;
+    setInsightsLoading(true);
+    getReportInsights(chartTab === "전체" ? "all" : chartTab)
+      .then((d) => { if (!cancelled) setInsights(d); })
+      .catch(() => { if (!cancelled) setInsights(null); })
+      .finally(() => { if (!cancelled) setInsightsLoading(false); });
+    // 프로필/탭 바뀌면 이전 코치 결과는 초기화 (버튼 다시 눌러 갱신)
+    setCoach(null);
+    setCoachError("");
+    return () => { cancelled = true; };
+  }, [mainTab, chartTab]);
+
+  // AI 코치 분석 받기 (버튼 클릭)
+  const handleGetCoach = async () => {
+    setCoachLoading(true);
+    setCoachError("");
+    try {
+      const data = await getReportCoach(chartTab === "전체" ? "all" : chartTab);
+      setCoach(data.coach);
+    } catch (err) {
+      setCoachError(err.response?.data?.detail || "AI 코치 분석에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setCoachLoading(false);
+    }
+  };
 
   const filteredHistory =
     activeTab === "전체"
@@ -1138,13 +1187,10 @@ export default function ParentDashboard() {
         )}
 
         {mainTab === "analysis" && !loading && history.length > 0 && (
-          <section
-            className="p-4 md:p-6 mb-5"
-            style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
+          <section className="mb-5">
             <div className="flex items-center gap-2 mb-4">
-              <FaChartBar className="text-base" style={{ color: "#18C49A" }} />
-              <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>시청 패턴 분석</h2>
+              <FaChartBar className="text-lg" style={{ color: "#18C49A" }} />
+              <h2 className="text-lg font-extrabold" style={{ color: "#EAF5F1" }}>AI 분석 리포트</h2>
             </div>
 
             {/* 차트 전용 프로필 탭 — 스코프 잠금 시 숨김 */}
@@ -1184,6 +1230,241 @@ export default function ParentDashboard() {
             {chartFilteredHistory.length === 0 ? (
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>시청 기록이 없어요.</p>
             ) : (<>
+
+            {/* ═════ 핵심: 키디 코치 + 정밀 검수 분석 (조인 + pandas) ═════ */}
+            {insightsLoading ? (
+              <p className="py-10 text-center text-sm" style={{ color: "#90A9A8" }}>분석 중...</p>
+            ) : !insights || insights.totalWatched === 0 ? (
+              <p className="py-10 text-center text-sm" style={{ color: "#90A9A8" }}>분석할 데이터가 없어요.</p>
+            ) : (<>
+
+                {/* ── 키디 코치 (아코디언) ── */}
+                <div className="mb-4 rounded-2xl overflow-hidden"
+                  style={{ background: "linear-gradient(135deg, #0E2A2A, #143A38)", border: "1px solid rgba(63,224,176,0.22)" }}>
+                  <button type="button" onClick={() => toggleSec("coach")}
+                    className="w-full flex items-center justify-between gap-3 p-5 text-left transition hover:opacity-90">
+                    <div className="flex items-center gap-3">
+                      <KiddyImg pose="think" size={56} />
+                      <div>
+                        <h4 className="text-base font-extrabold" style={{ color: "#EAF5F1" }}>키디 코치 🪄</h4>
+                        <p className="text-xs" style={{ color: "#90A9A8" }}>데이터를 읽고 실천 팁을 알려드려요</p>
+                      </div>
+                    </div>
+                    <FaChevronDown className="shrink-0 text-sm transition-transform"
+                      style={{ color: "#8FA89F", transform: openSec.coach ? "rotate(180deg)" : "rotate(0deg)" }} />
+                  </button>
+                  {openSec.coach && (
+                  <div className="px-5 pb-5">
+
+                  {!coach && !coachLoading && (
+                    <button onClick={handleGetCoach}
+                      className="w-full rounded-xl py-3.5 font-extrabold transition active:scale-95"
+                      style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}>
+                      🪄 AI 코치 분석 받기
+                    </button>
+                  )}
+                  {coachLoading && (
+                    <p className="py-6 text-center text-sm" style={{ color: "#90A9A8" }}>키디가 분석하고 있어요... 🤔</p>
+                  )}
+                  {coachError && (
+                    <div className="text-center">
+                      <p className="text-sm mb-2" style={{ color: "#F2655C" }}>{coachError}</p>
+                      <button onClick={handleGetCoach} className="text-xs underline" style={{ color: "#90A9A8" }}>다시 시도</button>
+                    </div>
+                  )}
+
+                  {coach && (
+                    <div>
+                      {/* 종합 */}
+                      <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: "rgba(0,0,0,0.22)" }}>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          {coach.overall?.grade && (
+                            <span className="text-xs font-bold rounded-full px-2.5 py-1" style={gradeStyle(coach.overall.grade)}>
+                              {coach.overall.grade}
+                            </span>
+                          )}
+                          <span className="text-base font-extrabold" style={{ color: "#EAF5F1" }}>{coach.overall?.headline}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed" style={{ color: "#B9D0CC" }}>{coach.overall?.comment}</p>
+                      </div>
+
+                      {/* 항목별 코멘트 + 솔루션 */}
+                      <div className="space-y-3 mb-4">
+                        {(coach.sections || []).map((s, i) => (
+                          <div key={i} className="rounded-xl p-4"
+                            style={{ backgroundColor: "#163635", borderLeft: `3px solid ${TONE_COLOR[s.tone] || "#18C49A"}` }}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span>{TONE_EMOJI[s.tone] || "👍"}</span>
+                              <h5 className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{s.title}</h5>
+                            </div>
+                            <p className="text-sm mb-2 leading-relaxed" style={{ color: "#B9D0CC" }}>{s.comment}</p>
+                            {s.action && (
+                              <p className="text-sm rounded-lg px-3 py-2 leading-relaxed"
+                                style={{ backgroundColor: "rgba(24,196,154,0.1)", color: "#3FE0B0" }}>
+                                💡 {s.action}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 이번 주 실천 To-Do */}
+                      {coach.todos?.length > 0 && (
+                        <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(0,0,0,0.22)" }}>
+                          <h5 className="text-sm font-bold mb-2" style={{ color: "#EAF5F1" }}>✅ 이번 주 실천 To-Do</h5>
+                          <ul className="space-y-1.5">
+                            {coach.todos.map((t, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm leading-relaxed" style={{ color: "#B9D0CC" }}>
+                                <span style={{ color: "#3FE0B0" }}>•</span><span>{t}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <button onClick={handleGetCoach} className="mt-3 text-xs underline" style={{ color: "#90A9A8" }}>
+                        다시 분석
+                      </button>
+                    </div>
+                  )}
+
+                  </div>
+                  )}
+                </div>
+
+                {/* 🔬 정밀 검수 분석 (아코디언) */}
+                <div className="mb-4 rounded-2xl overflow-hidden" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button type="button" onClick={() => toggleSec("precision")}
+                    className="w-full flex items-center justify-between gap-3 p-5 text-left transition hover:opacity-90">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🔬</span>
+                      <div>
+                        <h3 className="text-lg font-black" style={{ color: "#EAF5F1" }}>정밀 검수 분석</h3>
+                        <p className="text-xs mt-0.5" style={{ color: "#6B7E7C" }}>
+                          7개 카테고리·연령적합도 검수 결과
+                          {insights?.analyzedCount != null && ` · 정밀분석 ${insights.analyzedCount}편`}
+                        </p>
+                      </div>
+                    </div>
+                    <FaChevronDown className="shrink-0 text-sm transition-transform"
+                      style={{ color: "#8FA89F", transform: openSec.precision ? "rotate(180deg)" : "rotate(0deg)" }} />
+                  </button>
+                  {openSec.precision && (
+                  <div className="px-5 pb-5">
+
+                {/* 1) 7개 카테고리별 안전 점수 */}
+                <div className="mb-10">
+                  <h4 className="text-sm font-extrabold mb-1" style={{ color: "#EAF5F1" }}>🛡️ 카테고리별 안전 점수</h4>
+                  <p className="text-xs mb-3" style={{ color: "#6B7E7C" }}>100에 가까울수록 안전 · 공포·모방위험·상업성은 정밀분석된 영상에서만 집계돼요.</p>
+                  <ResponsiveContainer width="100%" height={260} debounce={50}>
+                    <BarChart data={insights.categoryAverages} layout="vertical" margin={{ left: 8, right: 32 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.08)" />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#90A9A8" }} />
+                      <YAxis type="category" dataKey="label" width={64} tick={{ fontSize: 12, fill: "#90A9A8" }} />
+                      <Tooltip
+                        formatter={(value, name, props) => [
+                          value == null ? "분석 전" : `${value}점 (${props.payload.count}편)`,
+                          "평균 안전도",
+                        ]}
+                      />
+                      <Bar dataKey="score" name="평균 안전도" radius={[0, 6, 6, 0]}>
+                        {insights.categoryAverages.map((c, i) => (
+                          <Cell
+                            key={i}
+                            fill={c.score == null ? "#2A3F3D" : c.score >= 90 ? "#22c55e" : c.score >= 70 ? "#eab308" : "#ef4444"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* 2) 연령 적합도 + 3) 정밀분석 비율 — 2열 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                  {/* 연령 적합도 */}
+                  <div>
+                    <h4 className="text-sm font-extrabold mb-3" style={{ color: "#EAF5F1" }}>🎂 연령 적합도</h4>
+                    {(() => {
+                      const f = insights.ageFit;
+                      const pieData = [
+                        { name: "적합", value: f.fit, color: "#22c55e" },
+                        { name: "어려움", value: f.hard, color: "#f59e0b" },
+                        { name: "정보 없음", value: f.unknown, color: "#3A4A48" },
+                      ].filter(d => d.value > 0);
+                      return pieData.length === 0 ? (
+                        <p className="py-10 text-center text-sm" style={{ color: "#90A9A8" }}>데이터가 없어요.</p>
+                      ) : (
+                        <>
+                          <ResponsiveContainer width="100%" height={200} debounce={50}>
+                            <PieChart>
+                              <Pie data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={80} dataKey="value"
+                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                                {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                              </Pie>
+                              <Tooltip formatter={(value) => [`${value}편`, "영상 수"]} />
+                              <Legend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <p className="text-xs mt-2 text-center" style={{ color: "#6B7E7C" }}>
+                            아이 나이에 비해 어려운 영상이 {f.hard}편 있어요.
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 정밀분석 비율 */}
+                  <div className="flex flex-col">
+                    <h4 className="text-sm font-extrabold mb-3" style={{ color: "#EAF5F1" }}>🔬 정밀분석 비율</h4>
+                    <div className="flex flex-1 flex-col items-center justify-center rounded-2xl py-8"
+                      style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <p className="text-5xl font-black" style={{ color: "#3FE0B0" }}>{insights.confidence.ratio}%</p>
+                      <p className="mt-2 text-sm font-semibold" style={{ color: "#B9D0CC" }}>
+                        {insights.confidence.high}/{insights.confidence.total}편 정밀분석됨
+                      </p>
+                      <p className="mt-1 text-xs px-6 text-center" style={{ color: "#6B7E7C" }}>
+                        자막·썸네일까지 본 AI 정밀검수 비율이에요. 높을수록 검수 신뢰도가 커요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4) 주간 안전도 추이 */}
+                <div>
+                  <h4 className="text-sm font-extrabold mb-3" style={{ color: "#EAF5F1" }}>📈 최근 7일 안전도 추이</h4>
+                  <ResponsiveContainer width="100%" height={200} debounce={50}>
+                    <LineChart data={insights.weeklyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#90A9A8" }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: "#90A9A8" }} />
+                      <Tooltip formatter={(value) => [value == null ? "기록 없음" : `${value}점`, "평균 안전도"]} />
+                      <Line type="monotone" dataKey="avgScore" name="평균 안전도" stroke="#18C49A" strokeWidth={3}
+                        dot={{ r: 5, fill: "#18C49A" }} activeDot={{ r: 7 }} connectNulls={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                  </div>
+                  )}
+                </div>{/* 정밀 검수 분석 아코디언 끝 */}
+            </>)}
+
+            {/* ═════ 보조: 시청 습관 패턴 (아코디언) ═════ */}
+            <div className="mb-4 rounded-2xl overflow-hidden" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <button type="button" onClick={() => toggleSec("habit")}
+                className="w-full flex items-center justify-between gap-3 p-5 text-left transition hover:opacity-90">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">📊</span>
+                  <div>
+                    <h3 className="text-lg font-black" style={{ color: "#EAF5F1" }}>시청 습관 패턴</h3>
+                    <p className="text-xs mt-0.5" style={{ color: "#6B7E7C" }}>안전도 분포·채널·시간대·시청 추이</p>
+                  </div>
+                </div>
+                <FaChevronDown className="shrink-0 text-sm transition-transform"
+                  style={{ color: "#8FA89F", transform: openSec.habit ? "rotate(180deg)" : "rotate(0deg)" }} />
+              </button>
+              {openSec.habit && (
+              <div className="px-5 pb-5">
 
             {/* 안전도 분포 + 최다 시청 채널 — 2열 그리드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
@@ -1301,6 +1582,10 @@ export default function ParentDashboard() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+
+              </div>
+              )}
             </div>
             </>)}
           </section>
@@ -1538,12 +1823,12 @@ export default function ParentDashboard() {
         </div>
       </div>
 
-      {/* ── 모바일 메뉴 버튼 (하단 고정 = 엄지존, 스크롤해도 항상 닿음) ── */}
+      {/* ── 모바일 메뉴 버튼 (우측 상단 고정, NavBar 바로 아래) ── */}
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
-          className="md:hidden fixed left-4 z-30 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-xl transition hover:opacity-90"
-          style={{ bottom: "20px", background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+          className="md:hidden fixed right-4 z-30 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-xl transition hover:opacity-90"
+          style={{ top: "68px", background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
           aria-label="메뉴 열기"
         >
           <span className="text-base">☰</span> 메뉴

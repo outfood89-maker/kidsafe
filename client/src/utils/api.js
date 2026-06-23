@@ -281,6 +281,22 @@ export const submitFeedbackPipeline = async (data) => {
   return response.data
 }
 
+// 시청 분석 심화 리포트 (history ⋈ analysis_cache 조인 + pandas 집계)
+export const getReportInsights = async (profileId = "all") => {
+  const response = await axios.get(`${BASE_URL}/reports/insights`, {
+    params: { profileId }
+  })
+  return response.data
+}
+
+// AI 코치 분석 (숫자 → 부모 실천 조언, Claude Haiku · 버튼 클릭 시)
+export const getReportCoach = async (profileId = "all") => {
+  const response = await axios.get(`${BASE_URL}/reports/coach`, {
+    params: { profileId }
+  })
+  return response.data // { insights, coach, cached|empty }
+}
+
 // 현재 유저의 role + 프리미엄 여부 조회
 export const getUserStatus = async () => {
   const response = await axios.get(`${BASE_URL}/me/status`)

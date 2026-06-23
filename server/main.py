@@ -38,7 +38,7 @@ def ensure_data_files():
 
 ensure_data_files()
 
-from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit, me, recommend
+from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit, me, recommend, reports
 
 app = FastAPI(
     title="KidSafe API",
@@ -72,6 +72,7 @@ app.include_router(admin_stats.router, prefix="/admin/stats")
 app.include_router(admin_audit.router, prefix="/admin/audit")
 app.include_router(me.router, prefix="/me")
 app.include_router(recommend.router, prefix="/recommend")
+app.include_router(reports.router, prefix="/reports")
 
 
 @app.get("/")
