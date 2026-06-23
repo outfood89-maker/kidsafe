@@ -56,6 +56,7 @@ export default function ProfileSelect() {
   const [pinTarget, setPinTarget] = useState(null); // null | { profileId, mode } — 프로필별 부모 PIN 모달
   const [showCreate, setShowCreate] = useState(false); // 프로필 생성 모달 (계정 영역)
   const [editTarget, setEditTarget] = useState(null); // null | profile — 프로필 수정 모달 (관리 모드)
+  const [confirmTarget, setConfirmTarget] = useState(null); // null | profile — 아이 확인 오버레이
   const [showPaywall, setShowPaywall] = useState(false); // 무료 1개 초과 시 paywall
   const [manage, setManage] = useState(false); // 관리 모드 (켜면 카드에 삭제 노출 — 계정 영역 동작)
   const [loading, setLoading] = useState(true);
@@ -103,7 +104,14 @@ export default function ProfileSelect() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  // 카드 클릭 → 먼저 확인 오버레이 (잘못 들어가기 방지)
   const handleProfileClick = (profile) => {
+    setConfirmTarget(profile);
+  };
+
+  // 확인 오버레이에서 "웅 맞아!!!" → 실제 진입
+  const handleConfirmEnter = (profile) => {
+    setConfirmTarget(null);
     setSelectedId(profile.id);
     localStorage.setItem("selectedProfile", JSON.stringify(profile));
     setTimeout(() => navigate("/kids"), 150);
@@ -369,6 +377,96 @@ export default function ProfileSelect() {
         )}
 
       </div>
+
+      {/* 아이 확인 오버레이 — 프로필 카드 클릭 후 "정말 나 맞아?" 한번 더 확인 (잘못 진입 방지) */}
+      {confirmTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-5"
+          style={{ backgroundColor: "rgba(8,22,22,0.82)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+          onClick={() => setConfirmTarget(null)} // 바깥 탭 → 취소 (잘못 들어와도 쉽게 빠져나옴)
+        >
+          {/* 등장 팝 애니메이션 */}
+          <style>{`@keyframes confirmPop{0%{opacity:0;transform:scale(0.9) translateY(8px)}100%{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+
+          {/* 카드 (한 덩어리로 응집 — 빈공간 제거) */}
+          <div
+            onClick={(e) => e.stopPropagation()} // 카드 안 탭은 닫히지 않게
+            className="relative w-full px-6 pt-7 pb-6"
+            style={{
+              maxWidth: "360px",
+              backgroundColor: "#0E2A2A",
+              borderRadius: "28px",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.55)",
+              animation: "confirmPop 0.28s cubic-bezier(0.34,1.56,0.64,1)",
+            }}
+          >
+            {/* 아이 아바타 (주인공 — 중앙) */}
+            <div className="flex justify-center mb-3">
+              <div
+                className="overflow-hidden"
+                style={{
+                  width: "104px", height: "104px", borderRadius: "50%",
+                  border: "4px solid #18C49A",
+                  boxShadow: "0 0 0 6px rgba(24,196,154,0.12), 0 10px 28px rgba(0,0,0,0.45)",
+                }}
+              >
+                <img src={getAvatarUrl(confirmTarget)} alt={confirmTarget.name} style={getAvatarStyle()} />
+              </div>
+            </div>
+
+            {/* 키디 (크게, 중앙) + 말풍선 (키디 아래 — 꼬리가 위로 키디를 가리킴) */}
+            <div className="flex flex-col items-center mb-6">
+              <KiddyImg pose="think" size={150} />
+              <div
+                className="relative w-full rounded-2xl px-5 py-4 text-center"
+                style={{ marginTop: "6px", backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                {/* 위쪽 꼬리 (키디를 가리킴) */}
+                <div
+                  className="absolute"
+                  style={{
+                    left: "50%", top: "-6px", width: "12px", height: "12px",
+                    transform: "translateX(-50%) rotate(45deg)",
+                    backgroundColor: "#163635",
+                    borderLeft: "1px solid rgba(255,255,255,0.06)",
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                />
+                <p className="font-extrabold leading-snug" style={{ color: "#FFFFFF", fontSize: "19px" }}>
+                  정말 <span style={{ color: "#3FE0B0" }}>{confirmTarget.name}</span> 맞아? 🤔
+                </p>
+                <p className="mt-1 font-semibold" style={{ color: "#B9D0CC", fontSize: "15px" }}>준비됐으면 눌러줘! 🌟</p>
+              </div>
+            </div>
+
+            {/* 선택 버튼 (가로 — 왼쪽 취소 / 오른쪽 확인) */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmTarget(null)}
+                className="flex-1 rounded-2xl py-4 font-bold transition active:scale-95"
+                style={{
+                  backgroundColor: "#163635", color: "#C2D6D2",
+                  border: "1px solid rgba(255,255,255,0.1)", fontSize: "16px",
+                }}
+              >
+                아니에요 🙅
+              </button>
+              <button
+                onClick={() => handleConfirmEnter(confirmTarget)}
+                className="flex-1 rounded-2xl py-4 font-extrabold transition active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg, #18C49A, #14B8C4)",
+                  color: "#08160F", fontSize: "16px",
+                  boxShadow: "0 6px 18px rgba(24,196,154,0.35)",
+                }}
+              >
+                응, 나 맞아! 🙋
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 프로필별 부모 PIN 게이트 — 통과 시 그 아이 부모페이지 진입 */}
       {pinTarget && (
