@@ -31,6 +31,7 @@ import {
 
 import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach } from "../utils/api";
 import KiddyImg from "../components/KiddyImg";
+import KiddyVideo from "../components/KiddyVideo";
 import { useAuth } from "../contexts/AuthContext";
 import VideoModal from "../components/VideoModal";
 import PaywallModal from "../components/PaywallModal";
@@ -1264,7 +1265,10 @@ export default function ParentDashboard() {
                     </button>
                   )}
                   {coachLoading && (
-                    <p className="py-6 text-center text-sm" style={{ color: "#90A9A8" }}>키디가 분석하고 있어요... 🤔</p>
+                    <div className="flex flex-col items-center gap-2 py-6">
+                      <KiddyVideo clip="chat" size={140} />
+                      <p className="text-center text-sm" style={{ color: "#90A9A8" }}>키디가 분석하고 있어요... 🤔</p>
+                    </div>
                   )}
                   {coachError && (
                     <div className="text-center">

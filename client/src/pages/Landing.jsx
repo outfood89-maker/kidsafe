@@ -5,6 +5,7 @@ import {
   FaStar, FaUserPlus, FaBell,
 } from "react-icons/fa"
 import KiddyImg from "../components/KiddyImg"
+import KiddyVideo from "../components/KiddyVideo"
 import { useAuth } from "../contexts/AuthContext"
 
 // 브라우저 프레임 모형
@@ -363,9 +364,9 @@ export default function Landing() {
 
         {/* 메인 콘텐츠 */}
         <div className="relative z-10 flex flex-col items-center">
-          {/* 키디 이미지 */}
+          {/* 키디 인사 영상 (투명 webp · 손 흔들기) — 둥둥(float) 유지, 20% 크게 */}
           <div className="mb-8">
-            <KiddyImg pose="hello" size={200} animate={true} />
+            <KiddyVideo clip="hello" size={240} float />
           </div>
 
           {/* 말풍선 — 비활성화 (2026-06-22, 멘트 어색 피드백). 복구하려면 주석 해제.

@@ -14,3 +14,5 @@ server/data/audit-log.json
 
 # 데이터 자동 백업 찌꺼기 (타임스탬프 백업본 — 버전 관리 제외)
 server/data/*.backup-*.json
+# 키디 로딩 영상 — 런타임은 투명 webp만 커밋. mp4(마젠타 원본/teal/구 압축본)는 대용량이라 제외
+client/public/videos/*.mp4

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FaTimes, FaInfoCircle } from "react-icons/fa";
 import { analyzeVideoDeep, submitFeedback } from "../utils/api";
 import PaywallModal from "./PaywallModal";
+import KiddyVideo from "./KiddyVideo";
 
 export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70 }) {
   const [visible, setVisible] = useState(false);
@@ -263,12 +264,19 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
           {/* AI 요약 */}
           <div className="rounded-xl px-3 py-2" style={{ backgroundColor: "#13344A", border: "1px solid rgba(127,196,240,0.15)" }}>
             <p className="text-xs font-medium mb-0.5" style={{ color: "#7FC4F0" }}>🤖 AI 요약</p>
-            <p
-              className="text-xs leading-relaxed"
-              style={{ color: "#C9DCEA" }}
-            >
-              {deepLoading && !deepResult ? "영상 내용을 자세히 살펴보고 있어요..." : v.summary}
-            </p>
+            {deepLoading && !deepResult ? (
+              // A안: 키디를 크게(세로 스택), 설명글은 아래 중앙으로
+              <div className="flex flex-col items-center gap-1 py-1">
+                <KiddyVideo clip="chat" size={120} />
+                <p className="text-xs leading-relaxed text-center" style={{ color: "#C9DCEA" }}>
+                  영상 내용을 자세히 살펴보고 있어요...
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs leading-relaxed" style={{ color: "#C9DCEA" }}>
+                {v.summary}
+              </p>
+            )}
           </div>
 
           {/* 안전도 점수 — 안전 5개(총점 반영) */}

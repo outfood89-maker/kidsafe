@@ -19,6 +19,7 @@ import PlaylistModal from "../components/PlaylistModal";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
 import KiddyImg from "../components/KiddyImg";
+import KiddyVideo from "../components/KiddyVideo";
 
 // 깡총 점프 키프레임 주입 (한 번만)
 if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {
@@ -1118,9 +1119,13 @@ export default function KidHome() {
                         borderTop: "11px solid rgba(255,255,255,0.96)",
                       }} />
                     </div>
-                    {/* 키디 — 검색 중이면 검색 포즈 */}
+                    {/* 키디 — 검색 중이면 검색 영상(투명 webp). scale로 박스 크기 유지한 채 20%만 크게(레이아웃 안 밀림) */}
                     <div ref={kiddyMobileRef}>
-                      <KiddyImg pose={kiddyPose} size={190} />
+                      {loading ? (
+                        <KiddyVideo clip="search" size={190} scale={1.2} />
+                      ) : (
+                        <KiddyImg pose={kiddyPose} size={190} />
+                      )}
                     </div>
                     {!loading && !kiddyClicked && (
                       <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>
@@ -1158,9 +1163,13 @@ export default function KidHome() {
                   {/* 우: 키디 + 말풍선 (클릭 시 대사 순환) */}
                   <div className="hidden md:flex justify-center items-center" style={{ flex: "27", minWidth: 0 }}>
                     <div className="relative cursor-pointer select-none" style={{ marginLeft: "-50px" }} onClick={handleKiddyClick}>
-                      {/* bounce는 진입 후 1.5초 동안만 */}
+                      {/* bounce는 진입 후 1.5초 동안만 / 검색 중이면 검색 영상(투명 webp). scale로 박스 유지 채 20%만 크게 */}
                       <div className={kiddyBounce ? "animate-bounce" : ""}>
-                        <KiddyImg pose={kiddyPose} size={220} />
+                        {loading ? (
+                          <KiddyVideo clip="search" size={220} scale={1.2} />
+                        ) : (
+                          <KiddyImg pose={kiddyPose} size={220} />
+                        )}
                       </div>
                       {/* 말풍선 — 키디 우측 상단 */}
                       <div className="absolute" style={{ top: "0px", left: "148px" }}>
