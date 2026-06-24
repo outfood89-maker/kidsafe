@@ -38,6 +38,15 @@ if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-styl
   document.head.appendChild(s);
 }
 
+// 이름 뒤 호격조사(아/야) 자동 선택 — 받침 있으면 "아"(해인아), 없으면 "야"(호이야).
+// 한글 음절은 (코드-0xAC00) % 28 !== 0 이면 받침(종성) 있음. 한글 아닌 이름은 "야"로 폴백.
+const withVocative = (name) => {
+  if (!name) return "친구야";
+  const code = name.charCodeAt(name.length - 1);
+  const hasBatchim = code >= 0xAC00 && code <= 0xD7A3 && (code - 0xAC00) % 28 !== 0;
+  return name + (hasBatchim ? "아" : "야");
+};
+
 const GREETING_DIALOGUES = [
   { pose: "hello",   text: "안녕 {name}야! 오늘도 만나서 반가워~ 😊" },
   { pose: "chat",    text: "오늘 기분은 어때? 키디는 너 만나서 너무 좋아! 🌟" },
@@ -1002,7 +1011,7 @@ export default function KidHome() {
                 ? "검색 중이에요..."
                 : hasSearchResults
                 ? "영상을 찾았어! 아래로 내려서 확인해봐! 👇"
-                : GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구");
+                : GREETING_DIALOGUES[greetingIndex].text.replace("{name}야", withVocative(selectedProfile?.name ?? "친구"));
               return (
                 <div className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
                   style={{ background: "linear-gradient(135deg, #0E2A23 0%, #14463C 50%, #1A9180 100%)", borderRadius: "24px", minHeight: "220px" }}>
@@ -1012,7 +1021,7 @@ export default function KidHome() {
                   {/* 좌: 인사 + 검색창 */}
                   <div className="z-10 w-full md:w-auto" style={{ flex: "57", minWidth: 0 }}>
                     <p className="text-base font-bold mb-1" style={{ color: "#5FE0BC" }}>
-                      {selectedProfile ? `${selectedProfile.name}아, 안녕! 👋` : "안녕 친구야~ 👋"}
+                      {selectedProfile ? `${withVocative(selectedProfile.name)}, 안녕! 👋` : "안녕 친구야~ 👋"}
                     </p>
                     <p className="text-2xl font-black mb-5 tracking-tight" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
                     <div ref={searchBoxRef} className="relative">
