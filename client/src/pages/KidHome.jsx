@@ -996,8 +996,12 @@ export default function KidHome() {
               const timerColor = timeLimitReached ? "#F2655C" : remainingSec !== null && remainingSec / tlSec <= 0.2 ? "#F5B829" : "#18C49A";
               // 검색 중이면 인사 배너 키디가 검색 포즈 + "검색 중이에요"로 전환 (별도 로더 대신)
               const kiddyPose = loading ? "search" : GREETING_DIALOGUES[greetingIndex].pose;
+              // 검색 결과가 있으면(모바일은 스크롤 전엔 화면이 검색 전과 같아 보임) "찾았어! 아래로 내려봐" 안내 — 글만 변경, 키디 크기/UI는 그대로
+              const hasSearchResults = videos.length > 0 || playlists.length > 0;
               const kiddyText = loading
                 ? "검색 중이에요..."
+                : hasSearchResults
+                ? "영상을 찾았어! 아래로 내려서 확인해봐! 👇"
                 : GREETING_DIALOGUES[greetingIndex].text.replace("{name}", selectedProfile?.name ?? "친구");
               return (
                 <div className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
