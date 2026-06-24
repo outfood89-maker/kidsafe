@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import KiddyImg from "../KiddyImg";
 import confettiLib from "canvas-confetti";
+import { GAME_COMPLETE_BONUS } from "../../utils/gameBonus";
 
 const SEA_EMOJIS = ["🐠","🐙","🦈","🐬","🦭","🐳","🦑","🦀","🐡","🐚"];
 
@@ -393,7 +394,7 @@ export default function MemoryGame({ onComplete }) {
         {isWin && (
           <div style={{ background: "linear-gradient(90deg, #ADE8F4, #48CAE4)", borderRadius: 16, padding: "14px 20px", marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: "#023E8A", fontWeight: 700 }}>보너스 시간 획득!</div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: "#023E8A" }}>+7분 ⏰</div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: "#023E8A" }}>+{GAME_COMPLETE_BONUS}분 ⏰</div>
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>

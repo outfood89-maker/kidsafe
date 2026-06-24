@@ -16,13 +16,18 @@ from routers.profiles import get_owned_profile
 
 router = APIRouter()
 
-# 게임별 보너스 기준 (game-bonus.js와 동일)
-THRESHOLDS = {
-    "ox-quiz":     {"full": 8,  "partial": 0,  "fullBonus": 3, "partialBonus": 0},
-    "word-match":  {"full": 10, "partial": 6,  "fullBonus": 7, "partialBonus": 3},
-    "puzzle":      {"full": 1,  "partial": 0,  "fullBonus": 7, "partialBonus": 0},
-    "memory-card": {"full": 1,  "partial": 0,  "fullBonus": 7, "partialBonus": 0},
-}
+# 게임 보너스 규칙 — 한 판 완료 시 고정 3분 (2026-06-24 변경)
+# ⚠️ 프론트 client/src/utils/gameBonus.js 와 반드시 동일하게 유지할 것!
+#   - 모든 게임 공통: 한 판 완료하면 GAME_COMPLETE_BONUS분 (정답 수 무관)
+GAME_COMPLETE_BONUS = 3
+
+# (구 임계값 방식 백업 — 되돌릴 때 참고)
+# THRESHOLDS = {
+#     "ox-quiz":     {"full": 8,  "partial": 0,  "fullBonus": 3, "partialBonus": 0},
+#     "word-match":  {"full": 10, "partial": 6,  "fullBonus": 7, "partialBonus": 3},
+#     "puzzle":      {"full": 1,  "partial": 0,  "fullBonus": 7, "partialBonus": 0},
+#     "memory-card": {"full": 1,  "partial": 0,  "fullBonus": 7, "partialBonus": 0},
+# }
 
 
 def _to_api(row: dict) -> dict:
@@ -72,12 +77,8 @@ async def save_bonus(data: BonusRequest, user: dict = Depends(get_current_user))
 
     profile = await get_owned_profile(data.profileId, user["user_id"])
 
-    threshold = THRESHOLDS.get(data.game, {"full": 5, "partial": 3, "fullBonus": 7, "partialBonus": 3})
-    bonus_minutes = 0
-    if data.correctCount >= threshold["full"]:
-        bonus_minutes = threshold["fullBonus"]
-    elif data.correctCount >= threshold.get("partial", 0):
-        bonus_minutes = threshold.get("partialBonus", 0)
+    # 게임 한 판 완료 시 고정 3분 (정답 수 무관)
+    bonus_minutes = GAME_COMPLETE_BONUS
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     rows = await sb_select(

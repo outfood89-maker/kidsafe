@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import KiddyImg from "../KiddyImg";
 import confettiLib from "canvas-confetti";
+import { GAME_COMPLETE_BONUS } from "../../utils/gameBonus";
 
 // 애니메이션 주입
 if (typeof document !== "undefined" && !document.getElementById("wordmatch-style")) {
@@ -327,8 +328,8 @@ export default function WordMatch({ onComplete }) {
 
   // ── 결과 화면 ──
   if (showResult) {
-    const bonusMinutes = correctCount >= 10 ? 7 : correctCount >= 6 ? 3 : 0;
-    const isWin = bonusMinutes > 0;
+    const bonusMinutes = GAME_COMPLETE_BONUS; // 게임 완료 시 3분 (정답 수 무관)
+    const isWin = correctCount >= 6; // 격려 메시지/표정용 (보너스는 완료 시 항상 지급)
     return (
       <div style={{ position: "fixed", inset: 0, background: "linear-gradient(180deg, #4FC3F7 0%, #81D4FA 30%, #C8F0A0 75%, #8BC34A 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, overflow: "hidden", zIndex: 20 }}>
         <Clouds />

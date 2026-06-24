@@ -11,6 +11,7 @@ import KiddyImg from "../components/KiddyImg";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
 import { getGameBonus, saveGameBonus } from "../utils/api";
+import { computeGameBonus } from "../utils/gameBonus";
 
 // 듀오링고 스타일 애니메이션 주입
 if (typeof document !== "undefined" && !document.getElementById("minigame-duo-style")) {
@@ -136,19 +137,9 @@ export default function MiniGame() {
     }
   };
 
-  // 게임별 보너스 기준
-  const BONUS_THRESHOLDS = {
-    "ox-quiz":     { full: 8,  partial: 0,  fullBonus: 3, partialBonus: 0 },
-    "math-quiz":   { full: 9,  partial: 6,  fullBonus: 7, partialBonus: 3 },
-    "sort-game":   { full: 24, partial: 15, fullBonus: 7, partialBonus: 3 },
-    "word-match":  { full: 10, partial: 6,  fullBonus: 7, partialBonus: 3 },
-    "puzzle":      { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
-    "memory-card": { full: 1,  partial: 0,  fullBonus: 7, partialBonus: 0 },
-  };
-
+  // 게임 보너스 — 한 판 완료 시 고정 3분(2026-06-24). 규칙은 utils/gameBonus.js 단일 소스.
   const handleGameComplete = (correctCount) => {
-    const { full, partial, fullBonus = 7, partialBonus = 3 } = BONUS_THRESHOLDS[selectedGame] || { full: 5, partial: 3, fullBonus: 7, partialBonus: 3 };
-    const rawBonus = correctCount >= full ? fullBonus : correctCount >= partial ? partialBonus : 0;
+    const rawBonus = computeGameBonus(); // 게임 완료 시 3분 (정답 수 무관)
     const earnedNow = Math.min(rawBonus, Math.max(0, maxBonus - todayBonus));
     const newTotal = todayBonus + earnedNow;
 

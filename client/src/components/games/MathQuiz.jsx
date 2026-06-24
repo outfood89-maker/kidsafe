@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import KiddyImg from "../KiddyImg";
 import confettiLib from "canvas-confetti";
+import { GAME_COMPLETE_BONUS } from "../../utils/gameBonus";
 
 // 애니메이션 주입 (1회)
 if (typeof document !== "undefined" && !document.getElementById("mathquiz-style")) {
@@ -191,8 +192,8 @@ export default function MathQuiz({ onComplete }) {
 
   // ── 결과 화면 ──
   if (showResult) {
-    const bonus = correctCount >= FULL ? 7 : correctCount >= PARTIAL ? 3 : 0;
-    const isWin = bonus > 0;
+    const bonus = GAME_COMPLETE_BONUS; // 게임 완료 시 3분 (정답 수 무관)
+    const isWin = correctCount >= PARTIAL; // 격려 메시지/표정용 (보너스는 완료 시 항상 지급)
     const lvLabel = LEVELS.find((l) => l.id === level)?.label;
     return (
       <div style={{ position: "fixed", inset: 0, background: "linear-gradient(180deg, #60A5FA 0%, #3B82F6 45%, #93C5FD 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 20 }}>
@@ -219,7 +220,7 @@ export default function MathQuiz({ onComplete }) {
             </div>
           ) : (
             <div style={{ background: "#FFF0F0", border: "2px solid #FFCCCC", borderRadius: 16, padding: "12px 20px", marginBottom: 20 }}>
-              <div style={{ fontSize: 13, color: "#FF5C5C", fontWeight: 700 }}>{PARTIAL}문제 이상 맞히면 보너스를 얻어요!</div>
+              <div style={{ fontSize: 13, color: "#FF5C5C", fontWeight: 700 }}>게임을 완료하면 보너스를 얻어요!</div>
             </div>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", width: "100%" }}>

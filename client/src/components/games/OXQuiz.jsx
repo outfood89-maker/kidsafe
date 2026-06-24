@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import KiddyImg from "../KiddyImg";
 import confettiLib from "canvas-confetti";
+import { GAME_COMPLETE_BONUS } from "../../utils/gameBonus";
 
 // 카테고리별 문제 (자동으로 category 필드 부여)
 const QUESTION_BANK = {
@@ -753,8 +754,8 @@ export default function OXQuiz({ onComplete }) {
 
   // ── 결과 화면 ──
   if (showResult) {
-    const bonusMinutes = correctCount >= 8 ? 3 : 0;
-    const isWin = bonusMinutes > 0;
+    const bonusMinutes = GAME_COMPLETE_BONUS; // 게임 완료 시 3분 (정답 수 무관)
+    const isWin = correctCount >= 8; // 격려 메시지/표정용 (보너스는 완료 시 항상 지급)
     return (
       <div style={{ position: "fixed", inset: 0, background: "linear-gradient(160deg, #060618 0%, #130826 50%, #0a1535 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, overflow: "hidden", zIndex: 20 }}>
         <FloatingParticles />

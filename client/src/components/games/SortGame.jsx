@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import KiddyImg from "../KiddyImg";
 import confettiLib from "canvas-confetti";
+import { GAME_COMPLETE_BONUS } from "../../utils/gameBonus";
 
 // 애니메이션 주입 (1회)
 if (typeof document !== "undefined" && !document.getElementById("sortgame-style")) {
@@ -284,8 +285,8 @@ export default function SortGame({ onComplete }) {
 
   // ── 결과 화면 ──
   if (showResult) {
-    const bonus = correctCount >= FULL ? 7 : correctCount >= PARTIAL ? 3 : 0;
-    const isWin = bonus > 0;
+    const bonus = GAME_COMPLETE_BONUS; // 게임 완료 시 3분 (정답 수 무관)
+    const isWin = correctCount >= PARTIAL; // 격려 메시지/표정용 (보너스는 완료 시 항상 지급)
     return (
       <div style={{ position: "fixed", inset: 0, background: "linear-gradient(180deg, #5EEAD4 0%, #2DD4BF 40%, #99F6E4 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 20 }}>
         <div style={{ background: "white", borderRadius: 28, padding: "28px 28px 32px", textAlign: "center", maxWidth: 320, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)", animation: "sgPop 0.5s ease-out" }}>
