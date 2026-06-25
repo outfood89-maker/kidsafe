@@ -181,7 +181,7 @@
     "watchedAt": "2026-06-12T17:02:35.880Z",
     "watchCount": 6,
     "repeated": true,
-    "read": false,
+    "read": true,
     "updatedAt": "2026-06-12T17:25:24.357Z"
   },
   {

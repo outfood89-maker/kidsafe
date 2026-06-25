@@ -89,43 +89,53 @@
     "violence": 100,
     "language": 100,
     "sexual": 100,
-    "educational": 85,
-    "totalScore": 99,
-    "summary": "핑크퐁의 '아기상어'는 세계적으로 인기 있는 유아 동요로, 폭력·욕설·선정성이 전혀 없는 매우 안전한 콘텐츠입니다. 3세 이상 모든 어린이가 즐길 수 있습니다.",
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "검증된 공식 키즈 채널 핑크퐁의 아기상어는 폭력, 공포, 선정성이 전혀 없는 순수 교육 동요입니다. 3세 이상 모든 어린이가 안전하게 시청할 수 있습니다.",
     "confidence": "high",
     "ageRating": 3,
-    "scary": 95,
+    "scary": 100,
+    "imitationRisk": 100,
+    "commercialism": 98,
     "categories": {
       "violence": {
         "score": 100,
-        "note": "폭력 요소가 전혀 없으며, 상어가족의 일상적인 모습을 다룬 순수한 아동 콘텐츠입니다."
+        "note": "폭력 요소 전혀 없음."
       },
       "language": {
         "score": 100,
-        "note": "동요로 구성되어 있으며 비속어나 부적절한 언어가 전혀 없습니다."
+        "note": "욕설·비속어 없이 순수한 동요만 포함."
       },
       "sexual": {
         "score": 100,
-        "note": "선정적 요소가 전혀 포함되지 않은 순수 어린이 동요입니다."
+        "note": "선정성 요소 전혀 없음."
       },
       "scary": {
-        "score": 95,
-        "note": "상어라는 동물이 등장하지만 아기상어는 친근하고 귀여운 캐릭터로 표현되어 무섭지 않습니다."
+        "score": 100,
+        "note": "귀여운 상어 캐릭터로 표현된 친화적인 동물 소재 동요로 공포 요소 없음."
+      },
+      "imitation_risk": {
+        "score": 100,
+        "note": "위험한 행동이나 도박성 구매 유도 요소 없음."
       },
       "educational": {
-        "score": 85,
-        "note": "동물 이름, 가족 관계 등 기초 개념을 학습할 수 있는 교육적 가치가 있습니다."
+        "score": 95,
+        "note": "동물 학습과 가족 관계를 노래로 자연스럽게 전달하나, 직접적 학습 내용(글자, 숫자 등)은 제한적."
+      },
+      "commercialism": {
+        "score": 98,
+        "note": "핑크퐁 캐릭터가 등장하지만 상품 구매나 소비 유도 없이 교육 콘텐츠로 전개됨."
       }
     },
     "source": "metadata",
-    "analyzedAt": "2026-06-15T05:11:38.400925+00:00",
+    "analyzedAt": "2026-06-19T03:31:52.643974+00:00",
     "_meta": {
       "videoId": "761ae_KDg_Q",
       "title": "아기상어 | 상어가족 | 동물동요 | @BabyShark_Korean 핑크퐁! 인기동요",
-      "thumbnail": "https://i.ytimg.com/vi/761ae_KDg_Q/mqdefault.jpg",
+      "thumbnail": "",
       "channelTitle": "핑크퐁 (인기 동요・동화)",
       "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
-      "madeForKids": true
+      "madeForKids": false
     }
   },
   "Bxx9-9MwNK4": {
@@ -4580,19 +4590,56 @@
     }
   },
   "0RGt-CrFCO0": {
-    "violence": 100,
+    "violence": 92,
     "language": 100,
     "sexual": 100,
-    "educational": 60,
-    "totalScore": 100,
-    "summary": "\"뽀로로 삐뽀삐뽀 응급실 동화 | 출동! 뽀로로 구급차 | 뽀로로 이야기 | 뽀롱뽀롱 뽀로로\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "educational": 82,
+    "totalScore": 93,
+    "summary": "공식 뽀로로 채널의 응급실 안전교육 동화로, 폭력·욕설·선정성이 없고 교육 목표가 명확합니다. 다만 응급 상황 자체가 어린 영유아에게 불안감을 줄 수 있고, 브랜드 캐릭터 중심이라 상업성 노출 가능성이 있어 완벽한 만점은 아닙니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 85,
+    "imitationRisk": 88,
+    "commercialism": 78,
+    "categories": {
+      "violence": {
+        "score": 92,
+        "note": "응급실 상황이 다루어지지만 뽀로로 공식 캐릭터의 친화적 맥락에서 폭력 묘사 없이 교육적으로 처리될 것으로 예상됨."
+      },
+      "language": {
+        "score": 100,
+        "note": "공식 뽀로로 채널이며 아이 친화적 동화 형식이므로 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 85,
+        "note": "응급실·구급차 출동이라는 위기 상황이 다루어지나, 공식 키즈 채널의 뽀로로는 이를 안전교육 맥락에서 진행하므로 트라우마성 공포는 낮음. 다만 어린 영유아(3세 미만)는 분리·위기 상황에 불안감을 느낄 수 있어 완벽한 안전선은 아님."
+      },
+      "imitation_risk": {
+        "score": 88,
+        "note": "응급 상황 대처와 안전교육이 목표이므로 위험한 행동 모방 부추김은 낮으나, 뽀로로 캐릭터 소비·관련 장난감 노출 가능성이 있어 완벽한 상업성 분리는 어려움."
+      },
+      "educational": {
+        "score": 82,
+        "note": "응급실 방문, 구급차 출동 등 아이들이 겪을 수 있는 상황을 통해 안전·건강교육을 다루는 긍정적 교육 가치가 있으나, 실제 의료 개념·응급 처치 방법 등 구체적 학습 내용의 깊이는 제한적일 수 있음."
+      },
+      "commercialism": {
+        "score": 78,
+        "note": "공식 뽀로로 채널이며 응급실 동화라는 교육 맥락이 있으나, 인기 캐릭터 중심의 브랜드 채널이므로 뽀로로 관련 상품·장난감 노출과 구매 유도 가능성이 적중 있을 수 있음."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-18T15:34:11.161611+00:00",
     "_meta": {
       "videoId": "0RGt-CrFCO0",
       "title": "뽀로로 삐뽀삐뽀 응급실 동화 | 출동! 뽀로로 구급차 | 뽀로로 이야기 | 뽀롱뽀롱 뽀로로",
-      "thumbnail": "https://i.ytimg.com/vi/0RGt-CrFCO0/mqdefault.jpg",
+      "thumbnail": "",
       "channelTitle": "뽀롱뽀롱 뽀로로 l 이야기・동화",
       "channelId": "UCyyCXaPt37-4rTpDvL6niMA",
-      "madeForKids": true
+      "madeForKids": false
     }
   },
   "Bob8YqP1wQg": {
@@ -4975,6 +5022,309 @@
       "thumbnail": "",
       "channelTitle": "기리TV",
       "channelId": "UCEcuyrAqhRVUmRdOd6FGKSw",
+      "madeForKids": false
+    }
+  },
+  "Cxy6SrTJZeg": {
+    "violence": 95,
+    "language": 100,
+    "sexual": 100,
+    "educational": 90,
+    "totalScore": 96,
+    "summary": "공식 키즈 채널의 아이 친화적 구조 동화로, 팀워크와 용기를 배우는 교육적 가치가 있습니다. 위험 상황이 설정되지만 해피엔딩으로 안전하게 해소되어 3세 이상 영유아도 안심하고 즐길 수 있습니다.",
+    "confidence": "high",
+    "ageRating": 3,
+    "scary": 93,
+    "imitationRisk": 94,
+    "commercialism": 96,
+    "categories": {
+      "violence": {
+        "score": 95,
+        "note": "구조 상황이 설정이지만 실제 폭력·학대 묘사 없이 영웅적 협력과 문제 해결로 진행되는 아동친화적 내용"
+      },
+      "language": {
+        "score": 100,
+        "note": "공식 키즈 채널의 동화 형식으로 욕설·비속어 없음"
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음"
+      },
+      "scary": {
+        "score": 93,
+        "note": "마을이 위험에 처한 상황이 설정되지만 구조팀의 용감한 활약과 해피엔딩으로 해소되는 공감적 긴장; 아이 친화적 캐릭터로 실사 공포나 트라우마성 연출 없음"
+      },
+      "imitation_risk": {
+        "score": 94,
+        "note": "구조대의 협력, 용감함, 문제 해결 능력을 긍정적으로 모델링하며 위험한 행동을 부추기거나 도박성 소비를 자극하지 않음"
+      },
+      "educational": {
+        "score": 90,
+        "note": "팀워크, 용기, 이웃을 돕는 공동체 의식 등 사회성·감정교육 가치 있으나 학습적 개념(숫자, 글자, 과학 등)은 제한적"
+      },
+      "commercialism": {
+        "score": 96,
+        "note": "스토리 중심의 교육적 동화로 타요 캐릭터가 등장하지만 구매·언박싱·뽑기 유도 없음"
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-18T15:28:13.616023+00:00",
+    "_meta": {
+      "videoId": "Cxy6SrTJZeg",
+      "title": "🚨레스큐 타요 동화 이어보기 | 위험에 빠진 마을을 구해요! | 용감한 구조대 | 레스큐팀 | 타요 구조대 스토리 | 꼬마버스 타요",
+      "thumbnail": "",
+      "channelTitle": "꼬마버스 타요",
+      "channelId": "UCxUZwdsqshu2iLQwdEE6e7Q",
+      "madeForKids": false
+    }
+  },
+  "JXmUkW_lMPA": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"타요버스 현실버전(Tayo Bus Real Life) [KOJER]\"은(는) 어린이에게 안전한 콘텐츠예요.",
+    "_meta": {
+      "videoId": "JXmUkW_lMPA",
+      "title": "타요버스 현실버전(Tayo Bus Real Life) [KOJER]",
+      "thumbnail": "https://i.ytimg.com/vi/JXmUkW_lMPA/mqdefault.jpg",
+      "channelTitle": "Kojer",
+      "channelId": "UCaEwpIutQVb9JqCBIrlP2Vg",
+      "madeForKids": false
+    }
+  },
+  "Nb-LyFjQ-cU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"자동차 정비 노래 l 타요 히어로 정비소 l 정비송 l 자동차 정비 l 타요의 씽씽극장 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "Nb-LyFjQ-cU",
+      "title": "자동차 정비 노래 l 타요 히어로 정비소 l 정비송 l 자동차 정비 l 타요의 씽씽극장 l 꼬마버스 타요",
+      "thumbnail": "https://i.ytimg.com/vi/Nb-LyFjQ-cU/mqdefault.jpg",
+      "channelTitle": "뽀로로와 노래해요 (뽀로로 • 타요 인기동요)",
+      "channelId": "UCi0mZC22Uj3ww0w9KtkPgZQ",
+      "madeForKids": true
+    }
+  },
+  "gzdFF9qVAEk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 75,
+    "totalScore": 100,
+    "summary": "\"꼬마버스 쿠키송 l 타요노래 누가 몰래 쿠키를 다 가져갔어  l 타요 인기동요 l 꼬마버스 타요\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "gzdFF9qVAEk",
+      "title": "꼬마버스 쿠키송 l 타요노래 누가 몰래 쿠키를 다 가져갔어  l 타요 인기동요 l 꼬마버스 타요",
+      "thumbnail": "https://i.ytimg.com/vi/gzdFF9qVAEk/mqdefault.jpg",
+      "channelTitle": "꼬마버스 타요",
+      "channelId": "UCxUZwdsqshu2iLQwdEE6e7Q",
+      "madeForKids": true
+    }
+  },
+  "d6_7QR7PQqQ": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 60,
+    "totalScore": 100,
+    "summary": "\"뽀로로 사운드 벽보 ① 노래로 배우는 ㄱㄴㄷ 한글\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "d6_7QR7PQqQ",
+      "title": "뽀로로 사운드 벽보 ① 노래로 배우는 ㄱㄴㄷ 한글",
+      "thumbnail": "https://i.ytimg.com/vi/d6_7QR7PQqQ/mqdefault.jpg",
+      "channelTitle": "뽀로로(Pororo)",
+      "channelId": "UCPUeGC_AL-OnDQORKhRm6iA",
+      "madeForKids": true
+    }
+  },
+  "SrnZe_lHguc": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 40,
+    "totalScore": 100,
+    "summary": "\"[뽀로로와 노래해요 3기] 2화 딸꾹질 왈츠\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "SrnZe_lHguc",
+      "title": "[뽀로로와 노래해요 3기] 2화 딸꾹질 왈츠",
+      "thumbnail": "https://i.ytimg.com/vi/SrnZe_lHguc/mqdefault.jpg",
+      "channelTitle": "뽀로로(Pororo)",
+      "channelId": "UCPUeGC_AL-OnDQORKhRm6iA",
+      "madeForKids": true
+    }
+  },
+  "okrFT_7S3F4": {
+    "violence": 92,
+    "language": 100,
+    "sexual": 100,
+    "educational": 88,
+    "totalScore": 94,
+    "summary": "검증된 공식 키즈 채널 핑크퐁의 과학 동요로, 좀비 동물을 의인화하여 생명력 등 과학 개념을 설명합니다. 제목이 다소 자극적이지만 호러 장르는 아니며, 5세 이상 안전하게 시청 가능합니다. 다만 유료 서비스 홍보가 있어 완전히 상업성 없지는 않습니다.",
+    "confidence": "high",
+    "ageRating": 5,
+    "scary": 82,
+    "imitationRisk": 95,
+    "commercialism": 70,
+    "categories": {
+      "violence": {
+        "score": 92,
+        "note": "좀비 동물이 등장하지만 실제 폭력 묘사 없이 교육적 맥락(의인화된 과학 설명)에서 안전하게 표현됨."
+      },
+      "language": {
+        "score": 100,
+        "note": "동요 형식이며 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 82,
+        "note": "제목에 '오싹오싹 😱'과 '죽어도 죽지 않는 좀비'라는 공포 표현이 있고, 좀비 개념이 5~7세 어린이에게 실제로 불안감을 줄 수 있음. 다만 검증된 공식 키즈 채널의 교육 동요이므로 호러 장르 연출은 아닐 것으로 판단되나, 마케팅 제목이 다소 자극적임."
+      },
+      "imitation_risk": {
+        "score": 95,
+        "note": "과학 동요 형식으로 따라 하기 위험한 행동이 없음."
+      },
+      "educational": {
+        "score": 88,
+        "note": "좀비라는 의인화된 캐릭터로 동물의 생명력·재생력·생존능력 등 과학 개념을 설명하는 교육 동요이나, 제목의 공포 마케팅이 실제 교육 콘텐츠와 괴리가 있어 순수 교육성은 만점 미만."
+      },
+      "commercialism": {
+        "score": 70,
+        "note": "핑크퐁플러스 구독 서비스 무료 체험을 설명 상단에 배치해 유도하고 있음. 동요 본문에 상품이 자연스럽게 녹아있을 가능성 낮으나 마케팅 의도가 명시됨."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-19T03:42:40.270022+00:00",
+    "_meta": {
+      "videoId": "okrFT_7S3F4",
+      "title": "[NEW⭐️] 오싹오싹 😱 죽어도 죽지 않는 좀비 동물?! | 핑크퐁, 그거 알아? | 과학동요 | 동물동요 | #공부친구 | 핑크퐁! 인기동요",
+      "thumbnail": "",
+      "channelTitle": "핑크퐁 (인기 동요・동화)",
+      "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
+      "madeForKids": false
+    }
+  },
+  "nCfyTEAMKbg": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"아기 티라노 | 공룡동요 | 동물동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "nCfyTEAMKbg",
+      "title": "아기 티라노 | 공룡동요 | 동물동요 | 핑크퐁! 인기동요",
+      "thumbnail": "https://i.ytimg.com/vi/nCfyTEAMKbg/mqdefault.jpg",
+      "channelTitle": "핑크퐁 (인기 동요・동화)",
+      "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
+      "madeForKids": true
+    }
+  },
+  "eDqoUqVmmBk": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"작은 주전자예요 | 핑크퐁을 따라 노래하며 춤춰요 | 감성동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "eDqoUqVmmBk",
+      "title": "작은 주전자예요 | 핑크퐁을 따라 노래하며 춤춰요 | 감성동요 | 핑크퐁! 인기동요",
+      "thumbnail": "https://i.ytimg.com/vi/eDqoUqVmmBk/mqdefault.jpg",
+      "channelTitle": "핑크퐁 (인기 동요・동화)",
+      "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
+      "madeForKids": true
+    }
+  },
+  "ya0AJMhLbJs": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 95,
+    "totalScore": 100,
+    "summary": "\"악어 떼 | 인기율동동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "ya0AJMhLbJs",
+      "title": "악어 떼 | 인기율동동요 | 핑크퐁! 인기동요",
+      "thumbnail": "https://i.ytimg.com/vi/ya0AJMhLbJs/mqdefault.jpg",
+      "channelTitle": "핑크퐁 (인기 동요・동화)",
+      "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
+      "madeForKids": true
+    }
+  },
+  "L1nHZNMN9gU": {
+    "violence": 100,
+    "language": 100,
+    "sexual": 100,
+    "educational": 100,
+    "totalScore": 100,
+    "summary": "\"펭귄 댄스 | 동물동요 | 핑크퐁! 인기동요\"은(는) YouTube 공식 아동용 인증 영상이에요.",
+    "_meta": {
+      "videoId": "L1nHZNMN9gU",
+      "title": "펭귄 댄스 | 동물동요 | 핑크퐁! 인기동요",
+      "thumbnail": "https://i.ytimg.com/vi/L1nHZNMN9gU/mqdefault.jpg",
+      "channelTitle": "핑크퐁 (인기 동요・동화)",
+      "channelId": "UCqXwKu6dKobXEQFhdKtiJLQ",
+      "madeForKids": true
+    }
+  },
+  "IrETzVz0isI": {
+    "violence": 85,
+    "language": 100,
+    "sexual": 100,
+    "educational": 70,
+    "totalScore": 86,
+    "summary": "공식 핑크퐁 채널의 키즈 동요 콘텐츠이나, 제목에서 '그림자 몬스터'와 '좀비'를 강조하여 공포 마케팅을 하고 있어 5세 이상 아이도 불안감을 느낄 수 있습니다. 실제 콘텐츠가 순수 동요라면 안전하지만, 제목과 맞춰 공포 연출이 있으면 아이 발달에 부정적 영향을 줄 수 있으므로 부모 동반 시청을 권장합니다.",
+    "confidence": "high",
+    "ageRating": 5,
+    "scary": 72,
+    "imitationRisk": 75,
+    "commercialism": 80,
+    "categories": {
+      "violence": {
+        "score": 85,
+        "note": "프리즈 댄스, 핑거패밀리 등 동요는 폭력 요소가 없으나, '그림자 몬스터' 등장과 '좀비 아기상어' 표현이 있어 약간의 어두운 연출 가능성 있음."
+      },
+      "language": {
+        "score": 100,
+        "note": "동요와 키즈 콘텐츠로 욕설·비속어 없음."
+      },
+      "sexual": {
+        "score": 100,
+        "note": "선정성 요소 전혀 없음."
+      },
+      "scary": {
+        "score": 72,
+        "note": "제목에 '그림자 몬스터 등장😈' '멈춰!' '좀비 아기상어'로 공포 분위기를 암시하고 있음. 24시간 연속재생이라는 점과 함께 어린이에게 불안감을 줄 수 있는 연출이 우려됨. 다만 공식 핑크퐁 채널이고 동요 포맷이므로 극심한 호러는 아닐 것으로 추정되나, 제목의 공포 마케팅이 실제 내용과 맞으면 트라우마성 공포가 있을 수 있음."
+      },
+      "imitation_risk": {
+        "score": 75,
+        "note": "프리즈 댄스는 안전한 활동이나, '그림자 몬스터'를 따라하거나 겁먹는 모방 행동이 발생할 수 있고, 공포 분위기가 강조되면 아이가 밤에 혼자 있을 때 불안감을 느낄 수 있음."
+      },
+      "educational": {
+        "score": 70,
+        "note": "프리즈 댄스(신체 활동), 핑거패밀리(신체 인식) 등 교육 요소가 있으나, 제목의 공포 요소가 교육적 가치를 일부 훼손하고 있음."
+      },
+      "commercialism": {
+        "score": 80,
+        "note": "공식 핑크퐁 채널의 동요 모음이나, 24시간 연속재생과 다양한 콘텐츠 혼합으로 시청 중독 유도 가능성이 있음. 명시적 구매 유도는 없는 것으로 보임."
+      }
+    },
+    "source": "metadata",
+    "analyzedAt": "2026-06-19T03:46:46.890390+00:00",
+    "_meta": {
+      "videoId": "IrETzVz0isI",
+      "title": "LIVE🔴멈춰! 그림자 몬스터 등장😈 | 호이의 놀이교실 | 24시간 연속재생 | 프리즈 댄스, 핑거패밀리, 좀비 아기상어 | 어린이 인기 동요 | 핑크퐁! 아기상어 올리",
+      "thumbnail": "",
+      "channelTitle": "핑크퐁! 아기상어 올리",
+      "channelId": "",
       "madeForKids": false
     }
   }
