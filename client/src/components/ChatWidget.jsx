@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FaChevronDown, FaPaperPlane } from "react-icons/fa";
 import { sendChatMessage } from "../utils/api";
+import Typewriter from "./Typewriter";
 
 export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", desktopClass = "", initialMessage = null }) {
   const [chatMessages, setChatMessages] = useState([
@@ -144,7 +145,10 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
                 : { backgroundColor: "#163635", color: "#EAF5F1", borderBottomLeftRadius: "4px", border: "1px solid rgba(255,255,255,0.08)" }
               }
             >
-              {msg.content}
+              {/* 키디(assistant)의 가장 최근 답변만 타자치듯 출력. 이전 대화·내 말은 즉시 표시 */}
+              {msg.role === "assistant" && i === chatMessages.length - 1
+                ? <Typewriter key={msg.content} text={msg.content} speed={20} />
+                : msg.content}
             </div>
           </div>
         ))}

@@ -4,6 +4,8 @@ import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSli
 import KiddyImg from "../components/KiddyImg";
 import PinModal from "../components/PinModal";
 import ProfileFormModal from "../components/ProfileFormModal";
+import InterestSeed from "../components/InterestSeed";
+import Typewriter from "../components/Typewriter";
 import PaywallModal from "../components/PaywallModal";
 import { getProfiles, getBadges, getPinStatus, deleteProfile } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -55,6 +57,7 @@ export default function ProfileSelect() {
   const [profiles, setProfiles] = useState([]);
   const [pinTarget, setPinTarget] = useState(null); // null | { profileId, mode } — 프로필별 부모 PIN 모달
   const [showCreate, setShowCreate] = useState(false); // 프로필 생성 모달 (계정 영역)
+  const [seedTarget, setSeedTarget] = useState(null); // null | profile — 생성 직후 관심사 씨앗(F0) 오버레이
   const [editTarget, setEditTarget] = useState(null); // null | profile — 프로필 수정 모달 (관리 모드)
   const [confirmTarget, setConfirmTarget] = useState(null); // null | profile — 아이 확인 오버레이
   const [showPaywall, setShowPaywall] = useState(false); // 무료 1개 초과 시 paywall
@@ -433,9 +436,12 @@ export default function ProfileSelect() {
                     borderTop: "1px solid rgba(255,255,255,0.06)",
                   }}
                 />
-                <p className="font-extrabold leading-snug" style={{ color: "#FFFFFF", fontSize: "19px" }}>
-                  정말 <span style={{ color: "#3FE0B0" }}>{confirmTarget.name}</span> 맞아? 🤔
-                </p>
+                <Typewriter
+                  key={confirmTarget.id}
+                  text={`정말 ${confirmTarget.name} 맞아? 🤔`}
+                  className="font-extrabold leading-snug"
+                  style={{ color: "#FFFFFF", fontSize: "19px" }}
+                />
                 <p className="mt-1 font-semibold" style={{ color: "#B9D0CC", fontSize: "15px" }}>준비됐으면 눌러줘! 🌟</p>
               </div>
             </div>
@@ -482,7 +488,25 @@ export default function ProfileSelect() {
       {showCreate && (
         <ProfileFormModal
           onClose={() => setShowCreate(false)}
-          onCreated={(profile) => { setProfiles((prev) => [...prev, profile]); setShowCreate(false); }}
+          onCreated={(profile) => {
+            setProfiles((prev) => [...prev, profile]);
+            setShowCreate(false);
+            setSeedTarget(profile); // 생성 직후 관심사 씨앗(F0) 흐름 시작
+          }}
+        />
+      )}
+
+      {/* 관심사 씨앗 심기 (F0) — 프로필 생성 직후 1회 */}
+      {seedTarget && (
+        <InterestSeed
+          profile={seedTarget}
+          onDone={(updated) => {
+            // 저장 성공 시 갱신된 프로필(interests 포함)로 목록 반영, 건너뛰면 그대로 둠
+            if (updated) {
+              setProfiles((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+            }
+            setSeedTarget(null);
+          }}
         />
       )}
 

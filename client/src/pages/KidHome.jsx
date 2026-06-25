@@ -20,6 +20,7 @@ import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
 import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
+import Typewriter from "../components/Typewriter";
 
 // 깡총 점프 키프레임 주입 (한 번만)
 if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {
@@ -1124,7 +1125,7 @@ export default function KidHome() {
                       style={{ backgroundColor: "rgba(255,255,255,0.96)", color: "#2C3528", maxWidth: "280px", height: "68px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <p className="text-sm font-bold text-center leading-snug"
                         style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {kiddyText}
+                        <Typewriter key={kiddyText} text={kiddyText} speed={28} />
                       </p>
                       <div className="absolute left-1/2 -translate-x-1/2" style={{
                         bottom: "-10px", width: 0, height: 0,
@@ -1188,7 +1189,7 @@ export default function KidHome() {
                       <div className="absolute" style={{ top: "0px", left: "148px" }}>
                         <div className="rounded-xl px-3 py-1.5"
                           style={{ backgroundColor: "#fff", border: "2px solid #E4EAE0", color: "#2C3528", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", lineHeight: "1.6", position: "relative", fontSize: "12px", fontWeight: "700", width: "120px", wordBreak: "keep-all" }}>
-                          {kiddyText}
+                          <Typewriter key={kiddyText} text={kiddyText} speed={28} />
                           <div style={{
                             position: "absolute", bottom: "-10px", left: "10px",
                             width: "14px", height: "14px",

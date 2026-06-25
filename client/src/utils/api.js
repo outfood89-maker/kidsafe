@@ -137,6 +137,12 @@ export const updateProfile = async (profileId, profileData) => {
   return response.data.profile
 }
 
+// 관심사 씨앗(F0) 저장 — PUT /profiles/{id} 재사용 (interests + 누가 골랐는지)
+export const saveProfileInterests = async (profileId, interests, interestSource) => {
+  const response = await axios.put(`${BASE_URL}/profiles/${profileId}`, { interests, interestSource })
+  return response.data.profile
+}
+
 // 프로필 배지 조회
 export const getBadges = async (profileId) => {
   const response = await axios.get(`${BASE_URL}/badges/${profileId}`)

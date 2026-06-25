@@ -12,7 +12,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 from auth import get_current_user
 from db import sb_select, sb_insert, sb_update, sb_delete
@@ -36,6 +36,8 @@ def _to_api(row: dict) -> dict:
         "safetyThreshold": row.get("safety_threshold"),
         "maxBonusMinutes": row.get("max_bonus_minutes"),
         "continuousPlay": row.get("continuous_play") or False,  # 연속재생 (부모 토글, 기본 꺼짐)
+        "interests": row.get("interests") or [],  # 관심사 씨앗(F0) — 체크인 '볼 것' 선택지 재료
+        "interestSource": row.get("interest_source"),  # parent / child (누가 골랐는지)
         "createdAt": row.get("created_at"),
     }
 
@@ -105,6 +107,8 @@ class ProfileUpdate(BaseModel):
     safetyThreshold: Optional[int] = None
     maxBonusMinutes: Optional[int] = None
     continuousPlay: Optional[bool] = None
+    interests: Optional[List[str]] = None  # 관심사 씨앗(F0)
+    interestSource: Optional[str] = None  # parent / child
 
 
 # PUT /profiles/{id}
@@ -131,6 +135,10 @@ async def update_profile(profile_id: str, data: ProfileUpdate, user: dict = Depe
         patch["max_bonus_minutes"] = data.maxBonusMinutes
     if data.continuousPlay is not None:
         patch["continuous_play"] = data.continuousPlay
+    if data.interests is not None:
+        patch["interests"] = data.interests
+    if data.interestSource is not None:
+        patch["interest_source"] = data.interestSource
 
     if not patch:
         # 변경할 내용 없으면 현재 값 그대로 반환
