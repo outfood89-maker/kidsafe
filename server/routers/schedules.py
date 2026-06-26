@@ -37,7 +37,8 @@ def _to_api(row: dict) -> dict:
     return {
         "id": row.get("id"),
         "profileId": row.get("profile_id"),
-        "date": row.get("date"),
+        "date": row.get("date"),            # 시작일
+        "endDate": row.get("end_date"),     # 종료일 (없으면 None = 하루짜리)
         "type": row.get("type"),
         "title": row.get("title"),
         "time": row.get("time"),
@@ -75,9 +76,19 @@ async def get_schedules(profile_id: str, month: Optional[str] = None, user: dict
     rows = await sb_select("schedules", params)
 
     # 월 필터는 파이썬에서 (PostgREST and 조건 충돌 방지 + 경계 명확)
+    # 기간 일정([date ~ end_date])은 그 기간이 이 달과 '겹치면' 포함한다.
     if month:
-        start_s, end_s = _month_bounds(month)
-        rows = [r for r in rows if r.get("date") and start_s <= r["date"] < end_s]
+        start_s, end_s = _month_bounds(month)  # [start_s, end_s) 반열린 구간
+
+        def _overlaps(r: dict) -> bool:
+            d = r.get("date")
+            if not d:
+                return False
+            ed = r.get("end_date") or d   # 종료일 없으면 하루짜리(=시작일)
+            # [d, ed] 와 [start_s, end_s) 가 겹치는가
+            return d < end_s and ed >= start_s
+
+        rows = [r for r in rows if _overlaps(r)]
 
     return {"schedules": [_to_api(r) for r in rows]}
 
@@ -85,7 +96,8 @@ async def get_schedules(profile_id: str, month: Optional[str] = None, user: dict
 # ── POST /schedules ─────────────────────────────────────────
 class ScheduleCreate(BaseModel):
     profileId: str
-    date: str                       # 'YYYY-MM-DD'
+    date: str                       # 'YYYY-MM-DD' (시작일)
+    endDate: Optional[str] = None   # 'YYYY-MM-DD' (종료일, 없으면 하루짜리)
     type: Optional[str] = "일정"
     title: str
     time: Optional[str] = None      # 'HH:MM'
@@ -105,10 +117,13 @@ async def create_schedule(data: ScheduleCreate, user: dict = Depends(get_current
     await get_owned_profile(data.profileId, user["user_id"])
 
     sched_type = data.type if data.type in SCHEDULE_TYPES else "일정"
+    # 종료일 정규화: 시작일보다 빠르거나 같으면 하루짜리(None)로 취급
+    end_date = data.endDate if (data.endDate and data.endDate > data.date) else None
     row = {
         "user_id": user["user_id"],
         "profile_id": data.profileId,
         "date": data.date,
+        "end_date": end_date,
         "type": sched_type,
         "title": data.title.strip(),
         "time": (data.time or None),
@@ -124,6 +139,7 @@ async def create_schedule(data: ScheduleCreate, user: dict = Depends(get_current
 # ── PATCH /schedules/{id} ───────────────────────────────────
 class ScheduleUpdate(BaseModel):
     date: Optional[str] = None
+    endDate: Optional[str] = None   # 빈 문자열("")이면 종료일 제거(하루짜리로)
     type: Optional[str] = None
     title: Optional[str] = None
     time: Optional[str] = None
@@ -144,11 +160,15 @@ async def _owned_schedule(schedule_id: str, user_id: str) -> dict:
 @router.patch("/{schedule_id}")
 async def update_schedule(schedule_id: str, body: ScheduleUpdate, user: dict = Depends(get_current_user)):
     """일정 수정. 보낸 필드만 갱신."""
-    await _owned_schedule(schedule_id, user["user_id"])
+    current = await _owned_schedule(schedule_id, user["user_id"])
 
     patch: dict = {"updated_at": _now_iso()}
     if body.date is not None:
         patch["date"] = body.date
+    if body.endDate is not None:
+        # 비교 기준 시작일: 이번에 date 도 바뀌면 그 값, 아니면 기존 값
+        start_for_cmp = body.date if body.date is not None else current.get("date")
+        patch["end_date"] = body.endDate if (body.endDate and start_for_cmp and body.endDate > start_for_cmp) else None
     if body.type is not None:
         patch["type"] = body.type if body.type in SCHEDULE_TYPES else "일정"
     if body.title is not None:

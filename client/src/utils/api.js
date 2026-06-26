@@ -223,9 +223,9 @@ export const getSchedules = async (profileId, month) => {
   return response.data.schedules
 }
 
-// 일정 생성
-export const createSchedule = async ({ profileId, date, type, title, time, memo }) => {
-  const response = await axios.post(`${BASE_URL}/schedules`, { profileId, date, type, title, time, memo })
+// 일정 생성 (endDate 주면 기간 일정)
+export const createSchedule = async ({ profileId, date, endDate, type, title, time, memo }) => {
+  const response = await axios.post(`${BASE_URL}/schedules`, { profileId, date, endDate, type, title, time, memo })
   return response.data.schedule
 }
 
@@ -239,6 +239,14 @@ export const updateSchedule = async (id, patch) => {
 export const deleteSchedule = async (id) => {
   const response = await axios.delete(`${BASE_URL}/schedules/${id}`)
   return response.data
+}
+
+// 키디 스케줄 인사 — 오늘/내일 일정 읽고 Haiku가 생성한 한마디
+export const getKiddyGreeting = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/kiddy-greeting`, {
+    params: { profileId },
+  })
+  return response.data // { message, todayCount, tomorrowCount }
 }
 
 // 관심사 씨앗(F0) 저장 — PUT /profiles/{id} 재사용 (interests + 누가 골랐는지)

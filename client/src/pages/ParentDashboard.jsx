@@ -540,7 +540,7 @@ export default function ParentDashboard() {
 
       {/* ── 메인 영역 (사이드바 열리면 데스크톱에서 밀림) ── */}
       <div className={`transition-all duration-200 ${sidebarOpen ? "md:ml-60" : ""}`}>
-        <div className="mx-auto max-w-6xl px-4 md:px-6 pt-6 md:py-8 pb-28 md:pb-8">
+        <div className={`mx-auto pt-6 md:py-8 pb-28 md:pb-8 ${mainTab === "schedule" ? "max-w-none px-1 md:px-3" : "max-w-6xl px-4 md:px-6"}`}>
 
           <section className="mb-6">
             {!sidebarOpen && (
@@ -738,10 +738,7 @@ export default function ParentDashboard() {
           const schedProfileId = scheduleTab || scopedId || profiles[0]?.id || "";
           const schedProfile = profiles.find((p) => p.id === schedProfileId);
           return (
-            <section
-              className="p-4 md:p-6 mb-5"
-              style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
-            >
+            <section className="px-1 md:px-2 mb-5">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">📅</span>
                 <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>스케줄</h2>
