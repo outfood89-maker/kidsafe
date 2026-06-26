@@ -10,7 +10,7 @@ import {
   checkBadges, getBadges, getRecommendedVideos, getHistoryRecommendedVideos, getCacheRecommendedVideos,
   getSearchHistory, saveSearchHistory, deleteSearchHistory, deleteAllSearchHistory,
   getFavorites, addFavorite, removeFavorite,
-  checkBlockedKeyword, getProfiles, getGameBonus,
+  checkBlockedKeyword, getProfiles, getGameBonus, getTodayCheckin,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword, getEffectiveThreshold, sortByLengthPreference } from "../utils/safetyFilter";
 import VideoModal from "../components/VideoModal";
@@ -21,6 +21,11 @@ import ChatWidget from "../components/ChatWidget";
 import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
+import DailyCheckin from "../components/DailyCheckin";
+
+// ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
+//    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "")
+const CHECKIN_TEST_PROFILE = "해인";
 
 // 깡총 점프 키프레임 주입 (한 번만)
 if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {
@@ -132,6 +137,7 @@ export default function KidHome() {
   const [kiddyBounce, setKiddyBounce] = useState(true);
   const [kiddyClicked, setKiddyClicked] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false); // F1 오늘의 체크인 오버레이 (오늘 미체크인 시)
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -185,6 +191,19 @@ export default function KidHome() {
     // 비로그인 시도 자동 추천도 비활성화
     // else { fetchRecommendedVideos(7, []); }
   }, []);
+
+  // F1 — 프로필 진입 시 오늘 체크인 안 했으면 체크인 오버레이 (데모 q검색 진입은 제외)
+  useEffect(() => {
+    if (!selectedProfile?.id) return;
+    if (searchParams.get("q")) return; // 데모 딥링크 진입은 체크인 생략
+    let cancelled = false;
+    // 테스트 프로필은 하루 1번 제한 무시 → 매 진입마다 체크인
+    const testAlways = CHECKIN_TEST_PROFILE && selectedProfile.name === CHECKIN_TEST_PROFILE;
+    getTodayCheckin(selectedProfile.id)
+      .then(({ checkin }) => { if (!cancelled && (testAlways || !checkin)) setCheckinOpen(true); })
+      .catch(() => { if (!cancelled && testAlways) setCheckinOpen(true); });
+    return () => { cancelled = true; };
+  }, [selectedProfile?.id]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1443,6 +1462,22 @@ export default function KidHome() {
         )}
 
       </div>
+
+      {/* F1 오늘의 체크인 오버레이 — 진입 시 오늘 미체크인이면 노출 */}
+      {checkinOpen && selectedProfile && (
+        <DailyCheckin
+          profile={selectedProfile}
+          onSkip={() => setCheckinOpen(false)}
+          onComplete={({ watchKeyword }) => {
+            setCheckinOpen(false);
+            // '볼 것' 답이 있으면 그 키워드로 바로 검색 (데모 시나리오의 payoff)
+            if (watchKeyword) {
+              setSearchKeyword(watchKeyword);
+              handleSearch(watchKeyword);
+            }
+          }}
+        />
+      )}
 
       {/* 키디 챗봇 창 */}
       {chatMounted && <ChatWidget isOpen={chatOpen} onClose={handleChatClosed} />}

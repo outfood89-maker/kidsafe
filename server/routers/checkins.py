@@ -16,10 +16,14 @@
 - 비용 절감: 질문은 로컬 풀에서 날짜 기준 회전. Claude 호출 없음.
 """
 
+import os
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Any
+
+import anthropic
 
 from auth import get_current_user
 from db import sb_select, sb_upsert, sb_update
@@ -111,6 +115,25 @@ async def get_today_checkin(profile_id: str, user: dict = Depends(get_current_us
     return {"checkin": _to_api(rows[0]) if rows else None}
 
 
+# ── GET /checkins/recent?profile_id=... ─────────────────────
+@router.get("/recent")
+async def get_recent_checkin(profile_id: str, user: dict = Depends(get_current_user)):
+    """오늘 이전의 가장 최근 체크인 1건 (키디 인사의 '어제 기분 끌어오기'용). 없으면 null."""
+    await get_owned_profile(profile_id, user["user_id"])
+    rows = await sb_select(
+        "daily_checkins",
+        {
+            "profile_id": f"eq.{profile_id}",
+            "user_id": f"eq.{user['user_id']}",
+            "checkin_date": f"lt.{_today_kst()}",
+            "select": "*",
+            "order": "checkin_date.desc",
+            "limit": "1",
+        },
+    )
+    return {"checkin": _to_api(rows[0]) if rows else None}
+
+
 # ── POST /checkins ──────────────────────────────────────────
 class CheckinSave(BaseModel):
     profileId: str
@@ -149,29 +172,18 @@ async def save_checkin(data: CheckinSave, user: dict = Depends(get_current_user)
 
 # ── GET /checkins/questions?profile_id=... ──────────────────
 def _build_questions(age: Optional[int], interests: Optional[list]) -> List[dict]:
-    """연령 + 씨앗(interests) + 날짜 회전으로 오늘 보여줄 질문을 구성한다.
+    """오늘 보여줄 질문 3개(기분·하루·볼것)를 구성한다.
 
-    회전 규칙(섹션 4.2):
-    - 기분(mood)은 매일 고정.
-    - 하루(day)·볼것(watch)은 회전 → 매일 = 기분 + (하루/볼것 중 하나).
-    - 볼것은 영상 탐색 입구라 자주, 하루는 2~3일에 한 번.
-    - age 3 = player(질문 최소, 기분만), 4~7 = guided, 8+ = free.
+    - 기분(mood) + 하루(day) + 볼것(watch) 3개 고정 (회전 없음 — 2026-06-26 Freddie 결정).
+    - 볼것(watch) 선택지는 씨앗(interests)으로 채우고, 비면 인기 폴백.
+    - age 는 향후 연령 분기(대사 톤 등) 대비해 받아두지만 현재는 모든 연령 3개 동일.
     """
-    questions: List[dict] = [dict(QUESTION_MOOD)]
+    questions: List[dict] = [dict(QUESTION_MOOD), dict(QUESTION_DAY)]
 
-    # player(3세 이하)는 기분만 — 질문 최소
-    if age is not None and age <= 3:
-        return questions
-
-    # 회전 슬롯: 3일 주기 중 하루는 '하루(day)', 나머지는 '볼것(watch)'
-    day_ordinal = datetime.now(KST).date().toordinal()
-    if day_ordinal % 3 == 0:
-        questions.append(dict(QUESTION_DAY))
-    else:
-        watch = dict(QUESTION_WATCH)
-        seeds = [s for s in (interests or []) if s]  # 씨앗으로 선택지 채움
-        watch["options"] = seeds if seeds else DEFAULT_INTERESTS
-        questions.append(watch)
+    watch = dict(QUESTION_WATCH)
+    seeds = [s for s in (interests or []) if s]  # 씨앗으로 선택지 채움
+    watch["options"] = seeds if seeds else DEFAULT_INTERESTS
+    questions.append(watch)
 
     return questions
 
@@ -210,3 +222,103 @@ async def update_share(checkin_id: str, body: ShareUpdate, user: dict = Depends(
         {"share_with_parent": bool(body.shareWithParent), "updated_at": _now_iso()},
     )
     return {"checkin": _to_api(updated[0])}
+
+
+# ── POST /checkins/react ────────────────────────────────────
+# 아이의 답에 키디가 즉각 공감·반응(상담 톤 "한 박자 더"). Haiku 로 생성, 실패 시 프론트가 로컬 폴백.
+class ReactRequest(BaseModel):
+    profileName: Optional[str] = "친구"
+    profileAge: Optional[int] = 7
+    qId: str
+    qText: Optional[str] = None
+    answer: str
+    answerType: Optional[str] = None
+    # 오늘 이미 답한 것들 [{qId, answer}] — 키디가 자연스럽게 연결("아까 바깥놀이 했다며?")
+    priorAnswers: Optional[List[Any]] = None
+
+
+def _react_system(name: str) -> str:
+    return f"""
+너는 KidSafe의 AI 친구 "키디"야. 파스텔 민트색 아기 공룡 슈퍼히어로이고, {name}(아이)의 첫 친구야.
+지금 아이가 '오늘의 체크인'에서 방금 질문에 답을 골랐어. 그 답에 키디로서 한 마디 반응해줘.
+
+[반응 규칙 — 가장 중요]
+- 반말, 또래 친구처럼 따뜻하고 다정하게. 살짝 발랄하게(과하지 않게).
+- 아이 답을 '받아준다': 감정/내용을 먼저 알아주고, 가볍게 한 번 더 궁금해해도 좋아(강요는 아님).
+- 부정 감정(슬픔·화·속상함)은 절대 발랄하게 받지 말 것. 차분히 수용하고 곁에 있어줘.
+- 이전에 아이가 한 답이 있으면 자연스럽게 연결해도 좋아 (예: "아까 바깥놀이 했다며? 그래서 기분 좋았구나!").
+- 키디 자기 얘기를 살짝 섞어도 좋아 ("키디도 그거 완전 좋아해!").
+- 이름은 가끔만 부른다(매번 X, 자연스러울 때만).
+
+[형식]
+- 1~2문장, 짧게. 이모지 1개 정도만.
+- 마크다운/특수기호 금지, 일반 텍스트 한국어로만.
+- 따옴표 없이 키디 대사만 출력.
+""".strip()
+
+
+def _react_user(data: "ReactRequest") -> str:
+    q = data.qText or {
+        "mood_today": "오늘 기분이 어때?",
+        "what_did_today": "오늘 뭐 하고 놀았어?",
+        "watch_genre": "오늘은 뭐가 보고 싶어?",
+    }.get(data.qId, "오늘 어땠어?")
+
+    # 이전 답 맥락 (있으면)
+    ctx = ""
+    if data.priorAnswers:
+        bits = []
+        for a in data.priorAnswers:
+            if isinstance(a, dict) and a.get("answer"):
+                bits.append(str(a.get("answer")))
+        if bits:
+            ctx = f"\n오늘 아이가 앞서 고른 답들: {', '.join(bits)}"
+
+    wild = " (아이가 정해진 보기 말고 '그 외'를 골랐어)" if data.answerType == "wildcard" else ""
+    return f"질문: {q}\n아이가 고른 답: {data.answer}{wild}{ctx}\n\n이 답에 키디로서 반응해줘."
+
+
+@router.post("/react")
+async def react_to_answer(data: ReactRequest, user: dict = Depends(get_current_user)):
+    """아이 답에 대한 키디 반응 생성 (Haiku). 실패 시 502 → 프론트가 로컬 템플릿으로 폴백."""
+    name = data.profileName or "친구"
+    try:
+        client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=120,
+            system=_react_system(name),
+            messages=[{"role": "user", "content": _react_user(data)}],
+        )
+        reaction = response.content[0].text.strip() if response.content else ""
+        if not reaction:
+            raise ValueError("빈 응답")
+        return {"reaction": reaction}
+    except Exception:
+        # 프론트가 로컬 reactionLine 으로 폴백하도록 502
+        raise HTTPException(status_code=502, detail="reaction-failed")
+
+
+# ── POST /checkins/react/stream ─────────────────────────────
+# 위와 동일하되 토큰을 스트리밍으로 흘려보낸다 → 프론트가 받는 즉시 한 글자씩 출력(대기 체감 ↓).
+@router.post("/react/stream")
+async def react_to_answer_stream(data: ReactRequest, user: dict = Depends(get_current_user)):
+    name = data.profileName or "친구"
+
+    async def gen():
+        try:
+            client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            async with client.messages.stream(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=120,
+                system=_react_system(name),
+                messages=[{"role": "user", "content": _react_user(data)}],
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield text
+        except Exception:
+            # 스트림 실패 → 아무것도 안 보냄. 프론트가 빈 응답 감지 후 로컬 폴백.
+            return
+
+    # text/plain 청크 스트림 (SSE 아님 — 단순 텍스트 조각)
+    return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")

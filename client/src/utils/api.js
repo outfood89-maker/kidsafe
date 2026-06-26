@@ -137,6 +137,75 @@ export const updateProfile = async (profileId, profileData) => {
   return response.data.profile
 }
 
+// ── 오늘의 체크인 (F1) ──────────────────────────────────────
+
+// 오늘 체크인 했는지 조회 (있으면 checkin, 없으면 null)
+export const getTodayCheckin = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/checkins/today`, { params: { profile_id: profileId } })
+  return response.data // { checkin }
+}
+
+// 오늘 이전 가장 최근 체크인 (키디 인사 '어제 기분' 끌어오기용)
+export const getRecentCheckin = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/checkins/recent`, { params: { profile_id: profileId } })
+  return response.data // { checkin }
+}
+
+// 오늘의 질문 목록 (기분·하루·볼것 3개, '볼 것'은 씨앗 기반)
+export const getCheckinQuestions = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/checkins/questions`, { params: { profile_id: profileId } })
+  return response.data.questions
+}
+
+// 오늘 체크인 저장 (upsert)
+export const saveCheckin = async ({ profileId, mood, moodEmoji, answers, shareWithParent }) => {
+  const response = await axios.post(`${BASE_URL}/checkins`, { profileId, mood, moodEmoji, answers, shareWithParent })
+  return response.data.checkin
+}
+
+// 체크인 공유 여부 갱신 (부모와 나누기)
+export const updateCheckinShare = async (id, shareWithParent) => {
+  const response = await axios.patch(`${BASE_URL}/checkins/${id}/share`, { shareWithParent })
+  return response.data.checkin
+}
+
+// 아이 답에 대한 키디 반응 생성 (Haiku) — 실패 시 throw → 프론트가 로컬 템플릿으로 폴백
+export const reactToCheckin = async ({ profileName, profileAge, qId, qText, answer, answerType, priorAnswers }) => {
+  const response = await axios.post(`${BASE_URL}/checkins/react`, {
+    profileName, profileAge, qId, qText, answer, answerType, priorAnswers,
+  })
+  return response.data.reaction
+}
+
+// 키디 반응 스트리밍 — 토큰을 받는 즉시 onChunk(누적텍스트) 호출 (대기 체감↓).
+// ⚠️ 스트리밍은 브라우저 axios로 불가 → 이 호출만 fetch 사용 (스트리밍 한정 예외).
+// 토큰은 axios 인터셉터가 아닌 직접 첨부. 실패/빈응답 시 throw → 프론트가 로컬 폴백.
+export const reactToCheckinStream = async (payload, onChunk) => {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  const res = await fetch(`${BASE_URL}/checkins/react/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok || !res.body) throw new Error('stream-failed')
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let full = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    full += decoder.decode(value, { stream: true })
+    if (full) onChunk(full)
+  }
+  if (!full.trim()) throw new Error('empty')
+  return full
+}
+
 // 관심사 씨앗(F0) 저장 — PUT /profiles/{id} 재사용 (interests + 누가 골랐는지)
 export const saveProfileInterests = async (profileId, interests, interestSource) => {
   const response = await axios.put(`${BASE_URL}/profiles/${profileId}`, { interests, interestSource })
