@@ -214,6 +214,33 @@ export const reactToCheckinStream = async (payload, onChunk) => {
   return full
 }
 
+// ── 멀티 스케줄러 (부모가 아이 일정/사건/음식/상태 기록) ──────────
+// 한 아이의 일정 목록 (month: 'YYYY-MM' 주면 그 달만)
+export const getSchedules = async (profileId, month) => {
+  const response = await axios.get(`${BASE_URL}/schedules`, {
+    params: { profile_id: profileId, ...(month ? { month } : {}) },
+  })
+  return response.data.schedules
+}
+
+// 일정 생성
+export const createSchedule = async ({ profileId, date, type, title, time, memo }) => {
+  const response = await axios.post(`${BASE_URL}/schedules`, { profileId, date, type, title, time, memo })
+  return response.data.schedule
+}
+
+// 일정 수정 (보낸 필드만 갱신)
+export const updateSchedule = async (id, patch) => {
+  const response = await axios.patch(`${BASE_URL}/schedules/${id}`, patch)
+  return response.data.schedule
+}
+
+// 일정 삭제
+export const deleteSchedule = async (id) => {
+  const response = await axios.delete(`${BASE_URL}/schedules/${id}`)
+  return response.data
+}
+
 // 관심사 씨앗(F0) 저장 — PUT /profiles/{id} 재사용 (interests + 누가 골랐는지)
 export const saveProfileInterests = async (profileId, interests, interestSource) => {
   const response = await axios.put(`${BASE_URL}/profiles/${profileId}`, { interests, interestSource })
