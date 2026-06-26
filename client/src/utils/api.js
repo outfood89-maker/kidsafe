@@ -169,6 +169,14 @@ export const updateCheckinShare = async (id, shareWithParent) => {
   return response.data.checkin
 }
 
+// 부모 리포트 "키디의 한 주" (F2) — 감정 흐름 + 공유 하이라이트 + 키디 한마디
+export const getCheckinReport = async (profileId, period = 'week') => {
+  const response = await axios.get(`${BASE_URL}/reports/checkins`, {
+    params: { profile_id: profileId, period },
+  })
+  return response.data // { report, cached }
+}
+
 // 아이 답에 대한 키디 반응 생성 (Haiku) — 실패 시 throw → 프론트가 로컬 템플릿으로 폴백
 export const reactToCheckin = async ({ profileName, profileAge, qId, qText, answer, answerType, priorAnswers }) => {
   const response = await axios.post(`${BASE_URL}/checkins/react`, {

@@ -32,6 +32,7 @@ import {
 import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach } from "../utils/api";
 import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
+import KiddyReportCard from "../components/KiddyReportCard";
 import { useAuth } from "../contexts/AuthContext";
 import VideoModal from "../components/VideoModal";
 import PaywallModal from "../components/PaywallModal";
@@ -94,6 +95,7 @@ const gradeStyle = (grade) => {
 // 좌측 사이드바 탭 — 한 페이지 스크롤 → 목적별 탭으로 분리 (부모 편의)
 const MAIN_NAV = [
   { id: "overview", icon: "📊", label: "한눈에 보기", short: "개요" },
+  { id: "kiddy",    icon: "🦕", label: "키디의 한 주", short: "키디" },
   { id: "children", icon: "👶", label: "자녀 설정", short: "자녀" },
   { id: "history",  icon: "📺", label: "시청 기록", short: "기록" },
   { id: "analysis", icon: "📈", label: "시청 분석", short: "분석" },
@@ -114,6 +116,7 @@ export default function ParentDashboard() {
   const [activeTab, setActiveTab] = useState(scopedId || "전체");
   const [chartTab, setChartTab] = useState(scopedId || "전체");
   const [reportTab, setReportTab] = useState(scopedId || "all");
+  const [kiddyTab, setKiddyTab] = useState(scopedId || ""); // 키디의 한 주 — 아이별(전체 없음)
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showProfilePaywall, setShowProfilePaywall] = useState(false);
   const [newName, setNewName] = useState("");
@@ -682,6 +685,50 @@ export default function ParentDashboard() {
             </>)}
           </section>
         )}
+
+        {/* 키디의 한 주 (F2 부모 리포트) — 데모 클라이맥스 */}
+        {mainTab === "kiddy" && !loading && (() => {
+          // 아이별 리포트(전체 개념 없음). 스코프 잠금 시 그 아이, 아니면 선택/첫 아이.
+          const kiddyProfileId = kiddyTab || scopedId || profiles[0]?.id || "";
+          const kiddyProfile = profiles.find((p) => p.id === kiddyProfileId);
+          return (
+            <section
+              className="p-4 md:p-6 mb-5"
+              style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">🦕</span>
+                <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>키디의 한 주</h2>
+                <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>최근 7일 · 아이의 감정 기록</span>
+              </div>
+
+              {/* 아이 선택 탭 — 스코프 잠금 시 숨김 (전체 없음, 아이별) */}
+              {!scopedId && profiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {profiles.map((profile) => (
+                    <button
+                      key={profile.id}
+                      onClick={() => setKiddyTab(profile.id)}
+                      className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                      style={kiddyProfileId === profile.id
+                        ? { backgroundColor: "#18C49A", color: "#08160F" }
+                        : { backgroundColor: "#163635", color: "#90A9A8" }}
+                    >
+                      <img src={getAvatarUrl(profile)} alt={profile.name} className="h-5 w-5 rounded-full bg-white" />
+                      {profile.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {profiles.length === 0 ? (
+                <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
+              ) : (
+                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} />
+              )}
+            </section>
+          );
+        })()}
 
         {mainTab === "children" && !loading && (
           <section

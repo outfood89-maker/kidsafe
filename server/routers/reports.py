@@ -24,6 +24,7 @@ import anthropic
 from auth import get_current_user
 from db import sb_select, sb_insert, sb_delete
 from routers.analyze import get_cache_entries, parse_claude_json
+from routers.profiles import get_owned_profile
 
 router = APIRouter()
 
@@ -293,3 +294,289 @@ async def get_coach(profileId: Optional[str] = "all", user: dict = Depends(get_c
         print(f"[코치] 캐시 저장 실패(무시): {e}")
 
     return {"insights": insights, "coach": coach, "cached": False}
+
+
+# ─────────────────────────────────────────────────────────────
+# F2 — 부모 리포트 "키디의 한 주" (daily_checkins 집계 + Claude 한마디, 캐싱)
+#
+# 정체성 전환 P0 의 데모 클라이맥스. 아이↔부모 다리.
+# 윤리 원칙(코드 레벨 강제):
+# - parent_reports 에는 share_with_parent=true 인 체크인의 '집계/선별'만 들어간다.
+# - 아이의 원본 응답 전체를 부모 화면에 그대로 노출하지 않는다.
+# - 감정 카운트/타임라인은 서버에서 결정적으로 계산(지어내지 않음). Claude 는
+#   '흐름 묘사·따뜻한 한마디'만 생성하고, 데이터에 없는 내용은 만들지 않도록 강제.
+# ─────────────────────────────────────────────────────────────
+
+KST = timezone(timedelta(hours=9))
+
+# 기분 코드 → 이모지·라벨 (checkins.py EMOJI_MOOD 의 역방향)
+MOOD_META = {
+    "happy": {"emoji": "😄", "label": "아주 좋음"},
+    "good":  {"emoji": "🙂", "label": "좋음"},
+    "soso":  {"emoji": "😐", "label": "그냥그래"},
+    "sad":   {"emoji": "😢", "label": "슬픔"},
+    "angry": {"emoji": "😡", "label": "화남"},
+}
+MOOD_ORDER = ["happy", "good", "soso", "sad", "angry"]
+
+# 리포트 프롬프트 버전 — 프롬프트 수정 시 올려서 기존 캐시 무효화
+REPORT_PROMPT_VERSION = "v1"
+
+
+def _today_kst_date():
+    return datetime.now(KST).date()
+
+
+def _parse_dt(s: Optional[str]):
+    """ISO 문자열 → aware datetime. 실패 시 None (캐시 신선도 비교용)."""
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _period_range(period: str):
+    """기간 문자열 → (start_date, end_date). 현재는 week(최근 7일)만 지원."""
+    end = _today_kst_date()
+    days = 7 if period == "week" else 7
+    start = end - timedelta(days=days - 1)
+    return start, end
+
+
+def _build_mood_timeline(checkins: list, start, end) -> list:
+    """기간 내 날짜별 기분 타임라인 (체크인 없는 날은 mood=None). 주간 이모지 타임라인용."""
+    by_date = {c.get("checkin_date"): c for c in checkins}
+    timeline = []
+    cur = start
+    while cur <= end:
+        ds = cur.isoformat()
+        c = by_date.get(ds)
+        mood = c.get("mood") if c else None
+        timeline.append({
+            "date": f"{cur.month}/{cur.day}",
+            "checkinDate": ds,
+            "mood": mood,
+            "moodEmoji": (c.get("mood_emoji") if c else None) or (MOOD_META.get(mood, {}).get("emoji") if mood else None),
+        })
+        cur += timedelta(days=1)
+    return timeline
+
+
+def _build_mood_counts(checkins: list) -> dict:
+    """기분 코드별 횟수 집계 (모든 체크인 대상, 공유 여부 무관 — 감정 흐름은 핵심 지표)."""
+    counts = {k: 0 for k in MOOD_ORDER}
+    for c in checkins:
+        m = c.get("mood")
+        if m in counts:
+            counts[m] += 1
+    return counts
+
+
+def _build_highlights(checkins: list) -> list:
+    """아이가 '엄마/아빠랑 같이 볼래'로 공유 선택(share_with_parent=true)한 체크인만 선별.
+    원본 전체가 아니라 아이가 나누고 싶어한 항목(answers)만 담는다 (윤리 원칙)."""
+    highlights = []
+    for c in checkins:
+        if not c.get("share_with_parent"):
+            continue
+        items = []
+        for a in (c.get("answers") or []):
+            if isinstance(a, dict) and a.get("answer"):
+                items.append(str(a.get("answer")))
+        mood = c.get("mood")
+        cd = c.get("checkin_date")
+        try:
+            d = datetime.fromisoformat(cd).date() if cd else None
+            label_date = f"{d.month}/{d.day}" if d else cd
+        except Exception:
+            label_date = cd
+        highlights.append({
+            "date": label_date,
+            "checkinDate": cd,
+            "mood": mood,
+            "moodEmoji": (c.get("mood_emoji") or (MOOD_META.get(mood, {}).get("emoji") if mood else None)),
+            "items": items,
+        })
+    return highlights
+
+
+def _report_system() -> str:
+    """작업지시서 섹션 5.2 — 부모 리포트 생성 시스템 프롬프트."""
+    return (
+        "너는 아이의 친구 '키디'야. 부모에게 아이의 한 주를 따뜻하게 전한다.\n"
+        "[규칙]\n"
+        "- 사실만 전한다. 데이터에 없는 내용을 지어내지 않는다.\n"
+        "- 아이의 프라이버시를 존중한다. 아이가 공유하지 않은 건 언급하지 않는다.\n"
+        "- 감정의 '큰 흐름'과 '아이가 나누고 싶어한 것'을 중심으로 전한다.\n"
+        "- 부모를 불안하게 하거나 평가하지 않는다. 다정하고 짧게.\n"
+        "- 슬픔·화 같은 감정도 자연스러운 것으로 받아주되, 부모가 함께 보면 좋을 작은 힌트만 부드럽게.\n"
+        "- 부모에게는 다정한 존댓말로.\n\n"
+        "- kiddy_message 는 '부모님'을 청자로 한 존댓말이다. 아이에게 직접 말 거는 투('OO아, ~')가 아니라, "
+        "아이 얘기를 부모님께 전하는 3인칭 톤('해인이가 이번 주에 ~했어요')으로 쓴다.\n\n"
+        "[출력 — JSON만, 다른 텍스트 없이]\n"
+        "{\n"
+        '  "trend": "<한 주 감정 흐름을 1문장으로. 데이터(횟수·흐름)에 근거하게>",\n'
+        '  "note": "<부모가 알아두면 좋을 따뜻한 관찰 1~2문장. 없으면 빈 문자열>",\n'
+        '  "kiddy_message": "<부모님께 아이의 한 주를 전하는 키디의 한마디 2~3문장. 아이는 3인칭으로, 따뜻하고 진심 어리게>"\n'
+        "}"
+    )
+
+
+def _report_user(child_name: str, start, end, counts: dict, total: int, highlights: list) -> str:
+    """집계·선별된 데이터만 프롬프트에 넣는다 (원본 전체 금지)."""
+    count_lines = []
+    for k in MOOD_ORDER:
+        if counts.get(k):
+            count_lines.append(f"- {MOOD_META[k]['label']}: {counts[k]}번")
+    counts_text = "\n".join(count_lines) if count_lines else "- (기록 없음)"
+
+    hl_lines = []
+    for h in highlights:
+        bits = ", ".join(h["items"]) if h["items"] else "(내용 없이 공유만)"
+        hl_lines.append(f"- {h['date']} ({MOOD_META.get(h['mood'], {}).get('label', '기분 기록 없음')}): {bits}")
+    hl_text = "\n".join(hl_lines) if hl_lines else "- (아이가 부모와 나누기로 한 항목 없음)"
+
+    return (
+        f"아이 이름: {child_name}\n"
+        f"기간: {start.month}/{start.day} ~ {end.month}/{end.day} (이번 주)\n"
+        f"이 기간 체크인 {total}번.\n\n"
+        f"[기분 집계]\n{counts_text}\n\n"
+        f"[아이가 부모와 나누기로 한 것 (공유 선택한 항목만)]\n{hl_text}\n\n"
+        f"위 데이터만 근거로 부모를 위한 따뜻한 한 주 요약을 JSON 으로 작성해줘."
+    )
+
+
+async def _generate_report_message(child_name: str, start, end, counts: dict, total: int, highlights: list) -> dict:
+    """Claude(Haiku)로 흐름 묘사·키디 한마디 생성. 실패 시 예외 → 호출부가 폴백."""
+    client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    response = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=600,
+        system=_report_system(),
+        messages=[{"role": "user", "content": _report_user(child_name, start, end, counts, total, highlights)}],
+    )
+    raw = response.content[0].text if response.content else ""
+    return parse_claude_json(raw)
+
+
+def _report_to_api(report_row: dict, timeline: list, empty: bool = False) -> dict:
+    """parent_reports row(snake_case) → 프론트 형태(camelCase). timeline 은 항상 fresh 로 합친다."""
+    ms = report_row.get("mood_summary") or {}
+    return {
+        "profileId": report_row.get("profile_id"),
+        "periodStart": report_row.get("period_start"),
+        "periodEnd": report_row.get("period_end"),
+        "moodSummary": {
+            "trend": ms.get("trend", ""),
+            "counts": ms.get("counts", {}),
+            "note": ms.get("note", ""),
+        },
+        "moodTimeline": timeline,
+        "sharedHighlights": report_row.get("shared_highlights") or [],
+        "kiddyMessage": report_row.get("kiddy_message", ""),
+        "createdAt": report_row.get("created_at"),
+        "empty": empty,
+    }
+
+
+@router.get("/checkins")
+async def get_checkin_report(
+    profile_id: str,
+    period: str = "week",
+    user: dict = Depends(get_current_user),
+):
+    """F2 부모 리포트 — parent_reports 조회 또는 즉시 생성(캐싱).
+    데이터(체크인)가 새로 갱신되면 캐시를 무효화하고 다시 생성한다."""
+    user_id = user["user_id"]
+    profile = await get_owned_profile(profile_id, user_id)
+    child_name = profile.get("name") or "아이"
+
+    start, end = _period_range(period)
+    start_s, end_s = start.isoformat(), end.isoformat()
+
+    # 1) 기간 내 체크인 (신선도 판단 + 타임라인/하이라이트 결정적 계산에 필요)
+    checkins = await sb_select(
+        "daily_checkins",
+        {
+            "profile_id": f"eq.{profile_id}",
+            "user_id": f"eq.{user_id}",
+            "checkin_date": f"gte.{start_s}",
+            "select": "*",
+            "order": "checkin_date.asc",
+        },
+    )
+    # checkin_date <= end 도 적용 (PostgREST and: 위 gte 와 함께)
+    checkins = [c for c in checkins if c.get("checkin_date") and c.get("checkin_date") <= end_s]
+
+    timeline = _build_mood_timeline(checkins, start, end)
+
+    # 2) 체크인이 하나도 없으면 Claude 호출 없이 빈 리포트
+    if not checkins:
+        empty_row = {
+            "profile_id": profile_id, "period_start": start_s, "period_end": end_s,
+            "mood_summary": {"trend": "", "counts": _build_mood_counts([]), "note": ""},
+            "shared_highlights": [], "kiddy_message": "", "created_at": None,
+        }
+        return {"report": _report_to_api(empty_row, timeline, empty=True), "cached": False}
+
+    # 3) 캐시 조회 — 같은 기간 리포트가 있고, 그 이후 체크인 갱신이 없으면 재사용
+    cached_rows = await sb_select(
+        "parent_reports",
+        {
+            "profile_id": f"eq.{profile_id}", "user_id": f"eq.{user_id}",
+            "period_start": f"eq.{start_s}", "period_end": f"eq.{end_s}",
+            "select": "*", "order": "created_at.desc", "limit": "1",
+        },
+    )
+    if cached_rows:
+        report = cached_rows[0]
+        created = _parse_dt(report.get("created_at"))
+        latest = max((_parse_dt(c.get("updated_at")) or _parse_dt(c.get("created_at")) for c in checkins),
+                     default=None)
+        ver_ok = (report.get("mood_summary") or {}).get("_v") == REPORT_PROMPT_VERSION
+        fresh = created and latest and created >= latest
+        if ver_ok and fresh:
+            return {"report": _report_to_api(report, timeline), "cached": True}
+
+    # 4) 새로 생성 — 결정적 집계 + Claude 한마디
+    counts = _build_mood_counts(checkins)
+    highlights = _build_highlights(checkins)
+    total = len(checkins)
+
+    try:
+        gen = await _generate_report_message(child_name, start, end, counts, total, highlights)
+        trend = str(gen.get("trend", "")).strip()
+        note = str(gen.get("note", "")).strip()
+        kiddy_message = str(gen.get("kiddy_message", "")).strip()
+        if not kiddy_message:
+            raise ValueError("빈 메시지")
+    except Exception as e:
+        print(f"[리포트] Claude 생성 실패: {e}")
+        raise HTTPException(status_code=502, detail="리포트 생성에 실패했어요. 잠시 후 다시 시도해주세요.")
+
+    mood_summary = {"trend": trend, "counts": counts, "note": note, "_v": REPORT_PROMPT_VERSION}
+
+    new_row = {
+        "user_id": user_id, "profile_id": profile_id,
+        "period_start": start_s, "period_end": end_s,
+        "mood_summary": mood_summary, "shared_highlights": highlights,
+        "kiddy_message": kiddy_message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # 캐시 갱신 — 이 기간의 옛 리포트는 지우고 새로 (기간당 1행 유지)
+    saved_row = new_row
+    try:
+        await sb_delete("parent_reports", {
+            "profile_id": f"eq.{profile_id}", "user_id": f"eq.{user_id}",
+            "period_start": f"eq.{start_s}", "period_end": f"eq.{end_s}",
+        })
+        inserted = await sb_insert("parent_reports", new_row)
+        if inserted:
+            saved_row = inserted[0]
+    except Exception as e:
+        print(f"[리포트] 캐시 저장 실패(무시): {e}")
+
+    return {"report": _report_to_api(saved_row, timeline), "cached": False}
