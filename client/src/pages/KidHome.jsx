@@ -782,13 +782,8 @@ export default function KidHome() {
           {/* 로고 + 로그아웃 */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-                style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 4px 14px rgba(20,184,196,0.35)" }}
-              >
-                <FaShieldAlt className="text-white text-sm" />
-              </div>
-              <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
+              <img src="/images/logo/symbol_256.png" alt="Kiddy" className="h-8 w-8" style={{ objectFit: "contain" }} />
+              <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>Kiddy</span>
             </div>
             <button
               onClick={() => {

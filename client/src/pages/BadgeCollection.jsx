@@ -31,7 +31,7 @@ const ALL_BADGES = [
   { id: "curious_explorer",name: "호기심 탐험가",  emoji: "🔍", description: "검색을 10번 이상 해봤어요!", category: "탐험" },
   { id: "genre_pioneer",   name: "장르 개척자",    emoji: "🗺️", description: "5가지 이상 다양한 키워드로 검색했어요!", category: "탐험" },
   // 마스터
-  { id: "kidsafe_master",  name: "KidSafe 마스터", emoji: "🏆", description: "배지를 5개 이상 획득했어요!", category: "마스터" },
+  { id: "kidsafe_master",  name: "Kiddy 마스터", emoji: "🏆", description: "배지를 5개 이상 획득했어요!", category: "마스터" },
   { id: "all_star",        name: "올스타",         emoji: "🌠", description: "배지를 10개 이상 획득했어요!", category: "마스터" },
 ];
 

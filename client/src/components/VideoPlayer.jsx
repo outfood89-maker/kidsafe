@@ -540,7 +540,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
             <KiddyImg pose="sad" size={80} bg="#111" />
-            <p className="text-base font-bold text-white">이 영상은 KidSafe에서 바로 볼 수 없어요.</p>
+            <p className="text-base font-bold text-white">이 영상은 Kiddy에서 바로 볼 수 없어요.</p>
             <p className="text-xs" style={{ color: "#9BA89A" }}>채널 설정에 따라 임베드가 제한된 영상이에요.</p>
             <button
               onClick={() => window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank")}

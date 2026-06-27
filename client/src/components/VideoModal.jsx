@@ -390,7 +390,7 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
               className="w-full rounded-2xl py-3.5 text-base font-bold"
               style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
             >
-              ▶ KidSafe에서 보기
+              ▶ Kiddy에서 보기
             </button>
           )}
         </div>

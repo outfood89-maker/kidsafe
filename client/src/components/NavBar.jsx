@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaShieldAlt, FaHeart, FaUserCircle, FaChevronDown } from "react-icons/fa";
+import { FaArrowLeft, FaHeart, FaUserCircle, FaChevronDown } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function NavBar({
@@ -70,7 +70,7 @@ export default function NavBar({
         {/* 가운데 타이틀 */}
         <div className="flex-1 text-center">
           <h1 className="truncate text-base font-medium" style={{ color: "#EAF5F1" }}>
-            {title || "KidSafe"}
+            {title || "Kiddy"}
           </h1>
         </div>
 
@@ -160,14 +160,9 @@ export default function NavBar({
           ) : (
             /* 기존 로고 (계정메뉴 없을 때) */
             <div className="flex items-center gap-1.5">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-                style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}
-              >
-                <FaShieldAlt className="text-white text-sm" />
-              </div>
+              <img src="/images/logo/symbol_256.png" alt="Kiddy" className="h-8 w-8" style={{ objectFit: "contain" }} />
               <span className="hidden text-sm font-medium sm:block" style={{ color: "#EAF5F1" }}>
-                KidSafe
+                Kiddy
               </span>
             </div>
           )}

@@ -361,7 +361,7 @@ export default function AdminPage() {
       >
         {/* 로고 */}
         <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <h1 className="text-base font-bold" style={{ color: "#EAF5F1" }}>🛡 KidSafe Admin</h1>
+          <h1 className="text-base font-bold" style={{ color: "#EAF5F1" }}>🛡 Kiddy Admin</h1>
           <p className="text-xs mt-0.5" style={{ color: "#6B7E7C" }}>관리자 대시보드</p>
         </div>
 
@@ -428,7 +428,7 @@ export default function AdminPage() {
             className="md:hidden inline-flex items-center gap-2 mb-4 rounded-2xl px-4 py-2.5 text-lg font-extrabold"
             style={{ backgroundColor: "rgba(24,196,154,0.15)", color: "#3FE0B0", border: "1px solid rgba(24,196,154,0.3)" }}
           >
-            🛡 KidSafe Admin
+            🛡 Kiddy Admin
           </div>
 
           {/* 탭 제목 (상단 헤더 제거 → 본문 상단으로 이동, 부모 페이지와 동일 규칙) */}

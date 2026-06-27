@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaShieldAlt, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSlidersH, FaPen } from "react-icons/fa";
+import { FaPlus, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSlidersH, FaPen } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
 import PinModal from "../components/PinModal";
 import ProfileFormModal from "../components/ProfileFormModal";
@@ -176,13 +176,8 @@ export default function ProfileSelect() {
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         {/* 왼쪽: 로고 (키즈 페이지와 규격 통일 — h-8 w-8 / text-sm) */}
         <div className="flex items-center gap-1.5">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-            style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 4px 14px rgba(20,184,196,0.35)" }}
-          >
-            <FaShieldAlt className="text-white text-sm" />
-          </div>
-          <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>KidSafe</span>
+          <img src="/images/logo/symbol_256.png" alt="Kiddy" className="h-8 w-8" style={{ objectFit: "contain" }} />
+          <span className="text-sm font-extrabold tracking-tight" style={{ color: "#EAF5F1" }}>Kiddy</span>
         </div>
 
         {/* 오른쪽: 계정 액션 묶음 (계정 + 로그아웃 + 부모님) — 관습대로 우측 정렬

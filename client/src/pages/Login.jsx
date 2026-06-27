@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { FaShieldAlt, FaEnvelope, FaLock, FaUser } from "react-icons/fa"
+import { FaEnvelope, FaLock, FaUser } from "react-icons/fa"
 import { useAuth } from "../contexts/AuthContext"
 import KiddyImg from "../components/KiddyImg"
 
@@ -85,10 +85,8 @@ export default function Login() {
 
       {/* 로고 (홈으로) */}
       <Link to="/" className="relative z-10 flex items-center gap-2.5 mb-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-[11px]" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 6px 18px rgba(20,184,196,0.35)" }}>
-          <FaShieldAlt className="text-white text-sm" />
-        </div>
-        <span className="text-xl font-extrabold tracking-tight text-white">KidSafe</span>
+        <img src="/images/logo/symbol_256.png" alt="Kiddy" className="h-10 w-10" style={{ objectFit: "contain" }} />
+        <span className="text-xl font-extrabold tracking-tight text-white">Kiddy</span>
       </Link>
 
       {/* 키디 */}
@@ -117,7 +115,7 @@ export default function Login() {
         </div>
 
         <h1 className="text-xl font-black mb-1" style={{ color: "#EAF5F1" }}>
-          {isSignup ? "KidSafe 회원가입" : "다시 오셨네요!"}
+          {isSignup ? "Kiddy 회원가입" : "다시 오셨네요!"}
         </h1>
         <p className="text-sm mb-5" style={{ color: "#90A9A8" }}>
           {isSignup ? "보호자 계정을 만들어주세요." : "보호자 계정으로 로그인해주세요."}
