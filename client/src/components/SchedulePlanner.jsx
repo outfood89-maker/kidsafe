@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { FaChevronLeft, FaChevronRight, FaPlus, FaTrash, FaPen, FaTimes } from "react-icons/fa";
-import { getSchedules, createSchedule, updateSchedule, deleteSchedule, getKiddyGreeting } from "../utils/api";
+import { getSchedules, createSchedule, updateSchedule, deleteSchedule, getKiddyGreeting, agentSchedule } from "../utils/api";
 import Typewriter from "./Typewriter";
 
 // 멀티 스케줄러 — 부모가 아이별 일정/사건/음식/상태를 월간 달력에 기록.
@@ -146,6 +146,12 @@ export default function SchedulePlanner({ profileId, profileName }) {
   const [greeting, setGreeting] = useState(null);     // null=로딩중, ""=실패, string=완료
   const [greetingKey, setGreetingKey] = useState(0);  // 새로고침용
 
+  // 대화형 등록 (키디에게 말로 부탁)
+  const [agentOpen, setAgentOpen] = useState(false);  // 패널 열림 여부
+  const [agentInput, setAgentInput] = useState("");
+  const [agentLog, setAgentLog] = useState([]);       // [{ role:'user'|'kiddy', text, created? }]
+  const [agentBusy, setAgentBusy] = useState(false);
+
   // 일정 로드 (profileId/월/reloadKey 변화 시) — setState 는 중첩 async 안에서 (lint 회피)
   useEffect(() => {
     if (!profileId) return;
@@ -257,6 +263,34 @@ export default function SchedulePlanner({ profileId, profileName }) {
       setFormError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 대화형 등록 전송 — 자연어를 키디가 파싱해 일정 등록 후 달력 갱신
+  const sendAgent = async (raw) => {
+    const message = (raw ?? agentInput).trim();
+    if (!message || agentBusy) return;
+    setAgentInput("");
+    setAgentLog((log) => [...log, { role: "user", text: message }]);
+    setAgentBusy(true);
+    try {
+      const res = await agentSchedule({ profileId, message, today: todayStr(), viewMonth: month });
+      const cards = res.cards || [];
+      setAgentLog((log) => [...log, { role: "kiddy", text: res.reply, cards }]);
+      // 결과가 있으면 첫 일정의 달로 이동 (조회/등록/수정 모두 바로 보이게)
+      if (cards.length > 0 && cards[0]?.date) {
+        setMonth(cards[0].date.slice(0, 7));
+        setSelectedDate(cards[0].date);
+      }
+      // 달력이 바뀐 경우(등록/수정/삭제)만 재조회 + 인사말 갱신
+      if (res.changed) {
+        setReloadKey((k) => k + 1);
+        setGreetingKey((k) => k + 1);
+      }
+    } catch {
+      setAgentLog((log) => [...log, { role: "kiddy", text: "앗, 잠깐 문제가 생겼어요. 잠시 후 다시 말해줄래요?", created: [] }]);
+    } finally {
+      setAgentBusy(false);
     }
   };
 
@@ -432,6 +466,104 @@ export default function SchedulePlanner({ profileId, profileName }) {
         >
           🔄
         </button>
+      </div>
+
+      {/* ── 대화형 등록 (키디에게 말로 부탁) ── */}
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: C.card, border: "1px solid rgba(24,196,154,0.18)" }}>
+        {/* 헤더 토글 */}
+        <button
+          onClick={() => setAgentOpen((v) => !v)}
+          className="w-full flex items-center gap-2.5 px-4 py-3 text-left transition-colors"
+          style={{ backgroundColor: agentOpen ? C.inner : "transparent" }}
+        >
+          <span className="text-lg">🤖</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold" style={{ color: C.ink }}>키디에게 말로 일정 부탁하기</p>
+            <p className="text-xs" style={{ color: C.sub }}>예: &quot;13일 태권도 넣어줘&quot;</p>
+          </div>
+          <span className="text-xs" style={{ color: C.sub, transform: agentOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▼</span>
+        </button>
+
+        {agentOpen && (
+          <div className="sch-panel px-3 pb-3" style={{ borderTop: `1px solid rgba(255,255,255,0.06)` }}>
+            {/* 대화 로그 */}
+            {agentLog.length > 0 && (
+              <div className="flex flex-col gap-2 py-3 max-h-64 overflow-y-auto">
+                {agentLog.map((m, i) => (
+                  m.role === "user" ? (
+                    <div key={i} className="self-end max-w-[80%] rounded-2xl rounded-br-sm px-3.5 py-2 text-sm font-medium"
+                      style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})`, color: "#08160F" }}>
+                      {m.text}
+                    </div>
+                  ) : (
+                    <div key={i} className="self-start max-w-[88%]">
+                      <div className="rounded-2xl rounded-bl-sm px-3.5 py-2 text-sm" style={{ backgroundColor: C.inner, color: C.ink }}>
+                        {m.text}
+                      </div>
+                      {/* 결과 일정 미니 카드 (등록/조회/수정/삭제 대상) */}
+                      {m.cards && m.cards.length > 0 && (
+                        <div className="flex flex-col gap-1.5 mt-1.5">
+                          {m.cards.map((s) => (
+                            <div key={s.id} className="flex items-center gap-2 rounded-xl px-3 py-2"
+                              style={{ backgroundColor: C.card, border: `1px solid ${TYPE_META[s.type]?.color || C.accent}55` }}>
+                              <span className="text-base shrink-0">{TYPE_META[s.type]?.emoji || "📌"}</span>
+                              <span className="text-xs font-extrabold rounded px-1.5 py-0.5 shrink-0" style={{ color: "#08160F", backgroundColor: TYPE_META[s.type]?.color || C.accent }}>
+                                {Number(s.date.slice(5, 7))}/{Number(s.date.slice(8, 10))}
+                                {s.endDate && s.endDate > s.date ? `~${Number(s.endDate.slice(5, 7))}/${Number(s.endDate.slice(8, 10))}` : ""}
+                              </span>
+                              {s.time && <span className="text-xs font-bold shrink-0" style={{ color: C.accent }}>{s.time}</span>}
+                              <span className="text-sm font-bold truncate" style={{ color: C.ink }}>{s.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                ))}
+                {agentBusy && (
+                  <div className="self-start rounded-2xl rounded-bl-sm px-3.5 py-2 text-sm" style={{ backgroundColor: C.inner, color: C.sub }}>
+                    키디가 달력에 적는 중... ✍️
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 예시 칩 (로그 비었을 때만) */}
+            {agentLog.length === 0 && (
+              <div className="flex flex-wrap gap-1.5 py-3">
+                {["13일 태권도 넣어줘", "이번 달 일정 알려줘", "내일 오후 5시 가족 외식", "13일 태권도 취소해줘"].map((ex) => (
+                  <button key={ex} onClick={() => sendAgent(ex)} disabled={agentBusy}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 disabled:opacity-50"
+                    style={{ backgroundColor: C.inner, color: C.sub, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 입력 바 */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={agentInput}
+                onChange={(e) => setAgentInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") sendAgent(); }}
+                placeholder="일정을 말로 부탁해보세요"
+                disabled={agentBusy}
+                className="flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none disabled:opacity-60"
+                style={{ backgroundColor: C.inner, color: C.ink, border: "1px solid rgba(24,196,154,0.25)" }}
+              />
+              <button
+                onClick={() => sendAgent()}
+                disabled={agentBusy || !agentInput.trim()}
+                className="rounded-xl px-4 py-2.5 text-sm font-extrabold transition-transform active:scale-95 disabled:opacity-40"
+                style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})`, color: "#08160F" }}
+              >
+                보내기
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 월간 달력 ── */}

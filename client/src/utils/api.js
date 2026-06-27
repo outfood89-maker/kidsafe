@@ -241,6 +241,15 @@ export const deleteSchedule = async (id) => {
   return response.data
 }
 
+// 대화형 등록 — "13일 태권도 넣어줘" 같은 자연어를 키디가 파싱해 일정 처리(등록/조회/수정/삭제)
+// today: 클라이언트 로컬 'YYYY-MM-DD' (상대날짜 '내일' 등 계산 기준)
+// viewMonth: 사용자가 보고 있는 달 'YYYY-MM' ('12일'처럼 일만 말할 때 이 달 기준으로 해석)
+// 반환: { cards: [...대상 일정], reply: '안내문구', changed }
+export const agentSchedule = async ({ profileId, message, today, viewMonth }) => {
+  const response = await axios.post(`${BASE_URL}/schedules/agent`, { profileId, message, today, viewMonth })
+  return response.data
+}
+
 // 키디 스케줄 인사 — 오늘/내일 일정 읽고 Haiku가 생성한 한마디
 export const getKiddyGreeting = async (profileId) => {
   const response = await axios.get(`${BASE_URL}/kiddy-greeting`, {
