@@ -367,6 +367,17 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ①-b 앱 한 줄 정의 — 키디가 어떤 앱인지 명확히 (히어로 다음, 감성 흐름 전) */}
+      <section className="px-4 py-20 md:py-28" style={{ backgroundColor: "#0A1E1E", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: "#18C49A" }}>What is Kiddy</p>
+          <p className="text-xl md:text-3xl font-bold leading-relaxed" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>
+            키디는 모든 영상을 <span style={{ color: "#5FE0BC" }}>AI로 검수</span>해 안전한 영상만 검색·추천하고,<br className="hidden md:block" />
+            아이와 함께 보며 <span style={{ color: "#5FE0BC" }}>좋은 시청 습관</span>까지 길러주는 어린이 미디어 플랫폼이에요.
+          </p>
+        </div>
+      </section>
+
       {/* ② 공감 — 현실 인정 + 죄책감 덜어주기 */}
       <section ref={empathyRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0E2A2A" }}>
         <div className={`mx-auto max-w-2xl text-center ${fade(empathyInView)}`}>
