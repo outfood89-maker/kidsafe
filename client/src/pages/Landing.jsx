@@ -383,7 +383,7 @@ export default function Landing() {
       </section>
 
       {/* ② 공감 — 현실 인정 + 죄책감 덜어주기 */}
-      <section ref={empathyRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0E2A2A" }}>
+      <section ref={empathyRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0E2A2A" }}>
         <div className={`mx-auto max-w-2xl text-center ${fade(empathyInView)}`}>
           <div className="flex justify-center mb-6">
             <KiddyImg pose="think" size={120} float />
@@ -408,7 +408,7 @@ export default function Landing() {
       </section>
 
       {/* ③ 미션 — 피할 수 없다면, 건강하게 */}
-      <section ref={missionRef} className="px-4 py-32 md:py-52" style={{ background: "radial-gradient(120% 80% at 50% 50%, #123129 0%, #0A1E1E 70%)" }}>
+      <section ref={missionRef} className="px-4 py-16 md:py-28" style={{ background: "radial-gradient(120% 80% at 50% 50%, #123129 0%, #0A1E1E 70%)" }}>
         <div className={`mx-auto max-w-2xl text-center ${fade(missionInView)}`}>
           <div className="flex justify-center mb-6">
             <KiddyImg pose="help" size={130} float />
@@ -434,7 +434,7 @@ export default function Landing() {
       </section>
 
       {/* ④ 공생 — 영상을 막지 않아요 */}
-      <section ref={allyRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0E2A2A" }}>
+      <section ref={allyRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0E2A2A" }}>
         <div className={`mx-auto max-w-3xl text-center ${fade(allyInView)}`}>
           <div className="flex justify-center mb-6">
             <KiddyImg pose="reading" size={120} float />
@@ -453,7 +453,7 @@ export default function Landing() {
       </section>
 
       {/* ④-b 비교 표 — 유튜브 + 키디 (유튜브를 부정하지 않음) */}
-      <section ref={vsRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0A1E1E" }}>
+      <section ref={vsRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
         <div className="mx-auto max-w-3xl">
           <div className={`text-center mb-16 ${fade(vsInView)}`}>
             <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>YouTube + Kiddy</p>
@@ -510,7 +510,7 @@ export default function Landing() {
       </section>
 
       {/* ⑤ 검수 방식 — 보여주기 전에 내용을 먼저 */}
-      <section ref={checkRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0A1E1E" }}>
+      <section ref={checkRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
         <div className="mx-auto max-w-5xl">
           <div className={`text-center mb-16 ${fade(checkInView)}`}>
             <div className="flex justify-center mb-4">
@@ -548,7 +548,7 @@ export default function Landing() {
           </p>
 
           {/* 검수 결과 화면 — 실제 캡쳐 (점수 / 차단) */}
-          <div className={`mt-24 md:mt-32 text-center ${fade(checkInView)}`}>
+          <div className={`mt-16 md:mt-24 text-center ${fade(checkInView)}`}>
             <h3 className="text-2xl md:text-3xl font-black mb-3 leading-tight tracking-tight" style={{ color: "#EAF5F1" }}>
               검수가 끝나면 이렇게 보여드립니다
             </h3>
@@ -576,7 +576,7 @@ export default function Landing() {
           </div>
 
           {/* 영상 보고 나서 도란도란 — 검수/차단 다음 자리로 이동 (Freddie 요청). 애니메이션은 ⑤ 섹션 checkInView 재사용 */}
-          <div className={`mt-24 md:mt-32 flex flex-col md:flex-row items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+          <div className={`mt-16 md:mt-24 flex flex-col md:flex-row items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 영상 보고 나서<br />키디랑 도란도란
@@ -594,11 +594,44 @@ export default function Landing() {
               <PhoneShot src="/images/screens/chat.png" alt="키디와 채팅하는 화면" />
             </div>
           </div>
+
+          {/* 컷 — 키디 분석 리포트 (부모): '도란도란' 아래로 이동 (Freddie 요청). checkInView 사용 */}
+          <div className={`mt-16 md:mt-24 flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
+            <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
+              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
+                우리 아이가 뭘 보는지<br />키디가 정리해드려요
+              </h3>
+              <ul className="space-y-3.5 w-full max-w-xs">
+                {["요즘 자주 보는 영상을 한눈에 파악해요.", "정서·교육 흐름을 알기 쉽게 풀어드려요.", "이번 주 함께하면 좋을 주제까지 콕 집어드려요."].map(item => (
+                  <li key={item} className="flex items-start gap-3 text-base justify-start text-left" style={{ color: "#C5D8CF" }}>
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
+                    <span style={{ wordBreak: "keep-all" }}>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="w-full md:w-1/2 flex flex-col items-center gap-6">
+              <PhoneShot src="/images/screens/report1.png" alt="키디 AI 분석 리포트 화면" width={320} />
+              {/* 이번 주 실천 To-Do + 돼지꼬리 말꼬리표 */}
+              <div className="flex flex-col items-center" style={{ maxWidth: "340px" }}>
+                <div className="flex items-end gap-1.5 self-start ml-1">
+                  <div className="rounded-2xl px-5 py-2.5 text-sm md:text-base font-extrabold" style={{ backgroundColor: "#FFE9A8", color: "#5A4A1A", transform: "rotate(-3deg)", boxShadow: "0 5px 14px rgba(0,0,0,0.28)" }}>
+                    ✍️ 키디가 콕 집어주는 실천 To-Do!
+                  </div>
+                  <svg width="48" height="52" viewBox="0 0 48 52" fill="none" style={{ marginBottom: "-2px" }}>
+                    <path d="M9 6 C 38 8, 38 28, 22 33 C 14 36, 20 43, 26 48" stroke="#FFE9A8" strokeWidth="3.2" strokeLinecap="round" />
+                    <path d="M18 42 L 26 49 L 34 42" stroke="#FFE9A8" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </div>
+                <ShotCard src="/images/screens/report2.png" alt="이번 주 실천 To-Do" maxWidth={340} />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ⑤-b 건강한 습관 — 시간 관리 + 미니게임 */}
-      <section ref={timeRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0E2A2A" }}>
+      <section ref={timeRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0E2A2A" }}>
         <div className="mx-auto max-w-6xl">
           <div className={`text-center mb-16 ${fade(timeInView)}`}>
             <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Healthy habits</p>
@@ -606,8 +639,8 @@ export default function Landing() {
               시간이 끝나도<br className="md:hidden" /> 다툴 필요가 없습니다
             </h2>
             <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>
-              남은 시간을 미리 알려주고, 끝날 땐 갑자기 끊지 않아요.
-              교육 놀이로 부드럽게 마무리하며, 아이는 스스로 해내는 성취감을 배웁니다.
+              시청 시간은 부모님이 직접 정하고, 끝날 땐 키디가 미리 알려줘요.
+              부족한 시간은 교육 미니게임으로 아이가 직접 채우며, 스스로 해내는 성취감을 배웁니다.
             </p>
           </div>
 
@@ -615,7 +648,7 @@ export default function Landing() {
             {[
               { n: "1", emoji: "🕐", img: "profile_settings.png", title: "부모님이 시간을 정해요", desc: "하루 시청 시간은 부모님이 정합니다. (예: 10분)" },
               { n: "2", emoji: "🔔", img: "timeup_modal.png", title: "키디가 다정하게 알려줘요", desc: "갑자기 끊지 않아요. \"오늘 재미있었어?\" 하며 부드럽게 마무리합니다." },
-              { n: "3", emoji: "🎮", img: "minigame.png", title: "교육 미니게임 한 판", desc: "정서와 생각이 자라는 놀이로 기분 좋게 전환합니다." },
+              { n: "3", emoji: "🎮", img: "minigame.png", title: "교육 미니게임 한 판", desc: "클리어하면 부족한 시청 시간을 채워요. 놀이로 한 번 더 배우면서요." },
               { n: "4", emoji: "🏆", img: "reward.png", title: "해냈어요! 시간 보너스", desc: "규칙을 스스로 지켜 얻은 보상이라, 아이는 자제력을 배우고 부모님은 갈등 없는 마무리를 얻어요." },
             ].map((s, i) => (
               <div key={s.n} className="flex flex-col items-center transition-all duration-700" style={{ transitionDelay: `${i * 120}ms`, opacity: timeInView ? 1 : 0, transform: timeInView ? "translateY(0)" : "translateY(16px)" }}>
@@ -624,8 +657,8 @@ export default function Landing() {
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>{s.n}</span>
                   <h3 className="text-base md:text-lg font-bold" style={{ color: "#EAF5F1" }}>{s.emoji} {s.title}</h3>
                 </div>
-                {/* 설명글은 4번만 유지 (1~3번은 제목만) */}
-                {s.n === "4" && (
+                {/* 설명글은 3·4번만 노출 (3번=게임으로 시간 채우는 안내, 4번=보상) */}
+                {(s.n === "3" || s.n === "4") && (
                   <p className="mt-2 text-sm leading-relaxed text-center max-w-[300px]" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>{s.desc}</p>
                 )}
                 <div className="mt-5 w-full">
@@ -636,7 +669,7 @@ export default function Landing() {
           </div>
 
           {/* 3번 스텝 — 교육 미니게임 6종 상세 */}
-          <div className={`mt-20 ${fade(timeInView)}`}>
+          <div className={`mt-14 md:mt-16 ${fade(timeInView)}`}>
             <div className="text-center mb-10">
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>6 mini-games</p>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
@@ -677,7 +710,7 @@ export default function Landing() {
       </section>
 
       {/* ⑦ 키디 소개 — 친구이자 다리 (구 ⑥ "한 걸음 더" 통합) */}
-      <section ref={kiddyRef} className="px-4 py-32 md:py-52" style={{ background: "radial-gradient(120% 80% at 50% 50%, #123129 0%, #0A1E1E 70%)" }}>
+      <section ref={kiddyRef} className="px-4 py-16 md:py-28" style={{ background: "radial-gradient(120% 80% at 50% 50%, #123129 0%, #0A1E1E 70%)" }}>
         <div className={`mx-auto max-w-3xl flex flex-col items-center text-center ${fade(kiddyInView)}`}>
           <KiddyImg pose="point" size={200} float />
           <p className="text-xs font-bold uppercase tracking-widest mt-6 mb-3" style={{ color: "#18C49A" }}>Meet Kiddy</p>
@@ -694,7 +727,7 @@ export default function Landing() {
       </section>
 
       {/* ⑧ 핵심 기능 쇼케이스 — 실제 앱 캡쳐 */}
-      <section ref={previewRef} className="px-4 py-32 md:py-52 overflow-hidden" style={{ backgroundColor: "#0E2A2A" }}>
+      <section ref={previewRef} className="px-4 py-16 md:py-28 overflow-hidden" style={{ backgroundColor: "#0E2A2A" }}>
         <div className="mx-auto max-w-6xl">
           {/* "키디가 하는 일" 헤더 — Freddie 요청으로 비활성화 (복구하려면 주석 해제)
           <div className={`text-center mb-16 ${fade(previewInView)}`}>
@@ -704,14 +737,14 @@ export default function Landing() {
           </div>
           */}
 
-          {/* 컷 — 키디 분석 리포트 (부모) */}
-          <div className={`flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 mb-28 md:mb-40 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
+          {/* 컷 — 키디와 매일 대화(체크인) — Freddie 추가. ShotCard(넓적 비율이라 폰 베젤 대신 카드 프레임) */}
+          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-16 md:mb-24 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
-                우리 아이가 뭘 보는지<br />키디가 정리해드려요
+                키디가 매일<br />오늘 기분을 물어봐요
               </h3>
               <ul className="space-y-3.5 w-full max-w-xs">
-                {["요즘 자주 보는 영상을 한눈에 파악해요.", "정서·교육 흐름을 알기 쉽게 풀어드려요.", "이번 주 함께하면 좋을 주제까지 콕 집어드려요."].map(item => (
+                {["매일 아이에게 오늘 하루와 기분을 다정하게 물어봐요.", "버튼·이모지로 답해서 글 모르는 아이도 쉬워요.", "강요하지 않아요. 아이가 먼저 나누고 싶게 기다려요."].map(item => (
                   <li key={item} className="flex items-start gap-3 text-base justify-start text-left" style={{ color: "#C5D8CF" }}>
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
                     <span style={{ wordBreak: "keep-all" }}>{item}</span>
@@ -719,26 +752,13 @@ export default function Landing() {
                 ))}
               </ul>
             </div>
-            <div className="w-full md:w-1/2 flex flex-col items-center gap-6">
-              <PhoneShot src="/images/screens/report1.png" alt="키디 AI 분석 리포트 화면" width={320} />
-              {/* 이번 주 실천 To-Do + 돼지꼬리 말꼬리표 */}
-              <div className="flex flex-col items-center" style={{ maxWidth: "340px" }}>
-                <div className="flex items-end gap-1.5 self-start ml-1">
-                  <div className="rounded-2xl px-5 py-2.5 text-sm md:text-base font-extrabold" style={{ backgroundColor: "#FFE9A8", color: "#5A4A1A", transform: "rotate(-3deg)", boxShadow: "0 5px 14px rgba(0,0,0,0.28)" }}>
-                    ✍️ 키디가 콕 집어주는 실천 To-Do!
-                  </div>
-                  <svg width="48" height="52" viewBox="0 0 48 52" fill="none" style={{ marginBottom: "-2px" }}>
-                    <path d="M9 6 C 38 8, 38 28, 22 33 C 14 36, 20 43, 26 48" stroke="#FFE9A8" strokeWidth="3.2" strokeLinecap="round" />
-                    <path d="M18 42 L 26 49 L 34 42" stroke="#FFE9A8" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  </svg>
-                </div>
-                <ShotCard src="/images/screens/report2.png" alt="이번 주 실천 To-Do" maxWidth={340} />
-              </div>
+            <div className="w-full md:w-1/2 flex justify-center">
+              <ShotCard src="/images/screens/checkin.png" alt="키디가 오늘 기분을 물어보는 체크인 화면" maxWidth={380} />
             </div>
           </div>
 
           {/* 컷 3 — 키디의 한 주 (부모) + 공유 선택 강조 */}
-          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-28 md:mb-40 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-16 md:mb-24 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 아이의 한 주를<br />따뜻한 편지로
@@ -800,7 +820,7 @@ export default function Landing() {
       </section>
 
       {/* ⑨ 안심 포인트 */}
-      <section ref={safeRef} className="px-4 py-32 md:py-52" style={{ backgroundColor: "#0A1E1E" }}>
+      <section ref={safeRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
         <div className="mx-auto max-w-5xl">
           <div className={`text-center mb-16 ${fade(safeInView)}`}>
             <div className="flex justify-center mb-5">
@@ -828,7 +848,7 @@ export default function Landing() {
       </section>
 
       {/* ⑩ 최종 CTA */}
-      <section ref={ctaRef} className="relative px-4 py-32 md:py-52 text-center overflow-hidden" style={{ background: "radial-gradient(120% 100% at 50% 100%, #123129 0%, #0A1E1E 55%, #08160F 100%)" }}>
+      <section ref={ctaRef} className="relative px-4 py-16 md:py-28 text-center overflow-hidden" style={{ background: "radial-gradient(120% 100% at 50% 100%, #123129 0%, #0A1E1E 55%, #08160F 100%)" }}>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-72 w-[28rem] rounded-full opacity-20" style={{ backgroundColor: "#18C49A", filter: "blur(110px)" }} />
         <div className={`relative mx-auto max-w-3xl ${fade(ctaInView)}`}>
           <div className="flex justify-center mb-4">
