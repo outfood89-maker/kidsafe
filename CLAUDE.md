@@ -4,7 +4,12 @@
 - AI 기반 어린이 미디어 안전 및 추천 플랫폼
 - 개발자: Freddie (초급 프론트엔드, 포트폴리오 목적)
 - 목표: 7월 초 완성 / GitHub: https://github.com/outfood89-maker/kidsafe
-- **핵심 가치: 검색엔진 완성도 + 영상 분석 능력** — 기능 우선순위 결정 시 이 기준으로
+- **정체성(현재 방향, UPDATE_1 기준):** '영상 검수 도구'가 아니라 **'아이의 첫 미디어 경험 공간'**.
+  - 정체성(B) = 키디와 함께하는 첫 미디어 경험 / 해자·증거(A) = 대단한 검수.
+  - **B가 부모 가슴을 치고, A가 그것을 믿게 만든다.** 검수는 잘하는 기본기, 관계가 방어 가능한 정체성.
+  - 데모의 심장: **키디가 묻는다 → 아이가 답한다 → 부모가 리포트를 열고 뭉클해진다.** 모든 설계는 이 순간으로 수렴.
+  - ⚠️ 윤리 선: 키디는 아이의 '비밀 친구'. 부모에겐 **아이가 공유 선택한 것 + 감정 흐름 요약만** 전달(원본 대화 노출 금지).
+  - 상세: `UPDATE_1/KidSafe_정체성전환_전략.md`(전략) / `UPDATE_1/KidSafe_ClaudeCode_작업지시서.md`(구현 명세)
 
 ## 기술 스택
 - 프론트: React 19, React Router v7, Tailwind CSS, Axios, Recharts, react-icons
@@ -15,7 +20,10 @@
 - 배포: Vercel (프론트 `https://kidsafe-eight.vercel.app`) + Railway (백엔드 `https://kidsafe-production.up.railway.app`)
 
 ## 남은 작업 우선순위
-1. 검수 고도화 (Tier1/Tier2 — `KidSafe_검수아키텍처_핵심설계.md` 참고)
+- ✅ **검수 고도화 (Tier0~2): 사실상 완료** — 자막+썸네일 Vision+Claude 정밀분석·캐싱·채널학습까지 구현됨. (설계: `KidSafe_검수아키텍처_핵심설계.md`) 남은 건 정확도 튜닝뿐.
+- 🟢 **현재 무게중심 = 정체성 전환 P0** (`UPDATE_1/KidSafe_ClaudeCode_작업지시서.md` TASK 순서):
+  - F0 관심사 씨앗(InterestSeed) / F1 키디 환영+체크인(DailyCheckin) / F2 부모 리포트(KiddyReportCard) — 데모의 심장. (구현 진행 중, 메모 참조)
+  - F3 리터러시 한 스푼은 작게. 7세+ 자유 대화는 '다음' 단계.
 
 ## ⚠️ FastAPI 핵심 주의사항
 - Railway 재시작 시 JSON 초기화됨 → `main.py`의 `ensure_data_files()`로 해결

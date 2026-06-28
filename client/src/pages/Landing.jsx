@@ -327,8 +327,8 @@ export default function Landing() {
             <KiddyVideo clip="hello" size={240} float />
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-black leading-[1.05] tracking-tight text-white">
-            아이의 첫 영상 친구,
+          <h1 className="text-5xl md:text-7xl font-black leading-[1.05] tracking-tight text-white" style={{ wordBreak: "keep-all" }}>
+            아이의 첫 영상 친구
             <br />
             <span style={{ background: "linear-gradient(110deg, #2BE0B4, #18C49A 45%, #14B8C4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
               키디입니다
@@ -374,18 +374,20 @@ export default function Landing() {
             <KiddyImg pose="think" size={120} float />
           </div>
           <h2 className="text-3xl md:text-5xl font-black leading-[1.2] tracking-tight" style={{ color: "#EAF5F1" }}>
-            사실, 최대한 늦게<br />보여주고 싶으셨죠?
+            사실은 최대한 늦게<br />보여주고 싶으셨죠?
           </h2>
           <p className="mt-7 text-base md:text-xl leading-relaxed" style={{ color: "#B5C9C0" }}>
-            &quot;우리 아이만큼은 최대한 늦게.&quot; 모든 부모님의 마음이죠.
-            하지만 잠깐 설거지하는 사이, 칭얼대는 아이를 달래야 하는 그 순간…
+            하지만 잠깐 설거지하는 사이,<br />
+            칭얼대는 아이를 달래야 하는 순간.<br />
             결국 미안한 마음으로 영상을 틀게 됩니다.
           </p>
           <p className="mt-5 text-lg md:text-2xl font-bold leading-relaxed" style={{ color: "#5FE0BC" }}>
-            괜찮아요, 정말 괜찮습니다.<br />누구의 잘못도 아니니까요.
+            괜찮아요. 정말 괜찮습니다.<br />
+            누구의 잘못도 아니니까요.
           </p>
           <p className="mt-5 text-base md:text-xl leading-relaxed" style={{ color: "#B5C9C0" }}>
-            이미 삶에 들어온 미디어, 이제는 피하기보다 어떻게 건강하게 마주하게 할지 고민할 때입니다.
+            이미 우리의 삶에 스며든 미디어,<br />
+            피하기보다는 건강한 만남을 고민할 때입니다.
           </p>
         </div>
       </section>
@@ -398,20 +400,20 @@ export default function Landing() {
           </div>
           <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#18C49A" }}>Our Mission</p>
           <h2 className="text-3xl md:text-5xl font-black leading-[1.2] tracking-tight" style={{ color: "#EAF5F1" }}>
-            피할 수 없다면,<br />키디가 곁에서 함께하겠습니다
+            피할 수 없다면<br />키디가 곁에서 함께하겠습니다
           </h2>
           <p className="mt-7 text-base md:text-xl leading-relaxed" style={{ color: "#B5C9C0" }}>
-            무조건 막는 건 사실 더 쉬운 길입니다. 하지만 아이는 결국 미디어와 함께 자라나죠.
-            그래서 못 보게 하는 대신,
-            <span className="font-bold" style={{ color: "#EAF5F1" }}> 곁에서 함께 잘 보는 법을 찾아주기로</span> 했습니다.
-            그게 키디가 시작된 이유예요.
+            가장 좋은 방법은 미디어 노출을 막는 것입니다.<br />
+            하지만 아이는 결국 미디어와 함께 자라나죠.<br />
+            키디는 못 보게 하는 대신,<br />
+            <span className="font-bold" style={{ color: "#EAF5F1" }}>잘 보는 법을 찾아주기로</span> 했습니다.
           </p>
           <button
             onClick={() => navigate("/profiles")}
             className="mt-9 rounded-ks-md px-8 py-4 text-base font-extrabold text-white transition hover:scale-105"
             style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 12px 30px rgba(20,184,196,0.35)" }}
           >
-            무료로 시작하기
+            지금 시작하기
           </button>
         </div>
       </section>
@@ -424,11 +426,13 @@ export default function Landing() {
           </div>
           <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Not a wall, a guide</p>
           <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>
-            영상을 막지 않습니다,<br />더 안심하고 보도록 도와드려요
+            영상을 막지 않습니다<br />더 안심하고 보도록 도와드려요
           </h2>
           <p className="mt-6 text-base md:text-lg leading-relaxed" style={{ color: "#B5C9C0" }}>
-            영상 속엔 아이에게 좋은 콘텐츠도 참 많아요. 다만 그중 안전한 걸 일일이 골라내기가 버거울 뿐이죠.
-            키디가 먼저 하나하나 살펴보고, 안심할 수 있는 영상만 아이 눈높이로 건네드립니다.
+            영상 속엔 아이에게 좋은 콘텐츠도 참 많아요.<br />
+            다만 그중 안전한 걸 일일이 골라내기가 버거울 뿐이죠.<br />
+            키디가 먼저 하나하나 살펴보고, 안심할 수 있는 영상만<br />
+            아이 눈높이로 건네드립니다.
           </p>
         </div>
       </section>
@@ -439,7 +443,7 @@ export default function Landing() {
           <div className={`text-center mb-16 ${fade(vsInView)}`}>
             <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>YouTube + Kiddy</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
-              유튜브는 그대로,<br className="md:hidden" /> 안전함만 더합니다
+              유튜브는 그대로<br className="md:hidden" /> 안전함만 더합니다
             </h2>
             <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8" }}>
               유튜브에는 좋은 영상이 정말 많아요. 다만 그 안에서 고르는 수고가 따를 뿐이죠.
@@ -498,7 +502,7 @@ export default function Landing() {
               <KiddyImg pose="search" size={140} float />
             </div>
             <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>How we check</p>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>보여주기 전에,<br className="md:hidden" /> 속 내용까지 먼저 살펴봅니다</h2>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>보여주기 전에<br className="md:hidden" /> 속 내용까지 먼저 살펴봅니다</h2>
             <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8" }}>
               제목이나 썸네일만 보고 판단하지 않아요. 영상이 실제로 무슨 이야기를 하는지까지
               AI가 읽고, 폭력·언어·선정성을 하나하나 확인합니다.
@@ -530,7 +534,7 @@ export default function Landing() {
           {/* 검수 결과 화면 — 실제 캡쳐 (점수 / 차단) */}
           <div className={`mt-24 md:mt-32 text-center ${fade(checkInView)}`}>
             <h3 className="text-2xl md:text-3xl font-black mb-3 leading-tight tracking-tight" style={{ color: "#EAF5F1" }}>
-              검수가 끝나면, 이렇게 보여드립니다
+              검수가 끝나면 이렇게 보여드립니다
             </h3>
             <p className="text-base font-medium max-w-xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>
               영상마다 안전 점수를 매깁니다. 90점이 넘으면 초록불!
@@ -563,7 +567,7 @@ export default function Landing() {
           <div className={`text-center mb-16 ${fade(timeInView)}`}>
             <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Healthy habits</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
-              시간이 끝나도,<br className="md:hidden" /> 다툴 필요가 없습니다
+              시간이 끝나도<br className="md:hidden" /> 다툴 필요가 없습니다
             </h2>
             <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>
               남은 시간을 미리 알려주고, 끝날 땐 갑자기 끊지 않아요.
@@ -571,7 +575,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8 ${fade(timeInView)}`}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-14 ${fade(timeInView)}`}>
             {[
               { n: "1", emoji: "🕐", img: "settime.png", title: "부모님이 시간을 정해요", desc: "하루 시청 시간은 부모님이 정합니다. (예: 10분)" },
               { n: "2", emoji: "🔔", img: "gameoffer.png", title: "키디가 다정하게 알려줘요", desc: "갑자기 끊지 않아요. \"오늘 재미있었어?\" 하며 부드럽게 마무리합니다." },
@@ -579,12 +583,18 @@ export default function Landing() {
               { n: "4", emoji: "🏆", img: "reward.png", title: "해냈어요! 시간 보너스", desc: "규칙을 스스로 지켜 얻은 보상이라, 아이는 자제력을 배우고 부모님은 갈등 없는 마무리를 얻어요." },
             ].map((s, i) => (
               <div key={s.n} className="flex flex-col items-center transition-all duration-700" style={{ transitionDelay: `${i * 120}ms`, opacity: timeInView ? 1 : 0, transform: timeInView ? "translateY(0)" : "translateY(16px)" }}>
-                <PhoneShot src={`/images/screens/${s.img}`} alt={s.title} width={340} />
-                <div className="mt-5 flex items-center gap-2">
+                {/* 설명을 이미지 위로 — 아래 이미지를 소개하는 글임을 명확히 (모바일 1칸에서 다음 이미지 설명으로 오인 방지) */}
+                <div className="flex items-center gap-2">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>{s.n}</span>
                   <h3 className="text-base md:text-lg font-bold" style={{ color: "#EAF5F1" }}>{s.emoji} {s.title}</h3>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-center max-w-[300px]" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>{s.desc}</p>
+                {/* 설명글은 4번만 유지 (1~3번은 제목만) */}
+                {s.n === "4" && (
+                  <p className="mt-2 text-sm leading-relaxed text-center max-w-[300px]" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>{s.desc}</p>
+                )}
+                <div className="mt-5 w-full">
+                  <PhoneShot src={`/images/screens/${s.img}`} alt={s.title} width={340} />
+                </div>
               </div>
             ))}
           </div>
@@ -658,7 +668,7 @@ export default function Landing() {
           <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-28 md:mb-40 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
-                영상 보고 나서,<br />키디랑 도란도란
+                영상 보고 나서<br />키디랑 도란도란
               </h3>
               <ul className="space-y-3.5 w-full max-w-xs">
                 {["방금 본 영상에 대해 키디와 이야기 나눠요.", "궁금한 건 무엇이든 편하게 물어봐요.", "아이 눈높이로 따뜻하게 답해줍니다."].map(item => (
@@ -678,7 +688,7 @@ export default function Landing() {
           <div className={`flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 mb-28 md:mb-40 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
-                우리 아이가 뭘 보는지,<br />키디가 정리해드려요
+                우리 아이가 뭘 보는지<br />키디가 정리해드려요
               </h3>
               <ul className="space-y-3.5 w-full max-w-xs">
                 {["요즘 자주 보는 영상을 한눈에 파악해요.", "정서·교육 흐름을 알기 쉽게 풀어드려요.", "이번 주 함께하면 좋을 주제까지 콕 집어드려요."].map(item => (
@@ -711,7 +721,7 @@ export default function Landing() {
           <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-28 md:mb-40 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
-                아이의 한 주를,<br />따뜻한 편지로
+                아이의 한 주를<br />따뜻한 편지로
               </h3>
               <ul className="space-y-3.5 w-full max-w-xs mb-5">
                 {["키디가 아이와 나눈 하루를 모아 편지로 전해드려요.", "아이의 요즘 감정 흐름을 세심하게 짚어드려요."].map(item => (
@@ -812,7 +822,7 @@ export default function Landing() {
             </span>
           </h2>
           <p className="mt-5 text-base md:text-lg font-medium text-white/60">
-            아이 프로필을 만들고 키디와 인사하는 것부터예요. 무료로요.
+            아이 프로필을 만들고 키디와 인사하는 것부터예요.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row justify-center">
             <button
