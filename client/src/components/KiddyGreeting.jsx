@@ -10,6 +10,7 @@ import { greetingLine } from "../utils/kiddyLines";
 // props:
 //  - name        : 아이 이름
 //  - recentMood  : 어제(가장 최근) 기분 코드 (happy/good/excited/soso/sad/angry) | null
+//  - greeting    : Claude 생성 인사(있으면 우선). 없으면(null) 로컬 greetingLine 템플릿 폴백
 //  - onContinue  : "응! 얘기하자" → 질문으로
 //  - onSkip      : "오늘은 그냥 볼래" → 체크인 건너뛰기(강제 금지)
 
@@ -17,9 +18,9 @@ const C = {
   card: "#0E2A2A", accent: "#18C49A", accent2: "#14B8C4", ink: "#EAF5F1", sub: "#90A9A8",
 };
 
-export default function KiddyGreeting({ name, recentMood, onContinue, onSkip }) {
-  // 인사 한 줄을 마운트 시 한 번만 뽑아 고정 (리렌더마다 바뀌면 타이핑이 다시 시작됨)
-  const [line] = useState(() => greetingLine(name, recentMood));
+export default function KiddyGreeting({ name, recentMood, greeting, onContinue, onSkip }) {
+  // Claude 생성 인사가 있으면 그걸, 없으면 로컬 템플릿. 마운트 시 한 번만 고정(리렌더 시 재타이핑 방지).
+  const [line] = useState(() => greeting || greetingLine(name, recentMood));
 
   const btnPrimary = {
     background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})`,

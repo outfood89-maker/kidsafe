@@ -237,16 +237,55 @@ class ReactRequest(BaseModel):
     priorAnswers: Optional[List[Any]] = None
 
 
+# 기분 이모지 → 정확한 한국어 라벨 (사실은 코드가 — LLM이 감정 가치를 임의로 칠하지 못하게)
+MOOD_LABEL = {
+    "😄": "아주 좋음(신남)",
+    "🙂": "좋음",
+    "😐": "그냥 그래",
+    "😢": "슬픔",
+    "😡": "화남",
+}
+
+# qId → 사람이 읽는 항목명 (사실 블록 라벨용)
+FIELD_LABEL = {
+    "mood_today": "기분",
+    "what_did_today": "오늘 한 일",
+    "watch_genre": "보고 싶은 것",
+}
+
+
+def _answer_fact(qid: Optional[str], answer: Any) -> str:
+    """아이 답을 '확정된 사실 라벨'로 — 기분은 코드 맵으로 변환(추측 차단), 나머지는 고른 보기 그대로."""
+    if qid == "mood_today":
+        return MOOD_LABEL.get(str(answer), "그냥 그래")
+    return str(answer)
+
+
 def _react_system(name: str) -> str:
     return f"""
 너는 KidSafe의 AI 친구 "키디"야. 파스텔 민트색 아기 공룡 슈퍼히어로이고, {name}(아이)의 첫 친구야.
-지금 아이가 '오늘의 체크인'에서 방금 질문에 답을 골랐어. 그 답에 키디로서 한 마디 반응해줘.
+지금 아이가 '오늘의 체크인'에서 방금 질문에 답을 골랐어. 그 답에 키디로서 짧은 '반응(리액션)'만 해줘.
 
-[반응 규칙 — 가장 중요]
-- 반말, 또래 친구처럼 따뜻하고 다정하게. 살짝 발랄하게(과하지 않게).
-- 아이 답을 '받아준다': 감정/내용을 먼저 알아주고, 가볍게 한 번 더 궁금해해도 좋아(강요는 아님).
+[가장 중요 — 질문하지 마]
+- 너는 '반응'만 한다. 새로운 질문을 던지지 마. 다음 질문은 앱(키디)이 알아서 이어가.
+- 그래서 문장 끝을 물음표로 끝내지 마. "그래서 어땠어?" "또 뭐 했어?"처럼 답을 요구하는 말 금지.
+- "아아 그랬구나!" 하고 받아준 뒤, 네 감상만 살짝 보태고 끝내. 되묻지 마.
+
+[두 번째로 중요 — 사실 왜곡 금지]
+- 아래 '아이가 고른 사실'은 토씨도 바꾸거나 더 좋게/나쁘게 해석하지 마. 특히 기분은 적힌 그대로만 받아.
+- 보기에 없는 내용을 추측하거나 지어내지 마.
+- 이전 답을 이을 땐 '오늘 한 일'과 '보고 싶은 것'처럼 분명한 선택만 자연스럽게 연결해 (예: "바깥놀이 하고 와서 이제 공룡 보러 가는구나!"). 기분을 임의로 긍정/부정으로 바꾸지 마.
+
+[4~7세가 알아듣게 — 쉬운 말로 (꼭 지켜)]
+- 우리 아이는 4~7세야. 짧고 쉬운 구어체로만 말해.
+- 한 문장엔 한 가지 생각만. 짧게(어절 5개 안팎). 길어지면 짧은 문장 2개로 나눠.
+- 복문 금지: "~하면서", "~던 것을", "~인데"로 길게 잇지 마.
+- 추상·회상·메타 표현 금지: "떠올리다/기억하다/그 기분 그대로" 대신 단순한 사실 + 감정으로.
+- 어려운 한자어·명사화 대신 쉬운 일상어만. (어제/오늘/내일, 기쁘다/슬프다/화나다는 써도 돼)
+
+[톤]
+- 반말, 또래 친구처럼 따뜻하고 다정하게.
 - 부정 감정(슬픔·화·속상함)은 절대 발랄하게 받지 말 것. 차분히 수용하고 곁에 있어줘.
-- 이전에 아이가 한 답이 있으면 자연스럽게 연결해도 좋아 (예: "아까 바깥놀이 했다며? 그래서 기분 좋았구나!").
 - 키디 자기 얘기를 살짝 섞어도 좋아 ("키디도 그거 완전 좋아해!").
 - 이름은 가끔만 부른다(매번 X, 자연스러울 때만).
 
@@ -264,18 +303,31 @@ def _react_user(data: "ReactRequest") -> str:
         "watch_genre": "오늘은 뭐가 보고 싶어?",
     }.get(data.qId, "오늘 어땠어?")
 
-    # 이전 답 맥락 (있으면)
-    ctx = ""
+    # 방금 고른 답을 사실 라벨로 (기분이면 이모지+라벨 함께)
+    if data.qId == "mood_today":
+        cur_disp = f"{data.answer} = {MOOD_LABEL.get(str(data.answer), '그냥 그래')}"
+    else:
+        cur_disp = str(data.answer)
+    cur_field = FIELD_LABEL.get(data.qId, "답")
+
+    # 이전 답 = 확정 사실 블록 (라벨로 못박아 전달 → 재해석 차단)
+    block = ""
     if data.priorAnswers:
-        bits = []
+        facts = []
         for a in data.priorAnswers:
             if isinstance(a, dict) and a.get("answer"):
-                bits.append(str(a.get("answer")))
-        if bits:
-            ctx = f"\n오늘 아이가 앞서 고른 답들: {', '.join(bits)}"
+                qid = a.get("qId")
+                facts.append(f"- {FIELD_LABEL.get(qid, '답')}: {_answer_fact(qid, a.get('answer'))}")
+        if facts:
+            block = "\n\n[아이가 오늘 앞서 고른 사실 — 바꾸지 말 것]\n" + "\n".join(facts)
 
-    wild = " (아이가 정해진 보기 말고 '그 외'를 골랐어)" if data.answerType == "wildcard" else ""
-    return f"질문: {q}\n아이가 고른 답: {data.answer}{wild}{ctx}\n\n이 답에 키디로서 반응해줘."
+    wild = " (정해진 보기 말고 '그 외'를 골랐어)" if data.answerType == "wildcard" else ""
+    return (
+        f"지금 질문: {q}\n"
+        f"방금 고른 답 [{cur_field}]: {cur_disp}{wild}"
+        f"{block}\n\n"
+        f"이 답에 키디로서 '반응만' 해줘. 질문하지 말고, 물음표로 끝내지 마."
+    )
 
 
 @router.post("/react")
@@ -286,7 +338,8 @@ async def react_to_answer(data: ReactRequest, user: dict = Depends(get_current_u
         client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         response = await client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=120,
+            max_tokens=160,
+            temperature=0.7,
             system=_react_system(name),
             messages=[{"role": "user", "content": _react_user(data)}],
         )
@@ -310,7 +363,8 @@ async def react_to_answer_stream(data: ReactRequest, user: dict = Depends(get_cu
             client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
             async with client.messages.stream(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=120,
+                max_tokens=160,
+                temperature=0.7,
                 system=_react_system(name),
                 messages=[{"role": "user", "content": _react_user(data)}],
             ) as stream:
@@ -322,3 +376,83 @@ async def react_to_answer_stream(data: ReactRequest, user: dict = Depends(get_cu
 
     # text/plain 청크 스트림 (SSE 아님 — 단순 텍스트 조각)
     return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
+
+
+# ── POST /checkins/greet ────────────────────────────────────
+# 키디 환영 인사 생성 (Haiku). 실패 시 502 → 프론트가 로컬 greetingLine 템플릿으로 폴백.
+# 어제 기분은 코드가 정확한 라벨로 전달(왜곡 차단). 기분을 다시 묻지 않고 '대화 초대'로 끝낸다.
+
+# mood 코드 → 정확한 한국어 라벨 (사실은 코드가)
+MOOD_CODE_LABEL = {
+    "happy": "아주 좋음(신남)",
+    "excited": "아주 신남",
+    "good": "좋음",
+    "soso": "그냥 그래",
+    "sad": "슬픔",
+    "angry": "화남",
+}
+
+
+class GreetRequest(BaseModel):
+    profileName: Optional[str] = "친구"
+    profileAge: Optional[int] = 7
+    recentMood: Optional[str] = None  # 어제(최근) 기분 코드 | None(첫 만남)
+
+
+def _greet_system(name: str) -> str:
+    return f"""
+너는 KidSafe의 AI 친구 "키디"야. 파스텔 민트색 아기 공룡 슈퍼히어로이고, {name}(아이)의 첫 친구야.
+지금 아이가 '오늘의 체크인'을 시작하려고 들어왔어. 키디가 아이를 반갑게 맞이하는 첫 인사를 해줘.
+
+[가장 중요 — 끝맺음 규칙]
+- 바로 다음 화면에서 앱이 아이 기분을 물어봐. 그러니 너는 인사만 하고, 기분이나 하루를 직접 캐묻지 마.
+- 끝은 반드시 "오늘도 같이 얘기하자!"처럼 권유하는 평서문(느낌표)으로 맺어.
+- "얘기할래?", "얘기할까?", "오늘 어땠어?"처럼 물음표로 끝나는 질문형은 금지 (화면 버튼이 "응! 얘기하자"라서 질문으로 끝내면 어색해져).
+- 문장을 "응"으로 시작하지 마. 아이가 할 대답("응", "그래")을 키디가 대신 하지 마.
+- '함께'보다 '같이'처럼 더 쉬운 말로.
+
+[어제 기분 — 주어지면 그것만 다정하게]
+- '어제 기분'이 주어지면 그것만 자연스럽게 살짝 언급해 (예: 좋았으면 "어제 기분 좋아 보여서 키디도 신났었어").
+- 토씨도 바꾸거나 더 좋게/나쁘게 해석하지 마. 슬픔·화남이면 절대 발랄하게 받지 말고 다정히 곁에 있어줘.
+- '어제 기분'이 없으면(첫 만남) 처음 만난 것처럼 설레며 반갑게.
+- 주어진 것 말고 구체적인 일(무슨 일이 있었는지 등)을 지어내지 마.
+
+[4~7세가 알아듣게 — 쉬운 말로 (꼭 지켜)]
+- 우리 아이는 4~7세야. 짧고 쉬운 구어체로만 말해.
+- 한 문장엔 한 가지 생각만. 짧게(어절 5개 안팎). 길어지면 짧은 문장 2개로 나눠.
+- 복문 금지: "~하면서", "~던 것을", "~인데"로 길게 잇지 마. (예: "기분 좋던 거 떠올리면서 기다렸어" ❌ → "어제 기분 좋았지? 키디 기다렸어!" ⭕)
+- 추상·회상·메타 표현 금지: "떠올리다/기억하다/그 기분 그대로" 대신 단순한 사실 + 감정으로.
+- 어려운 한자어·명사화 대신 쉬운 일상어만. (어제/오늘/내일, 기쁘다/슬프다/화나다는 써도 돼)
+
+[톤/형식]
+- 반말, 다정하고 따뜻하게. 키디 성격 살짝(꼬리 흔들흔들·배의 별 반짝 등) 섞어도 좋아.
+- 1~2문장, 짧게. 이모지 1개 정도. 이름은 가끔만 자연스럽게.
+- 마크다운/특수기호·따옴표 없이 키디 대사만 출력.
+""".strip()
+
+
+def _greet_user(data: "GreetRequest") -> str:
+    mood = MOOD_CODE_LABEL.get(data.recentMood or "")
+    ctx = f"어제(가장 최근) 아이 기분: {mood}" if mood else "어제 기분 기록 없음 (오늘이 키디와의 첫 만남)"
+    return f"{ctx}\n\n이 아이에게 키디로서 첫 인사를 해줘. 기분은 묻지 말고, '같이 얘기하자' 초대로 끝내."
+
+
+@router.post("/greet")
+async def greet_child(data: GreetRequest, user: dict = Depends(get_current_user)):
+    """키디 환영 인사 생성 (Haiku). 실패 시 502 → 프론트가 로컬 템플릿으로 폴백."""
+    name = data.profileName or "친구"
+    try:
+        client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=160,
+            temperature=0.9,  # 인사는 분위기만 담당 → 다양성 위해 더 높게
+            system=_greet_system(name),
+            messages=[{"role": "user", "content": _greet_user(data)}],
+        )
+        greeting = response.content[0].text.strip() if response.content else ""
+        if not greeting:
+            raise ValueError("빈 응답")
+        return {"greeting": greeting}
+    except Exception:
+        raise HTTPException(status_code=502, detail="greet-failed")

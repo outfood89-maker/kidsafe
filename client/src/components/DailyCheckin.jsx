@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import confettiLib from "canvas-confetti";
 import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import KiddyGreeting from "./KiddyGreeting";
-import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream } from "../utils/api";
+import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting } from "../utils/api";
 import { questionLine, reactionLine, shareQuestionLine, closingLine } from "../utils/kiddyLines";
+import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 
 // 반응 생성 중 보여줄 짧은 '생각 소리' (랜덤 — 매번 같은 말 안 나오게)
 const THINK_WORDS = ["음~", "오?", "그러니까…", "잠깐만~", "어디 보자~", "흠흠"];
@@ -30,12 +32,52 @@ const C = {
 // 이모지 → 기분 코드 (백엔드 mood 컬럼 + 부모 리포트 집계용)
 const EMOJI_MOOD = { "😄": "happy", "🙂": "good", "😐": "soso", "😢": "sad", "😡": "angry" };
 
+// 스트리밍 텍스트를 '도착 속도'와 분리해 일정 속도로 한 글자씩 흘려보낸다.
+// (Haiku 스트림은 글자 뭉치로 불규칙하게 도착 → 그대로 붙이면 툭툭 끊겨 보임)
+// target(버퍼)이 차오르면 화면이 부드럽게 따라가며 타이핑. 스트림이 끝나고 화면이 버퍼를
+// 다 따라잡으면 onComplete 1회 호출. 폴백(완성 문장)도 동일하게 타이핑됨.
+// ⚠️ 새 반응마다 부모에서 key 로 remount 시킬 것(count·done 초기화).
+function StreamingText({ target = "", streaming = false, onComplete, speed = 30, className, style }) {
+  const [count, setCount] = useState(0);
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  const doneRef = useRef(false);
+
+  // 일정 간격으로 한 글자씩 — 버퍼(target)가 늘어난 만큼만 따라감
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCount((c) => (c < Array.from(targetRef.current).length ? c + 1 : c));
+    }, speed);
+    return () => clearInterval(id);
+  }, [speed]);
+
+  const chars = Array.from(target);
+  const caughtUp = count >= chars.length;
+
+  // 스트림 끝 + 화면이 버퍼를 다 따라잡음 → 완료 1회
+  useEffect(() => {
+    if (!streaming && chars.length > 0 && caughtUp && !doneRef.current) {
+      doneRef.current = true;
+      onComplete?.();
+    }
+  }, [streaming, caughtUp, chars.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const typing = streaming || !caughtUp;
+  return (
+    <span className={className} style={style}>
+      {chars.slice(0, count).join("")}
+      {typing && <span style={{ opacity: 0.55 }}>▍</span>}
+    </span>
+  );
+}
+
 export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const name = profile?.name || "친구";
 
   const [phase, setPhase] = useState("loading"); // loading | greeting | questions | share | reward
   const [questions, setQuestions] = useState([]);
   const [recentMood, setRecentMood] = useState(null);
+  const [greetingText, setGreetingText] = useState(null); // Claude 생성 인사 (실패 시 null → 로컬 템플릿 폴백)
 
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
@@ -46,8 +88,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const [pending, setPending] = useState(null); // 선택했지만 아직 '다음' 안 누른 답
   const [reaction, setReaction] = useState(null); // 키디 리액션 텍스트(스트리밍 중 점점 늘어남)
   const [reacting, setReacting] = useState(false); // 첫 글자 오기 전(로딩 — '생각 중' 연출)
-  const [streaming, setStreaming] = useState(false); // 글자가 흘러들어오는 중(커서 표시)
-  const [streamed, setStreamed] = useState(false); // 이 반응이 스트리밍 출력인지(끝나도 Typewriter로 안 넘김)
+  const [streaming, setStreaming] = useState(false); // 스트림에서 글자가 아직 들어오는 중
+  const [typingDone, setTypingDone] = useState(false); // 반응 타이핑이 화면에 다 출력됨 → '다음' 버튼 노출
   const [thinkWord, setThinkWord] = useState(THINK_WORDS[0]); // 이번 로딩에 보여줄 생각 소리
 
   const [closing, setClosing] = useState("");
@@ -57,18 +99,25 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   // 공유 질문 문구는 마운트 시 한 번 고정 (랜덤이 리렌더마다 안 바뀌게)
   const [shareLine] = useState(() => shareQuestionLine(name));
 
-  // 마운트: 질문 + 어제 기분 병렬 로드
+  // 마운트: 질문 + 어제 기분 병렬 로드 → 어제 기분으로 키디 인사 생성(실패 시 템플릿 폴백) → greeting
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getCheckinQuestions(profile.id).catch(() => []),
-      getRecentCheckin(profile.id).then((d) => d.checkin).catch(() => null),
-    ]).then(([qs, recent]) => {
+    (async () => {
+      const [qs, recent] = await Promise.all([
+        getCheckinQuestions(profile.id).catch(() => []),
+        getRecentCheckin(profile.id).then((d) => d.checkin).catch(() => null),
+      ]);
       if (cancelled) return;
       setQuestions(Array.isArray(qs) ? qs : []);
-      setRecentMood(recent?.mood || null);
-      setPhase("greeting");
-    });
+      const mood = recent?.mood || null;
+      setRecentMood(mood);
+      // 인사를 Claude로 생성 (분위기만 — 어제 기분은 코드가 라벨로 넘겨 왜곡 차단). 실패하면 null → 로컬 템플릿.
+      try {
+        const g = await getCheckinGreeting({ profileName: profile?.name || "친구", profileAge: profile?.age, recentMood: mood });
+        if (!cancelled && g) setGreetingText(g);
+      } catch { /* 폴백: KiddyGreeting이 로컬 greetingLine 사용 */ }
+      if (!cancelled) setPhase("greeting");
+    })();
     return () => { cancelled = true; };
   }, [profile.id]);
 
@@ -86,6 +135,37 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     [qIndex, phase] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // '볼 것' 선택지 — 씨앗(백엔드 options) 우선 + 인기 주제로 8개까지 채움 (가짓수 확대)
+  // 라벨은 카탈로그로 정규화돼 표시(노래→동요), emoji 포함. day(icon_select)는 그대로 둠.
+  const watchOptions = useMemo(
+    () => (current?.qId === "watch_genre" ? buildWatchOptions(current.options || []) : null),
+    [current]
+  );
+
+  // 반응 중 키디 포즈 — 답에 맞춰 표정 다양화 (부정 감정엔 점프 X, 공감 sad 포즈로)
+  const reactionPose = useMemo(() => {
+    if (!pending) return "jump";
+    if (pending.qId === "mood_today") {
+      if (moodEmoji === "😢" || moodEmoji === "😡") return "sad"; // 공감
+      if (moodEmoji === "😄") return "jump";
+      return "success"; // 🙂 😐 — 잔잔하게 받아주기
+    }
+    return "jump"; // 하루/볼것 — 신나게
+  }, [pending, moodEmoji]);
+
+  // 보상 화면 진입 시 축하 confetti (브랜드 색) — 데모의 '뭉클' 직전 작은 반짝
+  useEffect(() => {
+    if (phase !== "reward") return;
+    const colors = ["#18C49A", "#14B8C4", "#5FE0BC", "#FFE9A8"];
+    const end = Date.now() + 1400;
+    const burst = () => {
+      confettiLib({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors });
+      confettiLib({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors });
+      if (Date.now() < end) requestAnimationFrame(burst);
+    };
+    burst();
+  }, [phase]);
+
   // 옵션 선택 → pending + 키디 반응 (Claude 생성, 실패 시 로컬 템플릿 폴백)
   const select = async (value, isWildcard = false) => {
     if (reaction || reacting || streaming) return;
@@ -99,11 +179,12 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       setMood(EMOJI_MOOD[value] || "soso");
       setMoodEmoji(value);
     }
-    if (current.qId === "watch_genre" && !isWildcard) setWatchKeyword(value);
+    // '볼 것'은 아동 안전 검색어로 변환해서 검색에 넘긴다 (예: 노래→동요). 표시·반응은 친근한 라벨 그대로.
+    if (current.qId === "watch_genre" && !isWildcard) setWatchKeyword(toKidQuery(value));
     setPending(answer);
     setReaction("");
     setStreaming(false);
-    setStreamed(false);
+    setTypingDone(false);
     setReacting(true);
     setThinkWord(pickThink());
 
@@ -122,13 +203,12 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       await reactToCheckinStream(payload, (full) => {
         setReacting(false);
         setStreaming(true);
-        setStreamed(true);
         setReaction(full);
       });
-      setStreaming(false); // 스트림 종료 → '다음' 버튼 노출
+      setStreaming(false); // 스트림 종료 → StreamingText가 버퍼 다 따라잡으면 '다음' 노출
     } catch {
-      // 스트림 실패/오프라인 → 로컬 템플릿으로 폴백 (즉시 표시)
-      setReaction(reactionLine(current.qId, value, isWildcard, name));
+      // 스트림 실패/오프라인 → 로컬 템플릿으로 폴백 (즉시 표시). answers=이전 확정 답(한 일↔볼 것 콜백용)
+      setReaction(reactionLine(current.qId, value, isWildcard, name, answers));
       setReacting(false);
       setStreaming(false);
     }
@@ -141,7 +221,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     setPending(null);
     setReaction(null);
     setStreaming(false);
-    setStreamed(false);
+    setTypingDone(false);
     if (qIndex + 1 < questions.length) {
       setQIndex(qIndex + 1);
     } else {
@@ -188,6 +268,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
           <KiddyGreeting
             name={name}
             recentMood={recentMood}
+            greeting={greetingText}
             onContinue={() => setPhase(questions.length ? "questions" : "share")}
             onSkip={() => onSkip?.()}
           />
@@ -197,7 +278,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
         {phase === "questions" && current && (
           <div className="flex flex-col items-center text-center">
             <style>{`@keyframes kdcBounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}`}</style>
-            <KiddyImg pose={reacting ? "think" : reaction ? "jump" : "chat"} size={150} float />
+            <KiddyImg pose={reacting ? "think" : reaction ? reactionPose : "chat"} size={150} float />
 
             {/* 키디 말풍선 — 생각 중(점+생각소리) / 스트리밍(커서) / 질문 */}
             <div
@@ -216,25 +297,30 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                     ))}
                   </span>
                 </span>
-              ) : reaction && streamed ? (
-                // 스트리밍 반응: 들어온 글자 그대로 출력(성장이 곧 타이핑). 끝나도 그대로 둠(재타이핑 방지).
-                // 흐르는 중에만 깜빡 커서.
-                <span className="font-bold leading-snug" style={{ color: C.ink, fontSize: "18px" }}>
-                  {reaction}{streaming && <span style={{ opacity: 0.55 }}>▍</span>}
-                </span>
+              ) : reaction ? (
+                // 반응(스트리밍 or 폴백) → 도착 속도와 분리해 일정 속도로 타이핑 (툭툭 끊김 방지)
+                // 질문(Typewriter)과 동일한 타자 느낌. 새 반응마다 key 로 remount.
+                <StreamingText
+                  key={`react-${qIndex}`}
+                  target={reaction}
+                  streaming={streaming}
+                  onComplete={() => setTypingDone(true)}
+                  className="font-bold leading-snug"
+                  style={{ color: C.ink, fontSize: "18px" }}
+                />
               ) : (
-                // 질문(reaction 없음) 또는 로컬 폴백(완성된 문장) → 타자 효과
+                // 질문(reaction 없음) → 타자 효과
                 <Typewriter
-                  key={reaction || qLine}
-                  text={reaction || qLine}
+                  key={qLine}
+                  text={qLine}
                   className="font-bold leading-snug"
                   style={{ color: C.ink, fontSize: "18px" }}
                 />
               )}
             </div>
 
-            {/* 생각 중/스트리밍 중엔 버튼 없음 / 끝나면 '다음' / 그 외 선택지 */}
-            {reacting || streaming ? null : reaction ? (
+            {/* 생각 중/타이핑 중엔 버튼 없음 / 타이핑 끝나면 '다음' / 그 외 선택지 */}
+            {reacting ? null : reaction ? (typingDone ? (
               <button
                 onClick={next}
                 className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
@@ -242,7 +328,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
               >
                 {qIndex + 1 < questions.length ? "다음 →" : "다 했어! →"}
               </button>
-            ) : (
+            ) : null) : (
               <>
                 {current.answerType === "emoji_select" ? (
                   // 기분: 큰 이모지 가로 배열
@@ -259,16 +345,16 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                     ))}
                   </div>
                 ) : (
-                  // 하루/볼것: 라벨 카드 그리드
+                  // 하루/볼것: 라벨 카드 그리드. 볼것은 카탈로그(emoji+확장 목록), 하루는 백엔드 라벨 그대로.
                   <div className="w-full grid grid-cols-2 gap-2.5">
-                    {current.options.map((opt) => (
+                    {(watchOptions || current.options.map((o) => ({ label: o }))).map((opt) => (
                       <button
-                        key={opt}
-                        onClick={() => select(opt)}
+                        key={opt.label}
+                        onClick={() => select(opt.label)}
                         className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
                         style={{ backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)", color: C.ink, fontSize: "16px" }}
                       >
-                        {opt}
+                        {opt.emoji ? `${opt.emoji} ` : ""}{opt.label}
                       </button>
                     ))}
                     {/* 숨 쉴 구멍 — '그 외' wildcard */}

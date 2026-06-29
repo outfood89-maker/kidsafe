@@ -157,6 +157,13 @@ export const getCheckinQuestions = async (profileId) => {
   return response.data.questions
 }
 
+// 키디 환영 인사 생성 (Haiku). 실패 시 throw → 프론트가 로컬 greetingLine 템플릿으로 폴백.
+// recentMood: 어제(최근) 기분 코드 | null. 어제 기분만 다정히 언급, 기분 질문 없이 대화 초대로 끝남.
+export const getCheckinGreeting = async ({ profileName, profileAge, recentMood }) => {
+  const response = await axios.post(`${BASE_URL}/checkins/greet`, { profileName, profileAge, recentMood })
+  return response.data.greeting
+}
+
 // 오늘 체크인 저장 (upsert)
 export const saveCheckin = async ({ profileId, mood, moodEmoji, answers, shareWithParent }) => {
   const response = await axios.post(`${BASE_URL}/checkins`, { profileId, mood, moodEmoji, answers, shareWithParent })

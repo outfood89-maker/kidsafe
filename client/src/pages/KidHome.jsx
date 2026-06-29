@@ -13,6 +13,7 @@ import {
   checkBlockedKeyword, getProfiles, getGameBonus, getTodayCheckin,
 } from "../utils/api";
 import { getSafetyGrade, filterByAge, applyAntiBias, getTopKeyword, getEffectiveThreshold, sortByLengthPreference } from "../utils/safetyFilter";
+import { toKidQuery } from "../utils/kidTopics";
 import VideoModal from "../components/VideoModal";
 import VideoPlayer from "../components/VideoPlayer";
 import PlaylistModal from "../components/PlaylistModal";
@@ -1246,7 +1247,7 @@ export default function KidHome() {
                   return (
                     <button
                       key={c.label}
-                      onClick={() => { setSearchKeyword(c.label); handleSearch(c.label); }}
+                      onClick={() => { setSearchKeyword(c.label); handleSearch(toKidQuery(c.label)); }}
                       className="shrink-0 rounded-full px-3.5 py-2 text-sm font-bold active:scale-95 transition"
                       style={{
                         border: active ? "1.5px solid #18C49A" : "1.5px solid rgba(255,255,255,0.1)",
