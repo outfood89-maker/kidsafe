@@ -214,13 +214,15 @@ const ShotCard = ({ src, alt, maxWidth = 320 }) => (
 )
 
 // 스크롤 진입 감지 훅
-const useInView = (threshold = 0.15) => {
+// threshold=0 + 하단 rootMargin 양수 → 섹션이 화면에 들어오기 직전(뷰포트 아래 여유분)에 미리 트리거
+// 조금만 스크롤해도 등장하도록. (기존 0.15는 섹션이 한참 올라와야 발동했음)
+const useInView = (threshold = 0, rootMargin = "0px 0px 15% 0px") => {
   const ref = useRef(null)
   const [inView, setInView] = useState(false)
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setInView(true) },
-      { threshold }
+      { threshold, rootMargin }
     )
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
@@ -372,7 +374,7 @@ export default function Landing() {
       {/* ①-b 앱 한 줄 정의 — 키디가 어떤 앱인지 명확히 (히어로 다음, 감성 흐름 전) */}
       <section className="px-4 py-20 md:py-28" style={{ backgroundColor: "#0A1E1E", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: "#18C49A" }}>What is Kiddy</p>
+          <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-5" style={{ color: "#18C49A" }}>What is Kiddy</p>
           <p className="text-xl md:text-3xl font-bold leading-relaxed" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>
             키디는 모든 영상을 <span style={{ color: "#5FE0BC" }}>AI로 검수</span>해<br />
             안전한 영상만 검색·추천하고,<br />
@@ -410,10 +412,12 @@ export default function Landing() {
       {/* ③ 미션 — 피할 수 없다면, 건강하게 */}
       <section ref={missionRef} className="px-4 py-16 md:py-28" style={{ background: "radial-gradient(120% 80% at 50% 50%, #123129 0%, #0A1E1E 70%)" }}>
         <div className={`mx-auto max-w-2xl text-center ${fade(missionInView)}`}>
+          {/* 느낌 확인용 임시 비활성화 — 복구하려면 주석 해제
           <div className="flex justify-center mb-6">
             <KiddyImg pose="help" size={130} float />
           </div>
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#18C49A" }}>Our Mission</p>
+          */}
+          <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-4" style={{ color: "#18C49A" }}>Our Mission</p>
           <h2 className="text-3xl md:text-5xl font-black leading-[1.2] tracking-tight" style={{ color: "#EAF5F1" }}>
             피할 수 없다면<br />키디가 곁에서 함께 하겠습니다
           </h2>
@@ -423,6 +427,7 @@ export default function Landing() {
             키디는 못 보게 하는 대신,<br />
             <span className="font-bold" style={{ color: "#EAF5F1" }}>잘 보는 법을 찾아주기로</span> 했습니다.
           </p>
+          {/* 느낌 확인용 임시 비활성화 — 복구하려면 주석 해제
           <button
             onClick={() => navigate("/profiles")}
             className="mt-9 rounded-ks-md px-8 py-4 text-base font-extrabold text-white transition hover:scale-105"
@@ -430,16 +435,19 @@ export default function Landing() {
           >
             지금 시작하기
           </button>
+          */}
         </div>
       </section>
 
       {/* ④ 공생 — 영상을 막지 않아요 */}
       <section ref={allyRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0E2A2A" }}>
         <div className={`mx-auto max-w-3xl text-center ${fade(allyInView)}`}>
+          {/* 느낌 확인용 임시 비활성화 — 복구하려면 주석 해제
           <div className="flex justify-center mb-6">
             <KiddyImg pose="reading" size={120} float />
           </div>
-          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Not a wall, a guide</p>
+          */}
+          <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Not a wall, a guide</p>
           <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>
             영상을 막지 않습니다<br />더 안심하고 보도록 도와드려요
           </h2>
@@ -456,7 +464,7 @@ export default function Landing() {
       <section ref={vsRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
         <div className="mx-auto max-w-3xl">
           <div className={`text-center mb-16 ${fade(vsInView)}`}>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>YouTube + Kiddy</p>
+            <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>YouTube + Kiddy</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
               유튜브는 그대로<br className="md:hidden" /> 안전함만 더합니다
             </h2>
@@ -516,7 +524,7 @@ export default function Landing() {
             <div className="flex justify-center mb-4">
               <KiddyImg pose="search" size={140} float />
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>How we check</p>
+            <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>How we check</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>보여주기 전에<br className="md:hidden" /> 속 내용까지 먼저 살펴봅니다</h2>
             <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8" }}>
               제목이나 썸네일만 보고 판단하지 않아요.<br />
@@ -576,7 +584,7 @@ export default function Landing() {
           </div>
 
           {/* 영상 보고 나서 도란도란 — 검수/차단 다음 자리로 이동 (Freddie 요청). 애니메이션은 ⑤ 섹션 checkInView 재사용 */}
-          <div className={`mt-16 md:mt-24 flex flex-col md:flex-row items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+          <div className={`mt-24 md:mt-36 flex flex-col md:flex-row items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 영상 보고 나서<br />키디랑 도란도란
@@ -596,7 +604,7 @@ export default function Landing() {
           </div>
 
           {/* 컷 — 키디 분석 리포트 (부모): '도란도란' 아래로 이동 (Freddie 요청). checkInView 사용 */}
-          <div className={`mt-16 md:mt-24 flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
+          <div className={`mt-24 md:mt-36 flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 우리 아이가 뭘 보는지<br />키디가 정리해드려요
@@ -634,7 +642,7 @@ export default function Landing() {
       <section ref={timeRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0E2A2A" }}>
         <div className="mx-auto max-w-6xl">
           <div className={`text-center mb-16 ${fade(timeInView)}`}>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Healthy habits</p>
+            <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Healthy habits</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
               시간이 끝나도<br className="md:hidden" /> 다툴 필요가 없습니다
             </h2>
@@ -669,9 +677,9 @@ export default function Landing() {
           </div>
 
           {/* 3번 스텝 — 교육 미니게임 6종 상세 */}
-          <div className={`mt-14 md:mt-16 ${fade(timeInView)}`}>
+          <div className={`mt-24 md:mt-36 ${fade(timeInView)}`}>
             <div className="text-center mb-10">
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>6 mini-games</p>
+              <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>6 mini-games</p>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
                 🎮 마무리는 이런 교육 놀이로
               </h3>
@@ -702,7 +710,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <p className={`text-center mt-16 text-base font-medium max-w-2xl mx-auto leading-relaxed ${fade(timeInView)}`} style={{ color: "#5FE0BC", wordBreak: "keep-all" }}>
+          <p className={`text-center mt-24 md:mt-36 text-base font-medium max-w-2xl mx-auto leading-relaxed ${fade(timeInView)}`} style={{ color: "#5FE0BC", wordBreak: "keep-all" }}>
             키디는 &quot;더 보게 하는 장치&quot;가 아닙니다.<br />
             끝맺음을 강제가 아닌, 배움과 성취의 기회로 바꿔드립니다.
           </p>
@@ -713,7 +721,7 @@ export default function Landing() {
       <section ref={kiddyRef} className="px-4 py-16 md:py-28" style={{ background: "radial-gradient(120% 80% at 50% 50%, #123129 0%, #0A1E1E 70%)" }}>
         <div className={`mx-auto max-w-3xl flex flex-col items-center text-center ${fade(kiddyInView)}`}>
           <KiddyImg pose="point" size={200} float />
-          <p className="text-xs font-bold uppercase tracking-widest mt-6 mb-3" style={{ color: "#18C49A" }}>Meet Kiddy</p>
+          <p className="text-base md:text-lg font-bold uppercase tracking-widest mt-6 mb-3" style={{ color: "#18C49A" }}>Meet Kiddy</p>
           <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>
             키디는 아이의 친구이자,<br />부모님과 아이를 잇는 다리입니다
           </h2>
@@ -731,14 +739,14 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           {/* "키디가 하는 일" 헤더 — Freddie 요청으로 비활성화 (복구하려면 주석 해제)
           <div className={`text-center mb-16 ${fade(previewInView)}`}>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>What Kiddy does</p>
+            <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>What Kiddy does</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>키디가 하는 일</h2>
             <p className="mt-3 text-base font-medium" style={{ color: "#90A9A8" }}>아이 화면부터 부모 화면까지, 실제 화면 그대로 보여드립니다.</p>
           </div>
           */}
 
           {/* 컷 — 키디와 매일 대화(체크인) — Freddie 추가. ShotCard(넓적 비율이라 폰 베젤 대신 카드 프레임) */}
-          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-16 md:mb-24 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 키디가 매일<br />오늘 기분을 물어봐요
@@ -758,7 +766,7 @@ export default function Landing() {
           </div>
 
           {/* 컷 3 — 키디의 한 주 (부모) + 공유 선택 강조 */}
-          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-16 md:mb-24 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
                 아이의 한 주를<br />따뜻한 편지로
@@ -821,14 +829,21 @@ export default function Landing() {
 
       {/* ⑨ 안심 포인트 */}
       <section ref={safeRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
-        <div className="mx-auto max-w-5xl">
-          <div className={`text-center mb-16 ${fade(safeInView)}`}>
+        <div className="mx-auto max-w-3xl flex flex-col items-center text-center">
+          {/* MEET KIDDY와 동일 포맷: 가운데 정렬 eyebrow → 제목 → 문단 (Freddie 요청) */}
+          <div className={`flex flex-col items-center text-center ${fade(safeInView)}`}>
             <div className="flex justify-center mb-5">
-              <img src="/images/logo/symbol_256.png" alt="Kiddy" className="h-48 w-48 md:h-60 md:w-60" style={{ objectFit: "contain", animation: "kiddyFloat 2.5s ease-in-out infinite" }} />
+              <KiddyImg pose="think" size={170} float />
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Peace of mind</p>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>안심하고 맡기세요</h2>
+            <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Heads up</p>
+            <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>잠깐! 주의할 점이 있어요</h2>
+            <p className="mt-6 text-base md:text-lg leading-relaxed max-w-2xl" style={{ color: "#B5C9C0", wordBreak: "keep-all" }}>
+              키디는 유튜브를 막는 게 아니라, 유튜브와 <b style={{ color: "#EAF5F1" }}>함께하는 친구</b>예요.
+              그래서 유튜브가 기본으로 보여주는 광고까지는 키디가 막지 못해요.
+              광고 없이 보고 싶다면 <b style={{ color: "#EAF5F1" }}>유튜브 프리미엄</b>을 함께 이용해 주세요.
+            </p>
           </div>
+          {/* 안심 포인트 3장 — 위 섹션에서 이미 다룬 내용이라 비활성화 (Freddie 요청). 복구하려면 주석 해제
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
             {safePoints.map((p, i) => (
               <div
@@ -844,6 +859,7 @@ export default function Landing() {
               </div>
             ))}
           </div>
+          */}
         </div>
       </section>
 
@@ -852,7 +868,7 @@ export default function Landing() {
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-72 w-[28rem] rounded-full opacity-20" style={{ backgroundColor: "#18C49A", filter: "blur(110px)" }} />
         <div className={`relative mx-auto max-w-3xl ${fade(ctaInView)}`}>
           <div className="flex justify-center mb-4">
-            <KiddyImg pose="jump" size={180} animate />
+            <img src="/images/logo/symbol_256.png" alt="Kiddy" className="h-44 w-44 md:h-52 md:w-52" style={{ objectFit: "contain", animation: "kiddyFloat 2.5s ease-in-out infinite" }} />
           </div>
           <h2 className="text-4xl md:text-6xl font-black leading-[1.08] tracking-tight text-white">
             오늘, 아이의 첫
