@@ -137,8 +137,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const btnGhost = { backgroundColor: C.chip, color: C.ink, border: "1px solid rgba(255,255,255,0.1)" };
 
   const current = questions[qIndex];
-  // 슬픔/화남 세션 — 받아주기·보상 톤을 차분하게. 단 키디가 '슬퍼하는(우는) 아바타'는 쓰지 않고
-  // 차분히 곁에 있는 포즈(chat)로. 점프·트로피·컨페티 같은 신난 연출도 금지.
+  // 슬픔/화남 세션 — 키디가 '슬퍼하는(우는) 아바타'(sad)도, 활짝 웃는(chat/hello/help)·신난
+  // (jump/success/컨페티) 연출도 쓰지 않고, 차분·다정한 'think' 포즈로 전 단계 통일.
   const negativeMood = moodEmoji === "😢" || moodEmoji === "😡";
 
   // 현재 질문 표시 문구 — qIndex 바뀔 때만 새로 뽑음 (리액션 표시 중엔 안 바뀌어 타이핑 유지)
@@ -156,15 +156,14 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
 
   // 반응 중 키디 포즈 — 답에 맞춰 표정 다양화 (부정 감정엔 점프 X, 공감 sad 포즈로)
   const reactionPose = useMemo(() => {
-    // 부정 감정(슬픔·화남) 세션은 전 단계 차분히 '곁에'(chat) — 슬픈(우는) 아바타·점프·트로피 전부 금지.
-    if (negativeMood) return "chat";
+    // 부정 감정 세션은 아래 KiddyImg에서 항상 'think'로 통일 → 여기는 긍정/보통만 담당.
     if (!pending) return "jump";
     if (pending.qId === "mood_today") {
       if (moodEmoji === "😄") return "jump";
       return "success"; // 🙂 😐 — 잔잔하게 받아주기
     }
     return "jump"; // 하루/볼것 — 신나게
-  }, [pending, moodEmoji, negativeMood]);
+  }, [pending, moodEmoji]);
 
   // 보상 화면 진입 시 축하 confetti (브랜드 색) — 데모의 '뭉클' 직전 작은 반짝
   useEffect(() => {
@@ -340,7 +339,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
         {phase === "questions" && current && (
           <div className="flex flex-col items-center text-center">
             <style>{`@keyframes kdcBounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}`}</style>
-            <KiddyImg pose={reacting ? "think" : fuStage === "ask" ? "chat" : reaction ? reactionPose : "chat"} size={150} float />
+            <KiddyImg pose={negativeMood ? "think" : reacting ? "think" : fuStage === "ask" ? "chat" : reaction ? reactionPose : "chat"} size={150} float />
 
             {/* 키디 말풍선 — 생각 중(점) / 받아주기(스트리밍) / 한 박자 더 질문 / 마무리 / 질문 */}
             <div
@@ -508,7 +507,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
         {/* ── SHARE (공유 선택) ── */}
         {phase === "share" && (
           <div className="flex flex-col items-center text-center">
-            <KiddyImg pose="help" size={150} float />
+            <KiddyImg pose={negativeMood ? "think" : "help"} size={150} float />
             <div
               className="w-full rounded-2xl px-5 py-4 mt-2 mb-5"
               style={{ backgroundColor: C.chip, border: "1px solid rgba(255,255,255,0.06)" }}
@@ -548,7 +547,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
           <div className="flex flex-col items-center text-center">
             <div style={{ fontSize: "64px", lineHeight: 1, animation: "starPop .5s ease both" }}>⭐</div>
             <div className="mt-3">
-              <KiddyImg pose={negativeMood ? "chat" : "success"} size={170} float />
+              <KiddyImg pose={negativeMood ? "think" : "success"} size={170} float />
             </div>
             <div
               className="w-full rounded-2xl px-6 py-5 mt-3 mb-5"
