@@ -210,6 +210,10 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     setReacting(true);
     setThinkWord(pickThink());
 
+    // 세션 톤(G): 부정(😢😡) 세션이면 calm. Haiku payload와 로컬 폴백에 똑같이 적용해
+    // 둘 다 폭죽·만렙·감정 단정 없이 차분하게 — Haiku가 실패해 폴백으로 떨어져도 톤이 안 깨지게.
+    const sessionTone = negativeMood ? "calm" : "bright";
+
     const payload = {
       profileName: name,
       profileAge: profile?.age,
@@ -219,6 +223,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       answerType: answer.answerType,
       // 연결 끊기(F): 이전 답(기분·한 일)을 넘기지 않는다 — 따로 고른 답을 억지로 엮는
       // 거짓 내러티브("책 읽다가 동물 보고 싶구나") 방지. 지금 고른 답 하나에만 반응.
+      // 톤 플래그(G): 세션 기분의 '톤'만 넘긴다(구체 기분 라벨 아님) → 화남 직후 비트5에서
+      // 폭죽을 안 터뜨리게. 😢😡 = calm / 😄🙂😐 = bright. priorAnswers는 여전히 차단.
+      tone: sessionTone,
     };
 
     try {
@@ -231,7 +238,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       setStreaming(false); // 스트림 종료 → StreamingText가 버퍼 다 따라잡으면 '다음' 노출
     } catch {
       // 스트림 실패/오프라인 → 로컬 템플릿으로 폴백 (즉시 표시). 연결 끊기(F): 이전 답 안 넘김([]).
-      setReaction(reactionLine(current.qId, value, isWildcard, name, []));
+      // 톤 인지(G): calm 세션이면 차분 폴백 템플릿 사용 → 폭죽·"신난다"가 안 새게.
+      setReaction(reactionLine(current.qId, value, isWildcard, name, [], sessionTone));
       setReacting(false);
       setStreaming(false);
     }

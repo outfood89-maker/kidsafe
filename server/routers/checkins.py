@@ -235,6 +235,10 @@ class ReactRequest(BaseModel):
     answerType: Optional[str] = None
     # 오늘 이미 답한 것들 [{qId, answer}] — 키디가 자연스럽게 연결("아까 바깥놀이 했다며?")
     priorAnswers: Optional[List[Any]] = None
+    # 세션 기분의 '톤'만 (calm|bright). 기본 bright.
+    # ⚠️ 구체 기분 라벨(sad/angry)·이전 답은 절대 안 받는다(인과 결합 재발 방지). 톤만 알아야
+    #    화남 직후 비트5(하루/볼것) 받아주기에서 폭죽을 안 터뜨린다. (G 브리프)
+    tone: Optional[str] = "bright"
 
 
 # 기분 이모지 → 정확한 한국어 라벨 (사실은 코드가 — LLM이 감정 가치를 임의로 칠하지 못하게)
@@ -261,7 +265,22 @@ def _answer_fact(qid: Optional[str], answer: Any) -> str:
     return str(answer)
 
 
-def _react_system(name: str) -> str:
+def _react_system(name: str, tone: str = "bright") -> str:
+    # 세션 기분의 '톤'만 반영(구체 기분 라벨·이전 답은 안 받음 → 인과 결합 재발 방지).
+    # calm = 방금 슬프거나 화난 세션 → 활동 받아주기도 차분하게(폭죽·만렙 금지, 위로 여운 보존).
+    # bright = 즐거운/보통 세션 → 평소대로 밝게.
+    if tone == "calm":
+        tone_block = (
+            "[지금은 '차분(calm)' 톤 — 꼭 지켜]\n"
+            "- 방금 아이가 슬프거나 화난 적이 있는 세션이야. 위로의 여운이 깨지지 않게 차분히 가.\n"
+            "- 폭죽(🎉)·만렙 감탄사(\"와!!\", \"신난다!\", \"최고야!\")·과장된 텐션 금지.\n"
+            "- 활동 사실에 따뜻하고 잔잔하게만 반응하고 다음으로 넘겨. (예: \"바깥에서 놀았구나. 키디가 좋은 거 골라줄게 🎬\")"
+        )
+    else:
+        tone_block = (
+            "[지금은 '밝음(bright)' 톤]\n"
+            "- 평소대로 밝고 다정하게 반응해도 좋아. (단 위 '감정 단정 금지'는 톤과 상관없이 꼭 지켜.)"
+        )
     return f"""
 너는 KidSafe의 AI 친구 "키디"야. 파스텔 민트색 아기 공룡 슈퍼히어로이고, {name}(아이)의 첫 친구야.
 지금 아이가 '오늘의 체크인'에서 방금 질문에 답을 골랐어. 그 답에 키디로서 짧은 '반응(리액션)'만 해줘.
@@ -275,6 +294,9 @@ def _react_system(name: str) -> str:
 - 아래 '아이가 고른 사실'은 토씨도 바꾸거나 더 좋게/나쁘게 해석하지 마. 특히 기분은 적힌 그대로만 받아.
 - 보기에 없는 내용을 추측하거나 지어내지 마.
 - 지금 고른 답 '하나'에만 반응해라. 이전에 고른 다른 답(기분·한 일·볼 것)을 끌어와 한 문장으로 엮거나 원인-결과로 잇지 마라 — 아이는 각각 따로 고른 것뿐이다 (예: "책 읽다가 동물 보고 싶구나" ❌, "그림 그리다가 화났네" ❌). 기분을 임의로 긍정/부정으로 바꾸지도 마라.
+- 아이가 고른 활동(바깥놀이·그림그리기 등)에 '신나게/재밌게/즐겁게/기분 좋게' 같은 감정 단어를 붙이지 마라 — 아이는 활동만 골랐지 그 감정을 말하지 않았다. 활동 사실에만 반응해라 (예: "바깥에서 신나게 놀았네" ❌ → "바깥에서 놀았구나" ⭕).
+
+{tone_block}
 
 [4~7세가 알아듣게 — 쉬운 말로 (꼭 지켜)]
 - 우리 아이는 4~7세야. 짧고 쉬운 구어체로만 말해.
@@ -342,7 +364,7 @@ async def react_to_answer(data: ReactRequest, user: dict = Depends(get_current_u
             model="claude-haiku-4-5-20251001",
             max_tokens=160,
             temperature=0.7,
-            system=_react_system(name),
+            system=_react_system(name, data.tone or "bright"),
             messages=[{"role": "user", "content": _react_user(data)}],
         )
         reaction = response.content[0].text.strip() if response.content else ""
@@ -367,7 +389,7 @@ async def react_to_answer_stream(data: ReactRequest, user: dict = Depends(get_cu
                 model="claude-haiku-4-5-20251001",
                 max_tokens=160,
                 temperature=0.7,
-                system=_react_system(name),
+                system=_react_system(name, data.tone or "bright"),
                 messages=[{"role": "user", "content": _react_user(data)}],
             ) as stream:
                 async for text in stream.text_stream:

@@ -163,16 +163,40 @@ const WILDCARD_REACTION = [
   "{voc}, 그것도 좋네! 키디가 기억해둘게 😊",
 ];
 
+// ── 차분(calm) 폴백 — 슬픔·화남 세션에서 Haiku 받아주기가 실패해 로컬로 떨어질 때 (G 브리프) ──
+// 위 일반(bright) 템플릿의 폭죽·만렙·감정 단정("재밌었겠다/신난다") 대신 활동 사실만 잔잔히 받는다.
+// 백엔드 _react_system 의 calm 톤 블록과 같은 결: 폭죽·과장 금지, 활동에 감정 단정 금지.
+const CALM_DAY_REACTION = [
+  "{answer} 했구나 {voc}. 말해줘서 고마워 💚",
+  "그랬구나, 오늘 {answer} 했구나 {voc}.",
+  "{voc}, {answer} 했구나. 키디가 옆에서 들었어 😊",
+];
+
+const CALM_WATCH_REACTION = [
+  "{answer} 보고 싶구나 {voc}. 키디가 안전한 걸로 골라줄게 🎬",
+  "그래 {voc}, {answer} 보자. 키디가 좋은 거 준비할게 🎬",
+  "{voc}, {answer} 보고 싶구나. 키디만 믿어, 차분히 골라줄게 ✨",
+];
+
+const CALM_WILDCARD_REACTION = [
+  "그렇구나 {voc}. 알려줘서 고마워 😊",
+  "{voc}, 그것도 좋네. 키디가 기억해둘게 💚",
+  "오, 그런 것도 있구나 {voc}. 키디가 하나 배웠어 😊",
+];
+
 // priorAnswers: 오늘 앞서 확정된 답들 [{qId, answer}] — '볼 것' 반응에서 '한 일'을 안전하게 콜백
-export const reactionLine = (qId, value, isWildcard, name, priorAnswers = []) => {
-  if (isWildcard) return fill(pick(WILDCARD_REACTION), name);
+// tone: 세션 톤 'calm'|'bright'(G). calm(슬픔·화남 세션)이면 폭죽·만렙·감정 단정 없는 차분 폴백 사용.
+//       기분(mood_today)은 MOOD_REACTION 이 이미 😢😡 위로 템플릿을 갖고 있어 tone 무관.
+export const reactionLine = (qId, value, isWildcard, name, priorAnswers = [], tone = "bright") => {
+  const calm = tone === "calm";
+  if (isWildcard) return fill(pick(calm ? CALM_WILDCARD_REACTION : WILDCARD_REACTION), name);
   if (qId === "mood_today") return fill(pick(MOOD_REACTION[value] || ["그랬구나 {voc}, 말해줘서 고마워!"]), name);
-  if (qId === "what_did_today") return fill(pick(DAY_REACTION), name, value);
+  if (qId === "what_did_today") return fill(pick(calm ? CALM_DAY_REACTION : DAY_REACTION), name, value);
   if (qId === "watch_genre") {
     // 오늘 한 일이 있으면 한 일↔볼 것 콜백 (사실 그대로 끼워넣음 — 재해석 없음)
     const day = (priorAnswers || []).find((a) => a?.qId === "what_did_today" && a?.answer)?.answer;
     if (day) return fill(pick(WATCH_WITH_DAY), name, value).replaceAll("{day}", day);
-    return fill(pick(WATCH_REACTION), name, value);
+    return fill(pick(calm ? CALM_WATCH_REACTION : WATCH_REACTION), name, value);
   }
   return fill("좋아 {voc}, 알았어! 😊", name);
 };
