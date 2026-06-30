@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import { getCheckinReport } from "../utils/api";
-import { josa } from "../utils/josa";
+import { childStem, renderKiddyMessage } from "../utils/josa";
 
 // F2 — 부모 리포트 "키디의 한 주" (데모 클라이맥스)
 // 아이↔부모 다리: 한 주 감정 흐름 + 아이가 나누고 싶어한 것 + 키디가 부모께 전하는 한마디.
@@ -52,11 +52,12 @@ const fmtRange = (startIso, endIso) => {
 const closingLine = (name, counts) => {
   const heavy = (counts.sad || 0) + (counts.angry || 0);
   const total = MOOD_ORDER.reduce((s, k) => s + (counts[k] || 0), 0);
-  if (heavy === 0) return `이번 주 즐거운 ${name}, 오늘도 꼭 안아주세요 💚`;
+  const who = childStem(name); // 해인이 / 지우
+  if (heavy === 0) return `이번 주 즐거운 ${who}, 오늘도 꼭 안아주세요 💚`;
   if (heavy >= 3 || heavy >= Math.ceil(total / 2)) {
-    return `요즘 ${name} 마음이 조금 무거웠어요. 곁에서 가만히 안아주세요 💚`;
+    return `요즘 ${who} 마음이 조금 무거웠어요. 곁에서 가만히 안아주세요 💚`;
   }
-  return `오늘은 ${josa(name, "을", "를")} 한 번 꼭 안아주는 건 어때요? 💚`;
+  return `오늘은 ${who}를 한 번 꼭 안아주는 건 어때요? 💚`;
 };
 
 export default function KiddyReportCard({ profileId, profileName, watched, starCount = 0 }) {
@@ -102,7 +103,7 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
         <KiddyImg pose="hello" size={140} float />
         <p className="mt-4 text-base font-bold" style={{ color: C.ink }}>아직 이번 주 기록이 없어요</p>
         <p className="mt-1.5 text-sm leading-relaxed" style={{ color: C.sub }}>
-          {josa(profileName || "아이", "이가", "가")} 키디와 오늘의 체크인을 하면<br />여기에 한 주 이야기가 쌓여요.
+          {childStem(profileName || "아이")}가 키디와 오늘의 체크인을 하면<br />여기에 한 주 이야기가 쌓여요.
         </p>
       </div>
     );
@@ -110,10 +111,11 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
 
   const timeline = report.moodTimeline || [];
   const counts = report.moodSummary?.counts || {};
-  const trend = report.moodSummary?.trend || "";
-  const note = report.moodSummary?.note || "";
+  // LLM 출력의 {{CHILD}} 토큰을 이름+조사로 치환 (백엔드는 토큰만, 조사 정확성은 프론트가 보장)
+  const trend = renderKiddyMessage(report.moodSummary?.trend || "", profileName);
+  const note = renderKiddyMessage(report.moodSummary?.note || "", profileName);
   const highlights = report.sharedHighlights || [];
-  const kiddyMessage = report.kiddyMessage || "";
+  const kiddyMessage = renderKiddyMessage(report.kiddyMessage || "", profileName);
   const totalCheckins = timeline.filter((d) => d.mood).length;
   const range = fmtRange(report.periodStart, report.periodEnd);
 
@@ -222,7 +224,7 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
       <div className="rounded-2xl p-4 md:p-5" style={{ backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-base">💚</span>
-          <h3 className="text-sm font-bold" style={{ color: C.ink }}>{josa(profileName || "아이", "이가", "가")} 나누고 싶어한 것</h3>
+          <h3 className="text-sm font-bold" style={{ color: C.ink }}>{childStem(profileName || "아이")}가 나누고 싶어한 것</h3>
         </div>
         <p className="text-xs mb-3" style={{ color: C.dim }}>
           아이가 “엄마·아빠랑 같이 볼래”로 고른 것만 보여요.
@@ -269,7 +271,7 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
         {/* 비밀 한 줄 — hadSecrets=true 일 때만. '경고'가 아니라 '안심'. 내용·개수 암시 절대 X. */}
         {report.hadSecrets && (
           <p className="mt-3.5 text-center text-xs leading-relaxed" style={{ color: C.dim }}>
-            그리고 {josa(profileName || "아이", "만의", "만의")} 비밀도 있었어요.<br />그건 키디가 지켜요 🤫
+            그리고 {childStem(profileName || "아이")}만의 비밀도 있었어요.<br />그건 키디가 지켜요 🤫
           </p>
         )}
       </div>

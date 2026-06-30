@@ -320,7 +320,8 @@ MOOD_META = {
 MOOD_ORDER = ["happy", "good", "soso", "sad", "angry"]
 
 # 리포트 프롬프트 버전 — 프롬프트 수정 시 올려서 기존 캐시 무효화
-REPORT_PROMPT_VERSION = "v1"
+# v2: 이름을 {{CHILD}} 토큰으로 출력(조사 정확성은 프론트 josa 가 보장). 실제 이름 박힌 옛 캐시 무효화.
+REPORT_PROMPT_VERSION = "v2"
 
 
 def _today_kst_date():
@@ -425,7 +426,10 @@ def _report_system() -> str:
         "- 슬픔·화 같은 감정도 자연스러운 것으로 받아주되, 부모가 함께 보면 좋을 작은 힌트만 부드럽게.\n"
         "- 부모에게는 다정한 존댓말로.\n\n"
         "- kiddy_message 는 '부모님'을 청자로 한 존댓말이다. 아이에게 직접 말 거는 투('OO아, ~')가 아니라, "
-        "아이 얘기를 부모님께 전하는 3인칭 톤('해인이가 이번 주에 ~했어요')으로 쓴다.\n\n"
+        "아이 얘기를 부모님께 전하는 3인칭 톤으로 쓴다.\n"
+        "- 아이를 가리킬 때는 절대 실제 이름을 쓰지 말고 반드시 토큰 '{{CHILD}}' 만 써라. "
+        "토큰 뒤에는 평소처럼 조사를 붙여라(예: '{{CHILD}}이 이번 주에도 마음을 들려줬어요', '{{CHILD}}을 꼭 안아주세요'). "
+        "이 규칙은 trend·note·kiddy_message 모든 문장에 적용된다.\n\n"
         "[출력 — JSON만, 다른 텍스트 없이]\n"
         "{\n"
         '  "trend": "<한 주 감정 흐름을 1문장으로. 데이터(횟수·흐름)에 근거하게>",\n'
@@ -450,7 +454,9 @@ def _report_user(child_name: str, start, end, counts: dict, total: int, highligh
     hl_text = "\n".join(hl_lines) if hl_lines else "- (아이가 부모와 나누기로 한 항목 없음)"
 
     return (
-        f"아이 이름: {child_name}\n"
+        # 실제 이름 대신 토큰만 전달 — Haiku 가 이름을 박지 못하게(조사는 프론트 josa 가 처리).
+        # 평범한 문자열(f-string 아님)이라 '{{CHILD}}' 가 그대로 유지된다.
+        "아이 호칭: {{CHILD}} (반드시 이 토큰만 사용. 실제 이름·조사를 직접 쓰지 말 것)\n"
         f"기간: {start.month}/{start.day} ~ {end.month}/{end.day} (이번 주)\n"
         f"이 기간 체크인 {total}번.\n\n"
         f"[기분 집계]\n{counts_text}\n\n"
