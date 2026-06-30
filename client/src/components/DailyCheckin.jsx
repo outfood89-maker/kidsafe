@@ -137,6 +137,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const btnGhost = { backgroundColor: C.chip, color: C.ink, border: "1px solid rgba(255,255,255,0.1)" };
 
   const current = questions[qIndex];
+  // 슬픔/화남 세션 — 받아주기·보상 톤을 차분하게. 단 키디가 '슬퍼하는(우는) 아바타'는 쓰지 않고
+  // 차분히 곁에 있는 포즈(chat)로. 점프·트로피·컨페티 같은 신난 연출도 금지.
+  const negativeMood = moodEmoji === "😢" || moodEmoji === "😡";
 
   // 현재 질문 표시 문구 — qIndex 바뀔 때만 새로 뽑음 (리액션 표시 중엔 안 바뀌어 타이핑 유지)
   const qLine = useMemo(
@@ -153,18 +156,20 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
 
   // 반응 중 키디 포즈 — 답에 맞춰 표정 다양화 (부정 감정엔 점프 X, 공감 sad 포즈로)
   const reactionPose = useMemo(() => {
+    // 부정 감정(슬픔·화남) 세션은 전 단계 차분히 '곁에'(chat) — 슬픈(우는) 아바타·점프·트로피 전부 금지.
+    if (negativeMood) return "chat";
     if (!pending) return "jump";
     if (pending.qId === "mood_today") {
-      if (moodEmoji === "😢" || moodEmoji === "😡") return "sad"; // 공감
       if (moodEmoji === "😄") return "jump";
       return "success"; // 🙂 😐 — 잔잔하게 받아주기
     }
     return "jump"; // 하루/볼것 — 신나게
-  }, [pending, moodEmoji]);
+  }, [pending, moodEmoji, negativeMood]);
 
   // 보상 화면 진입 시 축하 confetti (브랜드 색) — 데모의 '뭉클' 직전 작은 반짝
   useEffect(() => {
     if (phase !== "reward") return;
+    if (negativeMood) return; // 슬픔·화남 세션은 컨페티 없이 차분히 마무리
     const colors = ["#18C49A", "#14B8C4", "#5FE0BC", "#FFE9A8"];
     const end = Date.now() + 1400;
     const burst = () => {
@@ -173,7 +178,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       if (Date.now() < end) requestAnimationFrame(burst);
     };
     burst();
-  }, [phase]);
+  }, [phase, negativeMood]);
 
   // 옵션 선택 → pending + 키디 반응 (Claude 생성, 실패 시 로컬 템플릿 폴백)
   const select = async (value, isWildcard = false) => {
@@ -199,7 +204,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     // 즐거운/보통·하루·볼것은 아래 Claude 받아주기 유지(생동감·변형·한 일↔볼 것 콜백).
     if (current.qId === "mood_today" && (value === "😢" || value === "😡")) {
       setReacting(false);
-      setReaction(reactionLine(current.qId, value, false, name, answers));
+      setReaction(reactionLine(current.qId, value, false, name, []));
       return; // StreamingText가 고정 대사를 타이핑 → onReactionDone → '한 박자 더'
     }
 
@@ -213,7 +218,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       qText: current.qText,
       answer: answer.answer,
       answerType: answer.answerType,
-      priorAnswers: answers.map((a) => ({ qId: a.qId, answer: a.answer })),
+      // 연결 끊기(F): 이전 답(기분·한 일)을 넘기지 않는다 — 따로 고른 답을 억지로 엮는
+      // 거짓 내러티브("책 읽다가 동물 보고 싶구나") 방지. 지금 고른 답 하나에만 반응.
     };
 
     try {
@@ -225,8 +231,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       });
       setStreaming(false); // 스트림 종료 → StreamingText가 버퍼 다 따라잡으면 '다음' 노출
     } catch {
-      // 스트림 실패/오프라인 → 로컬 템플릿으로 폴백 (즉시 표시). answers=이전 확정 답(한 일↔볼 것 콜백용)
-      setReaction(reactionLine(current.qId, value, isWildcard, name, answers));
+      // 스트림 실패/오프라인 → 로컬 템플릿으로 폴백 (즉시 표시). 연결 끊기(F): 이전 답 안 넘김([]).
+      setReaction(reactionLine(current.qId, value, isWildcard, name, []));
       setReacting(false);
       setStreaming(false);
     }
@@ -542,7 +548,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
           <div className="flex flex-col items-center text-center">
             <div style={{ fontSize: "64px", lineHeight: 1, animation: "starPop .5s ease both" }}>⭐</div>
             <div className="mt-3">
-              <KiddyImg pose="success" size={170} float />
+              <KiddyImg pose={negativeMood ? "chat" : "success"} size={170} float />
             </div>
             <div
               className="w-full rounded-2xl px-6 py-5 mt-3 mb-5"
