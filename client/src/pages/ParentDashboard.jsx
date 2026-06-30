@@ -694,16 +694,50 @@ export default function ParentDashboard() {
           // 아이별 리포트(전체 개념 없음). 스코프 잠금 시 그 아이, 아니면 선택/첫 아이.
           const kiddyProfileId = kiddyTab || scopedId || profiles[0]?.id || "";
           const kiddyProfile = profiles.find((p) => p.id === kiddyProfileId);
+
+          // 편지 '본 것'·'별' (조용한 보조 블록) — 부모가 이미 가진 history/badges 로 주간 집계.
+          // 백엔드 checkins 응답엔 합치지 않음(분리 유지). 프론트에서만 가볍게 보여줌.
+          const kWeekAgo = new Date(); kWeekAgo.setDate(kWeekAgo.getDate() - 7);
+          const kWeekHistory = history.filter(
+            (v) => v.profileId === kiddyProfileId && new Date(v.watchedAt) >= kWeekAgo
+          );
+          // 같은 영상 중복 시청은 1개로(distinct) — '영상 N개' 카운트와 제목 리스트의 기준을 일치시킴.
+          const kSeen = new Set();
+          const kDistinct = [];
+          for (const v of kWeekHistory) {
+            const key = v.videoId || v.title;
+            if (!key || kSeen.has(key)) continue;
+            kSeen.add(key);
+            kDistinct.push(v);
+          }
+          // 위험(70점 미만) 영상 수 — 점수 없으면(미분석) 위험으로 치지 않음.
+          const kDanger = kDistinct.filter((v) => (v.totalScore ?? 100) < 70).length;
+          const kiddyWatched = {
+            count: kDistinct.length,                          // 본 영상 수(중복 제외)
+            allSafe: kDistinct.length > 0 && kDanger === 0,    // 위험 영상 0건일 때만 '대부분 안전' 배너
+            // 대표 제목: 위험 영상은 제외(안심 배너 아래 깃발 영상 노출 방지) 후 상위 4개.
+            titles: kDistinct
+              .filter((v) => (v.totalScore ?? 100) >= 70)
+              .map((v) => v.title)
+              .filter(Boolean)
+              .slice(0, 4),
+          };
+          const kiddyStars = (profileBadges[kiddyProfileId] || []).filter(
+            (b) => b.earnedAt && new Date(b.earnedAt) >= kWeekAgo
+          ).length;
           return (
             <section
               className="p-4 md:p-6 mb-5"
               style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
             >
+              {/* 박스 헤더 비활성화 — 편지(KiddyReportCard)의 자체 헤더('키디가 보내는 주간 편지' + 이름·기간)와
+                  페이지 탭 제목('키디의 한 주')이 이미 있어 3겹 중복. 복구 필요 시 주석 해제.
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">🦕</span>
                 <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>키디의 한 주</h2>
                 <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>최근 7일 · 아이의 감정 기록</span>
               </div>
+              */}
 
               {/* 아이 선택 탭 — 스코프 잠금 시 숨김 (전체 없음, 아이별) */}
               {!scopedId && profiles.length > 0 && (
@@ -727,7 +761,7 @@ export default function ParentDashboard() {
               {profiles.length === 0 ? (
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
-                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} />
+                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} watched={kiddyWatched} starCount={kiddyStars} />
               )}
             </section>
           );
@@ -1917,12 +1951,14 @@ export default function ParentDashboard() {
         </div>
       </div>
 
-      {/* ── 모바일 메뉴 버튼 (우측 상단 고정, NavBar 바로 아래) ── */}
+      {/* ── 모바일 메뉴 버튼 (우측 하단 고정 FAB) ──
+           상단 고정이면 스크롤 중 감정 흐름 '화' 타일·이야기 카드를 덮어서 → 바텀-우측으로 이동.
+           본문은 pb-28(모바일 하단 여백)이 있어 카드 내용과 겹치지 않는다. */}
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
           className="md:hidden fixed right-4 z-30 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-xl transition hover:opacity-90"
-          style={{ top: "68px", background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+          style={{ bottom: "20px", background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
           aria-label="메뉴 열기"
         >
           <span className="text-base">☰</span> 메뉴

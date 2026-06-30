@@ -5,6 +5,17 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* 키디 주간 편지 등장 — 부모가 리포트를 '여는 순간' 살짝 떠오르며 fade-in (데모 클라이맥스). */
+@keyframes letterRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-letter-rise { animation: letterRise 0.35s ease-out both; }
+/* 모션 민감 사용자 존중 — 애니메이션 끔. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-letter-rise { animation: none; }
+}
+
 body, #root {
   width: 100%;
   min-height: 100vh;

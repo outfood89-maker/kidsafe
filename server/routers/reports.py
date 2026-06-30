@@ -402,6 +402,17 @@ def _build_highlights(checkins: list) -> list:
     return highlights
 
 
+def _has_secrets(checkins: list) -> bool:
+    """공유 안 한 체크인(share_with_parent=false)이 기간 내 1건이라도 있으면 True.
+
+    🚨 윤리선 가드레일 — '존재 여부'만 본다:
+    - share_with_parent 필드 하나만 읽는다. 비공유 체크인의 answers 등 '내용'엔
+      절대 접근하지 않으며, 반환값도 boolean 단 하나뿐이다.
+    - 부모에게 "비밀이 있었다"는 사실만 알리고, 그 내용은 응답 어디에도 싣지 않는다.
+    """
+    return any(not c.get("share_with_parent") for c in checkins)
+
+
 def _report_system() -> str:
     """작업지시서 섹션 5.2 — 부모 리포트 생성 시스템 프롬프트."""
     return (
@@ -461,8 +472,8 @@ async def _generate_report_message(child_name: str, start, end, counts: dict, to
     return parse_claude_json(raw)
 
 
-def _report_to_api(report_row: dict, timeline: list, empty: bool = False) -> dict:
-    """parent_reports row(snake_case) → 프론트 형태(camelCase). timeline 은 항상 fresh 로 합친다."""
+def _report_to_api(report_row: dict, timeline: list, had_secrets: bool = False, empty: bool = False) -> dict:
+    """parent_reports row(snake_case) → 프론트 형태(camelCase). timeline·hadSecrets 는 항상 fresh 로 합친다."""
     ms = report_row.get("mood_summary") or {}
     return {
         "profileId": report_row.get("profile_id"),
@@ -475,6 +486,8 @@ def _report_to_api(report_row: dict, timeline: list, empty: bool = False) -> dic
         },
         "moodTimeline": timeline,
         "sharedHighlights": report_row.get("shared_highlights") or [],
+        # 공유 안 한 체크인이 '있었는지' 여부만(내용은 절대 X) — 부모에게 비밀 존재만 알림
+        "hadSecrets": bool(had_secrets),
         "kiddyMessage": report_row.get("kiddy_message", ""),
         "createdAt": report_row.get("created_at"),
         "empty": empty,
@@ -511,6 +524,9 @@ async def get_checkin_report(
     checkins = [c for c in checkins if c.get("checkin_date") and c.get("checkin_date") <= end_s]
 
     timeline = _build_mood_timeline(checkins, start, end)
+    # 공유 안 한 체크인 존재 여부(boolean) — timeline 처럼 매 호출 fresh 계산.
+    # 🚨 존재만 본다(내용 접근 금지). _has_secrets 참고.
+    had_secrets = _has_secrets(checkins)
 
     # 2) 체크인이 하나도 없으면 Claude 호출 없이 빈 리포트
     if not checkins:
@@ -519,7 +535,7 @@ async def get_checkin_report(
             "mood_summary": {"trend": "", "counts": _build_mood_counts([]), "note": ""},
             "shared_highlights": [], "kiddy_message": "", "created_at": None,
         }
-        return {"report": _report_to_api(empty_row, timeline, empty=True), "cached": False}
+        return {"report": _report_to_api(empty_row, timeline, had_secrets=had_secrets, empty=True), "cached": False}
 
     # 3) 캐시 조회 — 같은 기간 리포트가 있고, 그 이후 체크인 갱신이 없으면 재사용
     cached_rows = await sb_select(
@@ -538,7 +554,7 @@ async def get_checkin_report(
         ver_ok = (report.get("mood_summary") or {}).get("_v") == REPORT_PROMPT_VERSION
         fresh = created and latest and created >= latest
         if ver_ok and fresh:
-            return {"report": _report_to_api(report, timeline), "cached": True}
+            return {"report": _report_to_api(report, timeline, had_secrets=had_secrets), "cached": True}
 
     # 4) 새로 생성 — 결정적 집계 + Claude 한마디
     counts = _build_mood_counts(checkins)
@@ -579,4 +595,4 @@ async def get_checkin_report(
     except Exception as e:
         print(f"[리포트] 캐시 저장 실패(무시): {e}")
 
-    return {"report": _report_to_api(saved_row, timeline), "cached": False}
+    return {"report": _report_to_api(saved_row, timeline, had_secrets=had_secrets), "cached": False}

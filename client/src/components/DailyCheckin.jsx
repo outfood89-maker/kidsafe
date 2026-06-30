@@ -4,7 +4,7 @@ import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import KiddyGreeting from "./KiddyGreeting";
 import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting } from "../utils/api";
-import { questionLine, reactionLine, shareQuestionLine, closingLine } from "../utils/kiddyLines";
+import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowup, moodFollowupClosing } from "../utils/kiddyLines";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 
 // 반응 생성 중 보여줄 짧은 '생각 소리' (랜덤 — 매번 같은 말 안 나오게)
@@ -91,6 +91,15 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const [streaming, setStreaming] = useState(false); // 스트림에서 글자가 아직 들어오는 중
   const [typingDone, setTypingDone] = useState(false); // 반응 타이핑이 화면에 다 출력됨 → '다음' 버튼 노출
   const [thinkWord, setThinkWord] = useState(THINK_WORDS[0]); // 이번 로딩에 보여줄 생각 소리
+
+  // "한 박자 더" — 기분(mood)에만 붙는 후속 한 겹. 받아주기(Claude) 다음에 코드가 한 번 더 묻는다.
+  // 추가 LLM 호출 없음(질문·칩·마무리 전부 로컬 템플릿). 항상 '비밀이야' 출구 → 강요 금지(4.4 안전장치).
+  const [fuStage, setFuStage] = useState(null);       // null | "ask"(후속 질문+칩) | "closing"(마무리)
+  const [fuData, setFuData] = useState(null);         // { question, chips:[{label,secret}] }
+  const [fuQDone, setFuQDone] = useState(false);      // 후속 질문 타이핑 끝 → 칩 노출
+  const [fuAnswer, setFuAnswer] = useState(null);     // 고른 칩 { label, secret }
+  const [fuClosing, setFuClosing] = useState("");     // 마무리 텍스트
+  const [fuClosingDone, setFuClosingDone] = useState(false); // 마무리 타이핑 끝 → '다음'
 
   const [closing, setClosing] = useState("");
   const [busy, setBusy] = useState(false);
@@ -185,6 +194,15 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     setReaction("");
     setStreaming(false);
     setTypingDone(false);
+
+    // 속상한 기분(😢 슬픔·😡 화남)은 가장 예민한 순간 → Claude 건너뛰고 고정 위로 템플릿(안전 우선).
+    // 즐거운/보통·하루·볼것은 아래 Claude 받아주기 유지(생동감·변형·한 일↔볼 것 콜백).
+    if (current.qId === "mood_today" && (value === "😢" || value === "😡")) {
+      setReacting(false);
+      setReaction(reactionLine(current.qId, value, false, name, answers));
+      return; // StreamingText가 고정 대사를 타이핑 → onReactionDone → '한 박자 더'
+    }
+
     setReacting(true);
     setThinkWord(pickThink());
 
@@ -214,14 +232,52 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     }
   };
 
+  // 반응(받아주기) 타이핑이 끝났을 때 — 기분이면 '한 박자 더'(후속 질문) 비트로, 아니면 '다음' 노출
+  const onReactionDone = () => {
+    setTypingDone(true);
+    if (current?.qId === "mood_today") {
+      const fu = moodFollowup(moodEmoji);
+      if (fu) {
+        setFuData(fu);
+        setFuQDone(false);
+        setFuStage("ask"); // → 후속 질문 타이핑 후 칩 노출
+      }
+    }
+  };
+
+  // 후속 칩 선택 → 마무리 한마디(코드 템플릿) 타이핑 후 '다음'. '비밀이야'도 서운해하지 않음.
+  const selectFollowup = (chip) => {
+    if (fuStage !== "ask" || !fuQDone) return;
+    setFuAnswer(chip);
+    setFuClosing(moodFollowupClosing(moodEmoji, chip));
+    setFuClosingDone(false);
+    setFuStage("closing");
+  };
+
+  // 후속 비트 상태 초기화 (질문 넘어갈 때마다)
+  const resetFollowup = () => {
+    setFuStage(null);
+    setFuData(null);
+    setFuQDone(false);
+    setFuAnswer(null);
+    setFuClosing("");
+    setFuClosingDone(false);
+  };
+
   // 리액션 보고 '다음' → 답 확정 후 다음 질문 or 공유 단계
   const next = () => {
-    const newAnswers = [...answers, pending];
+    // 기분 답에 후속('한 박자 더')이 있으면 사실 그대로 nested 로 붙인다(부모 리포트 감정 맥락 한 겹).
+    const finalPending =
+      pending?.qId === "mood_today" && fuAnswer
+        ? { ...pending, followup: { q: fuData?.question, a: fuAnswer.label, secret: !!fuAnswer.secret } }
+        : pending;
+    const newAnswers = [...answers, finalPending];
     setAnswers(newAnswers);
     setPending(null);
     setReaction(null);
     setStreaming(false);
     setTypingDone(false);
+    resetFollowup();
     if (qIndex + 1 < questions.length) {
       setQIndex(qIndex + 1);
     } else {
@@ -278,9 +334,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
         {phase === "questions" && current && (
           <div className="flex flex-col items-center text-center">
             <style>{`@keyframes kdcBounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}`}</style>
-            <KiddyImg pose={reacting ? "think" : reaction ? reactionPose : "chat"} size={150} float />
+            <KiddyImg pose={reacting ? "think" : fuStage === "ask" ? "chat" : reaction ? reactionPose : "chat"} size={150} float />
 
-            {/* 키디 말풍선 — 생각 중(점+생각소리) / 스트리밍(커서) / 질문 */}
+            {/* 키디 말풍선 — 생각 중(점) / 받아주기(스트리밍) / 한 박자 더 질문 / 마무리 / 질문 */}
             <div
               className="w-full rounded-2xl px-5 py-4 mt-2 mb-5"
               style={{ backgroundColor: C.chip, border: "1px solid rgba(255,255,255,0.06)" }}
@@ -297,14 +353,40 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                     ))}
                   </span>
                 </span>
+              ) : fuStage === "ask" ? (
+                // 한 박자 더 — 받아주기를 그대로 두고(사라지지 않게), 아래에 후속 질문을 이어 타이핑.
+                // (한 줄만 보여주면 받아주기가 '훅' 사라져 보임 → 두 줄을 한 말풍선에 함께 유지)
+                <span className="block">
+                  <span className="block font-bold leading-snug" style={{ color: C.ink, fontSize: "18px" }}>
+                    {reaction}
+                  </span>
+                  <StreamingText
+                    key="fu-q"
+                    target={fuData?.question || ""}
+                    streaming={false}
+                    onComplete={() => setFuQDone(true)}
+                    className="block font-bold leading-snug mt-1.5"
+                    style={{ color: C.ink, fontSize: "18px" }}
+                  />
+                </span>
+              ) : fuStage === "closing" ? (
+                // 후속 마무리 한마디(코드 템플릿). 타이핑 끝나면 '다음'.
+                <StreamingText
+                  key="fu-c"
+                  target={fuClosing}
+                  streaming={false}
+                  onComplete={() => setFuClosingDone(true)}
+                  className="font-bold leading-snug"
+                  style={{ color: C.ink, fontSize: "18px" }}
+                />
               ) : reaction ? (
-                // 반응(스트리밍 or 폴백) → 도착 속도와 분리해 일정 속도로 타이핑 (툭툭 끊김 방지)
+                // 받아주기(스트리밍 or 폴백) → 도착 속도와 분리해 일정 속도로 타이핑 (툭툭 끊김 방지)
                 // 질문(Typewriter)과 동일한 타자 느낌. 새 반응마다 key 로 remount.
                 <StreamingText
                   key={`react-${qIndex}`}
                   target={reaction}
                   streaming={streaming}
-                  onComplete={() => setTypingDone(true)}
+                  onComplete={onReactionDone}
                   className="font-bold leading-snug"
                   style={{ color: C.ink, fontSize: "18px" }}
                 />
@@ -319,8 +401,37 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
               )}
             </div>
 
-            {/* 생각 중/타이핑 중엔 버튼 없음 / 타이핑 끝나면 '다음' / 그 외 선택지 */}
-            {reacting ? null : reaction ? (typingDone ? (
+            {/* 단계별 컨트롤: 생각중→없음 / 한박자더→칩 / 마무리·받아주기→'다음' / 그 외→선택지 */}
+            {reacting ? null : fuStage === "ask" ? (
+              // 한 박자 더 — 후속 질문 타이핑이 끝나면 빠른 답 칩(끝에 '비밀이야' 출구)
+              fuQDone ? (
+                <div className="w-full grid grid-cols-2 gap-2.5">
+                  {(fuData?.chips || []).map((chip) => (
+                    <button
+                      key={chip.label}
+                      onClick={() => selectFollowup(chip)}
+                      className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
+                      style={chip.secret
+                        ? { backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }
+                        : { backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)", color: C.ink, fontSize: "16px" }}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null
+            ) : fuStage === "closing" ? (
+              // 후속 마무리 타이핑이 끝나면 '다음'
+              fuClosingDone ? (
+                <button
+                  onClick={next}
+                  className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
+                  style={btnPrimary}
+                >
+                  {qIndex + 1 < questions.length ? "다음 →" : "다 했어! →"}
+                </button>
+              ) : null
+            ) : reaction ? (typingDone ? (
               <button
                 onClick={next}
                 className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"

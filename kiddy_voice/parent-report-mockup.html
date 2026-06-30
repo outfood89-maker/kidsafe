@@ -1,0 +1,128 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>키디 주간 편지 — 목업</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E9E5DC; --card:#FFFFFF;
+    --ink:#3A3A36; --ink-soft:#8C8C84; --ink-faint:#AEAEA6;
+    --sage:#6DAB60; --sage-deep:#4A7A40; --sage-bg:#EAF3DE;
+    --mint:#7FBFA3; --mint-bg:#DCEFE7;
+    --joy-bg:#FBF3D9; --calm-bg:#E2EAF0; --neutral-bg:#F0EFEA;
+    --body:'Gowun Dodum',system-ui,sans-serif; --hand:'Gaegu',cursive;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  .backdrop{background:var(--bg);min-height:100vh;display:flex;justify-content:center;
+    align-items:flex-start;padding:40px 18px;font-family:var(--body);color:var(--ink)}
+  .card{background:var(--card);width:100%;max-width:404px;border-radius:24px;
+    padding:30px 26px 22px;box-shadow:0 10px 40px rgba(80,70,50,.10)}
+
+  .eyebrow{font-family:var(--hand);font-size:18px;color:var(--mint);text-align:center;margin-bottom:14px}
+
+  .header{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+  .avatar{width:50px;height:50px;border-radius:50%;background:var(--mint-bg);
+    display:flex;align-items:center;justify-content:center;font-size:27px;flex:0 0 auto}
+  .title{font-family:var(--hand);font-weight:700;font-size:27px;line-height:1.1}
+  .daterange{font-size:13px;color:var(--ink-soft);margin-top:3px}
+
+  .kiddy-note{font-family:var(--hand);font-size:21px;line-height:1.55;color:var(--ink);
+    background:var(--mint-bg);border-radius:18px;padding:18px 20px;margin-bottom:28px}
+
+  .section{margin-bottom:26px}
+  .section-label{font-size:13px;font-weight:400;color:var(--sage-deep);letter-spacing:.02em;
+    margin-bottom:13px;display:flex;align-items:center;gap:7px}
+  .section-label::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--sage)}
+
+  .mood-row{display:flex;gap:6px}
+  .day{flex:1;text-align:center;border-radius:13px;padding:11px 0 8px;background:var(--neutral-bg)}
+  .day.joy{background:var(--joy-bg)} .day.good{background:var(--sage-bg)}
+  .day.calm{background:var(--calm-bg)} .day.neu{background:var(--neutral-bg)}
+  .day .emo{font-size:23px;line-height:1}
+  .day .dow{font-size:11px;color:var(--ink-soft);margin-top:6px}
+  .mood-summary{font-size:14px;line-height:1.65;color:var(--ink);margin-top:14px}
+
+  .story{display:flex;align-items:center;gap:10px;background:#FAF9F4;border-radius:14px;
+    padding:13px 15px;margin-bottom:9px;font-size:15px}
+  .story .when{font-size:12px;color:var(--sage-deep);background:var(--sage-bg);
+    border-radius:8px;padding:3px 9px;flex:0 0 auto}
+  .secret{font-size:13px;color:var(--ink-faint);text-align:center;margin-top:13px;line-height:1.5}
+
+  .quiet .section-label{color:var(--ink-soft)}
+  .quiet .section-label::before{background:var(--ink-faint)}
+  .watched{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .wcount{font-size:14px;color:var(--ink)}
+  .safe{font-size:12.5px;color:var(--sage-deep);background:var(--sage-bg);
+    border-radius:9px;padding:5px 11px}
+  .wlist{font-size:12.5px;color:var(--ink-faint);margin-top:9px}
+
+  .badges{display:flex;align-items:center;justify-content:space-between;
+    background:#FAF9F4;border-radius:14px;padding:13px 16px;margin-bottom:26px}
+  .badges .section-label{margin-bottom:0}
+  .stars{font-size:15px;color:var(--ink)}
+
+  .closing{font-family:var(--hand);font-size:19px;line-height:1.5;text-align:center;
+    color:var(--sage-deep);padding:6px 4px 14px}
+  .footer{font-size:11.5px;color:var(--ink-faint);text-align:center;
+    border-top:1px solid #EFEDE6;padding-top:14px}
+</style>
+
+<div class="backdrop">
+  <div class="card">
+    <div class="eyebrow">키디가 보내는 주간 편지</div>
+
+    <div class="header">
+      <div class="avatar">🦕</div>
+      <div>
+        <div class="title">지우의 이번 주</div>
+        <div class="daterange">6월 24일 – 6월 30일</div>
+      </div>
+    </div>
+
+    <div class="kiddy-note">
+      이번 주 지우랑 매일 만났어요.<br>
+      신나는 날도, 마음이 살짝 무거운 날도 있었는데<br>
+      그때마다 키디가 옆에 있었어요.
+    </div>
+
+    <div class="section">
+      <div class="section-label">지우의 마음 흐름</div>
+      <div class="mood-row">
+        <div class="day good"><div class="emo">🙂</div><div class="dow">월</div></div>
+        <div class="day joy"><div class="emo">😄</div><div class="dow">화</div></div>
+        <div class="day calm"><div class="emo">😢</div><div class="dow">수</div></div>
+        <div class="day good"><div class="emo">🙂</div><div class="dow">목</div></div>
+        <div class="day joy"><div class="emo">😄</div><div class="dow">금</div></div>
+        <div class="day good"><div class="emo">🙂</div><div class="dow">토</div></div>
+        <div class="day neu"><div class="emo">😐</div><div class="dow">일</div></div>
+      </div>
+      <div class="mood-summary">이번 주는 즐거운 날이 많았어요. 수요일엔 마음이 조금 무거웠지만, 그때도 키디가 곁에 있었어요.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">지우가 들려준 이야기</div>
+      <div class="story"><span class="when">화요일</span><span>친구랑 신나게 놀아서 좋았대요 😄</span></div>
+      <div class="story"><span class="when">금요일</span><span>새로운 공룡을 봐서 신났대요 🦕</span></div>
+      <div class="secret">그리고 지우만의 비밀도 있었어요.<br>그건 키디가 지켜요 🤫</div>
+    </div>
+
+    <div class="section quiet">
+      <div class="section-label">이번 주 본 것</div>
+      <div class="watched">
+        <span class="wcount">영상 12개</span>
+        <span class="safe">🌿 대부분 안전했어요</span>
+      </div>
+      <div class="wlist">공룡 다큐 · 우주 탐험 이야기 · 동물 친구들 · 그림 그리기 …</div>
+    </div>
+
+    <div class="badges">
+      <div class="section-label" style="color:var(--sage-deep)">모은 별</div>
+      <div class="stars">⭐ 이번 주 5개</div>
+    </div>
+
+    <div class="closing">오늘은 지우를 한 번 꼭 안아주는 건 어때요? 💚</div>
+
+    <div class="footer">KidSafe · 키디가 지우와 함께한 한 주</div>
+  </div>
+</div>
