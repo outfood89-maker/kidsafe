@@ -114,12 +114,15 @@ export default function useKiddyVoice() {
     pump();
   }, [stopCurrent, pump]);
 
-  // 재생 즉시 정지 — 대기열 비우고 진행 중 합성 응답도 무효화(gen++). 다음 영상 자동재생 직전 등 명시적 정지용.
+  // 재생 즉시 정지 — 대기열 비우고 진행 중 합성 응답도 무효화(gen++). 다음 영상 자동재생·직접 말하기 직전 등 명시적 정지용.
   const stop = useCallback(() => {
-    genRef.current += 1;      // in-flight 합성 응답이 늦게 와도 폐기
-    queueRef.current = [];
+    genRef.current += 1;        // in-flight 합성 응답이 늦게 와도 폐기
     stopCurrent();
-  }, [stopCurrent]);
+    revokeClips();             // 현재 그룹 Blob URL 해제 + 대기열 비움(clipsRef=[])
+    idxRef.current = 0;
+    lastKeyRef.current = null;  // 중복가드 해제 → 같은 대사를 다시 재생할 수 있게(되읽기 재시도 등)
+    setHasAudio(false);
+  }, [stopCurrent, revokeClips]);
 
   // 언마운트 정리 (재생 중지 + Blob URL 전부 해제)
   // lastKeyRef 도 리셋 — StrictMode(개발) 이펙트 이중 실행 시, 정리 후 재실행되는 speak 가
