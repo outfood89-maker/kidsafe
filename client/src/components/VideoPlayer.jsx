@@ -6,6 +6,8 @@ import { saveHistory, analyzeVideoDeep } from "../utils/api";
 import KiddyImg from "./KiddyImg";
 import ChatWidget from "./ChatWidget";
 import { lockPortrait, unlockOrientation } from "../App";
+import useKiddyVoice from "../hooks/useKiddyVoice";
+import { detectTip, buildTipLine } from "../utils/kiddyTips";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -60,6 +62,15 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
   const timerRef = useRef(null);
   const playerRef = useRef(null);
 
+  // ── J: 영상 후 키디 한마디(학습 넛지) ──
+  // 팩트 뱅크(검증된 사실)에서만. LLM 안 씀. 화면=영어(enShow)/음성=한글표기(enSpeak).
+  const voice = useKiddyVoice();
+  const [tipLine, setTipLine] = useState(null); // { show, speak } | null (매칭 없으면 null → 기존 문구)
+  const [childName] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("selectedProfile") || "{}")?.name || "친구"; }
+    catch { return "친구"; }
+  });
+
   // 하루 시청제한 남은시간 알림 (적응형) — 영상이 갑자기 끊기지 않게 미리 키디가 알려줌
   // ⚠️ '영상 길이'가 아니라 '하루 제한(timeLimit) 남은 시간' 기준. 제한 없으면 알림 없음.
   const [timeWarning, setTimeWarning] = useState(null); // { minutes, prominent } | null
@@ -99,6 +110,17 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       setIsLandscape(false);
     }
   }, [videoEnded]);
+
+  // J: 영상 끝 → 제목이 팩트 뱅크에 매칭되면 키디 팁 한마디 + 음성(bright). 없으면 null → 기존 문구.
+  // ⚠️ 사실은 검증된 팩트 뱅크(kiddyTips)에서만. LLM 안 씀. 팁은 여기서 1회 계산돼 검수 단계와 무관하게 유지.
+  useEffect(() => {
+    if (!videoEnded) return;
+    const tip = detectTip(video.title);
+    if (!tip) { setTipLine(null); return; }
+    const line = buildTipLine(tip, childName);
+    setTipLine(line);
+    voice.speak(line.speak, "bright"); // 음성은 enSpeak(한글표기) 버전 — 영어 철자 깨짐 방지
+  }, [videoEnded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => clearInterval(timerRef.current);
@@ -183,6 +205,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
     clearInterval(countdownRef.current);
     clearTimeout(warnTimerRef.current);
     setVideoEnded(false); videoEndedRef.current = false;
+    setTipLine(null);              // J: 새 영상 → 이전 팁 지움 (음성은 onPlayNext 직전에 stop)
     savedRef.current = false;
     setWatchSeconds(0); watchSecondsRef.current = 0;
     setIsPlaying(false);
@@ -232,7 +255,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
     if (nextStage !== "preview" && nextStage !== "scored") return;
     if (countdown <= 0) {
       if (nextStage === "preview") startNextInspection();
-      else if (onPlayNext) onPlayNext(nextResult || nextVideo, watchSecondsRef.current);
+      else if (onPlayNext) { voice.stop(); onPlayNext(nextResult || nextVideo, watchSecondsRef.current); } // J: 팁 음성 정지 후 다음 영상
       return;
     }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
@@ -370,6 +393,22 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
         <div className="flex flex-col w-full max-w-sm py-6 px-6" style={{ borderRadius: "28px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" }}>
+
+          {/* J: 키디 팁 말풍선 — 검수 진행과 무관하게 상단에 유지 (매칭 시에만) */}
+          {tipLine && (
+            <div className="flex items-start gap-2.5 mb-4 rounded-2xl p-3" style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <KiddyImg pose="success" size={44} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold leading-snug" style={{ color: "#EAF5F1" }}>{tipLine.show}</p>
+                {voice.hasAudio && (
+                  <button onClick={() => voice.replay()} className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition active:scale-95" style={{ backgroundColor: "#0E2A2A", color: "#90A9A8", border: "1px solid rgba(255,255,255,0.08)" }} aria-label="키디 목소리 다시 듣기">
+                    🔊 다시 듣기
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <p className="text-xs font-bold mb-3" style={{ color: "#5FE0BC" }}>
             {nextStage === "analyzing" ? "🔍 다음 영상 검수 중..."
               : nextStage === "scored" ? "✅ 검수 완료 — 안전해요!"
@@ -461,8 +500,18 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       <div className="fixed inset-0 z-[60] flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
         <div className="flex flex-col items-center text-center w-full max-w-sm py-10 px-8" style={{ borderRadius: "28px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
           <KiddyImg pose="success" size={140} />
-          <p className="mt-5 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>다 봤어! 재미있었어? 🎉</p>
+          {/* J: 팩트 뱅크 매칭 시 키디 팁 한마디(화면=영어철자), 없으면 기존 문구 */}
+          {tipLine ? (
+            <p className="mt-5 text-lg font-extrabold leading-snug" style={{ color: "#EAF5F1" }}>{tipLine.show}</p>
+          ) : (
+            <p className="mt-5 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>다 봤어! 재미있었어? 🎉</p>
+          )}
           <p className="mt-2 text-sm" style={{ color: "#90A9A8" }}>총 {formatTime(watchSeconds)} 시청했어요</p>
+          {voice.hasAudio && (
+            <button onClick={() => voice.replay()} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold transition active:scale-95" style={{ backgroundColor: "#163635", color: "#90A9A8", border: "1px solid rgba(255,255,255,0.08)" }} aria-label="키디 목소리 다시 듣기">
+              🔊 다시 듣기
+            </button>
+          )}
           <button
             onClick={handleKiddyChat}
             className="mt-6 w-full rounded-2xl py-3.5 text-base font-bold"
