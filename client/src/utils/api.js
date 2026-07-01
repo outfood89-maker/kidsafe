@@ -361,9 +361,9 @@ export const removeFavorite = async (id) => {
   return response.data
 }
 
-// 키디 챗봇
-export const sendChatMessage = async (messages, profileName, profileAge) => {
-  const response = await axios.post(`${BASE_URL}/chat`, { messages, profileName, profileAge })
+// 키디 챗봇 — level: 대화 수준(beginner|intermediate|advanced). 미지정 시 백엔드가 초급으로 폴백.
+export const sendChatMessage = async (messages, profileName, profileAge, level = "beginner") => {
+  const response = await axios.post(`${BASE_URL}/chat`, { messages, profileName, profileAge, level })
   return response.data
 }
 
