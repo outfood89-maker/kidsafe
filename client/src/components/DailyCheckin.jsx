@@ -6,7 +6,9 @@ import KiddyGreeting from "./KiddyGreeting";
 import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting } from "../utils/api";
 import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowup, moodFollowupClosing } from "../utils/kiddyLines";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
+import { hasBatchim } from "../utils/korean";
 import useKiddyVoice from "../hooks/useKiddyVoice";
+import useKiddySpeech from "../hooks/useKiddySpeech";
 
 // 반응 생성 중 보여줄 짧은 '생각 소리' (랜덤 — 매번 같은 말 안 나오게)
 const THINK_WORDS = ["음~", "오?", "그러니까…", "잠깐만~", "어디 보자~", "흠흠"];
@@ -112,6 +114,13 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   // 키디 음성(CLOVA Voice) — 대사가 화면에 뜰 때 읽어줌 + '다시듣기'(메모리 재생). H 브리프 §2.
   const voice = useKiddyVoice();
 
+  // 키디 음성 입력(STT) — '그 외' → '직접 말하기'(K 브리프 §2). 미지원/거부 시 기존 버튼 폴백.
+  const speech = useKiddySpeech();
+  const [speakStage, setSpeakStage] = useState(null); // null | "record"(녹음) | "confirm"(되읽기 확인)
+  const [speakMiss, setSpeakMiss] = useState(false);  // 인식 빈 결과 → '다시 말해줄래' 안내
+  const [speakTarget, setSpeakTarget] = useState("question"); // "question"(그 외) | "followup"(한 박자 더)
+  const prevListeningRef = useRef(false);             // listening true→false 전환 감지용
+
   // 마운트: 질문 + 어제 기분 병렬 로드 → 어제 기분으로 키디 인사 생성(실패 시 템플릿 폴백) → greeting
   useEffect(() => {
     let cancelled = false;
@@ -140,10 +149,24 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   };
   const btnGhost = { backgroundColor: C.chip, color: C.ink, border: "1px solid rgba(255,255,255,0.1)" };
 
+  // 직접 말하기 버튼 색 — 말하기(초록 GO) / 멈추기(빨강 STOP) 를 또렷하게 나눠 아이가 한눈에 구분.
+  // 현재 단계가 아닌 쪽은 흐리게(DIM) → 지금 눌러야 할 버튼이 저절로 도드라짐.
+  const SPEAK_GO = { background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})`, color: "#08160F", boxShadow: "0 6px 18px rgba(24,196,154,0.35)", fontSize: "18px" };
+  const SPEAK_STOP = { background: "linear-gradient(135deg, #FF7A7A, #F2655C)", color: "#2A0B09", boxShadow: "0 6px 18px rgba(242,101,92,0.4)", fontSize: "18px" };
+  const SPEAK_DIM = { backgroundColor: C.chip, color: "#5D7A73", border: "1px solid rgba(255,255,255,0.06)", fontSize: "18px" };
+
   const current = questions[qIndex];
   // 슬픔/화남 세션 — 키디가 '슬퍼하는(우는) 아바타'(sad)도, 활짝 웃는(chat/hello/help)·신난
   // (jump/success/컨페티) 연출도 쓰지 않고, 차분·다정한 'think' 포즈로 전 단계 통일.
   const negativeMood = moodEmoji === "😢" || moodEmoji === "😡";
+
+  // 반응 다음 '진행' 버튼 라벨 — 대화 호응이 되게. 마지막 질문의 '다 했어!'(완료 선언)는 키디의
+  // "골라줄게"(볼것 반응)와 어긋남 → 볼것이면 "응, 골라줘!"(호응), 다른 마지막 질문이면 "좋아!",
+  // 중간 질문은 "다음"(뒤에 질문이 더 있음). (기존 "다 했어!" 어색함 수정)
+  const proceedLabel =
+    qIndex + 1 < questions.length ? "다음 →"
+      : current?.qId === "watch_genre" ? "응, 골라줘! →"
+        : "좋아! →";
 
   // 현재 질문 표시 문구 — qIndex 바뀔 때만 새로 뽑음 (리액션 표시 중엔 안 바뀌어 타이핑 유지)
   const qLine = useMemo(
@@ -196,6 +219,26 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     voice.speak(closing, voiceTone);
   }, [phase, closing, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── 직접 말하기(STT) 상태 연결 ─────────────────────────────
+  // 녹음 종료 감지(listening true→false) → 내용 있으면 confirm, 빈 결과면 '다시 말해줄래'.
+  useEffect(() => {
+    const was = prevListeningRef.current;
+    prevListeningRef.current = speech.listening;
+    if (was && !speech.listening && speakStage === "record") {
+      const t = (speech.transcript || "").trim();
+      if (t) { setSpeakMiss(false); setSpeakStage("confirm"); }
+      else if (!speech.error) setSpeakMiss(true); // 에러(거부 등)는 말풍선 안내가 처리
+    }
+  }, [speech.listening, speech.transcript, speech.error, speakStage]);
+
+  // confirm 진입 → 키디가 TTS로 되읽어 확인. (voice.speak 가 이전 음성 정지 → 겹침 방지)
+  useEffect(() => {
+    if (speakStage !== "confirm") return;
+    const t = (speech.transcript || "").trim();
+    if (!t) return;
+    voice.speak(speechConfirmLine(t), voiceTone);
+  }, [speakStage]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // '다시듣기' 작은 버튼 (메모리 재생 — 추가 호출 0). 음성이 준비됐을 때만 노출.
   const replayBtn = voice.hasAudio ? (
     <button
@@ -241,20 +284,25 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   }, [phase, negativeMood]);
 
   // 옵션 선택 → pending + 키디 반응 (Claude 생성, 실패 시 로컬 템플릿 폴백)
-  const select = async (value, isWildcard = false) => {
+  //  - speechText != null 이면 '직접 말하기'(STT) 경로: 답=말한 내용, answerType="speech".
+  //    (버튼 선택 흐름과 100% 동일 재사용 — 답의 출처만 다름)
+  const select = async (value, isWildcard = false, speechText = null) => {
     if (reaction || reacting || streaming) return;
+    const isSpeech = speechText != null;
+    const effAnswer = isSpeech ? speechText : (isWildcard ? "그 외" : value);
     const answer = {
       qId: current.qId,
       qText: current.qText,
-      answer: isWildcard ? "그 외" : value,
-      answerType: isWildcard ? "wildcard" : current.answerType,
+      answer: effAnswer,
+      answerType: isSpeech ? "speech" : (isWildcard ? "wildcard" : current.answerType),
     };
     if (current.qId === "mood_today") {
       setMood(EMOJI_MOOD[value] || "soso");
       setMoodEmoji(value);
     }
-    // '볼 것'은 아동 안전 검색어로 변환해서 검색에 넘긴다 (예: 노래→동요). 표시·반응은 친근한 라벨 그대로.
-    if (current.qId === "watch_genre" && !isWildcard) setWatchKeyword(toKidQuery(value));
+    // '볼 것'은 아동 안전 검색어로 변환해서 검색에 넘긴다 (버튼 라벨=value / 직접 말하기=말한 내용).
+    // 표시·반응은 친근한 라벨/말한 내용 그대로. wildcard('그 외')는 키워드 없음.
+    if (current.qId === "watch_genre" && !isWildcard) setWatchKeyword(toKidQuery(isSpeech ? speechText : value));
     setPending(answer);
     setReaction("");
     setStreaming(false);
@@ -300,10 +348,70 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     } catch {
       // 스트림 실패/오프라인 → 로컬 템플릿으로 폴백 (즉시 표시). 연결 끊기(F): 이전 답 안 넘김([]).
       // 톤 인지(G): calm 세션이면 차분 폴백 템플릿 사용 → 폭죽·"신난다"가 안 새게.
-      setReaction(reactionLine(current.qId, value, isWildcard, name, [], sessionTone));
+      // 직접 말하기(speech)는 값이 말한 내용 → 그걸 템플릿 value 로 넘김(isWildcard=false).
+      setReaction(reactionLine(current.qId, isSpeech ? effAnswer : value, isWildcard, name, [], sessionTone));
       setReacting(false);
       setStreaming(false);
     }
+  };
+
+  // ── 직접 말하기(STT) 핸들러 (K 브리프 §2) ──────────────────────────
+  // 되읽기 확인 대사(코드로 못박음 — LLM 안 씀). josa: 받침 있으면 '이라고', 없으면 '라고'.
+  const speechConfirmLine = (t) => `${t}${hasBatchim(t) ? "이라고" : "라고"} 했구나! 맞아?`;
+
+  // 직접 말하기 말풍선 문구 (LLM 0) — record 단계 안내 / 듣는 중 / 되읽기 확인.
+  let speakBubbleText = "";
+  if (speakStage === "record") {
+    if (speech.error === "not-allowed") speakBubbleText = "마이크가 막혀 있어. 아래 버튼으로 골라줄래?";
+    else if (speech.listening) speakBubbleText = "말해봐! 듣고 있을게 🎤";
+    else if (speakMiss || speech.error === "no-speech") speakBubbleText = "잘 못 들었어. 다시 말해줄래? 🎤";
+    else speakBubbleText = "무엇이든 말해봐! 🎤";
+  } else if (speakStage === "confirm") {
+    speakBubbleText = speechConfirmLine((speech.transcript || "").trim());
+  }
+
+  // 직접 말하기 진입 (미지원이면 렌더에서 기존 버튼으로 폴백).
+  //  target="question"(그 외) → 답 확정 / target="followup"(한 박자 더) → 후속 칩 대신 말한 내용.
+  const startSpeak = (target = "question") => {
+    setSpeakTarget(target);
+    voice.stop();
+    speech.reset();
+    setSpeakMiss(false);
+    setSpeakStage("record");
+  };
+  // 녹음 시작(수동 종료 모드) — 되읽기 등 진행 중 음성 정지 후 마이크 on
+  const beginListen = () => {
+    voice.stop();
+    setSpeakMiss(false);
+    speech.start();
+  };
+  // 녹음 종료 → onend 에서 최종 transcript 확정 → 아래 effect 가 confirm/재시도 분기
+  const endListen = () => speech.stop();
+  // [응 맞아] → 말한 내용을 실제 답으로 확정. 맥락(target)에 따라 흐름 분기.
+  const confirmSpeech = () => {
+    const t = (speech.transcript || "").trim();
+    if (!t) return;
+    voice.stop();               // 되읽기 음성 정지 → 다음 음성과 안 겹치게
+    setSpeakStage(null);
+    setSpeakMiss(false);
+    speech.reset();
+    if (speakTarget === "followup") selectFollowup({ label: t, secret: false }); // 후속 답으로(칩과 동일 처리)
+    else select(null, false, t);                                                 // 질문 답으로(기존 select 재사용)
+  };
+  // [다시 말할래] → 초기화 후 record 로
+  const retrySpeech = () => {
+    voice.stop();
+    speech.reset();
+    setSpeakMiss(false);
+    setSpeakStage("record");
+  };
+  // 직접 말하기 취소 → 기존 버튼 선택으로 복귀 (안전 폴백)
+  const cancelSpeak = () => {
+    voice.stop();
+    speech.stop();
+    speech.reset();
+    setSpeakMiss(false);
+    setSpeakStage(null);
   };
 
   // 반응(받아주기) 타이핑이 끝났을 때 — 기분이면 '한 박자 더'(후속 질문) 비트로, 아니면 '다음' 노출
@@ -340,6 +448,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
 
   // 리액션 보고 '다음' → 답 확정 후 다음 질문 or 공유 단계
   const next = () => {
+    voice.stop();   // 진행 중 음성 즉시 정지 → 다음 질문/공유 음성과 안 겹치게 (다른 핸들러와 동일 패턴)
     // 기분 답에 후속('한 박자 더')이 있으면 사실 그대로 nested 로 붙인다(부모 리포트 감정 맥락 한 겹).
     const finalPending =
       pending?.qId === "mood_today" && fuAnswer
@@ -352,6 +461,10 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     setStreaming(false);
     setTypingDone(false);
     resetFollowup();
+    setSpeakStage(null);   // 직접 말하기 잔여 상태 정리
+    setSpeakMiss(false);
+    setSpeakTarget("question");
+    speech.reset();
     if (qIndex + 1 < questions.length) {
       setQIndex(qIndex + 1);
     } else {
@@ -427,6 +540,18 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                     ))}
                   </span>
                 </span>
+              ) : speakStage ? (
+                // 직접 말하기 — 안내/듣는 중 실시간/되읽기 확인 (LLM 안 씀). 질문·후속 어느 맥락이든 최상단.
+                <span className="block">
+                  <span className="block font-bold leading-snug" style={{ color: C.ink, fontSize: "18px" }}>
+                    {speakBubbleText}
+                  </span>
+                  {speakStage === "record" && speech.listening && speech.interim && (
+                    <span className="block mt-1.5 leading-snug" style={{ color: C.sub, fontSize: "16px" }}>
+                      “{speech.interim}”
+                    </span>
+                  )}
+                </span>
               ) : fuStage === "ask" ? (
                 // 한 박자 더 — 받아주기를 그대로 두고(사라지지 않게), 아래에 후속 질문을 이어 타이핑.
                 // (한 줄만 보여주면 받아주기가 '훅' 사라져 보임 → 두 줄을 한 말풍선에 함께 유지)
@@ -478,24 +603,90 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
             {/* 키디 목소리 다시듣기 (메모리 재생) */}
             {replayBtn}
 
-            {/* 단계별 컨트롤: 생각중→없음 / 한박자더→칩 / 마무리·받아주기→'다음' / 그 외→선택지 */}
-            {reacting ? null : fuStage === "ask" ? (
-              // 한 박자 더 — 후속 질문 타이핑이 끝나면 빠른 답 칩(끝에 '비밀이야' 출구)
-              fuQDone ? (
-                <div className="w-full grid grid-cols-2 gap-2.5">
-                  {(fuData?.chips || []).map((chip) => (
-                    <button
-                      key={chip.label}
-                      onClick={() => selectFollowup(chip)}
-                      className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
-                      style={chip.secret
-                        ? { backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }
-                        : { backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)", color: C.ink, fontSize: "16px" }}
-                    >
-                      {chip.label}
+            {/* 단계별 컨트롤: 생각중→없음 / 직접말하기→말하기·멈추기 / 한박자더→칩 / 마무리·받아주기→'다음' / 그 외→선택지 */}
+            {reacting ? null : speakStage ? (
+              // 직접 말하기 컨트롤 — 말하기(초록)/멈추기(빨강) 가로 2버튼. 색을 또렷이 나눠 아이가 한눈에.
+              <div className="w-full flex flex-col gap-2.5">
+                {speakStage === "confirm" ? (
+                  // 되읽기 확인 — 응 맞아 / 다시 말할래 (가로)
+                  <div className="w-full grid grid-cols-2 gap-2.5">
+                    <button onClick={confirmSpeech} className="rounded-2xl py-4 font-extrabold transition active:scale-95" style={btnPrimary}>
+                      응, 맞아 👍
                     </button>
-                  ))}
-                </div>
+                    <button onClick={retrySpeech} className="rounded-2xl py-4 font-bold transition active:scale-95" style={btnGhost}>
+                      🔄 다시 말할래
+                    </button>
+                  </div>
+                ) : speech.error === "not-allowed" ? (
+                  <button onClick={cancelSpeak} className="w-full rounded-2xl py-4 font-bold transition active:scale-95" style={btnGhost}>
+                    ← 버튼으로 고를래
+                  </button>
+                ) : (
+                  <>
+                    {/* 듣는 중 표시 — 빨강 파형(녹음 중임을 명확히). 대기 중엔 흐리게. */}
+                    <div className="flex items-end justify-center gap-1.5" style={{ height: 26, opacity: speech.listening ? 1 : 0.2 }} aria-hidden>
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <span key={i} style={{
+                          width: 6, height: 24, borderRadius: 3,
+                          background: "linear-gradient(180deg, #FF8A8A, #F2655C)",
+                          animation: speech.listening ? `kdcBounce 1s ${i * 0.12}s infinite ease-in-out` : "none",
+                        }} />
+                      ))}
+                    </div>
+                    {/* 말하기(초록) / 멈추기(빨강) — 현재 눌러야 할 쪽만 또렷, 반대편은 흐리게 */}
+                    <div className="w-full grid grid-cols-2 gap-2.5">
+                      <button
+                        onClick={beginListen}
+                        disabled={speech.listening}
+                        className="rounded-2xl py-5 font-extrabold transition active:scale-95"
+                        style={speech.listening ? SPEAK_DIM : SPEAK_GO}
+                      >
+                        🎤 말하기
+                      </button>
+                      <button
+                        onClick={endListen}
+                        disabled={!speech.listening}
+                        className="rounded-2xl py-5 font-extrabold transition active:scale-95"
+                        style={speech.listening ? SPEAK_STOP : SPEAK_DIM}
+                      >
+                        ⏹️ 멈추기
+                      </button>
+                    </div>
+                    <button onClick={cancelSpeak} className="w-full rounded-2xl py-3 font-bold transition active:scale-95" style={btnGhost}>
+                      ← 그냥 고를래
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : fuStage === "ask" ? (
+              // 한 박자 더 — 후속 질문 타이핑이 끝나면 빠른 답 칩(끝에 '비밀이야' 출구) + 직접 말하기
+              fuQDone ? (
+                <>
+                  <div className="w-full grid grid-cols-2 gap-2.5">
+                    {(fuData?.chips || []).map((chip) => (
+                      <button
+                        key={chip.label}
+                        onClick={() => selectFollowup(chip)}
+                        className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
+                        style={chip.secret
+                          ? { backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }
+                          : { backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)", color: C.ink, fontSize: "16px" }}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* 칩 말고 직접 말하고 싶을 때 (STT 지원 시) */}
+                  {speech.supported && (
+                    <button
+                      onClick={() => startSpeak("followup")}
+                      className="w-full mt-2.5 rounded-2xl py-4 font-bold transition active:scale-95"
+                      style={{ backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }}
+                    >
+                      🎤 내가 말할래
+                    </button>
+                  )}
+                </>
               ) : null
             ) : fuStage === "closing" ? (
               // 후속 마무리 타이핑이 끝나면 '다음'
@@ -505,7 +696,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                   className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
                   style={btnPrimary}
                 >
-                  {qIndex + 1 < questions.length ? "다음 →" : "다 했어! →"}
+                  {proceedLabel}
                 </button>
               ) : null
             ) : reaction ? (typingDone ? (
@@ -514,7 +705,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                 className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
                 style={btnPrimary}
               >
-                {qIndex + 1 < questions.length ? "다음 →" : "다 했어! →"}
+                {proceedLabel}
               </button>
             ) : null) : (
               <>
@@ -545,15 +736,26 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                         {opt.emoji ? `${opt.emoji} ` : ""}{opt.label}
                       </button>
                     ))}
-                    {/* 숨 쉴 구멍 — '그 외' wildcard */}
+                    {/* 숨 쉴 구멍 — '그 외' wildcard. STT 지원 브라우저면 '직접 말하기'로 승격, 아니면 기존 '그 외' 폴백. */}
                     {current.wildcard && (
-                      <button
-                        onClick={() => select(null, true)}
-                        className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
-                        style={{ backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }}
-                      >
-                        ✏️ 그 외
-                      </button>
+                      speech.supported ? (
+                        <button
+                          onClick={() => startSpeak("question")}
+                          className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
+                          style={{ backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }}
+                        >
+                          🎤 직접 말하기
+                        </button>
+
+                      ) : (
+                        <button
+                          onClick={() => select(null, true)}
+                          className="rounded-2xl py-4 px-3 font-bold transition active:scale-95"
+                          style={{ backgroundColor: C.chip, border: "1px dashed rgba(255,255,255,0.18)", color: C.sub, fontSize: "16px" }}
+                        >
+                          ✏️ 그 외
+                        </button>
+                      )
                     )}
                   </div>
                 )}

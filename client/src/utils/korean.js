@@ -1,7 +1,8 @@
 // 한글 이름 조사 처리 공용 유틸 (KidHome 의 withVocative 로직을 공용화).
 // 한글 음절은 (코드-0xAC00) % 28 !== 0 이면 받침(종성) 있음. 한글 아닌 이름은 받침 없음으로 폴백.
 
-const hasBatchim = (name) => {
+// 마지막 글자에 받침(종성)이 있는지 — 조사 선택(이/가, 이라고/라고 등)에 공용으로 씀.
+export const hasBatchim = (name) => {
   if (!name) return false;
   const code = name.charCodeAt(name.length - 1);
   return code >= 0xAC00 && code <= 0xD7A3 && (code - 0xAC00) % 28 !== 0;
