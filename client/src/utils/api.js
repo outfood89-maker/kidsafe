@@ -221,6 +221,29 @@ export const reactToCheckinStream = async (payload, onChunk) => {
   return full
 }
 
+// 키디 대사를 CLOVA Voice(다인 Pro) 음성 mp3로 합성 → Blob 반환 (H 브리프 §1·§3).
+// 음성은 보조 기능 → 실패하면 null 반환(앱은 텍스트만으로 진행). 토큰은 axios 인터셉터가 자동 첨부.
+//  - text: 읽어줄 키디 대사 (이모지는 서버가 제거 후 합성)
+//  - tone: 'calm'(😢😡 위로=차분) | 'bright'(😄🙂😐 밝게)
+// ⚠️ 다시듣기는 받은 Blob을 메모리에 들고 재생(추가 호출 0). 디스크/스토리지 저장 금지(정책).
+export const synthesizeKiddyVoice = async ({ text, tone = 'bright' }) => {
+  if (!text || !text.trim()) return null
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/tts/kiddy`,
+      { text, tone },
+      { responseType: 'blob' }
+    )
+    // 204(읽을 것 없음/키 미설정) → 빈 Blob → null 처리
+    const blob = response.data
+    if (!blob || blob.size === 0) return null
+    return blob
+  } catch {
+    // 키 오류·네트워크·CLOVA 실패 → 음성 없이 진행
+    return null
+  }
+}
+
 // ── 멀티 스케줄러 (부모가 아이 일정/사건/음식/상태 기록) ──────────
 // 한 아이의 일정 목록 (month: 'YYYY-MM' 주면 그 달만)
 export const getSchedules = async (profileId, month) => {

@@ -3,17 +3,18 @@
 //
 // 치환 토큰:
 //   {voc}    → 호격(해인아/호두야) — 직접 부를 때. 조사 꼬임 방지를 위해 이름엔 {voc}만 붙임.
-//   {name}   → 이름 원형(받침 뒤 띄어쓰기로만 사용: "{name} 마음")
+//   {name}   → 이름 애칭형(받침 있으면 '이' 붙음: "해인이 기분" / 없으면 그대로: "호두 기분").
+//              이름+명사 자리에서만 사용("{name} 마음"). 원본 이름이 아니라 구어체형.
 //   {answer} → 아이가 고른 답(하루/볼것 리액션)
 
-import { withVocative } from "./korean";
+import { withVocative, withNameI } from "./korean";
 
 const POSITIVE = ["happy", "good", "excited"];
 const NEGATIVE = ["sad", "angry"];
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const fill = (tpl, name, answer = "") =>
-  tpl.replaceAll("{voc}", withVocative(name)).replaceAll("{name}", name).replaceAll("{answer}", answer);
+  tpl.replaceAll("{voc}", withVocative(name)).replaceAll("{name}", withNameI(name)).replaceAll("{answer}", answer);
 
 // ── 인사 ──────────────────────────────────────────────
 // ⚠️ 인사는 '대화 초대'로 끝낼 것 — 버튼 "응! 얘기하자"와 이어지고, 바로 다음이 기분 질문이라

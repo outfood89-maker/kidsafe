@@ -6,6 +6,7 @@ import KiddyGreeting from "./KiddyGreeting";
 import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting } from "../utils/api";
 import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowup, moodFollowupClosing } from "../utils/kiddyLines";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
+import useKiddyVoice from "../hooks/useKiddyVoice";
 
 // 반응 생성 중 보여줄 짧은 '생각 소리' (랜덤 — 매번 같은 말 안 나오게)
 const THINK_WORDS = ["음~", "오?", "그러니까…", "잠깐만~", "어디 보자~", "흠흠"];
@@ -108,6 +109,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   // 공유 질문 문구는 마운트 시 한 번 고정 (랜덤이 리렌더마다 안 바뀌게)
   const [shareLine] = useState(() => shareQuestionLine(name));
 
+  // 키디 음성(CLOVA Voice) — 대사가 화면에 뜰 때 읽어줌 + '다시듣기'(메모리 재생). H 브리프 §2.
+  const voice = useKiddyVoice();
+
   // 마운트: 질문 + 어제 기분 병렬 로드 → 어제 기분으로 키디 인사 생성(실패 시 템플릿 폴백) → greeting
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +150,63 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     () => (current ? questionLine(current.qId, name) : ""),
     [qIndex, phase] // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  // ── 키디 음성 트리거 (H 브리프 §2·§3) ────────────────────────────
+  // 키디 '대사'가 화면에 뜰 때만 읽어줌. 아이 선택(이모지·칩)엔 음성 없음.
+  // 톤: 부정 세션(😢😡)=calm, 그 외=bright. (mood 선택 전 인사/첫 질문은 bright 기본)
+  // 같은 대사 중복 합성/재생은 훅이 막음 → 가드는 '엉뚱한 타이밍'만 차단.
+  // ⚠️ voice.speak/enqueue/replay 는 useKiddyVoice 안에서 useCallback 으로 고정된 '안정 참조'라,
+  //    아래 음성 effect 의존성에서 voice 를 의도적으로 제외함(exhaustive-deps 비활성 이유).
+  const voiceTone = negativeMood ? "calm" : "bright";
+
+  // 질문 등장 → 읽기 (반응·생각중이 아닐 때만)
+  useEffect(() => {
+    if (phase !== "questions" || !current || reaction || reacting || !qLine) return;
+    voice.speak(qLine, voiceTone);
+  }, [phase, qLine, reaction, reacting, current, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 받아주기(반응) 완성 → 읽기 (스트리밍 끝나 최종 텍스트가 안정된 뒤)
+  useEffect(() => {
+    if (phase !== "questions" || !reaction || streaming) return;
+    voice.speak(reaction, voiceTone);
+  }, [phase, reaction, streaming, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // '한 박자 더' 후속 질문 등장 → 받아주기에 '이어서' 읽기 (끊지 않고 연쇄 — enqueue)
+  // 받아주기 음성이 끝까지 나온 뒤 후속 질문이 자연스럽게 이어진다. (잘림 방지)
+  useEffect(() => {
+    if (fuStage !== "ask" || !fuData?.question) return;
+    voice.enqueue(fuData.question, voiceTone);
+  }, [fuStage, fuData, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 후속 마무리 한마디 등장 → 읽기
+  useEffect(() => {
+    if (fuStage !== "closing" || !fuClosing) return;
+    voice.speak(fuClosing, voiceTone);
+  }, [fuStage, fuClosing, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 공유 질문 화면 → 읽기
+  useEffect(() => {
+    if (phase !== "share" || !shareLine) return;
+    voice.speak(shareLine, voiceTone);
+  }, [phase, shareLine, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 보상 마무리 → 읽기
+  useEffect(() => {
+    if (phase !== "reward" || !closing) return;
+    voice.speak(closing, voiceTone);
+  }, [phase, closing, voiceTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // '다시듣기' 작은 버튼 (메모리 재생 — 추가 호출 0). 음성이 준비됐을 때만 노출.
+  const replayBtn = voice.hasAudio ? (
+    <button
+      onClick={() => voice.replay()}
+      className="inline-flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-full text-sm font-bold transition active:scale-95"
+      style={{ backgroundColor: C.chip, color: C.sub, border: "1px solid rgba(255,255,255,0.08)" }}
+      aria-label="키디 목소리 다시 듣기"
+    >
+      🔊 다시 듣기
+    </button>
+  ) : null;
 
   // '볼 것' 선택지 — 씨앗(백엔드 options) 우선 + 인기 주제로 8개까지 채움 (가짓수 확대)
   // 라벨은 카탈로그로 정규화돼 표시(노래→동요), emoji 포함. day(icon_select)는 그대로 둠.
@@ -414,6 +475,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
               )}
             </div>
 
+            {/* 키디 목소리 다시듣기 (메모리 재생) */}
+            {replayBtn}
+
             {/* 단계별 컨트롤: 생각중→없음 / 한박자더→칩 / 마무리·받아주기→'다음' / 그 외→선택지 */}
             {reacting ? null : fuStage === "ask" ? (
               // 한 박자 더 — 후속 질문 타이핑이 끝나면 빠른 답 칩(끝에 '비밀이야' 출구)
@@ -527,6 +591,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
               />
             </div>
 
+            {/* 키디 목소리 다시듣기 (메모리 재생) */}
+            {replayBtn}
+
             {error && <p className="mb-3 text-sm" style={{ color: "#F2655C" }}>{error}</p>}
 
             <div className="w-full flex flex-col gap-3">
@@ -567,6 +634,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
                 style={{ color: C.ink, fontSize: "18px" }}
               />
             </div>
+            {/* 키디 목소리 다시듣기 (메모리 재생) */}
+            {replayBtn}
+
             <button
               onClick={() => onComplete?.({ watchKeyword })}
               className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"

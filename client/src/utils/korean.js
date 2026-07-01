@@ -18,3 +18,10 @@ export const withSubject = (name) => {
   if (!name) return "친구가";
   return name + (hasBatchim(name) ? "이가" : "가");
 };
+
+// 이름 애칭형 — 받침 있으면 "이"를 붙이고(해인→해인이), 없으면 그대로(호두).
+// 조사 없이 이름+명사 자리("해인이 기분", "해인이 마음")에서 자연스러운 구어체형.
+export const withNameI = (name) => {
+  if (!name) return "친구";
+  return name + (hasBatchim(name) ? "이" : "");
+};

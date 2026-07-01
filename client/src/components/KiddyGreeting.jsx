@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import { withVocative } from "../utils/korean";
 import { greetingLine } from "../utils/kiddyLines";
+import useKiddyVoice from "../hooks/useKiddyVoice";
 
 // F1 — 키디 환영 인사 (체크인 흐름의 첫 화면)
 // "키디가 기다린다" 한 겹: 어제 기분(recentMood)을 가볍게 언급. 없으면(첫날) 기본 인사.
@@ -21,6 +22,12 @@ const C = {
 export default function KiddyGreeting({ name, recentMood, greeting, onContinue, onSkip }) {
   // Claude 생성 인사가 있으면 그걸, 없으면 로컬 템플릿. 마운트 시 한 번만 고정(리렌더 시 재타이핑 방지).
   const [line] = useState(() => greeting || greetingLine(name, recentMood));
+
+  // 키디 음성 — 인사 대사를 읽어줌. 세션 기분 아직 모름 → 밝게(bright). H 브리프 §2.
+  const voice = useKiddyVoice();
+  useEffect(() => {
+    voice.speak(line, "bright");
+  }, [line]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const btnPrimary = {
     background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})`,
@@ -46,6 +53,18 @@ export default function KiddyGreeting({ name, recentMood, greeting, onContinue, 
           style={{ color: C.ink, fontSize: "19px" }}
         />
       </div>
+
+      {/* 키디 목소리 다시듣기 (메모리 재생 — 추가 호출 0) */}
+      {voice.hasAudio && (
+        <button
+          onClick={() => voice.replay()}
+          className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full text-sm font-bold transition active:scale-95"
+          style={{ backgroundColor: C.card, color: C.sub, border: "1px solid rgba(255,255,255,0.08)" }}
+          aria-label="키디 목소리 다시 듣기"
+        >
+          🔊 다시 듣기
+        </button>
+      )}
 
       <button
         onClick={onContinue}
