@@ -48,6 +48,36 @@ def strip_emoji(text: str) -> str:
     return cleaned
 
 
+# ── 음성 발음 자연화 (브리프 I·I2) — TTS로 보내는 텍스트 전용, 화면 표시엔 절대 미적용 ──
+# CLOVA가 "네"(너의/너가)를 [네]로 읽으면 "내"[내]와 혼동돼 뜻이 뒤집힘("네 편"→"내 편").
+# 위로 대사("키디는 네 편이야")에서 특히 치명적. 화면은 표준 "네" 그대로, 음성 텍스트만 "너"로.
+# ⚠️ 전역 치환 금지 — 수관형사 "네"(=4)가 아이 말에 압도적(네 살/네 개/만화 네 편=4편).
+#    화이트리스트 + 서술어 결합 조건만. 애매하면 안 바꾼다.
+_SPOKEN_YOU = "너"   # 데모 청취 후 '너' ↔ '니' 를 이 한 곳에서만 튜닝
+
+# 주격: '네가' → '너가' (문두/공백/따옴표 뒤 + 뒤가 어절 끝). 동네가·그네가·언니네가 보존.
+_YOU_SUBJECT = re.compile(r"(?<![가-힣])네가(?=\s|[.,!?~\"')\]]|$)")
+# 소유격(수 단위명사와 무충돌): '네 (맘/마음/하루/기분/친구)' → '너 …'
+_YOU_POSS_SAFE = re.compile(r"(?<![가-힣])네(?=\s(?:맘|마음|하루|기분|친구))")
+# 소유격 '편'은 '4편'과 충돌 → 서술격 '이-' 결합('편이야/지/라/니')일 때만 소유격 확정.
+_YOU_POSS_PYEON = re.compile(r"(?<![가-힣])네(?=\s?편이[야지라니])")
+
+
+def naturalize_for_tts(text: str) -> str:
+    """음성 발음 자연화 — TTS 텍스트 전용(화면 표시엔 절대 쓰지 말 것).
+    - 주격 '네가' → '너가'
+    - 소유격 '네 (맘/마음/하루/기분/친구)' → '너 …' (수사·합성어와 무충돌)
+    - '네 편이야…'(서술어 결합) → '너 편이야…' ('만화 네 편(4편)'과 구분)
+    원칙: 목록/조건에 없으면 안 바꾼다. '네 개/네 살/네 번/만화 네 편/네모'는 전부 불변.
+    """
+    if not text:
+        return text
+    text = _YOU_SUBJECT.sub(_SPOKEN_YOU + "가", text)   # 네가 → 너가
+    text = _YOU_POSS_SAFE.sub(_SPOKEN_YOU, text)         # 네 맘/마음/하루/기분/친구 → 너 …
+    text = _YOU_POSS_PYEON.sub(_SPOKEN_YOU, text)        # 네 편이… → 너 편이…
+    return text
+
+
 async def synthesize(
     text: str,
     *,
@@ -71,6 +101,7 @@ async def synthesize(
         raise TTSConfigError("CLOVA_VOICE_CLIENT_ID/SECRET 환경변수 없음")
 
     clean = strip_emoji(text)
+    clean = naturalize_for_tts(clean)   # 발음 자연화(화면 미영향, 음성만) — 브리프 I·I2
     if not clean:
         raise TTSConfigError("합성할 텍스트 없음")
 
