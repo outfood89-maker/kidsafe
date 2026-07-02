@@ -589,14 +589,22 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
             <KiddyImg pose="sad" size={80} bg="#111" />
-            <p className="text-base font-bold text-white">이 영상은 키디에서 바로 볼 수 없어요.</p>
-            <p className="text-xs" style={{ color: "#9BA89A" }}>아래 버튼을 누르면 볼 수 있어! 🦕</p>
+            <p className="text-base font-bold text-white">이 영상은 키디에서 볼 수 없어. 다른 재밌는 거 찾으러 가자! 🦕</p>
+            {/* Q-2: 유튜브 본진(무한 알고리즘·쇼츠)으로 나가는 탈출구 제거 — 삭제 말고 주석 보존(복구 가능)
             <button
               onClick={() => window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank")}
               className="rounded-2xl px-5 py-2.5 text-sm font-bold"
               style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
             >
               YouTube에서 보기
+            </button>
+            */}
+            <button
+              onClick={() => requestClose()}
+              className="rounded-2xl px-5 py-2.5 text-sm font-bold"
+              style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+            >
+              다른 영상 보러 가기
             </button>
           </div>
         )}

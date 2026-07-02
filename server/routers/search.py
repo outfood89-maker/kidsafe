@@ -70,6 +70,7 @@ async def search_youtube(keyword: str, max_results: int = 20) -> list:
                 "q": keyword,
                 "part": "snippet",
                 "type": "video",
+                "videoEmbeddable": "true",   # 임베드 가능 영상만 — 임베드 불가 영상 원천 차단 (Q-2, 팀장 결정)
                 # search.list는 maxResults가 1이든 50이든 쿼터 100유닛 고정 →
                 # 최대(50)로 받아 안전필터 통과 풀을 넓힌다 (쿼터 추가 0).
                 "maxResults": 50,
