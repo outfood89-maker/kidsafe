@@ -337,7 +337,7 @@ export default function ParentDashboard() {
     try {
       const data = await addBlocked(channelTitle);
       setBlockedKeywords(prev => ({ ...prev, custom: data.custom }));
-      alert(`"${channelTitle}" 채널이 차단 키워드에 추가됐어요!`);
+      alert(`"${channelTitle}" 채널을 걸러낼 목록에 추가했어요!`);
     } catch (err) {
       alert(err.response?.data?.error || "이미 등록된 키워드예요.");
     }
@@ -1117,7 +1117,7 @@ export default function ParentDashboard() {
                           style={{ backgroundColor: "rgba(24,196,154,0.18)", color: "#3FE0B0" }}
                         >
                           <FaClock />
-                          {profile.timeLimit ? `${profile.timeLimit}분 제한` : "시청 시간 설정"}
+                          {profile.timeLimit ? `하루 시청 약속 ${profile.timeLimit}분` : "시청 시간 설정"}
                         </button>
                       )}
                     </div>
@@ -1919,7 +1919,7 @@ export default function ParentDashboard() {
                         className="rounded-xl px-2 py-1 text-xs font-bold transition"
                         style={{ backgroundColor: "rgba(242,101,92,0.18)", color: "#F2655C" }}
                       >
-                        채널 차단
+                        이 채널 거르기
                       </button>
                     </div>
                   </div>
@@ -1936,20 +1936,20 @@ export default function ParentDashboard() {
         >
           <div className="flex items-center gap-3 mb-2">
             <FaBan className="text-red-400 text-xl md:text-2xl" />
-            <h2 className="text-xl md:text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>차단 키워드 관리</h2>
+            <h2 className="text-xl md:text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>걸러낼 키워드 관리</h2>
           </div>
-          <p className="text-sm md:text-base mb-6" style={{ color: "#90A9A8" }}>아이가 검색하면 안 되는 키워드를 설정해요. 검색 시 차단 메시지가 표시돼요.</p>
+          <p className="text-sm md:text-base mb-6" style={{ color: "#90A9A8" }}>아이가 이 말로 검색하면 키디가 대신 안내해요.</p>
 
           {/* 커스텀 키워드 추가 */}
           <div className="mb-6">
-            <p className="text-sm font-bold mb-2" style={{ color: "#EAF5F1" }}>커스텀 차단 키워드 추가</p>
+            <p className="text-sm font-bold mb-2" style={{ color: "#EAF5F1" }}>걸러낼 키워드 추가</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newBlockedKeyword}
                 onChange={(e) => setNewBlockedKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddBlockedKeyword()}
-                placeholder="차단할 키워드 입력..."
+                placeholder="걸러낼 키워드 입력…"
                 className="flex-1 rounded-2xl px-4 py-2.5 text-sm font-semibold outline-none transition"
                 style={{ backgroundColor: "#163635", border: "1px solid rgba(242,101,92,0.4)", color: "#EAF5F1" }}
               />
@@ -1965,7 +1965,7 @@ export default function ParentDashboard() {
 
           {/* 커스텀 키워드 목록 */}
           <div className="mb-6">
-            <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>내가 추가한 차단 키워드 ({blockedKeywords.custom.length}개)</p>
+            <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>내가 추가한 키워드 ({blockedKeywords.custom.length}개)</p>
             {blockedKeywords.custom.length === 0 ? (
               <p className="text-sm rounded-2xl px-4 py-3" style={{ color: "#90A9A8", backgroundColor: "#163635" }}>아직 추가한 키워드가 없어요.</p>
             ) : (
@@ -1988,7 +1988,7 @@ export default function ParentDashboard() {
 
           {/* 기본 차단 키워드 (시스템) */}
           <div>
-            <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>기본 차단 키워드 ({blockedKeywords.system.length}개) — 수정 불가</p>
+            <p className="text-sm font-bold mb-3" style={{ color: "#EAF5F1" }}>기본 걸러낼 키워드 ({blockedKeywords.system.length}개) — 수정 불가</p>
             <div className="flex flex-wrap gap-2">
               {blockedKeywords.system.map((kw) => (
                 <span key={kw} className="rounded-full px-3 py-1.5 text-sm font-semibold" style={{ backgroundColor: "#163635", color: "#90A9A8" }}>

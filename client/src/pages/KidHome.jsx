@@ -428,7 +428,7 @@ export default function KidHome() {
       setIsListening(false);
       if (e.error === "no-speech") setError("아무 소리도 안 들렸어요. 다시 눌러서 말해봐요!");
       else if (e.error === "not-allowed") setError("마이크를 쓸 수 없어요. 어른에게 부탁해봐! 🎤");
-      else if (e.error !== "aborted") setError(`음성 인식 오류: ${e.error}`);
+      else if (e.error !== "aborted") { console.warn("음성 인식 오류:", e.error); setError("지금은 잘 안 들려. 잠깐 뒤에 다시 해볼래?"); }
     };
     recognition.onresult = (event) => {
       let interim = "";
@@ -867,8 +867,8 @@ export default function KidHome() {
         {/* YouTube API 할당량 초과 안내 */}
         {quotaError && (
           <div className="mb-4 px-4 py-4 text-center" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", border: "1px solid #F5C6C5" }}>
-            <p className="text-base font-bold" style={{ color: "#C84B47" }}>😢 오늘 검색 횟수를 초과했어요</p>
-            <p className="text-sm mt-1" style={{ color: "#6B7A65" }}>매일 오후 4시에 초기화돼요!</p>
+            <p className="text-base font-bold" style={{ color: "#C84B47" }}>오늘은 검색을 많이 했어! 내일 또 찾아보자 😊</p>
+            <p className="text-sm mt-1" style={{ color: "#6B7A65" }}>그동안 키디가 미리 골라둔 영상 보러 가자!</p>
           </div>
         )}
 
@@ -984,13 +984,13 @@ export default function KidHome() {
                 </div>
               </div>
               <p className="mt-6 text-2xl font-extrabold" style={{ color: "#2C3528" }}>
-                오늘 시청 시간이 끝났어요!
+                약속한 만큼 다 봤다! 이제 뭐 하고 놀까? 🦕
               </p>
               <p className="mt-3 text-base font-medium" style={{ color: "#C84B47" }}>
                 오늘 {todayMinutes}분을 다 봤어요 ⏰
               </p>
               <p className="mt-1 text-sm" style={{ color: "#6B7A65" }}>
-                부모님이 설정한 {selectedProfile?.timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
+                부모님과 약속한 {selectedProfile?.timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
               </p>
               <button
                 onClick={() => setTimeLimitModalDismissed(true)}

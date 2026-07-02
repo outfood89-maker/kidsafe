@@ -334,10 +334,10 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
               </div>
             </div>
           </div>
-          <p className="mt-6 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>오늘 시청 시간이 끝났어요!</p>
+          <p className="mt-6 text-2xl font-extrabold" style={{ color: "#EAF5F1" }}>약속한 만큼 다 봤다! 이제 뭐 하고 놀까? 🦕</p>
           <p className="mt-3 text-base font-medium" style={{ color: "#F2655C" }}>오늘 {usedMinutes}분을 다 봤어요 ⏰</p>
           <p className="mt-1 text-sm" style={{ color: "#90A9A8" }}>
-            부모님이 설정한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
+            부모님과 약속한 {timeLimit}분이에요.<br />내일 또 재미있는 영상 봐요!
           </p>
           <button
             onClick={() => requestClose("/games")}
@@ -544,8 +544,9 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       {/* 남은시간 알림 토스트 — 키디가 부드럽게 (논블로킹: 영상 안 멈추고 몇 초 뒤 자동 사라짐) */}
       {timeWarning && (
         <div
-          className="absolute left-1/2 top-4 z-30 flex items-center gap-2.5 rounded-2xl px-4 py-2.5"
+          className="absolute left-1/2 z-30 flex items-center gap-2.5 rounded-2xl px-4 py-2.5"
           style={{
+            top: isLandscape ? "16px" : "calc(56.25vw + 12px)",   // Q-3 §5: 세로모드에선 영상(16:9) 아래로 — 플레이어 가림 방지 (가로는 현행 유지)
             transform: "translateX(-50%)",
             backgroundColor: timeWarning.prominent ? "rgba(242,101,92,0.96)" : "rgba(15,42,36,0.96)",
             border: timeWarning.prominent ? "1px solid rgba(255,255,255,0.35)" : "1px solid rgba(24,196,154,0.45)",
