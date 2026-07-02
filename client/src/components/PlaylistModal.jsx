@@ -3,7 +3,8 @@ import { FaTimes, FaList, FaSpinner } from "react-icons/fa";
 import { getPlaylistItems } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 
-// onSelectVideo: 영상 클릭 시 부모(KidHome/Favorites)에서 VideoModal 띄우기 위한 콜백
+// onSelectVideo(video, videos): 클릭 영상 + 재생목록 전체(순서)를 부모(KidHome/Favorites)로 전달.
+//   두 번째 인자(videos)는 연속재생 큐용 — 받는 쪽이 안 쓰면 무시(하위호환).
 export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,8 @@ export default function PlaylistModal({ playlist, onClose, onSelectVideo }) {
   if (!playlist) return null;
 
   const handleVideoClick = (video) => {
-    if (onSelectVideo) onSelectVideo(video);
+    // 연속재생을 위해 클릭 영상 + 재생목록 전체(순서)를 함께 넘긴다
+    if (onSelectVideo) onSelectVideo(video, videos);
   };
 
   // 안전점수 배지 — 솔리드 색 + 흰 글씨 (다크 배경에서 잘 읽힘)

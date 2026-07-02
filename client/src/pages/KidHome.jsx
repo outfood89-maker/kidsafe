@@ -860,7 +860,7 @@ export default function KidHome() {
           <PlaylistModal
             playlist={selectedPlaylist}
             onClose={() => setSelectedPlaylist(null)}
-            onSelectVideo={(video) => { setSelectedPlaylist(null); setPlayQueue([]); setSelectedVideo(video); }}
+            onSelectVideo={(video, queue) => { setSelectedPlaylist(null); setPlayQueue(queue || []); setSelectedVideo(video); }}
           />
         )}
 
