@@ -285,6 +285,7 @@ export default function Account() {
                   </li>
                 ))}
               </ul>
+              {/* 데모 청소: 결제 미연동 상태라 '프리미엄 시작하기'(alert) 버튼을 숨김. 토스페이먼츠 연동 시 주석 해제. (M 브리프 §3-3, 삭제 금지)
               <button
                 className="w-full rounded-xl py-3 text-sm font-bold transition hover:opacity-90"
                 style={{ backgroundColor: "#18C49A", color: "#08160F" }}
@@ -292,6 +293,7 @@ export default function Account() {
               >
                 프리미엄 시작하기 →
               </button>
+              */}
             </div>
 
             <p className="text-center text-xs" style={{ color: "#90A9A8" }}>

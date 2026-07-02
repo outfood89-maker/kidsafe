@@ -131,7 +131,7 @@ def get_badge_definitions(favorites: list, searches: list):
         },
         {
             "id": "kidsafe_master",
-            "name": "KidSafe 마스터",
+            "name": "Kiddy 마스터",
             "emoji": "🏆",
             "description": "배지를 5개 이상 획득했어요!",
             "check": lambda history, profile_id, earned_badges: len([

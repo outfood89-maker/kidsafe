@@ -14,7 +14,7 @@
 ## 기술 스택
 - 프론트: React 19, React Router v7, Tailwind CSS, Axios, Recharts, react-icons
 - 백엔드: FastAPI (Python) — `server/` 폴더, uvicorn으로 실행 / Express 백업: `server_backup/`
-- AI: Anthropic API — 키디 챗봇 전용 (claude-haiku-4-5-20251001)
+- AI: Anthropic API — 실시간 상호작용(챗봇·체크인 반응/인사·스케줄)은 `claude-haiku-4-5-20251001`, **주간 리포트·AI 코치는 Sonnet 승격**(`reports.py`의 `REPORT_MODEL` 환경변수, 기본 `claude-sonnet-5`)
 - 영상: YouTube Data API v3
 - 아바타: 로컬 PNG (avatar_01~08.png) — DiceBear 제거
 - 배포: Vercel (프론트 `https://kidsafe-eight.vercel.app`) + Railway (백엔드 `https://kidsafe-production.up.railway.app`)
@@ -39,8 +39,7 @@
 
 ### 안전도 분석
 - 현재: 키워드 기반 (Anthropic 크레딧 절약 목적) — `server/routers/analyze.py`
-- `server/routers/chat.py`만 Anthropic API 사용 (claude-haiku-4-5-20251001)
-  > ⚠️ 검수 고도화 시 analyze도 Claude 사용 예정 — `KidSafe_검수아키텍처_핵심설계.md` 참고
+- Anthropic API 사용처: `chat.py`·`checkins.py`(반응/인사)·`kiddy_greeting.py`·`schedules.py`는 Haiku, `reports.py`(리포트·코치)는 Sonnet(`REPORT_MODEL`), `analyze.py` Tier2 정밀검수는 Haiku Vision. (안전도 기본 채점은 여전히 키워드 기반)
 
 ### 모바일 테스트
 - `api.js` BASE_URL을 PC의 로컬 IP로 변경 (예: `http://172.30.1.56:3000`)

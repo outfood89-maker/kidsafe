@@ -25,8 +25,8 @@ import Typewriter from "../components/Typewriter";
 import DailyCheckin from "../components/DailyCheckin";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
-//    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "")
-const CHECKIN_TEST_PROFILE = "해인";
+//    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "") — 배포 청소로 리셋됨.
+const CHECKIN_TEST_PROFILE = "";
 
 // 깡총 점프 키프레임 주입 (한 번만)
 if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {

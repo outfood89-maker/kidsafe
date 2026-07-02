@@ -35,6 +35,10 @@ const C = {
 // 이모지 → 기분 코드 (백엔드 mood 컬럼 + 부모 리포트 집계용)
 const EMOJI_MOOD = { "😄": "happy", "🙂": "good", "😐": "soso", "😢": "sad", "😡": "angry" };
 
+// 비밀 약속 멘트 — 아이가 "비밀이야 🤫"를 골랐을 때 키디가 정직하게 약속하는 고정 템플릿(오너 승인 카피, verbatim). LLM 호출 금지.
+// ⚠️ 수정 금지 — 문구를 바꾸려면 팀장 재검토 필요. ("말은 아이의 것, 안부는 가족의 것")
+const SECRET_PROMISE_LINE = "알았어, 우리만의 비밀이야! 🤫 무슨 일인지는 절대 말 안 할게. 엄마아빠가 걱정 안 하시게, 오늘 기분만 살짝 알려드릴게!";
+
 // 스트리밍 텍스트를 '도착 속도'와 분리해 일정 속도로 한 글자씩 흘려보낸다.
 // (Haiku 스트림은 글자 뭉치로 불규칙하게 도착 → 그대로 붙이면 툭툭 끊겨 보임)
 // target(버퍼)이 차오르면 화면이 부드럽게 따라가며 타이핑. 스트림이 끝나고 화면이 버퍼를
@@ -478,7 +482,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     setError("");
     try {
       await saveCheckin({ profileId: profile.id, mood, moodEmoji, answers, shareWithParent });
-      setClosing(closingLine(name));
+      // '비밀이야'(share=false)면 키디가 비밀 약속 멘트로 마무리 — closing만 분기하면 reward의 표시(Typewriter)·음성(voice.speak)이 자동 처리.
+      // ⭐ 보상(별)은 공유 여부와 무관하게 그대로(보상은 '체크인을 했다'에만 — 공유 선택에 상·벌 없음, 불가침 원칙).
+      setClosing(shareWithParent ? closingLine(name) : SECRET_PROMISE_LINE);
       setPhase("reward");
     } catch {
       setError("저장에 실패했어요. 잠깐 후 다시 해줘.");

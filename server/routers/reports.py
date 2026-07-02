@@ -156,8 +156,12 @@ async def get_insights(profileId: Optional[str] = "all", user: dict = Depends(ge
 # AI 코치 — 숫자를 부모가 실천할 조언으로 번역 (Claude Haiku, 캐싱)
 # ─────────────────────────────────────────────────────────────
 
-# 코치 프롬프트 버전 — 프롬프트를 고치면 올려서 기존 캐시를 자동 무효화한다.
-COACH_PROMPT_VERSION = "v3"
+# 주간 리포트·AI 코치 전용 모델 — 종합 분석은 깊은 모델(Sonnet)로 승격(결정 C).
+# 실시간 아이 상호작용(chat/checkins/kiddy_greeting)은 그대로 Haiku 유지(지연·비용). Railway 설정 없이도 기본값으로 동작.
+REPORT_MODEL = os.getenv("REPORT_MODEL", "claude-sonnet-5")
+
+# 코치 프롬프트 버전 — 프롬프트를 고치면 올려서 기존 캐시를 자동 무효화한다. (모델 변경도 결과가 달라지므로 올림)
+COACH_PROMPT_VERSION = "v4"
 
 
 def _insights_signature(insights: dict) -> str:
@@ -238,7 +242,7 @@ async def generate_coach(child_name: str, child_age: int, insights: dict) -> dic
     system, user = _build_coach_messages(child_name, child_age, insights)
     client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=REPORT_MODEL,
         max_tokens=1500,
         system=system,
         messages=[{"role": "user", "content": user}],
@@ -321,7 +325,8 @@ MOOD_ORDER = ["happy", "good", "soso", "sad", "angry"]
 
 # 리포트 프롬프트 버전 — 프롬프트 수정 시 올려서 기존 캐시 무효화
 # v2: 이름을 {{CHILD}} 토큰으로 출력(조사 정확성은 프론트 josa 가 보장). 실제 이름 박힌 옛 캐시 무효화.
-REPORT_PROMPT_VERSION = "v2"
+# v3: 리포트 모델을 Sonnet(REPORT_MODEL)로 승격(결정 C) — 옛 Haiku 캐시 폐기. (브리프 L 미적용 상태라 충돌 없음)
+REPORT_PROMPT_VERSION = "v3"
 
 
 def _today_kst_date():
@@ -469,7 +474,7 @@ async def _generate_report_message(child_name: str, start, end, counts: dict, to
     """Claude(Haiku)로 흐름 묘사·키디 한마디 생성. 실패 시 예외 → 호출부가 폴백."""
     client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=REPORT_MODEL,
         max_tokens=600,
         system=_report_system(),
         messages=[{"role": "user", "content": _report_user(child_name, start, end, counts, total, highlights)}],
