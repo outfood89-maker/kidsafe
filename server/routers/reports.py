@@ -244,10 +244,14 @@ async def generate_coach(child_name: str, child_age: int, insights: dict) -> dic
     response = await client.messages.create(
         model=REPORT_MODEL,
         max_tokens=1500,
+        # Sonnet 5는 thinking 생략 시 adaptive가 기본 → 명시적 비활성.
+        # (thinking 토큰이 max_tokens를 잠식해 JSON이 잘리는 것 방지 + 기존 비용·지연 유지)
+        thinking={"type": "disabled"},
         system=system,
         messages=[{"role": "user", "content": user}],
     )
-    raw = response.content[0].text if response.content else ""
+    # 첫 블록이 텍스트라는 가정 금지 — 텍스트 블록만 골라 합친다 (모델 무관 안전)
+    raw = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
     return parse_claude_json(raw)
 
 
@@ -325,8 +329,9 @@ MOOD_ORDER = ["happy", "good", "soso", "sad", "angry"]
 
 # 리포트 프롬프트 버전 — 프롬프트 수정 시 올려서 기존 캐시 무효화
 # v2: 이름을 {{CHILD}} 토큰으로 출력(조사 정확성은 프론트 josa 가 보장). 실제 이름 박힌 옛 캐시 무효화.
-# v3: 리포트 모델을 Sonnet(REPORT_MODEL)로 승격(결정 C) — 옛 Haiku 캐시 폐기. (브리프 L 미적용 상태라 충돌 없음)
-REPORT_PROMPT_VERSION = "v3"
+# v3: 리포트 모델을 Sonnet(REPORT_MODEL)로 승격(결정 C) — 옛 Haiku 캐시 폐기.
+# v4: talk_seed(대화의 씨앗, 브리프 L) 필드 추가 — 옛 캐시엔 talk_seed 없어 폐기(C의 v3 위에 이어 올림).
+REPORT_PROMPT_VERSION = "v4"
 
 
 def _today_kst_date():
@@ -435,11 +440,21 @@ def _report_system() -> str:
         "- 아이를 가리킬 때는 절대 실제 이름을 쓰지 말고 반드시 토큰 '{{CHILD}}' 만 써라. "
         "토큰 뒤에는 평소처럼 조사를 붙여라(예: '{{CHILD}}이 이번 주에도 마음을 들려줬어요', '{{CHILD}}을 꼭 안아주세요'). "
         "이 규칙은 trend·note·kiddy_message 모든 문장에 적용된다.\n\n"
+        "[talk_seed — 대화의 씨앗]\n"
+        "- 목적: 부모가 오늘 저녁 아이에게 '그대로 말할 수 있는' 대화 한 줄을 준다.\n"
+        "- 근거: 반드시 위 [아이가 부모와 나누기로 한 것] 또는 [기분 집계]에 실제로 나온 것에만 근거한다. 없는 활동·감정을 지어내지 마라.\n"
+        "- 형식: (a) 근거를 짧게 짚고 → (b) 아이가 쉽게 답할 '열린 질문'을 제시.\n"
+        "  예) 이번 주 {{CHILD}}이 공룡 영상을 나눠줬어요. 오늘 저녁 '어떤 공룡이 제일 멋있었어?' 하고 물어봐 주세요.\n"
+        "- 질문은 4~7세가 답할 수 있게 쉽고 짧게. '왜 슬펐어?'처럼 캐묻거나 몰아세우는 질문 금지.\n"
+        "- 슬픔·화가 많았던 주면, 다그치지 말고 '가만히 들어주는' 부드러운 질문으로.\n"
+        '- 진단·평가·미래 예측 금지("괜찮아질 거예요" 류 금지). 부모를 불안하게 하지 마라.\n'
+        "- 아이 호칭은 반드시 {{CHILD}} 토큰 + 조사. 실제 이름 쓰지 마라.\n\n"
         "[출력 — JSON만, 다른 텍스트 없이]\n"
         "{\n"
         '  "trend": "<한 주 감정 흐름을 1문장으로. 데이터(횟수·흐름)에 근거하게>",\n'
         '  "note": "<부모가 알아두면 좋을 따뜻한 관찰 1~2문장. 없으면 빈 문자열>",\n'
-        '  "kiddy_message": "<부모님께 아이의 한 주를 전하는 키디의 한마디 2~3문장. 아이는 3인칭으로, 따뜻하고 진심 어리게>"\n'
+        '  "kiddy_message": "<부모님께 아이의 한 주를 전하는 키디의 한마디 2~3문장. 아이는 3인칭으로, 따뜻하고 진심 어리게>",\n'
+        '  "talk_seed": "<부모가 오늘 저녁 아이에게 그대로 건넬 수 있는 대화 1~2문장. 위 [talk_seed] 규칙을 따르고, 마땅한 근거가 없으면 빈 문자열>"\n'
         "}"
     )
 
@@ -475,11 +490,15 @@ async def _generate_report_message(child_name: str, start, end, counts: dict, to
     client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     response = await client.messages.create(
         model=REPORT_MODEL,
-        max_tokens=600,
+        max_tokens=800,  # talk_seed 필드 추가 → 한국어 토큰 여유(잘림 방지)
+        # Sonnet 5는 thinking 생략 시 adaptive가 기본 → 명시적 비활성.
+        # (thinking 토큰이 max_tokens를 잠식해 JSON이 잘리는 것 방지 + 기존 비용·지연 유지)
+        thinking={"type": "disabled"},
         system=_report_system(),
         messages=[{"role": "user", "content": _report_user(child_name, start, end, counts, total, highlights)}],
     )
-    raw = response.content[0].text if response.content else ""
+    # 첫 블록이 텍스트라는 가정 금지 — 텍스트 블록만 골라 합친다 (모델 무관 안전)
+    raw = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
     return parse_claude_json(raw)
 
 
@@ -494,6 +513,7 @@ def _report_to_api(report_row: dict, timeline: list, had_secrets: bool = False, 
             "trend": ms.get("trend", ""),
             "counts": ms.get("counts", {}),
             "note": ms.get("note", ""),
+            "talkSeed": ms.get("talk_seed", ""),
         },
         "moodTimeline": timeline,
         "sharedHighlights": report_row.get("shared_highlights") or [],
@@ -543,7 +563,7 @@ async def get_checkin_report(
     if not checkins:
         empty_row = {
             "profile_id": profile_id, "period_start": start_s, "period_end": end_s,
-            "mood_summary": {"trend": "", "counts": _build_mood_counts([]), "note": ""},
+            "mood_summary": {"trend": "", "counts": _build_mood_counts([]), "note": "", "talk_seed": ""},
             "shared_highlights": [], "kiddy_message": "", "created_at": None,
         }
         return {"report": _report_to_api(empty_row, timeline, had_secrets=had_secrets, empty=True), "cached": False}
@@ -577,13 +597,14 @@ async def get_checkin_report(
         trend = str(gen.get("trend", "")).strip()
         note = str(gen.get("note", "")).strip()
         kiddy_message = str(gen.get("kiddy_message", "")).strip()
+        talk_seed = str(gen.get("talk_seed", "")).strip()  # 비어도 예외 X — 프론트가 코드 폴백으로 채움
         if not kiddy_message:
             raise ValueError("빈 메시지")
     except Exception as e:
         print(f"[리포트] Claude 생성 실패: {e}")
         raise HTTPException(status_code=502, detail="리포트 생성에 실패했어요. 잠시 후 다시 시도해주세요.")
 
-    mood_summary = {"trend": trend, "counts": counts, "note": note, "_v": REPORT_PROMPT_VERSION}
+    mood_summary = {"trend": trend, "counts": counts, "note": note, "talk_seed": talk_seed, "_v": REPORT_PROMPT_VERSION}
 
     new_row = {
         "user_id": user_id, "profile_id": profile_id,

@@ -60,6 +60,26 @@ const closingLine = (name, counts) => {
   return `오늘은 ${who}를 한 번 꼭 안아주는 건 어때요? 💚`;
 };
 
+// 대화의 씨앗 코드 폴백 — LLM talk_seed가 비었을 때 counts·highlights로 결정적 생성(진단·미래예측 0, 답하기 쉬운 열린 질문).
+// (L 브리프 §3-2 — 섹션이 절대 안 비게)
+const buildSeedFallback = (name, counts, highlights) => {
+  const who = childStem(name); // 해인이 / 지우
+  // 1) 아이가 공유한 활동이 있으면 그걸 화제로 (가장 최근 공유)
+  const shared = (highlights || []).flatMap((h) => h.items || []);
+  if (shared.length > 0) {
+    const topic = shared[shared.length - 1];
+    return `이번 주 ${who} “${topic}” 이야기를 나눠줬어요. 오늘 저녁 “${topic}, 뭐가 제일 좋았어?” 하고 물어봐 주세요.`;
+  }
+  // 2) 무거운 주(슬픔+화 많음)면 다그치지 말고 가만히 들어주기
+  const heavy = (counts.sad || 0) + (counts.angry || 0);
+  const total = MOOD_ORDER.reduce((s, k) => s + (counts[k] || 0), 0);
+  if (heavy >= 3 || (total > 0 && heavy >= Math.ceil(total / 2))) {
+    return `요즘 ${who} 마음이 조금 무거웠어요. 오늘은 “오늘 어떤 기분이었어?” 하고 가만히 들어봐 주세요.`;
+  }
+  // 3) 기본
+  return `오늘 저녁 ${who}에게 “오늘 제일 재밌었던 게 뭐야?” 하고 물어봐 주세요.`;
+};
+
 export default function KiddyReportCard({ profileId, profileName, watched, starCount = 0 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -116,6 +136,9 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
   const note = renderKiddyMessage(report.moodSummary?.note || "", profileName);
   const highlights = report.sharedHighlights || [];
   const kiddyMessage = renderKiddyMessage(report.kiddyMessage || "", profileName);
+  // 대화의 씨앗 — LLM 값({{CHILD}} 치환) 우선, 비면 코드 폴백(카드가 절대 안 비게)
+  const talkSeed = renderKiddyMessage(report.moodSummary?.talkSeed || "", profileName);
+  const seedText = talkSeed || buildSeedFallback(profileName || "아이", counts, highlights);
   const totalCheckins = timeline.filter((d) => d.mood).length;
   const range = fmtRange(report.periodStart, report.periodEnd);
 
@@ -274,6 +297,21 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
             그리고 {childStem(profileName || "아이")}만의 비밀도 있었어요.<br />그건 키디가 지켜요 🤫
           </p>
         )}
+      </div>
+
+      {/* ── 대화의 씨앗 — 오늘 저녁 이렇게 말 걸어보세요 (C 기둥: 정보 → 대화의 시작점) ── */}
+      <div
+        className="rounded-2xl p-4 md:p-5"
+        style={{
+          background: "linear-gradient(135deg, rgba(24,196,154,0.14), rgba(20,184,196,0.08))",
+          border: "1px solid rgba(24,196,154,0.28)",
+        }}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-base">💬</span>
+          <h3 className="text-sm font-bold" style={{ color: C.accent }}>오늘 저녁, 이렇게 말 걸어보세요</h3>
+        </div>
+        <p className="text-sm leading-relaxed" style={{ color: C.ink }}>{seedText}</p>
       </div>
 
       {/* ── 이번 주 본 것 (조용한 보조 블록) ── */}
