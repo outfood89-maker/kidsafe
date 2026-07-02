@@ -144,6 +144,22 @@ class CheckinSave(BaseModel):
     shareWithParent: Optional[bool] = False
 
 
+def _mask_private_answers(answers, share_with_parent: bool):
+    """🚨 윤리선 코드 강제 — 비공개 내용은 저장하지 않는다 (팀장 결정 B / O 브리프 §1).
+    - 체크인 전체 비공개(share=false): answers 전체 미저장(빈 배열). 행·mood·flag·날짜는 유지.
+    - 공유(share=true)여도 후속답이 '🤫 비밀이야'(followup.secret=true)면 내용(a)을 비우고
+      {q, secret: true}만 남긴다 — 아이가 '비밀'이라 명시한 건 층위 무관 동일 취급 (팀장 조건 1).
+    """
+    if not share_with_parent:
+        return []
+    masked = []
+    for a in answers or []:
+        if isinstance(a, dict) and isinstance(a.get("followup"), dict) and a["followup"].get("secret"):
+            a = {**a, "followup": {"q": a["followup"].get("q"), "secret": True}}
+        masked.append(a)
+    return masked
+
+
 @router.post("")
 async def save_checkin(data: CheckinSave, user: dict = Depends(get_current_user)):
     """오늘 체크인 저장 — (profile_id, checkin_date) 유니크 기준 upsert (같은 날 재요청은 갱신)."""
@@ -159,7 +175,8 @@ async def save_checkin(data: CheckinSave, user: dict = Depends(get_current_user)
         "checkin_date": _today_kst(),
         "mood": data.mood,
         "mood_emoji": data.moodEmoji,
-        "answers": data.answers or [],
+        # 🚨 비공개 답변 미저장 — save_checkin이 유일한 저장 지점이라 서버가 강제한다 (O 브리프 §1).
+        "answers": _mask_private_answers(data.answers, bool(data.shareWithParent)),
         "share_with_parent": bool(data.shareWithParent),
         "updated_at": _now_iso(),
     }
@@ -216,10 +233,15 @@ async def update_share(checkin_id: str, body: ShareUpdate, user: dict = Depends(
     if not rows:
         raise HTTPException(status_code=404, detail="기록을 찾을 수 없어요")
 
+    # 🚨 비공개(false)로 전환 시 원본 answers도 함께 비운다 — save 미저장 정책과 동일하게 봉합 (O 브리프 §2).
+    #    (공유했다가 나중에 false로 뒤집어도 원본이 남지 않게. 저장 지점 마스킹만으론 못 막는 구멍)
+    patch = {"share_with_parent": bool(body.shareWithParent), "updated_at": _now_iso()}
+    if not body.shareWithParent:
+        patch["answers"] = []  # ⚠️ false→true로 다시 뒤집어도 복구 안 됨 — 미저장 정책상 의도된 동작
     updated = await sb_update(
         "daily_checkins",
         {"id": f"eq.{checkin_id}", "user_id": f"eq.{user['user_id']}"},
-        {"share_with_parent": bool(body.shareWithParent), "updated_at": _now_iso()},
+        patch,
     )
     return {"checkin": _to_api(updated[0])}
 
