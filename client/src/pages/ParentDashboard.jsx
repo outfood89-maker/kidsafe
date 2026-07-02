@@ -29,7 +29,8 @@ import {
   CartesianGrid, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach, getCareSignals, markCareSignalRead } from "../utils/api";
+import { PARENT_SIGNAL_MESSAGE } from "../utils/safetyLexicon";
 import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
 import KiddyReportCard from "../components/KiddyReportCard";
@@ -133,6 +134,7 @@ export default function ParentDashboard() {
   const [newBlockedKeyword, setNewBlockedKeyword] = useState("");
   const [blockError, setBlockError] = useState("");
   const [alerts, setAlerts] = useState([]);
+  const [careSignals, setCareSignals] = useState([]); // 위기 신호(P §4) — 프로필명 붙여 합침. 내용 없음(존재만).
   const [alertSettings, setAlertSettings] = useState({ threshold: 70, lateNightAlert: true, lateNightHour: 22 });
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
@@ -178,6 +180,17 @@ export default function ParentDashboard() {
         const [alertData, settingsData] = await Promise.all([getAlerts(), getAlertSettings()]);
         setAlerts(alertData.alerts);
         setAlertSettings(settingsData);
+
+        // 위기 신호(P §4) — 프로필별 조회 후 이름 붙여 합침. 실패한 프로필은 조용히 건너뜀.
+        const signalsNested = await Promise.all(
+          profilesData.map(async (p) => {
+            try {
+              const sigs = await getCareSignals(p.id);
+              return (sigs || []).map((s) => ({ ...s, profileName: p.name }));
+            } catch { return []; }
+          })
+        );
+        setCareSignals(signalsNested.flat());
       } catch (err) {
         setError("데이터를 불러오지 못했어요.");
       } finally {
@@ -304,6 +317,14 @@ export default function ParentDashboard() {
   const handleMarkAllRead = async () => {
     await markAllAlertsRead();
     setAlerts(prev => prev.map(a => ({ ...a, read: true })));
+  };
+
+  // 위기 신호 카드 '확인했어요' — 읽음 처리(내용은 애초에 없음). 실패해도 조용히.
+  const handleReadCareSignal = async (id) => {
+    try {
+      await markCareSignalRead(id);
+      setCareSignals(prev => prev.map(s => (s.id === id ? { ...s, read: true } : s)));
+    } catch { /* noop */ }
   };
 
   const handleSaveAlertSettings = async () => {
@@ -1720,6 +1741,37 @@ export default function ParentDashboard() {
         )}
 
         {mainTab === "safety" && (<>
+        {/* 🚨 위기 신호(P §4) — 부모에게 '존재만' 알림. 무슨 말이었는지는 어디에도 없음. 카피는 팀장 검수 verbatim. */}
+        {careSignals.filter((s) => !s.read).length > 0 && (
+          <section className="mb-6">
+            <div className="flex flex-col gap-3">
+              {careSignals.filter((s) => !s.read).map((sig) => (
+                <div
+                  key={sig.id}
+                  className="rounded-2xl p-5"
+                  style={{ backgroundColor: "#2E2A18", border: "1.5px solid #C9A227" }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">💛</span>
+                    <h3 className="text-base md:text-lg font-extrabold" style={{ color: "#F5D97A" }}>
+                      {sig.profileName ? `${sig.profileName} — 오늘의 관심 신호` : "오늘의 관심 신호"}
+                    </h3>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: "#EAE3C8", whiteSpace: "pre-line" }}>
+                    {PARENT_SIGNAL_MESSAGE}
+                  </p>
+                  <button
+                    onClick={() => handleReadCareSignal(sig.id)}
+                    className="mt-4 rounded-xl px-4 py-2 text-sm font-bold transition hover:opacity-90"
+                    style={{ backgroundColor: "#C9A227", color: "#1A1608" }}
+                  >
+                    확인했어요
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         {/* 위험 영상 알림 */}
         <section
           className="p-4 md:p-6 mb-5"

@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
+from safety_lexicon import screen_text, fixed_response, is_high
+
 router = APIRouter()
 
 
@@ -99,6 +101,14 @@ def make_system_prompt(profile_name: str, profile_age: int, level: str) -> str:
 async def chat_with_kiddy(data: ChatRequest):
     if not data.messages or len(data.messages) == 0:
         raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
+
+    # 🚨 위기 신호 스크리닝 — Claude 호출 '전'. 감지 시 LLM 건너뛰고 사람이 검수한 고정 응답만 (P 브리프 §2).
+    #    care 플래그를 함께 반환 → 클라(토큰·profileId 보유)가 care_signal 을 생성한다.
+    #    ⚠️ /chat 은 auth·profileId 가 없어 서버에서 신호를 직접 만들 수 없음 → 신호 생성은 클라 담당(브리프 §4 attribution, 팀장 확정 대기).
+    last_user = next((m.content for m in reversed(data.messages) if m.role == "user"), "")
+    crisis = screen_text(last_user)
+    if crisis:
+        return {"reply": fixed_response(crisis), "care": ("high" if is_high(crisis) else "soft")}
 
     # 수준 검증 — 모르는 값이면 초급으로 안전 폴백. max_tokens 도 수준별(고급일수록 길게 허용).
     level = data.level if data.level in LEVEL_GUIDE else "beginner"

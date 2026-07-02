@@ -28,6 +28,7 @@ import anthropic
 from auth import get_current_user
 from db import sb_select, sb_upsert, sb_update
 from routers.profiles import get_owned_profile
+from safety_lexicon import screen_text, fixed_response, is_high
 
 router = APIRouter()
 
@@ -397,6 +398,11 @@ def _react_user(data: "ReactRequest") -> str:
 async def react_to_answer(data: ReactRequest, user: dict = Depends(get_current_user)):
     """아이 답에 대한 키디 반응 생성 (Haiku). 실패 시 502 → 프론트가 로컬 템플릿으로 폴백."""
     name = data.profileName or "친구"
+    # 🚨 위기 신호 스크리닝 — Claude 호출 '전'. 감지 시 LLM 건너뛰고 고정 응답 + care 플래그 (P 브리프 §2).
+    #    신호(care_signal) 생성은 클라가 담당(profileId 보유) — ReactRequest 에 profileId 가 없어 서버 직접 insert 불가(§4 attribution).
+    crisis = screen_text(data.answer)
+    if crisis:
+        return {"reaction": fixed_response(crisis), "care": ("high" if is_high(crisis) else "soft")}
     try:
         client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         response = await client.messages.create(
@@ -420,6 +426,17 @@ async def react_to_answer(data: ReactRequest, user: dict = Depends(get_current_u
 @router.post("/react/stream")
 async def react_to_answer_stream(data: ReactRequest, user: dict = Depends(get_current_user)):
     name = data.profileName or "친구"
+
+    # 🚨 위기 신호 스크리닝 — Claude 호출 '전'. 감지 시 고정 응답을 스트림으로 흘려보낸다 (브리프 §2 허용).
+    #    ⚠️ 스트림은 care 플래그를 못 실음 → 이 경로의 신호 생성은 클라 스크리닝(safetyLexicon.js)이 담당(§4 attribution, 팀장 확정 대기).
+    crisis = screen_text(data.answer)
+    if crisis:
+        fixed = fixed_response(crisis)
+
+        async def crisis_gen():
+            yield fixed
+
+        return StreamingResponse(crisis_gen(), media_type="text/plain; charset=utf-8")
 
     async def gen():
         try:

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { FaChevronDown, FaPaperPlane, FaMicrophone, FaVolumeUp, FaVolumeMute } from "react-icons/fa";
-import { sendChatMessage } from "../utils/api";
+import { sendChatMessage, createCareSignal } from "../utils/api";
 import Typewriter from "./Typewriter";
 import useKiddySpeech from "../hooks/useKiddySpeech";
 import useKiddyVoice from "../hooks/useKiddyVoice";
@@ -115,6 +115,14 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
     try {
       const data = await sendChatMessage(newMessages, null, null, level);
       setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+      // 🚨 위기 신호(HIGH) — 서버가 감지해 care 플래그를 보냄. 부모에게 '존재만' 알림 생성(내용 미전송).
+      //    프로필은 localStorage에서(ChatWidget은 프로필 prop이 없음). soft 는 신호 안 만듦.
+      if (data.care === "high") {
+        try {
+          const p = JSON.parse(localStorage.getItem("selectedProfile") || "null");
+          if (p?.id) createCareSignal(p.id, "high").catch(() => {});
+        } catch { /* noop */ }
+      }
       // 답을 키디 목소리로 읽어줌 (음성 켬일 때만 — 응답 대기 중 껐으면 ref로 최신값 반영).
       // stop() 먼저 → 이전 음성 정리 + 중복가드 리셋(연속 답이 같은 문장이어도 다시 읽게).
       if (voiceOnRef.current) {

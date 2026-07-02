@@ -367,6 +367,25 @@ export const sendChatMessage = async (messages, profileName, profileAge, level =
   return response.data
 }
 
+// ── 위기 신호 (P 브리프 §4) — 부모에게 '존재만' 알림. 내용은 저장·전송 안 함 ──────
+// 위기(HIGH) 감지 시 클라가 생성. 서버가 auth+소유검증 + 같은 날 중복 1건 처리.
+export const createCareSignal = async (profileId, level = "high") => {
+  const response = await axios.post(`${BASE_URL}/care-signals`, { profileId, level })
+  return response.data // { careSignal, deduped }
+}
+
+// 부모 조회 — 특정 프로필의 위기 신호 목록
+export const getCareSignals = async (profileId) => {
+  const response = await axios.get(`${BASE_URL}/care-signals`, { params: { profileId } })
+  return response.data.careSignals
+}
+
+// 부모가 신호 카드 확인(읽음) 처리
+export const markCareSignalRead = async (id) => {
+  const response = await axios.patch(`${BASE_URL}/care-signals/${id}/read`)
+  return response.data.careSignal
+}
+
 // 차단 키워드
 export const getBlockedKeywords = async () => {
   const response = await axios.get(`${BASE_URL}/blocked-keywords`)

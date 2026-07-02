@@ -3,7 +3,8 @@ import confettiLib from "canvas-confetti";
 import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import KiddyGreeting from "./KiddyGreeting";
-import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting } from "../utils/api";
+import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting, createCareSignal } from "../utils/api";
+import { screenText, fixedResponse, isHigh } from "../utils/safetyLexicon";
 import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowup, moodFollowupClosing } from "../utils/kiddyLines";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 import { hasBatchim } from "../utils/korean";
@@ -304,13 +305,25 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
       setMood(EMOJI_MOOD[value] || "soso");
       setMoodEmoji(value);
     }
-    // '볼 것'은 아동 안전 검색어로 변환해서 검색에 넘긴다 (버튼 라벨=value / 직접 말하기=말한 내용).
-    // 표시·반응은 친근한 라벨/말한 내용 그대로. wildcard('그 외')는 키워드 없음.
-    if (current.qId === "watch_genre" && !isWildcard) setWatchKeyword(toKidQuery(isSpeech ? speechText : value));
     setPending(answer);
     setReaction("");
     setStreaming(false);
     setTypingDone(false);
+
+    // 🚨 위기 발화 감지 — Claude/스트림/검색어 세팅 '전'에 먼저 (P 브리프 §2). 감지 시 고정 응답만.
+    //    비저장 불변식: next()가 answers에서 항목째 제외 + 아래 watchKeyword 를 아예 안 만들어
+    //    KidHome 자동검색·검색기록(searches DB)·검색창 노출까지 전부 차단한다. HIGH면 부모에게 '존재' 신호만.
+    const answerCrisis = screenText(effAnswer);
+    if (answerCrisis) {
+      setReacting(false);
+      setReaction(fixedResponse(answerCrisis));
+      if (isHigh(answerCrisis) && profile?.id) createCareSignal(profile.id, "high").catch(() => {});
+      return; // watchKeyword 미설정 → 검색·검색기록 저장 없음 (비저장 불변식 유지)
+    }
+
+    // '볼 것'은 아동 안전 검색어로 변환해서 검색에 넘긴다 (버튼 라벨=value / 직접 말하기=말한 내용).
+    // 표시·반응은 친근한 라벨/말한 내용 그대로. wildcard('그 외')는 키워드 없음. (⚠️ 위기 아님 확정 뒤에만 세팅)
+    if (current.qId === "watch_genre" && !isWildcard) setWatchKeyword(toKidQuery(isSpeech ? speechText : value));
 
     // 속상한 기분(😢 슬픔·😡 화남)은 가장 예민한 순간 → Claude 건너뛰고 고정 위로 템플릿(안전 우선).
     // 즐거운/보통·하루·볼것은 아래 Claude 받아주기 유지(생동감·변형·한 일↔볼 것 콜백).
@@ -435,7 +448,10 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const selectFollowup = (chip) => {
     if (fuStage !== "ask" || !fuQDone) return;
     setFuAnswer(chip);
-    setFuClosing(moodFollowupClosing(moodEmoji, chip));
+    // 🚨 후속답 자유발화(경로 3 — 서버 미경유)도 위기 스크리닝. 감지 시 로컬 템플릿 대신 고정 응답 + HIGH 신호. (P §2)
+    const fuCrisis = screenText(chip.label);
+    if (fuCrisis && isHigh(fuCrisis) && profile?.id) createCareSignal(profile.id, "high").catch(() => {});
+    setFuClosing(fuCrisis ? fixedResponse(fuCrisis) : moodFollowupClosing(moodEmoji, chip));
     setFuClosingDone(false);
     setFuStage("closing");
   };
@@ -454,11 +470,15 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const next = () => {
     voice.stop();   // 진행 중 음성 즉시 정지 → 다음 질문/공유 음성과 안 겹치게 (다른 핸들러와 동일 패턴)
     // 기분 답에 후속('한 박자 더')이 있으면 사실 그대로 nested 로 붙인다(부모 리포트 감정 맥락 한 겹).
+    // 🚨 위기 발화는 answers에 저장하지 않는다 — 항목째 제외(플레이스홀더 X, P §2 갱신). 부모 정보는 care_signal로 단일화.
+    const fuCrisis = pending?.qId === "mood_today" && fuAnswer ? screenText(fuAnswer.label) : null;
     const finalPending =
-      pending?.qId === "mood_today" && fuAnswer
+      pending?.qId === "mood_today" && fuAnswer && !fuCrisis
         ? { ...pending, followup: { q: fuData?.question, a: fuAnswer.label, secret: !!fuAnswer.secret } }
         : pending;
-    const newAnswers = [...answers, finalPending];
+    // 본답 자체가 위기 발화면(그 외·직접 말하기 자유텍스트) 그 답을 통째로 제외
+    const answerCrisis = finalPending && screenText(finalPending.answer);
+    const newAnswers = answerCrisis ? [...answers] : [...answers, finalPending];
     setAnswers(newAnswers);
     setPending(null);
     setReaction(null);
