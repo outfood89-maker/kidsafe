@@ -427,7 +427,7 @@ export default function KidHome() {
     recognition.onerror = (e) => {
       setIsListening(false);
       if (e.error === "no-speech") setError("아무 소리도 안 들렸어요. 다시 눌러서 말해봐요!");
-      else if (e.error === "not-allowed") setError("마이크 사용이 차단됐어요. 브라우저 설정에서 허용해주세요.");
+      else if (e.error === "not-allowed") setError("마이크를 쓸 수 없어요. 어른에게 부탁해봐! 🎤");
       else if (e.error !== "aborted") setError(`음성 인식 오류: ${e.error}`);
     };
     recognition.onresult = (event) => {
@@ -457,7 +457,7 @@ export default function KidHome() {
       if (blockCheck.blocked) {
         // 차단 시 이전 검색 결과를 비우고 안내 메시지를 보여준다
         setVideos([]); setPlaylists([]); setShowSearchHistory(false);
-        setError(`🙈 앗! "${trimmedKeyword}"은(는) 검색할 수 없어요. 다른 키워드로 찾아봐요!`);
+        setError(`🙈 앗! "${trimmedKeyword}"은(는) 검색할 수 없어요. 다른 말로 찾아봐요!`);
         return;
       }
       setLoading(true); setError(""); setQuotaError(false); setVideos([]); setPlaylists([]); setShowSearchHistory(false); setVisibleCount(9);

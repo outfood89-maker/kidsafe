@@ -412,7 +412,7 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
           <p className="text-xs font-bold mb-3" style={{ color: "#5FE0BC" }}>
             {nextStage === "analyzing" ? "🔍 다음 영상 검수 중..."
               : nextStage === "scored" ? "✅ 검수 완료 — 안전해요!"
-              : nextStage === "blocked" ? "🚫 다음 영상"
+              : nextStage === "blocked" ? "🦕 이 영상은 건너뛸게"
               : "▶ 다음 영상"}
           </p>
 
@@ -589,8 +589,8 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
             <KiddyImg pose="sad" size={80} bg="#111" />
-            <p className="text-base font-bold text-white">이 영상은 Kiddy에서 바로 볼 수 없어요.</p>
-            <p className="text-xs" style={{ color: "#9BA89A" }}>채널 설정에 따라 임베드가 제한된 영상이에요.</p>
+            <p className="text-base font-bold text-white">이 영상은 키디에서 바로 볼 수 없어요.</p>
+            <p className="text-xs" style={{ color: "#9BA89A" }}>아래 버튼을 누르면 볼 수 있어! 🦕</p>
             <button
               onClick={() => window.open(`https://www.youtube.com/watch?v=${video.videoId}`, "_blank")}
               className="rounded-2xl px-5 py-2.5 text-sm font-bold"
