@@ -5,45 +5,46 @@ import NavBar from "../components/NavBar";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
 
+// ⚠️ 서버(server/routers/badges.py get_badge_definitions)와 1:1 동기화 필수.
+// N 개편(결정 D): 시청량·빈도 보상 6종 + 찜 마스터 제거, '마음 개근왕'(체크인 연속) 신설. → 15종.
 const ALL_BADGES = [
-  // 시청 기반
+  // 마음 안부 (N 개편의 핵심 — 시청이 아니라 마음에 보상)
+  { id: "heart_attendance",name: "마음 개근왕",    emoji: "💚", description: "7일 연속으로 키디에게 마음을 들려줬어요!", category: "마음" },
+  // 시청 (온보딩 1회성만)
   { id: "first_step",      name: "첫 발걸음",     emoji: "🌟", description: "첫 번째 영상을 시청했어요!", category: "시청" },
-  { id: "sprout_explorer", name: "새싹 탐험가",    emoji: "🌱", description: "영상 5개를 시청했어요!", category: "시청" },
-  { id: "watch_master",    name: "시청 대장",      emoji: "⭐", description: "영상 20개를 시청했어요!", category: "시청" },
-  { id: "channel_regular", name: "단골손님",       emoji: "📺", description: "같은 채널 영상을 3개 이상 시청했어요!", category: "시청" },
-  { id: "evening_explorer",name: "저녁 탐험가",    emoji: "🌙", description: "저녁 6시~10시 사이에 영상을 5번 시청했어요!", category: "시청" },
-  { id: "early_bird",      name: "얼리버드",       emoji: "☀️", description: "오전 시간대에 영상을 5번 시청했어요!", category: "시청" },
-  { id: "attendance_king", name: "개근왕",         emoji: "📅", description: "7일 연속으로 영상을 시청했어요!", category: "시청" },
   // 안전/교육 기반
   { id: "safety_guard",    name: "안전 보안관",    emoji: "🌈", description: "안전도 95점 이상 영상을 10개 시청했어요!", category: "안전" },
   { id: "brain_power",     name: "브레인 파워",    emoji: "🧠", description: "교육성 80점 이상 영상을 10개 시청했어요!", category: "안전" },
   { id: "perfectionist",   name: "완벽주의자",     emoji: "💯", description: "안전도 100점 영상을 5개 시청했어요!", category: "안전" },
-  { id: "safety_expert",   name: "안전 전문가",    emoji: "🎯", description: "폭력·언어·선정성 모두 90점 이상 영상을 10개 시청했어요!", category: "안전" },
+  { id: "safety_expert",   name: "안전 전문가",    emoji: "🎯", description: "폭력성, 언어, 선정성 모두 90점 이상인 영상을 10개 시청했어요!", category: "안전" },
   // 장르 기반
   { id: "fairy_tale_lover",name: "동화 왕국",      emoji: "📚", description: "동화/동요 영상을 3개 이상 시청했어요!", category: "장르" },
   { id: "dino_expert",     name: "공룡 박사",      emoji: "🦕", description: "공룡 영상을 3개 이상 시청했어요!", category: "장르" },
   { id: "science_sprout",  name: "과학 꿈나무",    emoji: "🔬", description: "과학/실험 영상을 3개 이상 시청했어요!", category: "장르" },
-  // 찜 기반
+  // 찜 기반 (수집량 보상 아닌 큐레이션 소량만)
   { id: "fav_collector",   name: "찜 수집가",      emoji: "💝", description: "영상이나 재생목록을 3개 이상 찜했어요!", category: "찜" },
-  { id: "fav_master",      name: "찜 마스터",      emoji: "💖", description: "영상이나 재생목록을 10개 이상 찜했어요!", category: "찜" },
   { id: "playlist_fan",    name: "재생목록 팬",    emoji: "🎬", description: "재생목록을 3개 이상 찜했어요!", category: "찜" },
-  // 검색 기반
+  // 검색 기반 (탐험)
   { id: "curious_explorer",name: "호기심 탐험가",  emoji: "🔍", description: "검색을 10번 이상 해봤어요!", category: "탐험" },
   { id: "genre_pioneer",   name: "장르 개척자",    emoji: "🗺️", description: "5가지 이상 다양한 키워드로 검색했어요!", category: "탐험" },
+  // 놀이 (배움·성취 — 통산 1회성 마일스톤 1개만)
+  { id: "play_expert",     name: "놀이 척척박사",  emoji: "🧩", description: "미니게임을 열 판이나 해냈어요!", category: "놀이" },
   // 마스터
-  { id: "kidsafe_master",  name: "Kiddy 마스터", emoji: "🏆", description: "배지를 5개 이상 획득했어요!", category: "마스터" },
-  { id: "all_star",        name: "올스타",         emoji: "🌠", description: "배지를 10개 이상 획득했어요!", category: "마스터" },
+  { id: "kidsafe_master",  name: "Kiddy 마스터",  emoji: "🏆", description: "배지를 5개 이상 획득했어요!", category: "마스터" },
+  { id: "all_star",        name: "올스타",         emoji: "🌠", description: "배지를 8개 이상 획득했어요!", category: "마스터" },
 ];
 
-const CATEGORY_ORDER = ["시청", "안전", "장르", "찜", "탐험", "마스터"];
+const CATEGORY_ORDER = ["마음", "시청", "안전", "장르", "찜", "탐험", "놀이", "마스터"];
 
 // 다크 테마용 — 카테고리별 액센트색 유지 (밝은 톤 + 어두운 틴트 배경)
 const CATEGORY_COLORS = {
+  마음:   { accent: "#5FE0BC", tint: "rgba(95,224,188,0.14)",  tagBg: "#12332B" },
   시청:   { accent: "#7FC4F0", tint: "rgba(127,196,240,0.12)", tagBg: "#13344A" },
   안전:   { accent: "#3FE08A", tint: "rgba(63,224,138,0.12)",  tagBg: "#163A2E" },
   장르:   { accent: "#F5B829", tint: "rgba(245,184,41,0.12)",  tagBg: "#3A2F14" },
   찜:     { accent: "#FF8A82", tint: "rgba(242,101,92,0.12)",  tagBg: "#3A1E22" },
   탐험:   { accent: "#C4B5FD", tint: "rgba(196,181,253,0.12)", tagBg: "#1E1B2E" },
+  놀이:   { accent: "#F472B6", tint: "rgba(244,114,182,0.12)", tagBg: "#3A1B2C" },
   마스터: { accent: "#FB923C", tint: "rgba(251,146,60,0.12)",  tagBg: "#3A2A16" },
 };
 

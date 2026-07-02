@@ -10,7 +10,7 @@ import MathQuiz from "../components/games/MathQuiz";
 import KiddyImg from "../components/KiddyImg";
 import BottomTabBar from "../components/BottomTabBar";
 import ChatWidget from "../components/ChatWidget";
-import { getGameBonus, saveGameBonus } from "../utils/api";
+import { getGameBonus, saveGameBonus, checkBadges } from "../utils/api";
 import { computeGameBonus } from "../utils/gameBonus";
 
 // 듀오링고 스타일 애니메이션 주입
@@ -151,6 +151,10 @@ export default function MiniGame() {
     // 백엔드 저장은 백그라운드 처리
     if (profile) {
       saveGameBonus({ profileId: profile.id, game: selectedGame, correctCount })
+        .then(() => {
+          // N 개편(놀이 척척박사): 게임 저장 후 배지 판정 한 줄. 팝업은 생략 — 컬렉션 화면 노출로 충분(팀장 결정).
+          checkBadges(profile.id).catch(() => {});
+        })
         .catch((err) => console.error("보너스 저장 실패:", err));
     }
   };

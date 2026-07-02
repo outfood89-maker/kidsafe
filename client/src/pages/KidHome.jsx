@@ -1469,7 +1469,15 @@ export default function KidHome() {
             // '볼 것' 답이 있으면 그 키워드로 바로 검색 (데모 시나리오의 payoff)
             if (watchKeyword) {
               setSearchKeyword(watchKeyword);
-              handleSearch(watchKeyword);
+              handleSearch(watchKeyword); // handleSearch 안에서 checkBadges 실행 → 마음 개근왕도 함께 판정(중복 호출 방지)
+            } else {
+              // 검색 payoff가 없으면 체크인 완료 자체로 배지 판정(마음 개근왕 등). 기존 3트리거와 동일 패턴.
+              checkBadges(selectedProfile.id).then((result) => {
+                if (result.newBadges?.length > 0) {
+                  setNewBadges(result.newBadges);
+                  setEarnedBadges(result.allBadges);
+                }
+              }).catch(() => {});
             }
           }}
         />

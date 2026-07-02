@@ -10,25 +10,20 @@ import PaywallModal from "../components/PaywallModal";
 import { getProfiles, getBadges, getPinStatus, deleteProfile } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
 
-// 높을수록 희귀 (획득 조건 기준)
+// 높을수록 희귀 (획득 조건 기준) — 서버 배지 목록과 동기화(N 개편: 시청량·빈도 배지 제거, 마음 개근왕 추가)
 const BADGE_RANK = {
   all_star: 10,
   kidsafe_master: 9,
-  attendance_king: 8,
+  heart_attendance: 8,
   safety_expert: 7,
   perfectionist: 7,
-  watch_master: 6,
   brain_power: 6,
   safety_guard: 5,
-  fav_master: 5,
   curious_explorer: 4,
-  early_bird: 4,
-  evening_explorer: 4,
-  sprout_explorer: 3,
+  play_expert: 4,
   fav_collector: 3,
   genre_pioneer: 3,
   playlist_fan: 3,
-  channel_regular: 2,
   fairy_tale_lover: 2,
   dino_expert: 2,
   science_sprout: 2,
