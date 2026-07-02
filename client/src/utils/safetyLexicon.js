@@ -40,21 +40,33 @@ export const PARENT_SIGNAL_MESSAGE =
   "무슨 말이었는지는 키디도 전해드리지 않아요 — 아이가 직접 들려줄 수 있게요.\n" +
   "마음이 쓰이시면 전문 상담과 이야기해보실 수 있어요 — 청소년·아동 상담전화 1388 (24시간).";
 
+// 매칭 전용 정규화 — 공백 전부 제거 ("죽고싶어" 붙여쓰기 우회 방지, P-2)
+const norm = (s) => s.replace(/\s+/g, "");
+
+// ⚠️ 원문(공백 보존) 매칭 전용 — 공백 제거 시 경계 오탐("이모는 혼자 살아"→"혼자살아"⊃"자살") 방지 (팀장 수정)
+const RAW_MATCH_PATTERNS = new Set(["자살"]);
+
+// 패턴 매치 — RAW_MATCH_PATTERNS 는 원문에서, 나머지는 공백 제거본에서
+const hit = (patterns, tNorm, tRaw) =>
+  patterns.some((p) => (RAW_MATCH_PATTERNS.has(p) ? tRaw.includes(p) : tNorm.includes(norm(p))));
+
 // 자유 텍스트 1건을 스크리닝. 반환: 'high_self' | 'high_violence' | 'soft' | null.
-// 판정 순서(브리프 §1 확정): ① 폭력(EXCLUDE 안 봄) ② 자해(EXCLUDE 있으면 통과) ③ SOFT. 매칭은 부분일치(includes).
+// 판정 순서(브리프 §1 확정): ① 폭력(EXCLUDE 안 봄) ② 자해(EXCLUDE 있으면 통과) ③ SOFT.
+// 매칭은 공백 제거 후 부분일치(P-2 — "죽고싶어" 붙여쓰기 우회 방지). 단 "자살"만 원문 매칭.
 export const screenText = (text) => {
   if (!text || typeof text !== "string") return null;
-  const t = text.trim();
+  const tRaw = text.trim();
+  const t = norm(text);
   if (!t) return null;
   // ① 폭력 피해 — EXCLUDE 미적용
-  if (HIGH_VIOLENCE_PATTERNS.some((p) => t.includes(p))) return "high_violence";
+  if (hit(HIGH_VIOLENCE_PATTERNS, t, tRaw)) return "high_violence";
   // ② 자해·죽음 — 게임/이야기 문맥이면 통과
-  if (HIGH_SELF_PATTERNS.some((p) => t.includes(p))) {
-    if (!EXCLUDE_HINTS.some((h) => t.includes(h))) return "high_self";
+  if (hit(HIGH_SELF_PATTERNS, t, tRaw)) {
+    if (!EXCLUDE_HINTS.some((h) => t.includes(norm(h)))) return "high_self";
     // EXCLUDE 문맥 → 자해 아님. 아래 SOFT 판정으로 계속.
   }
   // ③ 외로움·불안
-  if (SOFT_PATTERNS.some((p) => t.includes(p))) return "soft";
+  if (hit(SOFT_PATTERNS, t, tRaw)) return "soft";
   return null;
 };
 

@@ -47,6 +47,24 @@ PARENT_SIGNAL_MESSAGE = (
 )
 
 
+def _norm(s: str) -> str:
+    """매칭 전용 정규화 — 공백 전부 제거 ("죽고싶어" 붙여쓰기 우회 방지, P-2)."""
+    return "".join(s.split())
+
+
+# ⚠️ 원문(공백 보존) 매칭 전용 — 2글자 단어라 공백 제거 시 경계 오탐 발생
+#    ("이모는 혼자 살아"→"혼자살아"⊃"자살"). 긴 구문 = 공백 제거 / "자살" = 원문. (팀장 수정, 2026-07-02)
+RAW_MATCH_PATTERNS = {"자살"}
+
+
+def _hit(patterns, t_norm, t_raw):
+    """패턴 매치 — RAW_MATCH_PATTERNS 는 원문에서, 나머지는 공백 제거본에서."""
+    return any(
+        (p in t_raw) if p in RAW_MATCH_PATTERNS else (_norm(p) in t_norm)
+        for p in patterns
+    )
+
+
 def screen_text(text):
     """자유 텍스트 1건을 스크리닝. 반환: 'high_self' | 'high_violence' | 'soft' | None.
 
@@ -54,23 +72,24 @@ def screen_text(text):
       ① HIGH_VIOLENCE 매치 → 즉시 high_violence (EXCLUDE 안 봄).
       ② HIGH_SELF 매치 → EXCLUDE 힌트 있으면 통과(게임·3인칭 죽음 오탐 방지), 없으면 high_self.
       ③ SOFT 매치 → soft.
-    매칭은 단순 부분일치(`in`).
+    매칭은 공백 제거 후 부분일치(P-2 — "죽고싶어" 붙여쓰기 우회 방지). 단 "자살"만 원문 매칭(경계 오탐 방지).
     """
     if not text or not isinstance(text, str):
         return None
-    t = text.strip()
+    t_raw = text.strip()
+    t = _norm(text)
     if not t:
         return None
     # ① 폭력 피해 — EXCLUDE 미적용
-    if any(p in t for p in HIGH_VIOLENCE_PATTERNS):
+    if _hit(HIGH_VIOLENCE_PATTERNS, t, t_raw):
         return "high_violence"
     # ② 자해·죽음 — 게임/이야기 문맥이면 통과
-    if any(p in t for p in HIGH_SELF_PATTERNS):
-        if not any(h in t for h in EXCLUDE_HINTS):
+    if _hit(HIGH_SELF_PATTERNS, t, t_raw):
+        if not any(_norm(h) in t for h in EXCLUDE_HINTS):
             return "high_self"
         # EXCLUDE 문맥 → 자해 아님. 아래 SOFT 판정으로 계속.
     # ③ 외로움·불안
-    if any(p in t for p in SOFT_PATTERNS):
+    if _hit(SOFT_PATTERNS, t, t_raw):
         return "soft"
     return None
 
