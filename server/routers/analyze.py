@@ -396,6 +396,15 @@ async def build_deep_system_prompt() -> str:
 
 [ageRating(권장 최소 나이) — 반드시 3, 5, 7, 10 중 하나]
 이 영상을 즐기기에 적절한 최소 나이. 안전해도 내용이 어려우면 높은 숫자를 줘.
+
+연령 상향 기준 (ageRating 판정 시 반드시 고려):
+① 인지 부하: 전문 용어·복잡한 규칙·빠른 전개 (e스포츠·리뷰·시사)
+② 파라소셜·응대형 톤: 속삭임, 시청자 개인 응대, "너만을 위한" 화법 (ASMR류)
+③ 성인 지향 장르·정서: 먹방, 소비 자극 중심, 로맨스·공포 분위기
+④ 광고·상업성 밀도: 제품 홍보가 본질인 콘텐츠
+⑤ 아동 문법 부재: 아동용 어휘·말속도·시각 언어가 아닌 콘텐츠
+
+원칙: 유해 요소가 없다는 것과 아동에게 적합하다는 것은 다르다. 애매하면 차단이 아니라 연령 상향.
 {rules_section}
 [중요]
 - 주어진 정보(제목·채널·설명·자막)만으로 판단해. 추측은 보수적으로.
@@ -594,6 +603,28 @@ def apply_battle_guard(result: dict, title: str) -> dict:
     return result
 
 
+# 연령 상향(10+) 장르 신호 — 유해가 아니라 '아동 문법 부재' 장르 (T 브리프 §1, 팀장 확정셋)
+# ⚠️ 팀장 확정 — 임의 추가·변경 금지(변경은 팀장 검수 대상, P 사전과 동일 규율)
+AGE_GENRE_KEYWORDS = ["asmr", "먹방", "mukbang"]              # 소문자 변환 후 부분일치 (ASMR 대소문자 무관)
+AGE_GENRE_EXCLUDE = ["동요", "자장가", "동화", "키즈", "kids"]   # 아동 문맥 동반 시 상향 제외 (자장가 ASMR 등)
+
+
+def apply_age_genre_guard(result: dict, title: str) -> dict:
+    """제목에 성인 문법 장르(ASMR·먹방) 신호가 있으면 ageRating 최소 10으로 상향.
+
+    핵심 원칙(T 브리프): '유해 요소가 없다는 것'과 '아동에게 적합하다는 것'은 다르다.
+    애매하면 차단이 아니라 연령 상향 — 최종 게이팅은 프로필 나이·부모 기준이 담당(검열 아님, 적합성).
+    점수(violence 등)는 건드리지 않는다 — '후보 제외'가 아니라 ageRating 상향만."""
+    t = (title or "").lower()
+    if not any(k in t for k in AGE_GENRE_KEYWORDS):
+        return result
+    if any(k in t for k in AGE_GENRE_EXCLUDE):
+        return result  # 아동 문맥(자장가·키즈 ASMR 등) → 상향 제외
+    if (result.get("ageRating") or 0) < 10:
+        result["ageRating"] = 10
+    return result
+
+
 class AnalyzeRequest(BaseModel):
     videoId: Optional[str] = None
     channelId: Optional[str] = None
@@ -652,6 +683,8 @@ async def analyze_video(data: AnalyzeRequest):
         )
         # 배틀 안전장치 — 검색 카드(Tier 0+1)에서도 배틀 제목이면 ageRating 5 부여
         result = apply_battle_guard(result, data.title)
+        # 연령 적합성 — ASMR·먹방 등 성인 문법 장르면 ageRating 10 상향 (유해 아님, 적합성) (T §1)
+        result = apply_age_genre_guard(result, data.title)
         attach_meta(result, data)
 
         if video_id:
@@ -691,6 +724,8 @@ async def analyze_batch(data: BatchAnalyzeRequest):
             )
             # 배틀 안전장치 — 검색 카드(Tier 0+1)에서도 배틀 제목이면 ageRating 5 부여
             result = apply_battle_guard(result, item.title)
+            # 연령 적합성 — ASMR·먹방 등 성인 문법 장르면 ageRating 10 상향 (유해 아님, 적합성) (T §1)
+            result = apply_age_genre_guard(result, item.title)
             attach_meta(result, item)
 
             if video_id:
@@ -717,7 +752,7 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
         channel_id = data.channelId or ""
 
         # 캐시에 이미 정밀 분석(high) 결과가 있으면 즉시 반환 (비용 0)
-        # 단, prompt-rules.json이 캐시 이후에 수정됐으면 재분석 (룰 업데이트 자동 반영)
+        # 단, DB prompt_rules.updated_at이 캐시 analyzedAt보다 최신이면 재분석 (룰 업데이트 자동 반영)
         if video_id:
             cached = await get_cache_entry(video_id)
             if cached and cached.get("confidence") == "high":
@@ -773,6 +808,8 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
 
         # 배틀 안전장치 — 제목에 배틀 신호가 있으면 ageRating/violence 강제 보정
         result = apply_battle_guard(result, data.title)
+        # 연령 적합성 — ASMR·먹방 등 성인 문법 장르면 ageRating 10 상향 (유해 아님, 적합성) (T §1)
+        result = apply_age_genre_guard(result, data.title)
         attach_meta(result, data)
 
         # 채널 자동 신뢰 학습 (90+ 판정 누적 → AUTO_TRUST_THRESHOLD 도달 시 자동 등록)
