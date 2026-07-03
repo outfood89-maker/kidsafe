@@ -381,6 +381,8 @@ export default function Landing() {
             매일 아이의 <span style={{ color: "#5FE0BC" }}>마음에 안부를 묻고</span><br />
             그 마음을 <span style={{ color: "#5FE0BC" }}>부모님께 잇는</span> 어린이 정서 돌봄 미디어예요
           </p>
+          {/* AB §1: 연령 한 줄 */}
+          <p className="mt-5 text-base" style={{ color: "#B5C9C0" }}>4~10세 아이를 위해 설계했어요.</p>
         </div>
       </section>
 
@@ -456,9 +458,15 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ⑧-a 핵심 기능 컷(전진) — 체크인·리포트 (S §4: 미션 뒤로 전진). 스케줄러 잔여는 아래 ⑧에. previewFrontInView 사용, bg #0A1E1E(교차) */}
+      {/* ❶ 안부가 먼저예요 (AB §2) — 구 ⑧-a 체크인 컷 개조. previewFrontRef/InView 그대로 유지(ref 유실 방지). */}
       <section ref={previewFrontRef} className="px-4 py-16 md:py-28 overflow-hidden" style={{ backgroundColor: "#0A1E1E" }}>
         <div className="mx-auto max-w-6xl">
+          {/* AB §2: 섹션 도입부 — eyebrow + 제목 + 리드 (기존 섹션 포맷 재사용) */}
+          <div className={`text-center mb-16 ${fade(previewFrontInView)}`}>
+            <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>First, hello</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>키디를 만나면, 안부가 먼저예요</h2>
+            <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>영상보다 먼저, 키디가 오늘의 기분을 물어봐요. 글을 몰라도 괜찮아요 — 이모지와 목소리로 답하면 되니까요.</p>
+          </div>
           {/* 컷 — 키디와 매일 대화(체크인) — Freddie 추가. ShotCard(넓적 비율이라 폰 베젤 대신 카드 프레임) */}
           <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewFrontInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
@@ -475,26 +483,20 @@ export default function Landing() {
               </ul>
             </div>
             <div className="w-full md:w-1/2 flex justify-center">
-              <ShotCard src="/images/screens/checkin.png" alt="키디가 오늘 기분을 물어보는 체크인 화면" maxWidth={380} />
+              {/* AB §2: 이미지 checkin.png → checkin_mood.png 교체 (PhoneShot 360) */}
+              <PhoneShot src="/images/screens/checkin_mood.png" alt="키디가 오늘 기분을 물어보는 체크인 화면" />
             </div>
           </div>
 
-          {/* 컷 3 — 키디의 한 주 (부모) + 공유 선택 강조 */}
-          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewFrontInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+          {/* AB §2: 비밀 약속 컷 (히어로 샷) — secret_promise.png + 프라이버시 콜아웃(구 ❹ 리포트 컷에서 이동, 원문 그대로).
+              ⚠️ 구 '컷 3 키디의 한 주(week.png)'는 ❹ '부모님이 돌아왔을 때'(§5)로 이동해 week_letter.png로 재작성됨. */}
+          <div className={`flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewFrontInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
-              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
-                아이의 한 주를<br />따뜻한 편지로
-              </h3>
-              <ul className="space-y-3.5 w-full max-w-xs mb-5">
-                {["키디가 아이와 나눈 하루를 모아 편지로 전해드려요.", "아이의 요즘 감정 흐름을 세심하게 짚어드려요."].map(item => (
-                  <li key={item} className="flex items-start gap-3 text-base justify-start text-left" style={{ color: "#C5D8CF" }}>
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
-                    <span style={{ wordBreak: "keep-all" }}>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              {/* 프라이버시 강조 콜아웃 */}
-              <div className="w-full max-w-xs rounded-2xl px-5 py-4" style={{ backgroundColor: "rgba(24,196,154,0.1)", border: "1px solid rgba(24,196,154,0.3)" }}>
+              <p className="text-lg md:text-xl font-bold leading-relaxed text-center md:text-left max-w-sm" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>
+                &apos;비밀이야&apos;를 고르면 키디가 약속해요 — 무슨 일인지는 절대 말하지 않기로.
+              </p>
+              {/* 프라이버시 콜아웃 — ❹ 리포트 컷에서 이동, 원문 그대로 */}
+              <div className="w-full max-w-xs rounded-2xl px-5 py-4 mt-6" style={{ backgroundColor: "rgba(24,196,154,0.1)", border: "1px solid rgba(24,196,154,0.3)" }}>
                 <p className="text-base font-bold mb-1 flex items-center gap-2" style={{ color: "#5FE0BC" }}>🔒 아이의 마음은 아이의 것</p>
                 <p className="text-sm md:text-base leading-relaxed" style={{ color: "#C5D8CF", wordBreak: "keep-all" }}>
                   몰래 들여다보지 않아요. 아이가 <b style={{ color: "#EAF5F1" }}>&apos;같이 보고 싶어&apos;</b>라고
@@ -503,7 +505,7 @@ export default function Landing() {
               </div>
             </div>
             <div className="w-full md:w-1/2 flex justify-center">
-              <PhoneShot src="/images/screens/week.png" alt="키디의 한 주 리포트 화면" />
+              <ShotCard src="/images/screens/secret_promise.png" alt="비밀 약속 멘트 화면" maxWidth={380} />
             </div>
           </div>
         </div>
@@ -518,8 +520,9 @@ export default function Landing() {
           </div>
           */}
           <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>Not a wall, a guide</p>
+          {/* AB §3: 제목 교체 — 구 제목 보존: "영상을 막지 않습니다 / 더 안심하고 보도록 도와드려요" */}
           <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>
-            영상을 막지 않습니다<br />더 안심하고 보도록 도와드려요
+            아이가 보기 전에, 키디가 먼저 봐요
           </h2>
           <p className="mt-6 text-base md:text-lg leading-relaxed" style={{ color: "#B5C9C0" }}>
             영상 속엔 아이에게 좋은 콘텐츠도 참 많아요.<br />
@@ -637,24 +640,28 @@ export default function Landing() {
             </p>
           </div>
 
+          {/* AB §3: 어른용 score.png·blocked.png 2장 → 아이 뷰 신호등(gate_kid, 360) + '자세히 보기' 7축(detail_7axis, 300) 교체.
+              구 캡처는 아래 주석으로 보존. 캡션은 최소 라벨(신규 문장 창작 최소화). */}
           <div className={`mt-10 flex flex-col sm:flex-row justify-center items-center sm:items-start gap-10 sm:gap-8 md:gap-14 ${fade(checkInView)}`}>
             <div className="flex flex-col items-center gap-4">
-              <PhoneShot src="/images/screens/score.png" alt="검수 안전도 점수 화면" />
+              <PhoneShot src="/images/screens/gate_kid.png" alt="아이 화면의 안심 신호등" />
               <div className="flex items-center gap-2.5">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
-                <span className="text-base md:text-lg font-bold" style={{ color: "#EAF5F1" }}>안전한 영상은 점수로 한눈에</span>
+                <span className="text-base md:text-lg font-bold" style={{ color: "#EAF5F1" }}>아이에겐 신호등 하나로</span>
               </div>
             </div>
             <div className="flex flex-col items-center gap-4">
-              <PhoneShot src="/images/screens/blocked.png" alt="위험 영상 차단 화면" />
+              <PhoneShot src="/images/screens/detail_7axis.png" alt="자세히 보기 — 7축 안전 분석" width={300} />
               <div className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full text-sm text-white" style={{ backgroundColor: "#E5645C" }}>✕</span>
-                <span className="text-base md:text-lg font-bold" style={{ color: "#EAF5F1" }}>위험한 영상은 바로 차단</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
+                <span className="text-base md:text-lg font-bold" style={{ color: "#EAF5F1" }}>부모님껜 7가지 근거로</span>
               </div>
             </div>
           </div>
+          {/* AB §3 보존(구 검수 결과 캡처): score.png "안전한 영상은 점수로 한눈에" / blocked.png "위험한 영상은 바로 차단" */}
 
-          {/* 영상 보고 나서 도란도란 — 검수/차단 다음 자리로 이동 (Freddie 요청). 애니메이션은 ⑤ 섹션 checkInView 재사용 */}
+          {/* AB §8: 도란도란 컷 비활성화 — ❸ '말하기 연습' 카드(§4)로 대체. 삭제 아닌 보존(false 제거 시 복구). */}
+          {false && (
           <div className={`mt-24 md:mt-36 flex flex-col md:flex-row items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
@@ -673,6 +680,7 @@ export default function Landing() {
               <PhoneShot src="/images/screens/chat.png" alt="키디와 채팅하는 화면" />
             </div>
           </div>
+          )}
 
           {/* 컷 — 키디 분석 리포트 (부모): '도란도란' 아래로 이동 (Freddie 요청). checkInView 사용 */}
           <div className={`mt-24 md:mt-36 flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
@@ -706,6 +714,10 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          {/* AB §3: 섹션 마무리 문장 (verbatim) */}
+          <p className={`text-center mt-16 md:mt-24 text-base md:text-lg font-medium max-w-2xl mx-auto leading-relaxed ${fade(checkInView)}`} style={{ color: "#5FE0BC", wordBreak: "keep-all" }}>
+            그리고 하나 더 — 유해하지 않다고 다 아이 것은 아니에요. 키디는 &apos;아이에게 맞는지&apos;까지 봐요.
+          </p>
         </div>
       </section>
 
@@ -747,7 +759,8 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* 3번 스텝 — 교육 미니게임 6종 상세 */}
+          {/* AB §4: 미니게임 6종 상세 그리드 비활성화 → 한 줄 + 배지로 압축. 삭제 아닌 보존(false 제거 시 복구). */}
+          {false && (
           <div className={`mt-24 md:mt-36 ${fade(timeInView)}`}>
             <div className="text-center mb-10">
               <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>6 mini-games</p>
@@ -780,16 +793,93 @@ export default function Landing() {
               ))}
             </div>
           </div>
+          )}
+
+          {/* AB §4: 미니게임 한 줄 + 배지 한 줄 + 마음 개근왕 배지 컷 (verbatim) */}
+          <div className={`mt-20 md:mt-28 max-w-4xl mx-auto ${fade(timeInView)}`}>
+            <p className="text-center text-base md:text-lg font-medium leading-relaxed" style={{ color: "#C5D8CF", wordBreak: "keep-all" }}>
+              OX 퀴즈부터 기억력 카드까지, 발달에 맞춘 교육 놀이 6가지로 마무리해요.
+            </p>
+            <div className="mt-14 flex flex-col md:flex-row items-center gap-10 md:gap-16">
+              <div className="w-full md:w-1/2 flex justify-center order-2 md:order-1">
+                <PhoneShot src="/images/screens/badge_heart.png" alt="마음 개근왕 배지" />
+              </div>
+              <div className="w-full md:w-1/2 order-1 md:order-2">
+                <p className="text-base md:text-lg leading-relaxed text-center md:text-left" style={{ color: "#B5C9C0", wordBreak: "keep-all" }}>
+                  배지도 시청량이 아니라 건강한 습관에만 줘요 — &apos;마음 개근왕&apos;은 매일 안부를 나눈 아이의 것이에요.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <p className={`text-center mt-24 md:mt-36 text-base font-medium max-w-2xl mx-auto leading-relaxed ${fade(timeInView)}`} style={{ color: "#5FE0BC", wordBreak: "keep-all" }}>
             키디는 &quot;더 보게 하는 장치&quot;가 아닙니다.<br />
             끝맺음을 강제가 아닌, 배움과 성취의 기회로 바꿔드립니다.
           </p>
+          {/* AB §4: 말하기 연습 카드 (신규, 섹션 하단) — kiddy_room.png */}
+          <div className={`mt-24 md:mt-36 flex flex-col md:flex-row items-center gap-10 md:gap-16 ${fade(timeInView)}`}>
+            <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
+              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
+                화면이 꺼져도,<br />키디는 곁에 있어요
+              </h3>
+              <p className="text-base md:text-lg leading-relaxed text-center md:text-left max-w-sm" style={{ color: "#B5C9C0", wordBreak: "keep-all" }}>
+                영상을 다 보고 나면, 키디의 방에 놀러 가서 말하기 연습을 해요. 기록도 점수도 없이, 그냥 도란도란.
+              </p>
+            </div>
+            <div className="w-full md:w-1/2 flex justify-center">
+              <PhoneShot src="/images/screens/kiddy_room.png" alt="키디의 방 — 말하기 연습" />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ⑧ 핵심 기능 쇼케이스 — 실제 앱 캡쳐 (S §4: 체크인·리포트 컷은 미션 뒤로 전진, 스케줄러만 잔류) */}
+      {/* ❹ 부모님이 돌아왔을 때 (AB §5) — 구 ⑧-a 리포트 컷 이동·개조. previewRef/InView 재사용(스케줄러 §8 비활성으로 free). */}
       <section ref={previewRef} className="px-4 py-16 md:py-28 overflow-hidden" style={{ backgroundColor: "#0E2A2A" }}>
+        <div className="mx-auto max-w-6xl">
+          {/* 제목·리드 (verbatim) */}
+          <div className={`text-center mb-16 ${fade(previewInView)}`}>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>그리고 저녁, 부모님이 돌아왔을 때</h2>
+            <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>&quot;오늘 어땠어?&quot;라는 대답 없는 질문 대신 — &quot;오늘 이런 기분이었다며?&quot;라고 물을 수 있게. 키디가 아이의 하루를 편지로 전해드려요.</p>
+          </div>
+
+          {/* 리포트 컷 — week_letter.png + 기존 체크리스트(구 리포트 컷에서 유지) */}
+          <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
+            <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
+              <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
+                아이의 한 주를<br />따뜻한 편지로
+              </h3>
+              <ul className="space-y-3.5 w-full max-w-xs">
+                {["키디가 아이와 나눈 하루를 모아 편지로 전해드려요.", "아이의 요즘 감정 흐름을 세심하게 짚어드려요."].map(item => (
+                  <li key={item} className="flex items-start gap-3 text-base justify-start text-left" style={{ color: "#C5D8CF" }}>
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
+                    <span style={{ wordBreak: "keep-all" }}>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="w-full md:w-1/2 flex justify-center">
+              <PhoneShot src="/images/screens/week_letter.png" alt="주간 편지와 감정 흐름 화면" />
+            </div>
+          </div>
+
+          {/* 대화의 씨앗 카드 (가로형) — talk_seed.png, 캡션 불필요(카드 안 제목) */}
+          <div className={`mb-24 md:mb-36 transition-all duration-700 ${previewInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+            <ShotCard src="/images/screens/talk_seed.png" alt="대화의 씨앗 카드" maxWidth={560} />
+          </div>
+
+          {/* 💜 감정 흐름 배너 (가로형) — purple_banner.png + 캡션(verbatim) */}
+          <div className={`flex flex-col items-center gap-6 transition-all duration-700 ${previewInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+            <ShotCard src="/images/screens/purple_banner.png" alt="감정 흐름 알림 배너" maxWidth={460} />
+            <p className="text-base md:text-lg leading-relaxed text-center max-w-xl" style={{ color: "#B5C9C0", wordBreak: "keep-all" }}>
+              감정 흐름에 작은 변화가 보이면 부드럽게 알려드려요 — 진단이 아니라, 함께하자는 신호로.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* AB §8: 스케줄러 섹션 비활성화 (7/7 스코프 밖). previewRef는 ❹(§5)가 재사용 → 여기선 ref 제거. 삭제 아닌 보존(false 제거+ref 복원 시 복구). */}
+      {false && (
+      <section className="px-4 py-16 md:py-28 overflow-hidden" style={{ backgroundColor: "#0E2A2A" }}>
         <div className="mx-auto max-w-6xl">
           {/* "키디가 하는 일" 헤더 — Freddie 요청으로 비활성화 (복구하려면 주석 해제)
           <div className={`text-center mb-16 ${fade(previewInView)}`}>
@@ -832,9 +922,11 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* ⑨ 안심 포인트 */}
-      <section ref={safeRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
+      {/* AB §8: ⑨ 안심 포인트 섹션 비활성화 — 광고 고지는 FAQ Q2(§7)로 흡수, 자리는 §6·§7가 대체. safeRef는 §6가 재사용 → 여기선 ref 제거. 삭제 아닌 보존(false 제거+ref 복원 시 복구). */}
+      {false && (
+      <section className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
         <div className="mx-auto max-w-3xl flex flex-col items-center text-center">
           {/* MEET KIDDY와 동일 포맷: 가운데 정렬 eyebrow → 제목 → 문단 (Freddie 요청) */}
           <div className={`flex flex-col items-center text-center ${fade(safeInView)}`}>
@@ -866,6 +958,48 @@ export default function Landing() {
             ))}
           </div>
           */}
+        </div>
+      </section>
+      )}
+
+      {/* 키디가 하지 않는 것들 (AB §6, 신규) — 구 ⑨ 안심 포인트 자리. safeRef/InView 재사용. 캡처 없음, 텍스트 무게로만. */}
+      <section ref={safeRef} className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0A1E1E" }}>
+        <div className={`mx-auto max-w-3xl text-center ${fade(safeInView)}`}>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>키디가 하지 않는 것들</h2>
+          <p className="mt-5 text-base md:text-xl leading-relaxed" style={{ color: "#B5C9C0", wordBreak: "keep-all" }}>믿음은 하는 일보다, 하지 않는 일에서 온다고 생각해요.</p>
+          <div className="mt-12 flex flex-col gap-5 text-left max-w-2xl mx-auto">
+            {[
+              { head: "비밀은 저장하지 않아요.", tail: "'비밀이야'라고 한 이야기는 어디에도 남지 않습니다." },
+              { head: "더 보게 만들지 않아요.", tail: "배지도, 알림도 시청을 부추기지 않습니다." },
+              { head: "진단하지 않아요.", tail: "아이의 마음에 이름표를 붙이지 않습니다." },
+              { head: "위기 신호조차 내용은 전하지 않아요.", tail: "'오늘은 곁에 있어 주세요'라고만 말씀드립니다." },
+            ].map((row) => (
+              <div key={row.head} className="rounded-2xl px-6 py-5" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-base md:text-lg leading-relaxed" style={{ color: "#C5D8CF", wordBreak: "keep-all" }}>
+                  <b style={{ color: "#5FE0BC" }}>{row.head}</b> {row.tail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ (AB §7, 신규) — CTA 직전, 정적(펼친 상태·아코디언 없음). 신규 state·핸들러 없음. */}
+      <section className="px-4 py-16 md:py-28" style={{ backgroundColor: "#0E2A2A" }}>
+        <div className="mx-auto max-w-2xl">
+          <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-10 text-center" style={{ color: "#18C49A" }}>FAQ</p>
+          <div className="flex flex-col gap-6">
+            {[
+              { q: "몇 살부터 쓸 수 있나요?", a: "4~10세에 맞춰 설계했어요. 프로필에 나이를 설정하면 검수 기준과 키디의 말투가 아이에게 맞춰져요." },
+              { q: "광고도 걸러주나요?", a: "광고·홍보가 목적인 영상은 추천에서 걸러요. 다만 유튜브가 직접 트는 광고는 키디가 막을 수 없어서, 광고 없이 보시려면 유튜브 프리미엄을 함께 이용해 주세요." },
+              { q: "무료인가요?", a: "핵심 기능은 무료예요. AI 정밀 검수 무제한 같은 프리미엄 기능을 준비하고 있어요." },
+            ].map((f) => (
+              <div key={f.q} className="rounded-2xl px-6 py-5" style={{ backgroundColor: "#0A1E1E", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-base md:text-lg font-bold mb-2" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>Q. {f.q}</p>
+                <p className="text-sm md:text-base leading-relaxed" style={{ color: "#B5C9C0", wordBreak: "keep-all" }}>{f.a}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
