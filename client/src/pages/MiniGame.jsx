@@ -474,11 +474,12 @@ export default function MiniGame() {
       </div>
 
       {/* 키디 챗 (탭바에서 열림) */}
-      {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
+      {/* Z §1: 챗봇 정문 폐쇄 — '키디' 탭은 키디의 방으로 통일. 코드는 폴백(§2)용 보존. */}
+      {/* {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />} */}
 
       {/* 하단 탭바 — 모바일 (게임 플레이 화면은 전체화면이라 미표시) */}
       <div className="md:hidden">
-        <BottomTabBar activeTab="games" chatOpen={chatOpen} onChatToggle={() => setChatOpen((p) => !p)} />
+        <BottomTabBar activeTab="games" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
 
     </div>

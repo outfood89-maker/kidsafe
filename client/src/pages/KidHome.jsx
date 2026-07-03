@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
   FaExclamationTriangle, FaTimes, FaList, FaPlay, FaMedal,
@@ -143,6 +143,7 @@ export default function KidHome() {
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -255,6 +256,16 @@ export default function KidHome() {
   const openChat = () => { setChatMounted(true); setChatOpen(true); };
   const closeChat = () => { setChatOpen(false); };
   const handleChatClosed = () => { setChatMounted(false); setChatOpen(false); };
+
+  // Z §2: 키디의 방 마이크 폴백에서 navigate("/kids", { state: { openChat: true } })로 넘어오면 챗봇(글자 대화) 자동 오픈.
+  //        추천/검색 로딩과 무관하게 동작(ChatWidget은 게이트 밖). state는 즉시 소거 — 새로고침·뒤로가기 시 재오픈 방지.
+  useEffect(() => {
+    if (location.state?.openChat) {
+      openChat();
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchSearchHistory = async (profileId) => {
     try { const data = await getSearchHistory(profileId); setSearchHistory(data); }
@@ -1512,7 +1523,8 @@ export default function KidHome() {
           { id: "favorites", label: "찜",   icon: <FaHeart />,     action: () => navigate("/favorites") },
           { id: "games",     label: "게임", icon: <FaGamepad />,   action: () => navigate("/games") },
           { id: "badges",    label: "배지", icon: <FaMedal />,     action: () => navigate("/badges") },
-          { id: "chat",      label: "키디", icon: <FaCommentDots />, action: () => chatOpen ? closeChat() : openChat() },
+          // Z §1: '키디' 정문 = 키디의 방으로 통일. 라벨 유지, 목적지만 교체. (챗봇 openChat/closeChat은 §2 폴백용 보존)
+          { id: "chat",      label: "키디", icon: <FaCommentDots />, action: () => navigate("/kiddy-room") },
         ].map((tab) => {
           const isActive = tab.id === "home" || (tab.id === "chat" && chatOpen);
           return (
@@ -1542,7 +1554,7 @@ export default function KidHome() {
         <BottomTabBar
           activeTab="home"
           chatOpen={chatOpen}
-          onChatToggle={() => chatOpen ? closeChat() : openChat()}
+          onChatToggle={() => navigate("/kiddy-room")}
         />
       </div>
 

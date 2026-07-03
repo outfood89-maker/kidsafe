@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaHeart, FaList, FaPlay, FaTrash, FaSpinner } from "react-icons/fa";
 import { getFavorites, removeFavorite } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
@@ -12,6 +13,7 @@ import PlaylistModal from "../components/PlaylistModal";
 export default function Favorites() {
   const [favorites, setFavorites] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -232,9 +234,10 @@ export default function Favorites() {
           onClose={() => setPlayingVideo(null)}
         />
       )}
-      {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />}
+      {/* Z §1: 챗봇 정문 폐쇄 — '키디' 탭은 키디의 방으로 통일. 코드는 폴백(§2)용 보존. */}
+      {/* {chatOpen && <ChatWidget onClose={() => setChatOpen(false)} />} */}
       <div className="md:hidden">
-        <BottomTabBar activeTab="favorites" chatOpen={chatOpen} onChatToggle={() => setChatOpen((p) => !p)} />
+        <BottomTabBar activeTab="favorites" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
     </div>
   );
