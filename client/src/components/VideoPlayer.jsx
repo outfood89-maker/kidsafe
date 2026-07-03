@@ -16,7 +16,7 @@ const formatTime = (seconds) => {
   return `${m}:${s}`;
 };
 
-export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _onClose, onWatchComplete, queue = [], continuousPlay = false, safetyThreshold = 70, onPlayNext }) {
+export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _onClose, onWatchComplete, queue = [], continuousPlay = false, safetyThreshold = 70, onPlayNext, age = null }) {
   const navigate = useNavigate();
   const [watchSeconds, setWatchSeconds] = useState(0);
   const watchSecondsRef = useRef(0);
@@ -229,8 +229,9 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       const merged = { ...nextVideo, ...result };
       setNextResult(merged);
       // 게이팅 — VideoModal과 **같은 공용 헬퍼** 사용(룰 단일화, 드리프트 방지 — W #3).
-      // 인증 영상도 최소안전(연령가드 해당없음 && 비상업성>50) 통과해야 fast-pass (W #1, 팀장).
-      const { canPlay } = evaluatePlayGate(merged, safetyThreshold);
+      // 인증 영상도 최소안전(비상업성>50) 통과해야 fast-pass (W #1, 팀장).
+      // Y: age 전달 — ASMR 등 연령 상향 장르/ageRating이 프로필 나이 초과면 연속재생 큐에서도 차단(6세에게 ASMR 가던 구멍 차단).
+      const { canPlay } = evaluatePlayGate(merged, safetyThreshold, age);
       if (canPlay) {
         setCountdown(5);        // 검수 결과 그래프를 5초간 보여준 뒤 자동재생
         setNextStage("scored");

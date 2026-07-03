@@ -219,6 +219,7 @@ export default function Favorites() {
       {selectedVideo && (
         <VideoModal
           video={selectedVideo}
+          age={selectedProfile?.age}
           onClose={() => setSelectedVideo(null)}
           onPlayInApp={(v) => { setPlayingVideo(v); setSelectedVideo(null); }}
           onDeepResult={handleDeepResult}
@@ -227,6 +228,7 @@ export default function Favorites() {
       {playingVideo && (
         <VideoPlayer
           video={playingVideo}
+          age={selectedProfile?.age}
           onClose={() => setPlayingVideo(null)}
         />
       )}

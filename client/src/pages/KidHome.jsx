@@ -851,6 +851,7 @@ export default function KidHome() {
           <VideoModal
             video={selectedVideo}
             safetyThreshold={getEffectiveThreshold(selectedProfile?.age, selectedProfile?.safetyThreshold)}
+            age={selectedProfile?.age}
             onClose={() => setSelectedVideo(null)}
             onPlayInApp={(video) => { setSelectedVideo(null); handlePlayInApp(video); }}
             onDeepResult={handleDeepResult}
@@ -881,6 +882,7 @@ export default function KidHome() {
             queue={playQueue}
             continuousPlay={selectedProfile?.continuousPlay || false}
             safetyThreshold={getEffectiveThreshold(selectedProfile?.age, selectedProfile?.safetyThreshold)}
+            age={selectedProfile?.age}
             onPlayNext={(next, finishedSeconds) => {
               // 연속재생 — 끝난 영상의 시청시간을 하루 카운터에 반영 후 다음 영상으로 전환
               if (finishedSeconds > 0) {

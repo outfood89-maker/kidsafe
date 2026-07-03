@@ -6,7 +6,7 @@ import KiddyVideo from "./KiddyVideo";
 import Typewriter from "./Typewriter";
 import { evaluatePlayGate } from "../utils/safetyFilter";
 
-export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70, parentView = false }) {
+export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70, parentView = false, age = null }) {
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
@@ -173,12 +173,13 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
   // ⚠️ 비상업성 임계값 50 = prompt-rules.json penalties "언박싱 → 50 이하" 정의와 일치 (채점-게이팅 정합)
   //    교육성은 정보 지표라 게이팅 대상 아님 (낮아도 차단 X) — CONTEXT.md 설계 참고
   // 재생 게이트 — 공용 헬퍼로 단일화(VideoPlayer와 같은 함수, 드리프트 방지). isDeep은 위(93)에서 계산됨.
-  // ⚠️ #1(팀장): 인증(madeForKids)도 최소안전(연령가드 해당없음 && 비상업성>50) 통과해야 fast-pass. ASMR·먹방이면 정밀분석 경로로.
-  const { canPlay, tier, isDangerous, isPending } = evaluatePlayGate(v, safetyThreshold);
+  // ⚠️ #1(팀장): 인증(madeForKids)도 최소안전(비상업성>50) 통과해야 fast-pass.
+  // ⚠️ Y: age(프로필 나이) 전달 — ASMR 등 연령 상향 장르/ageRating이 나이 초과면 인증·deep 무관 차단.
+  const { canPlay, tier, isDangerous, isPending } = evaluatePlayGate(v, safetyThreshold, age);
   // 신호등 원 시각 — tier(판정) 기준. 간이 원점수를 그대로 보여 "위험 원 + 인증 문구" 모순 나던 것 수정(W).
-  //   cert = 유튜브 인증(우리 '위험' 등급 아님) → 중립 파랑 "인증" / deep·dangerous = 정밀 등급색 / pending = 🔍
-  const gateColor = tier === "cert" ? "#5FB3F0" : tier === "pending" ? "#90A9A8" : badge.color;
-  const gateLabel = tier === "cert" ? "인증" : badge.text;
+  //   cert = 유튜브 인증(우리 '위험' 등급 아님) → 중립 파랑 "인증" / dangerous = 차단(간이 총점 무관 항상 빨강 "위험", Y 연령차단 포함) / deep = 정밀 등급색 / pending = 🔍
+  const gateColor = tier === "cert" ? "#5FB3F0" : tier === "pending" ? "#90A9A8" : tier === "dangerous" ? "#F2655C" : badge.color;
+  const gateLabel = tier === "cert" ? "인증" : tier === "dangerous" ? "위험" : badge.text;
 
   const handleWatchClick = () => {
     if (!canPlay) return;
