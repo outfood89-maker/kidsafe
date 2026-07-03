@@ -4,6 +4,7 @@ import { analyzeVideoDeep, submitFeedback } from "../utils/api";
 import PaywallModal from "./PaywallModal";
 import KiddyVideo from "./KiddyVideo";
 import Typewriter from "./Typewriter";
+import { evaluatePlayGate } from "../utils/safetyFilter";
 
 export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70, parentView = false }) {
   const [visible, setVisible] = useState(false);
@@ -171,13 +172,13 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
   // ⚠️ safetyThreshold는 반드시 프로필 기준값(getEffectiveThreshold)을 넘겨야 함 — 하드코딩 금지
   // ⚠️ 비상업성 임계값 50 = prompt-rules.json penalties "언박싱 → 50 이하" 정의와 일치 (채점-게이팅 정합)
   //    교육성은 정보 지표라 게이팅 대상 아님 (낮아도 차단 X) — CONTEXT.md 설계 참고
-  const isCertified = video.madeForKids;
-  const dangerScores = [v.violence, v.language, v.sexual, v.scary, v.imitationRisk].filter(s => s !== undefined);
-  const hasCriticalDanger = dangerScores.some(s => s < 60);
-  const hasCommercialRisk = v.commercialism !== undefined && v.commercialism <= 50;
-  const isDangerous = isDeep && (v.totalScore < safetyThreshold || hasCriticalDanger || hasCommercialRisk);
-  const isPending = !isCertified && !isDeep;
-  const canPlay = isCertified || (isDeep && !isDangerous);
+  // 재생 게이트 — 공용 헬퍼로 단일화(VideoPlayer와 같은 함수, 드리프트 방지). isDeep은 위(93)에서 계산됨.
+  // ⚠️ #1(팀장): 인증(madeForKids)도 최소안전(연령가드 해당없음 && 비상업성>50) 통과해야 fast-pass. ASMR·먹방이면 정밀분석 경로로.
+  const { canPlay, tier, isDangerous, isPending } = evaluatePlayGate(v, safetyThreshold);
+  // 신호등 원 시각 — tier(판정) 기준. 간이 원점수를 그대로 보여 "위험 원 + 인증 문구" 모순 나던 것 수정(W).
+  //   cert = 유튜브 인증(우리 '위험' 등급 아님) → 중립 파랑 "인증" / deep·dangerous = 정밀 등급색 / pending = 🔍
+  const gateColor = tier === "cert" ? "#5FB3F0" : tier === "pending" ? "#90A9A8" : badge.color;
+  const gateLabel = tier === "cert" ? "인증" : badge.text;
 
   const handleWatchClick = () => {
     if (!canPlay) return;
@@ -240,26 +241,26 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
           {/* W: 큰 신호등 + 키디 한 줄 (아이 눈높이). 4상태가 키디의 '행동'으로 이어짐 —
               분석중("먼저 보고 있어") → 정밀통과("미리 봤어! 안심") → 인증만("유튜브 아동용 인증") → 차단("아직 안심 못 했어").
               전부 팀장 확정 verbatim. '검수 중' 제품 약속이 아이 말투로 드러나게(팀장 C-2단계 + 분석중 카피 확정). */}
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ backgroundColor: "#13302B", border: `1.5px solid ${isPending ? "rgba(144,169,168,0.35)" : `${badge.color}55`}` }}>
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ backgroundColor: "#13302B", border: `1.5px solid ${gateColor}55` }}>
             <div
               className="shrink-0 rounded-full flex items-center justify-center"
-              style={{ width: 60, height: 60, backgroundColor: isPending ? "rgba(144,169,168,0.12)" : `${badge.color}22`, border: `3px solid ${isPending ? "#90A9A8" : badge.color}` }}
+              style={{ width: 60, height: 60, backgroundColor: `${gateColor}22`, border: `3px solid ${gateColor}` }}
             >
-              {isPending
+              {tier === "pending"
                 ? <span style={{ fontSize: 22 }}>🔍</span>
-                : <span className="font-black" style={{ color: badge.color, fontSize: 15 }}>{badge.text}</span>}
+                : <span className="font-black" style={{ color: gateColor, fontSize: 15 }}>{gateLabel}</span>}
             </div>
             <p className="min-w-0 flex-1 text-sm font-bold leading-snug" style={{ color: "#EAF5F1" }}>
               <Typewriter
-                key={isPending ? "wait" : !canPlay ? "no" : isDeep ? "deep" : "cert"}
+                key={tier}
                 text={
-                  isPending
+                  tier === "pending"
                     ? "키디가 먼저 보고 있어! 조금만 기다려 줘 🦕"
-                    : !canPlay
+                    : tier === "dangerous"
                       ? "이건 키디가 아직 안심 못 했어. 다른 거 보러 가자!"
-                      : isDeep
+                      : tier === "deep"
                         ? "키디가 미리 봤어! 안심하고 봐도 돼 🦕"
-                        : "유튜브 아동용 인증 영상이야"
+                        : "유튜브가 어린이용이라고 알려준 영상이야 🦕"
                 }
                 speed={28}
               />

@@ -64,6 +64,45 @@ export const filterByAge = (videos, age, customThreshold) => {
   })
 }
 
+// ── 재생 게이트 (VideoModal·VideoPlayer 공용) — canPlay 룰 단일화로 드리프트 방지 (W #3, 팀장) ──
+// 연령 상향(10+) 장르 신호 — 서버 analyze.py AGE_GENRE_KEYWORDS/EXCLUDE 와 **같은 내용** 유지(한쪽 고치면 양쪽 다).
+const AGE_GENRE_KEYWORDS = ['asmr', '먹방', 'mukbang']
+const AGE_GENRE_EXCLUDE = ['동요', '자장가', '동화', '키즈', 'kids']
+const hitsAgeGenre = (title) => {
+  const t = (title || '').toLowerCase()
+  if (!AGE_GENRE_KEYWORDS.some((k) => t.includes(k))) return false
+  if (AGE_GENRE_EXCLUDE.some((k) => t.includes(k))) return false
+  return true
+}
+
+// 인증(madeForKids) 영상의 최소 안전 통과(passMinSafety): 연령가드 카테고리 해당 없음 && 비상업성 > 50 (W #1, 팀장)
+// 반환: true(통과) | false(fast-pass 탈락 → 정밀분석 경로) | null(상업성 데이터 없음 → 폴백: 허용하되 '안심' 미출력)
+const certMinSafety = (video) => {
+  if (hitsAgeGenre(video?.title)) return false          // ASMR·먹방 등 → 인증 fast-pass 탈락
+  if (video?.commercialism == null) return null         // 상업성 데이터 없음 → 폴백(허용, 안심 주장 X)
+  return video.commercialism > 50                       // 비상업성 > 50 통과
+}
+
+// 재생 가능 판정 + 표시 등급(tier). VideoModal·VideoPlayer가 이 함수 하나만 쓴다.
+//   canPlay = (madeForKids && passMinSafety≠false) || (deep && !dangerous)   ※ deep 위험 판정은 인증보다 우선(차단)
+//   tier: 'dangerous'(차단) | 'deep'(정밀통과=안심) | 'cert'(인증기반 통과, 안심 주장X) | 'pending'(판정 전)
+export const evaluatePlayGate = (video, safetyThreshold = 70) => {
+  const isDeep = video?.confidence === 'high'
+  const danger = [video?.violence, video?.language, video?.sexual, video?.scary, video?.imitationRisk].filter((s) => s != null)
+  const critical = danger.some((s) => s < 60)
+  const commercialRisk = video?.commercialism != null && video.commercialism <= 50
+  const isDangerous = isDeep && ((video?.totalScore ?? 0) < safetyThreshold || critical || commercialRisk)
+  const certPass = !!video?.madeForKids && certMinSafety(video) !== false
+
+  let tier
+  if (isDangerous) tier = 'dangerous'          // 우리 정밀분석이 위험 판정 → 인증이어도 차단(기존 버튼 동작 보존)
+  else if (isDeep) tier = 'deep'               // 정밀분석 통과 → 안심
+  else if (certPass) tier = 'cert'             // 인증 + 최소안전(또는 데이터 없음 폴백) → 재생 허용, 안심 주장 X
+  else tier = 'pending'                         // 아직 판정 전(분석 중/애매) → 보고 있어
+
+  return { canPlay: tier === 'deep' || tier === 'cert', tier, isDeep, isDangerous, isPending: tier === 'pending' }
+}
+
 // 안전도 점수 기반 정렬 (높은 순)
 export const sortBySafety = (videos) => {
   return [...videos].sort((a, b) => b.totalScore - a.totalScore)

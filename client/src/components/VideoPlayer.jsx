@@ -8,6 +8,7 @@ import ChatWidget from "./ChatWidget";
 import { lockPortrait, unlockOrientation } from "../App";
 import useKiddyVoice from "../hooks/useKiddyVoice";
 import { detectTip, buildTipLine } from "../utils/kiddyTips";
+import { evaluatePlayGate } from "../utils/safetyFilter";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -227,14 +228,9 @@ export default function VideoPlayer({ video, timeLimit, usedMinutes, onClose: _o
       const result = await analyzeVideoDeep(nextVideo);
       const merged = { ...nextVideo, ...result };
       setNextResult(merged);
-      // 게이팅 — VideoModal과 동일 규칙 (총점·위험카테고리 60↓·비상업성 50↓ 차단)
-      const isDeep = result?.confidence === "high";
-      const danger = [merged.violence, merged.language, merged.sexual, merged.scary, merged.imitationRisk].filter((s) => s !== undefined);
-      const critical = danger.some((s) => s < 60);
-      const commercialRisk = merged.commercialism !== undefined && merged.commercialism <= 50;
-      const certified = merged.madeForKids;
-      const dangerous = isDeep && (merged.totalScore < safetyThreshold || critical || commercialRisk);
-      const canPlay = certified || (isDeep && !dangerous);
+      // 게이팅 — VideoModal과 **같은 공용 헬퍼** 사용(룰 단일화, 드리프트 방지 — W #3).
+      // 인증 영상도 최소안전(연령가드 해당없음 && 비상업성>50) 통과해야 fast-pass (W #1, 팀장).
+      const { canPlay } = evaluatePlayGate(merged, safetyThreshold);
       if (canPlay) {
         setCountdown(5);        // 검수 결과 그래프를 5초간 보여준 뒤 자동재생
         setNextStage("scored");
