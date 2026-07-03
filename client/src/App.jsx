@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Account from './pages/Account'
 import ParentDashboard from './pages/ParentDashboard'
 import KidHome from './pages/KidHome'
+import KiddyRoom from './pages/KiddyRoom'
 import ProfileSelect from './pages/ProfileSelect'
 import Favorites from './pages/Favorites'
 import BadgeCollection from './pages/BadgeCollection'
@@ -40,6 +41,7 @@ function App() {
           <Route path="/parent/:profileId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
           <Route path="/profiles" element={<ProtectedRoute><ProfileSelect /></ProtectedRoute>} />
           <Route path="/kids" element={<ProtectedRoute><KidHome /></ProtectedRoute>} />
+          <Route path="/kiddy-room" element={<ProtectedRoute><KiddyRoom /></ProtectedRoute>} />
           <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
           <Route path="/badges" element={<ProtectedRoute><BadgeCollection /></ProtectedRoute>} />
           <Route path="/games" element={<ProtectedRoute><MiniGame /></ProtectedRoute>} />

@@ -1267,6 +1267,20 @@ export default function KidHome() {
             {/* 추천 섹션 — 검색 결과 없고 로딩 중도 아닐 때만 (로더와 겹치지 않게) */}
             {!loading && videos.length === 0 && playlists.length === 0 && (
               <>
+                {/* 키디의 방 진입 — '말하기 연습' (X). 추천 게이트 안(기본 화면 전용) + lg:hidden 아님 → 모바일·데스크톱 공통. 순수 ADD. */}
+                <button
+                  onClick={() => navigate("/kiddy-room")}
+                  className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
+                  style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
+                >
+                  <KiddyImg pose="hello" size={54} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-extrabold" style={{ color: "#08160F" }}>키디랑 말하기 연습 🦕</p>
+                    <p className="text-xs font-bold" style={{ color: "#08160F", opacity: 0.75 }}>콕 누르고 키디에게 말해봐!</p>
+                  </div>
+                  <span className="shrink-0 text-xl font-black" style={{ color: "#08160F" }}>›</span>
+                </button>
+
                 {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
                 {(recommendLoading || recommendedVideos.length > 0) && (
                   <section className="mb-6">
