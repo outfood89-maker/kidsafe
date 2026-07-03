@@ -3,8 +3,9 @@ import { FaTimes, FaInfoCircle } from "react-icons/fa";
 import { analyzeVideoDeep, submitFeedback } from "../utils/api";
 import PaywallModal from "./PaywallModal";
 import KiddyVideo from "./KiddyVideo";
+import Typewriter from "./Typewriter";
 
-export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70 }) {
+export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, safetyThreshold = 70, parentView = false }) {
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
@@ -16,6 +17,8 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
   const [feedbackStatus, setFeedbackStatus] = useState("idle");
   // 사유(note) 펼침 상태 — 펼쳐진 카테고리 catKey, 없으면 null
   const [expandedNote, setExpandedNote] = useState(null);
+  // W: 아이 뷰 간소화 — 7축 상세는 기본 접힘(부모 뷰 parentView=true면 펼침). 순수 표시 계층.
+  const [detailOpen, setDetailOpen] = useState(parentView);
 
   useEffect(() => {
     if (video) requestAnimationFrame(() => setVisible(true));
@@ -234,6 +237,35 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
             </h2>
           </div>
 
+          {/* W: 큰 신호등 + 키디 한 줄 (아이 눈높이). 4상태가 키디의 '행동'으로 이어짐 —
+              분석중("먼저 보고 있어") → 정밀통과("미리 봤어! 안심") → 인증만("유튜브 아동용 인증") → 차단("아직 안심 못 했어").
+              전부 팀장 확정 verbatim. '검수 중' 제품 약속이 아이 말투로 드러나게(팀장 C-2단계 + 분석중 카피 확정). */}
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ backgroundColor: "#13302B", border: `1.5px solid ${isPending ? "rgba(144,169,168,0.35)" : `${badge.color}55`}` }}>
+            <div
+              className="shrink-0 rounded-full flex items-center justify-center"
+              style={{ width: 60, height: 60, backgroundColor: isPending ? "rgba(144,169,168,0.12)" : `${badge.color}22`, border: `3px solid ${isPending ? "#90A9A8" : badge.color}` }}
+            >
+              {isPending
+                ? <span style={{ fontSize: 22 }}>🔍</span>
+                : <span className="font-black" style={{ color: badge.color, fontSize: 15 }}>{badge.text}</span>}
+            </div>
+            <p className="min-w-0 flex-1 text-sm font-bold leading-snug" style={{ color: "#EAF5F1" }}>
+              <Typewriter
+                key={isPending ? "wait" : !canPlay ? "no" : isDeep ? "deep" : "cert"}
+                text={
+                  isPending
+                    ? "키디가 먼저 보고 있어! 조금만 기다려 줘 🦕"
+                    : !canPlay
+                      ? "이건 키디가 아직 안심 못 했어. 다른 거 보러 가자!"
+                      : isDeep
+                        ? "키디가 미리 봤어! 안심하고 봐도 돼 🦕"
+                        : "유튜브 아동용 인증 영상이야"
+                }
+                speed={28}
+              />
+            </p>
+          </div>
+
           {/* 분석 신뢰도 뱃지 + 권장 연령 */}
           <div className="flex items-center gap-2 flex-wrap">
             {deepLoading ? (
@@ -279,6 +311,17 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
             )}
           </div>
 
+          {/* W: 자세히 보기 — 7축 분석·피드백 (아이 기본 접힘 / 부모 기본 펼침). efadd94 규칙: 기존 렌더 보존, 접힘 게이트만 추가. */}
+          {!detailOpen ? (
+            <button
+              onClick={() => setDetailOpen(true)}
+              className="w-full text-xs font-medium py-2.5 rounded-xl"
+              style={{ color: "#90A9A8", backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              📊 자세히 보기 (안전 점수·분석)
+            </button>
+          ) : (
+          <>
           {/* 안전도 점수 — 안전 5개(총점 반영) */}
           <div>
             <p className="text-xs font-bold mb-2" style={{ color: "#90A9A8" }}>🛡️ 안전 종합 · 이 5개 평균이 총점이에요</p>
@@ -367,6 +410,8 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
 
           {/* 재생 버튼 — 게이팅 룰 적용 */}

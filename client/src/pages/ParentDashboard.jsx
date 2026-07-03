@@ -2169,6 +2169,7 @@ export default function ParentDashboard() {
       {selectedVideo && (
         <VideoModal
           video={selectedVideo}
+          parentView
           onClose={() => setSelectedVideo(null)}
           onWatch={(v) => {
             window.open(`https://www.youtube.com/watch?v=${v.videoId}`, '_blank')
