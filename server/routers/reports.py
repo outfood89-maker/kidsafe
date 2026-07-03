@@ -333,6 +333,10 @@ MOOD_ORDER = ["happy", "good", "soso", "sad", "angry"]
 # v4: talk_seed(대화의 씨앗, 브리프 L) 필드 추가 — 옛 캐시엔 talk_seed 없어 폐기(C의 v3 위에 이어 올림).
 REPORT_PROMPT_VERSION = "v4"
 
+# U — 감정 패턴 신호 임계값 (팀장 확정, 조정 가능하게 상수 분리)
+PATTERN_MIN_RECENT = 3   # W0(최근 7일) 부정(sad/angry) 최소 개수
+PATTERN_MIN_DAYS = 4     # W0·W1 각각 체크인 최소 일수 — 사용량↔기분 혼동 방지 하한
+
 
 def _today_kst_date():
     return datetime.now(KST).date()
@@ -502,8 +506,45 @@ async def _generate_report_message(child_name: str, start, end, counts: dict, to
     return parse_claude_json(raw)
 
 
-def _report_to_api(report_row: dict, timeline: list, had_secrets: bool = False, empty: bool = False) -> dict:
-    """parent_reports row(snake_case) → 프론트 형태(camelCase). timeline·hadSecrets 는 항상 fresh 로 합친다."""
+def _compute_pattern_signal(checkins: list, end_date) -> dict:
+    """최근 21일 mood로 '흐린 날 상승 추세' 신호를 결정적으로 계산 (LLM 0 — "사실은 코드가").
+
+    3개 연속 7일 창(end_date 기준): W0=[end-6,end] / W1=[end-13,end-7] / W2=[end-20,end-14].
+    발화(팀장 확정): W2<W1<W0 (2주 연속 부정 상승) and W0>=PATTERN_MIN_RECENT
+      and W0·W1 각 체크인 PATTERN_MIN_DAYS일 이상(사용량↔기분 혼동 방지 하한).
+    ⚠️ v1 한계(의도된 절제, 버그 아님): '상승 추세'만 잡는다 — 4→4→4처럼 지속적으로 높은 상태는
+       발화하지 않음(지속 상태는 감정 타임라인 자체에 보임). 고도화에서 비율+지속 규칙 검토.
+    🚨 answers 미접근 — mood·checkin_date만 본다 (윤리선)."""
+    NEG = ("sad", "angry")
+    neg = [0, 0, 0]                      # [W2, W1, W0] 부정 개수
+    day_sets = [set(), set(), set()]     # [W2, W1, W0] 체크인 날짜(중복 제거)
+    for c in checkins:
+        cd = c.get("checkin_date")
+        try:
+            d = datetime.fromisoformat(cd).date() if cd else None
+        except Exception:
+            d = None
+        if not d:
+            continue
+        delta = (end_date - d).days
+        if delta < 0 or delta > 20:
+            continue
+        idx = 2 if delta <= 6 else (1 if delta <= 13 else 0)   # W0→2, W1→1, W2→0
+        day_sets[idx].add(d)
+        if c.get("mood") in NEG:
+            neg[idx] += 1
+    w2, w1, w0 = neg
+    active = (
+        w2 < w1 < w0
+        and w0 >= PATTERN_MIN_RECENT
+        and len(day_sets[2]) >= PATTERN_MIN_DAYS      # W0 체크인 일수 하한
+        and len(day_sets[1]) >= PATTERN_MIN_DAYS      # W1 체크인 일수 하한
+    )
+    return {"active": bool(active), "weeks": [w2, w1, w0]}
+
+
+def _report_to_api(report_row: dict, timeline: list, had_secrets: bool = False, empty: bool = False, pattern_signal: dict = None) -> dict:
+    """parent_reports row(snake_case) → 프론트 형태(camelCase). timeline·hadSecrets·patternSignal 은 항상 fresh 로 합친다."""
     ms = report_row.get("mood_summary") or {}
     return {
         "profileId": report_row.get("profile_id"),
@@ -519,6 +560,8 @@ def _report_to_api(report_row: dict, timeline: list, had_secrets: bool = False, 
         "sharedHighlights": report_row.get("shared_highlights") or [],
         # 공유 안 한 체크인이 '있었는지' 여부만(내용은 절대 X) — 부모에게 비밀 존재만 알림
         "hadSecrets": bool(had_secrets),
+        # U — 감정 패턴 신호(흐린 날 상승 추세). timeline·hadSecrets 처럼 매 호출 fresh(비저장, LLM 0).
+        "patternSignal": pattern_signal or {"active": False, "weeks": [0, 0, 0]},
         "kiddyMessage": report_row.get("kiddy_message", ""),
         "createdAt": report_row.get("created_at"),
         "empty": empty,
@@ -539,6 +582,22 @@ async def get_checkin_report(
 
     start, end = _period_range(period)
     start_s, end_s = start.isoformat(), end.isoformat()
+
+    # U — 감정 패턴 신호: 최근 21일 mood만 별도 조회(answers 미접근) → 결정적 계산(LLM 0, 비저장).
+    #     기존 캐시 신선도 로직(아래 7일 checkins)과 얽히지 않게 분리 — patternSignal은 매 호출 fresh.
+    pattern_start_s = (end - timedelta(days=20)).isoformat()
+    pattern_rows = await sb_select(
+        "daily_checkins",
+        {
+            "profile_id": f"eq.{profile_id}",
+            "user_id": f"eq.{user_id}",
+            "checkin_date": f"gte.{pattern_start_s}",
+            "select": "mood,checkin_date",
+            "order": "checkin_date.asc",
+        },
+    )
+    pattern_rows = [c for c in pattern_rows if c.get("checkin_date") and c.get("checkin_date") <= end_s]
+    pattern_signal = _compute_pattern_signal(pattern_rows, end)
 
     # 1) 기간 내 체크인 (신선도 판단 + 타임라인/하이라이트 결정적 계산에 필요)
     checkins = await sb_select(
@@ -566,7 +625,7 @@ async def get_checkin_report(
             "mood_summary": {"trend": "", "counts": _build_mood_counts([]), "note": "", "talk_seed": ""},
             "shared_highlights": [], "kiddy_message": "", "created_at": None,
         }
-        return {"report": _report_to_api(empty_row, timeline, had_secrets=had_secrets, empty=True), "cached": False}
+        return {"report": _report_to_api(empty_row, timeline, had_secrets=had_secrets, empty=True, pattern_signal=pattern_signal), "cached": False}
 
     # 3) 캐시 조회 — 같은 기간 리포트가 있고, 그 이후 체크인 갱신이 없으면 재사용
     cached_rows = await sb_select(
@@ -585,7 +644,7 @@ async def get_checkin_report(
         ver_ok = (report.get("mood_summary") or {}).get("_v") == REPORT_PROMPT_VERSION
         fresh = created and latest and created >= latest
         if ver_ok and fresh:
-            return {"report": _report_to_api(report, timeline, had_secrets=had_secrets), "cached": True}
+            return {"report": _report_to_api(report, timeline, had_secrets=had_secrets, pattern_signal=pattern_signal), "cached": True}
 
     # 4) 새로 생성 — 결정적 집계 + Claude 한마디
     counts = _build_mood_counts(checkins)
@@ -627,4 +686,4 @@ async def get_checkin_report(
     except Exception as e:
         print(f"[리포트] 캐시 저장 실패(무시): {e}")
 
-    return {"report": _report_to_api(saved_row, timeline, had_secrets=had_secrets), "cached": False}
+    return {"report": _report_to_api(saved_row, timeline, had_secrets=had_secrets, pattern_signal=pattern_signal), "cached": False}

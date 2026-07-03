@@ -232,6 +232,28 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
         </div>
       </div>
 
+      {/* U — 감정 패턴 신호(흐린 날 상승 추세). 감정 흐름 바로 아래. 위기 카드(💛)와 구분되는 보라 소프트 톤 — 경고색 금지·진단 아님·비저장(active일 때만). */}
+      {report.patternSignal?.active && (
+        <div
+          className="rounded-2xl p-4 md:p-5"
+          style={{ backgroundColor: "rgba(139,127,242,0.12)", border: "1px solid rgba(139,127,242,0.28)" }}
+        >
+          <div className="flex items-start gap-2.5">
+            <span className="text-base shrink-0" style={{ lineHeight: "1.6" }}>💜</span>
+            <div className="min-w-0">
+              <p className="text-sm leading-relaxed" style={{ color: C.ink }}>
+                최근 2주, {childStem(profileName || "아이")}의 마음에 흐린 날이 조금씩 늘고 있어요.<br />
+                무슨 일인지 캐묻기보다, 함께하는 시간을 조금 늘려보시면 어떨까요?<br />
+                키디도 매일의 안부에서 {childStem(profileName || "아이")}의 마음을 살피고 있을게요.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: C.dim }}>
+                이 신호는 진단이 아니에요. 그저 오늘, 조금 더 함께하자는 이야기예요.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 부모가 알아두면 좋을 한마디 (note) ── */}
       {note && (
         <div className="rounded-2xl p-4 md:p-5" style={{ backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)" }}>
