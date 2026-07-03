@@ -339,7 +339,7 @@ export default function Landing() {
           </h1>
 
           {/* 히어로 서브텍스트 — S 브리프 §2 재활성(둘째 줄 교체, 감정형 두 줄 <br /> 분할) */}
-          <p className="mt-6 max-w-xl text-base md:text-xl font-medium text-white/65 leading-relaxed">
+          <p className="mt-6 max-w-xl text-base md:text-xl font-medium text-white/80 leading-relaxed">
             처음 영상을 만나는 그 순간, 아이가 혼자가 아니도록.
             <br />
             키디가 곁에서 함께 보고, 매일 아이의 마음에 안부를 물어요.

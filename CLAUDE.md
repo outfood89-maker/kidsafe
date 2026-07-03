@@ -105,8 +105,10 @@ git push origin master
 
 ### 아바타 시스템
 - 경로: `client/public/images/avatars/avatar_01~08.png`
-- 렌더링: `objectFit: cover`, `objectPosition: center 0%`, `transform: scale(1.35) translateY(5%)`
-- avatar_05(호떡)만 X축 보정: `AVATAR_OFFSET_X = { 5: "43%" }`
+- **렌더링(현행): 아바타 PNG 재가공 완료(정사각·상반신·머리위 여백 통일)** → CSS는 단순 cover면 충분:
+  `objectFit: cover`, `objectPosition: center top`, `transform: scale(1.04)`(원 테두리 미세 흰선 방지), `transformOrigin: center top`.
+  기준 구현 = ProfileSelect·KidHome·BadgeCollection·ParentDashboard·ProfileFormModal (전 화면 동일하게 유지할 것).
+- ⚠️ **옛 값 `scale(1.35) translateY(5%)` + `objectPosition: "... 0%"` + `AVATAR_OFFSET_X{5:"43%"}`는 재가공 이전 값 → 폐기.** 재가공 이미지에 적용 시 중심이 틀어짐(BadgeCollection 사고). 새 렌더 사이트도 반드시 현행 값 사용.
 - 파라미터 있는 함수는 onClick에서 반드시 `() => fn()` 래퍼 사용 — 이벤트 객체가 인자로 넘어가는 버그 방지
 
 ### 안전도 점수 기준

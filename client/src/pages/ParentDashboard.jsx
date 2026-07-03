@@ -55,20 +55,21 @@ const getAvatarUrl = (profile) =>
   `/images/avatars/avatar_${String(profile?.avatarId || 1).padStart(2, "0")}.png`;
 
 const AVATAR_OFFSET_X = { 5: "43%" };
+// 아바타 재가공 완료(정사각·상반신·머리위 여백 통일) → 단순 cover (ProfileSelect·KidHome과 동일). 옛 scale(1.35)+0% 오프셋 제거.
 const getAvatarStyle = (profile) => ({
   width: "100%",
   height: "100%",
   objectFit: "cover",
-  objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
-  transform: "scale(1.35) translateY(5%)",
+  objectPosition: "center top",
+  transform: "scale(1.04)", // 원 테두리 미세 흰선 방지
   transformOrigin: "center top",
 });
 const getAvatarStyleById = (id) => ({
   width: "100%",
   height: "100%",
   objectFit: "cover",
-  objectPosition: `${AVATAR_OFFSET_X[id] ?? "center"} 0%`,
-  transform: "scale(1.35) translateY(5%)",
+  objectPosition: "center top",
+  transform: "scale(1.04)",
   transformOrigin: "center top",
 });
 
@@ -109,7 +110,7 @@ export default function ParentDashboard() {
   const { isPremium } = useAuth();
   // 프로필별 부모페이지 — :profileId 가 있으면 그 아이로 스코프 잠금 (프로필 전환 탭 숨김)
   const { profileId: scopedId } = useParams();
-  const [mainTab, setMainTab] = useState("overview"); // 좌측 사이드바 활성 탭
+  const [mainTab, setMainTab] = useState("kiddy"); // 좌측 사이드바 활성 탭 (AA A7: 기본 탭 = '키디의 한 주', 오너 결정)
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768); // 접이식 사이드바 (데스크톱 기본 열림)
   const [history, setHistory] = useState([]);
   const [profiles, setProfiles] = useState([]);

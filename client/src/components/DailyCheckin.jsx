@@ -153,6 +153,11 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     color: "#08160F", boxShadow: "0 6px 18px rgba(24,196,154,0.35)",
   };
   const btnGhost = { backgroundColor: C.chip, color: C.ink, border: "1px solid rgba(255,255,255,0.1)" };
+  // AA A1: 공유-중립 — 비밀 버튼도 공유 버튼과 동등한 시각 무게(그라데이션+그림자), 색만 라벤더로 구분. (btnGhost는 다른 사용처 있어 불변)
+  const btnSecret = {
+    background: "linear-gradient(135deg, #8B7BF5, #A78BFA)",
+    color: "#120B2A", boxShadow: "0 6px 18px rgba(139,123,245,0.35)",
+  };
 
   // 직접 말하기 버튼 색 — 말하기(초록 GO) / 멈추기(빨강 STOP) 를 또렷하게 나눠 아이가 한눈에 구분.
   // 현재 단계가 아닌 쪽은 흐리게(DIM) → 지금 눌러야 할 버튼이 저절로 도드라짐.
@@ -836,8 +841,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
               <button
                 onClick={() => chooseShare(false)}
                 disabled={busy}
-                className="w-full rounded-2xl py-4 font-bold transition active:scale-95 disabled:opacity-50"
-                style={btnGhost}
+                className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95 disabled:opacity-50"
+                style={btnSecret}
               >
                 비밀이야 🤫
               </button>

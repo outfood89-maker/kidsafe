@@ -314,7 +314,7 @@ export default function MiniGame() {
         <p className="mt-1 text-sm text-center" style={{ color: "#90A9A8" }}>
           {todayBonus >= maxBonus
             ? "게임은 계속 즐길 수 있어요 😊"
-            : "맞힐수록 영상 시간이 늘어나요!"}
+            : "한 판 놀면서 배우고, 시간을 스스로 채워봐!"}
         </p>
       </div>
 
@@ -387,9 +387,9 @@ export default function MiniGame() {
             style={{
               animationDelay: `${idx * 0.07}s`,
               padding: "16px 18px",
-              backgroundColor: game.available ? game.bg : "#F7F7F7",
+              backgroundColor: game.available ? "#163635" : "#0E2A2A",
               border: `2px solid ${game.available ? game.color : "#E5E5E5"}`,
-              boxShadow: game.available ? `0 4px 0 ${game.color}55` : "none",
+              boxShadow: game.available ? `0 4px 0 ${game.color}33` : "none",
               opacity: game.available ? 1 : 0.55,
               cursor: game.available ? "pointer" : "default",
               transform: "translateY(0)",
@@ -398,38 +398,38 @@ export default function MiniGame() {
             onMouseDown={(e) => {
               if (!game.available) return;
               e.currentTarget.style.transform = "translateY(2px)";
-              e.currentTarget.style.boxShadow = `0 2px 0 ${game.color}55`;
+              e.currentTarget.style.boxShadow = `0 2px 0 ${game.color}33`;
             }}
             onMouseUp={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = `0 4px 0 ${game.color}55`;
+              e.currentTarget.style.boxShadow = `0 4px 0 ${game.color}33`;
             }}
           >
             {/* 이모지 */}
             <div className="rounded-2xl flex items-center justify-center shrink-0"
-              style={{ width: "52px", height: "52px", backgroundColor: "rgba(255,255,255,0.7)", fontSize: "28px" }}>
+              style={{ width: "52px", height: "52px", backgroundColor: "rgba(255,255,255,0.08)", fontSize: "28px" }}>
               {game.emoji}
             </div>
 
             {/* 텍스트 */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-base font-extrabold" style={{ color: "#3C3C3C" }}>
+                <span className="text-base font-extrabold" style={{ color: "#EAF5F1" }}>
                   {game.name}
                 </span>
                 <span className="text-xs rounded-full px-2 py-0.5 font-bold"
-                  style={{ backgroundColor: "rgba(255,255,255,0.6)", color: game.color, border: `1px solid ${game.color}` }}>
+                  style={{ backgroundColor: "transparent", color: game.color, border: `1px solid ${game.color}` }}>
                   {game.difficulty}
                 </span>
               </div>
-              <p className="text-sm mt-0.5 font-medium" style={{ color: "#777" }}>
+              <p className="text-sm mt-0.5 font-medium" style={{ color: "#90A9A8" }}>
                 {game.description}
               </p>
             </div>
 
             {/* 보상 뱃지 */}
             <div className="shrink-0 rounded-xl px-3 py-1.5 text-center"
-              style={{ backgroundColor: game.available ? game.color : "#E5E5E5" }}>
+              style={{ backgroundColor: game.available ? game.color : "#163635" }}>
               <span className="text-xs font-extrabold text-white" style={{ color: game.available ? "white" : "#999" }}>
                 {game.reward}
               </span>
@@ -438,7 +438,8 @@ export default function MiniGame() {
         ))}
       </div>
 
-      {/* 하단 보상 안내 */}
+      {/* 하단 보상 안내 — Freddie 요청으로 숨김(2026-07-03). 삭제 아닌 비활성(복구: 아래 `false &&` 제거). */}
+      {false && (
       <div className="mx-5 mt-5 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)", backgroundColor: "#0E2A2A" }}>
         <div className="px-4 py-3" style={{ backgroundColor: "#163635" }}>
           <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#90A9A8" }}>
@@ -450,9 +451,9 @@ export default function MiniGame() {
           <div className="px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="text-xs font-extrabold mb-1.5" style={{ color: "#90A9A8" }}>🧠 OX 퀴즈 (10문제)</p>
             <div className="flex gap-3">
-              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#F0FBE8" }}>
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "rgba(88,204,2,0.12)" }}>
                 <p className="text-sm font-extrabold" style={{ color: "#58CC02" }}>+3분</p>
-                <p className="text-xs" style={{ color: "#AFAFAF" }}>8개 이상 정답</p>
+                <p className="text-xs" style={{ color: "#90A9A8" }}>8개 이상 정답</p>
               </div>
             </div>
           </div>
@@ -460,18 +461,19 @@ export default function MiniGame() {
           <div className="px-4 py-2.5">
             <p className="text-xs font-extrabold mb-1.5" style={{ color: "#90A9A8" }}>🔤 단어 맞추기 (10문제)</p>
             <div className="flex gap-3">
-              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFF8ED" }}>
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "rgba(255,150,0,0.12)" }}>
                 <p className="text-sm font-extrabold" style={{ color: "#FF9600" }}>+3분</p>
-                <p className="text-xs" style={{ color: "#AFAFAF" }}>6~9개 정답</p>
+                <p className="text-xs" style={{ color: "#90A9A8" }}>6~9개 정답</p>
               </div>
-              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "#FFF8ED" }}>
+              <div className="flex-1 text-center rounded-xl py-1.5" style={{ background: "rgba(255,150,0,0.12)" }}>
                 <p className="text-sm font-extrabold" style={{ color: "#FF9600" }}>+7분</p>
-                <p className="text-xs" style={{ color: "#AFAFAF" }}>10개 전부</p>
+                <p className="text-xs" style={{ color: "#90A9A8" }}>10개 전부</p>
               </div>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       {/* 키디 챗 (탭바에서 열림) */}
       {/* Z §1: 챗봇 정문 폐쇄 — '키디' 탭은 키디의 방으로 통일. 코드는 폴백(§2)용 보존. */}

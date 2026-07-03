@@ -11,12 +11,13 @@ const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 const AVATAR_LIST = [1, 2, 3, 4, 5, 6, 7, 8];
 const AVATAR_OFFSET_X = { 5: "43%" };
 
+// 아바타 재가공 완료 → 단순 cover (ProfileSelect·KidHome과 동일). 옛 오프셋/translateY 제거.
 const avatarStyle = (id) => ({
   width: "100%",
   height: "100%",
   objectFit: "cover",
-  objectPosition: `${AVATAR_OFFSET_X[id] ?? "center"} 0%`,
-  transform: "scale(1.1) translateY(-2%)",
+  objectPosition: "center top",
+  transform: "scale(1.04)",
   transformOrigin: "center top",
 });
 

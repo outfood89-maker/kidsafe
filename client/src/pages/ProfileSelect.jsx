@@ -269,11 +269,11 @@ export default function ProfileSelect() {
                   <button
                     onClick={(e) => { e.stopPropagation(); handleParentEnter(profile); }}
                     className="absolute right-3 top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
-                    style={{ width: "36px", height: "36px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    style={{ width: "36px", height: "36px", backgroundColor: "rgba(24,196,154,0.18)", border: "1px solid rgba(24,196,154,0.35)" }}
                     aria-label={`${profile.name} 부모 설정`}
                     title="부모 설정"
                   >
-                    <FaLock style={{ color: "#18C49A", fontSize: "13px" }} />
+                    <FaLock style={{ color: "#18C49A", fontSize: "15px" }} />
                   </button>
                   <button
                     onClick={() => handleProfileClick(profile)}
@@ -321,7 +321,7 @@ export default function ProfileSelect() {
                         className="rounded-full px-3 py-1"
                         style={{ backgroundColor: "#163635" }}
                       >
-                        <span className="text-xs" style={{ color: "#6B8378" }}>배지 없음</span>
+                        <span className="text-xs" style={{ color: "#6B8378" }}>아직 모으는 중!</span>
                       </div>
                     )}
                   </button>

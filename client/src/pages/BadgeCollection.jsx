@@ -113,8 +113,10 @@ export default function BadgeCollection() {
                   style={{
                     width: "100%", height: "100%",
                     objectFit: "cover",
-                    objectPosition: `${AVATAR_OFFSET_X[profile?.avatarId] ?? "center"} 0%`,
-                    transform: "scale(1.35) translateY(5%)",
+                    // 아바타 재가공 완료(정사각·상반신·머리위 여백 통일) → ProfileSelect·KidHome과 동일하게 단순 cover.
+                    // (옛 scale(1.35)+translateY(5%)+0% 오프셋은 재가공 이미지에서 중심 틀어짐 → 제거)
+                    objectPosition: "center top",
+                    transform: "scale(1.04)", // 원 테두리 미세 흰선 방지
                     transformOrigin: "center top",
                   }}
                 />

@@ -284,8 +284,12 @@ export default function KiddyRoom() {
       </div>
 
       {/* 큰 키디 + 현재 한 줄 (로그 리스트 없음 — 지금 말하는 한 줄만) */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6">
-        <KiddyVideo clip={roomClip} size={200} float />
+      {/* AA A6: 데스크톱 밀도 — 컬럼 최대 폭 제한(넓은 모니터 여백 정리). 모바일 무변경. */}
+      <div className="flex-1 w-full max-w-xl mx-auto flex flex-col items-center justify-center gap-5 px-6">
+        {/* AA A6: 데스크톱 한정 확대 래퍼(md:scale-125) — 바깥 래퍼라 KiddyVideo 내부 float transform과 충돌 없음. clip 등 프롭 불변. */}
+        <div className="md:scale-125">
+          <KiddyVideo clip={roomClip} size={200} float />
+        </div>
         <p className="text-center text-lg font-bold leading-snug min-h-[3.5rem]" style={{ color: "#EAF5F1" }}>
           <Typewriter key={kiddyLine} text={kiddyLine} speed={28} />
         </p>
