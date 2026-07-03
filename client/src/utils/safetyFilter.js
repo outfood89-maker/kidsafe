@@ -29,9 +29,13 @@ export const getSafetyGrade = (score) => {
   return { grade: '위험', color: 'red' }
 }
 
-// 프로필의 실효 기준점수 반환 (커스텀 → 연령 기본값 → 전역 기본값 순)
+// 중간 나이(4·6·8·9)를 설정 버킷(3/5/7/10)에 귀속 — 보수적(아래 버킷=더 엄격) (V)
+const resolveAgeBucket = (age) => (age >= 10 ? 10 : age >= 7 ? 7 : age >= 5 ? 5 : 3)
+
+// 프로필의 실효 기준점수 반환 (커스텀 → 연령 버킷 기본값 → 전역 기본값 순)
+// ⚠️ age가 null이면 버킷(→3)으로 떨어뜨리지 말고 전역 폴백 70 유지 (V null 가드)
 export const getEffectiveThreshold = (age, customThreshold) =>
-  customThreshold ?? AGE_THRESHOLD[age] ?? 70
+  customThreshold ?? (age != null ? AGE_THRESHOLD[resolveAgeBucket(age)] : 70)
 
 // 연령 기준으로 콘텐츠 필터링 (커스텀 threshold 우선 적용)
 // + AI 정밀분석(confidence==='high')으로 위험 판정된 영상은 아이 화면에서 숨김.
@@ -94,7 +98,7 @@ export const calculateTotalScore = (scores) => {
 
 // 나이별 가중치 적용 점수 계산
 export const calculateWeightedScore = (video, age) => {
-  const weights = AGE_WEIGHTS[age] || AGE_WEIGHTS[7]
+  const weights = AGE_WEIGHTS[resolveAgeBucket(age)] || AGE_WEIGHTS[7]
   const { totalScore, violence, language, sexual, educational } = video
   const violenceSexualAvg = Math.round((violence + sexual) / 2)
   const weightedScore = Math.round(

@@ -7,7 +7,7 @@ import { createProfile, updateProfile } from "../utils/api";
 // onCreated(profile): 생성 성공 시 새 프로필 전달 (생성 모드)
 // profile: 넘기면 수정 모드 (해당 프로필 값으로 프리필)
 // onUpdated(profile): 수정 성공 시 갱신된 프로필 전달 (수정 모드)
-const AGE_OPTIONS = [3, 5, 7, 10];
+const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 const AVATAR_LIST = [1, 2, 3, 4, 5, 6, 7, 8];
 const AVATAR_OFFSET_X = { 5: "43%" };
 
@@ -105,7 +105,7 @@ export default function ProfileFormModal({ onClose, onCreated, profile = null, o
         {/* 나이 */}
         <div className="mb-5">
           <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>나이</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
             {AGE_OPTIONS.map((a) => (
               <button
                 key={a}

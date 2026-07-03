@@ -30,12 +30,27 @@ def _read_json(path, fallback):
         return fallback
 
 
+def _resolve_age_bucket(age: Optional[int]):
+    """중간 나이(4·6·8·9)를 설정 버킷(3/5/7/10)에 보수적 귀속(아래 버킷=더 엄격).
+    프론트 safetyFilter.js resolveAgeBucket와 동일 로직 유지 (V)."""
+    if age is None:
+        return None
+    if age >= 10:
+        return 10
+    if age >= 7:
+        return 7
+    if age >= 5:
+        return 5
+    return 3
+
+
 def effective_threshold(age: Optional[int], custom: Optional[int]) -> int:
-    """프론트 getEffectiveThreshold와 동일: 커스텀 > 연령기본 > 전역기본."""
+    """프론트 getEffectiveThreshold와 동일: 커스텀 > 연령 버킷 기본 > 전역기본."""
     if custom is not None:
         return custom
-    if age in AGE_THRESHOLD:
-        return AGE_THRESHOLD[age]
+    bucket = _resolve_age_bucket(age)
+    if bucket in AGE_THRESHOLD:
+        return AGE_THRESHOLD[bucket]
     return DEFAULT_THRESHOLD
 
 

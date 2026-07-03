@@ -42,7 +42,7 @@ import PinModal from "../components/PinModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 
-const AGE_OPTIONS = [3, 5, 7, 10];
+const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 
 const TIME_OPTIONS = [
   { label: "30분", value: 30 },
@@ -945,7 +945,7 @@ export default function ParentDashboard() {
                   {/* 나이 */}
                   <div className="mb-5">
                     <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>나이</label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
                       {AGE_OPTIONS.map((age) => (
                         <button
                           key={age}
@@ -2106,7 +2106,7 @@ export default function ParentDashboard() {
             {/* 나이 */}
             <div className="mb-5">
               <label className="mb-2 block text-base font-semibold" style={{ color: "#90A9A8" }}>나이</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
                 {AGE_OPTIONS.map((age) => (
                   <button
                     key={age}
