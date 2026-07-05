@@ -449,11 +449,21 @@ export default function Landing() {
           <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>
             키디는 아이의 친구이자,<br />부모님과 아이를 잇는 다리입니다
           </h2>
+          {/* AC 건4: 구 본문 비활성 — ❶과 내용 중복, 여정 관문으로 전환. 삭제 아닌 보존(false 제거 시 복구). */}
+          {false && (
           <p className="mt-6 text-base md:text-lg leading-relaxed max-w-2xl" style={{ color: "#B5C9C0" }}>
             안전한 영상을 골라주는 건 기본이에요. 키디는 한 걸음 더 나아가,
             매일 아이에게 오늘 하루를 물어봅니다. 아이가 신나서 조잘조잘 답하면,
             그중 &apos;엄마 아빠랑 같이 보고 싶어&apos; 하고 고른 것만 살짝 전해드려요.
             마음을 캐묻는 게 아니라, 아이가 먼저 나누고 싶도록요.
+          </p>
+          )}
+          {/* AC 건4: 새 본문 — 팀장 확정 verbatim (4행·강조 2곳) */}
+          <p className="mt-6 text-base md:text-lg leading-relaxed max-w-2xl" style={{ color: "#B5C9C0" }}>
+            안전한 영상을 골라주는 건 기본이에요.<br />
+            키디가 진짜 하는 일은 — <span style={{ color: "#5FE0BC" }}>아이의 하루 곁에 머물며</span>,<br />
+            그 마음을 <span style={{ color: "#5FE0BC" }}>부모님께 잇는</span> 거예요.<br />
+            어떻게 하는지, 아이의 하루를 따라가며 보여드릴게요.
           </p>
         </div>
       </section>
@@ -465,7 +475,8 @@ export default function Landing() {
           <div className={`text-center mb-16 ${fade(previewFrontInView)}`}>
             <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>First, hello</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>키디를 만나면, 안부가 먼저예요</h2>
-            <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>영상보다 먼저, 키디가 오늘의 기분을 물어봐요. 글을 몰라도 괜찮아요 — 이모지와 목소리로 답하면 되니까요.</p>
+            {/* AC 건8: 리드 축약 — "글을 몰라도..." 정보는 직하단 컷 체크리스트에 존재(중복 제거). 팀장 확정 verbatim. */}
+            <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>영상보다 먼저, 안부부터.</p>
           </div>
           {/* 컷 — 키디와 매일 대화(체크인) — Freddie 추가. ShotCard(넓적 비율이라 폰 베젤 대신 카드 프레임) */}
           <div className={`flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24 md:mb-36 transition-all duration-700 ${previewFrontInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10"}`}>
@@ -499,7 +510,8 @@ export default function Landing() {
               <div className="w-full max-w-xs rounded-2xl px-5 py-4 mt-6" style={{ backgroundColor: "rgba(24,196,154,0.1)", border: "1px solid rgba(24,196,154,0.3)" }}>
                 <p className="text-base font-bold mb-1 flex items-center gap-2" style={{ color: "#5FE0BC" }}>🔒 아이의 마음은 아이의 것</p>
                 <p className="text-sm md:text-base leading-relaxed" style={{ color: "#C5D8CF", wordBreak: "keep-all" }}>
-                  몰래 들여다보지 않아요. 아이가 <b style={{ color: "#EAF5F1" }}>&apos;같이 보고 싶어&apos;</b>라고
+                  {/* AC 건5: 실제 앱 버튼("응, 들려줄래")과 문구 정합 */}
+                  몰래 들여다보지 않아요. 아이가 <b style={{ color: "#EAF5F1" }}>&apos;들려줄래&apos;</b>라고
                   고른 이야기만 전해드립니다.
                 </p>
               </div>
@@ -524,11 +536,21 @@ export default function Landing() {
           <h2 className="text-2xl md:text-4xl font-black leading-snug tracking-tight" style={{ color: "#EAF5F1" }}>
             아이가 보기 전에, 키디가 먼저 봐요
           </h2>
+          {/* AC §2: 구 공생 문단 비활성 — 내용이 비교표 리드와 중복. 새 리드(팀장 확정본)로 교체. 삭제 아닌 보존(false 제거 시 복구). */}
+          {false && (
           <p className="mt-6 text-base md:text-lg leading-relaxed" style={{ color: "#B5C9C0" }}>
             영상 속엔 아이에게 좋은 콘텐츠도 참 많아요.<br />
             다만 그중 안전한 걸 일일이 골라내기가 버거울 뿐이죠.<br />
             키디가 먼저 하나하나 살펴보고, 안심할 수 있는 영상만<br />
             아이 눈높이로 건네드립니다.
+          </p>
+          )}
+          {/* ❷ 새 리드 문단 — 팀장 확정본 verbatim (줄바꿈 4행·문장부호 불변, 강조 스팬 2곳 지정) */}
+          <p className="mt-6 text-base md:text-lg leading-relaxed" style={{ color: "#B5C9C0" }}>
+            키디 안에서 아이는 <span style={{ color: "#5FE0BC" }}>유튜브 영상을 검색하고, 골라 봐요</span>.<br />
+            그런데 키디에게 영상은 그냥 &apos;보여주는 것&apos;이 아니에요.<br />
+            아이가 오늘 본 것이 저녁 식탁의 이야깃거리가 되도록 —<br />
+            미디어를, <span style={{ color: "#5FE0BC" }}>아이와 부모님을 잇는 소재로</span> 씁니다.
           </p>
         </div>
       </section>
@@ -539,7 +561,7 @@ export default function Landing() {
           <div className={`text-center mb-16 ${fade(vsInView)}`}>
             <p className="text-base md:text-lg font-bold uppercase tracking-widest mb-3" style={{ color: "#18C49A" }}>YouTube + Kiddy</p>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight" style={{ color: "#EAF5F1" }}>
-              유튜브는 그대로<br className="md:hidden" /> 안전함만 더합니다
+              유튜브는 그대로,<br className="md:hidden" /> 안전함만 더합니다
             </h2>
             <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8" }}>
               유튜브에는 좋은 영상이 정말 많아요. 다만 그 안에서 고르는 수고가 따를 뿐이죠.
@@ -634,9 +656,10 @@ export default function Landing() {
             <h3 className="text-2xl md:text-3xl font-black mb-3 leading-tight tracking-tight" style={{ color: "#EAF5F1" }}>
               검수가 끝나면 이렇게 보여드립니다
             </h3>
+            {/* AC 건7: 정확성 수정 — 실제 게이팅은 연령별 임계(고정 90점 아님). 팀장 확정 verbatim. */}
             <p className="text-base font-medium max-w-xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>
-              영상마다 안전 점수를 매깁니다. 90점이 넘으면 초록불!
-              위험한 영상은 아이에게 아예 보이지 않습니다.
+              영상마다 안전 점수를 매겨요. <span style={{ color: "#5FE0BC" }}>아이 나이에 맞춘 기준</span>을 넘으면 초록불!
+              기준에 못 미치는 영상은 아이에게 아예 보이지 않아요.
             </p>
           </div>
 
@@ -682,7 +705,8 @@ export default function Landing() {
           </div>
           )}
 
-          {/* 컷 — 키디 분석 리포트 (부모): '도란도란' 아래로 이동 (Freddie 요청). checkInView 사용 */}
+          {/* AC §1: 구 분석 리포트 컷 비활성 — 리포트 콘텐츠는 ❹로 이동 완료, 중복 렌더 제거. 삭제 아닌 보존(false 제거 시 복구). checkInView는 아래 연령 문장 fade가 공유 → ref/InView 유지, JSX만 게이트. */}
+          {false && (
           <div className={`mt-24 md:mt-36 flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 transition-all duration-700 ${checkInView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}`}>
             <div className="w-full md:w-1/2 flex flex-col items-center md:items-start">
               <h3 className="text-2xl md:text-3xl font-black mb-5 leading-tight text-center md:text-left tracking-tight" style={{ color: "#EAF5F1" }}>
@@ -714,6 +738,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          )}
           {/* AB §3: 섹션 마무리 문장 (verbatim) */}
           <p className={`text-center mt-16 md:mt-24 text-base md:text-lg font-medium max-w-2xl mx-auto leading-relaxed ${fade(checkInView)}`} style={{ color: "#5FE0BC", wordBreak: "keep-all" }}>
             그리고 하나 더 — 유해하지 않다고 다 아이 것은 아니에요. 키디는 &apos;아이에게 맞는지&apos;까지 봐요.
@@ -849,7 +874,8 @@ export default function Landing() {
                 아이의 한 주를<br />따뜻한 편지로
               </h3>
               <ul className="space-y-3.5 w-full max-w-xs">
-                {["키디가 아이와 나눈 하루를 모아 편지로 전해드려요.", "아이의 요즘 감정 흐름을 세심하게 짚어드려요."].map(item => (
+                {/* AC §3: AI 코치 한 줄 추가 (팀장 확정 verbatim) — ❸ 교체가 아닌 ❹ 흡수로 확정 */}
+                {["키디가 아이와 나눈 하루를 모아 편지로 전해드려요.", "아이의 요즘 감정 흐름을 세심하게 짚어드려요.", "아이의 시청 흐름을 읽은 AI 코치가, 우리 집에 맞는 조언도 건네드려요."].map(item => (
                   <li key={item} className="flex items-start gap-3 text-base justify-start text-left" style={{ color: "#C5D8CF" }}>
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-white" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)" }}>✓</span>
                     <span style={{ wordBreak: "keep-all" }}>{item}</span>
@@ -972,7 +998,8 @@ export default function Landing() {
               { head: "비밀은 저장하지 않아요.", tail: "'비밀이야'라고 한 이야기는 어디에도 남지 않습니다." },
               { head: "더 보게 만들지 않아요.", tail: "배지도, 알림도 시청을 부추기지 않습니다." },
               { head: "진단하지 않아요.", tail: "아이의 마음에 이름표를 붙이지 않습니다." },
-              { head: "위기 신호조차 내용은 전하지 않아요.", tail: "'오늘은 곁에 있어 주세요'라고만 말씀드립니다." },
+              { head: "위기 신호가 보여도, 내용은 전하지 않아요.", tail: "'오늘은 곁에 있어 주세요'라고만 말씀드립니다." }, // AC 건6: 인과 명확화
+
             ].map((row) => (
               <div key={row.head} className="rounded-2xl px-6 py-5" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <p className="text-base md:text-lg leading-relaxed" style={{ color: "#C5D8CF", wordBreak: "keep-all" }}>
@@ -1001,6 +1028,14 @@ export default function Landing() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* 클로징 에필로그 (AC 건10, 신규) — 공감 섹션 감정 서사의 수미상응 마감. 텍스트 전용·캡처·버튼 없음. */}
+      <section className="px-4 py-16 md:py-28 text-center" style={{ backgroundColor: "#0A1E1E" }}>
+        <p className="mx-auto max-w-2xl text-lg md:text-2xl font-bold leading-relaxed" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>
+          미디어가 가족을 갈라놓는 시대에,<br />
+          우리는 미디어가 다시 가족을 잇는 <span style={{ color: "#5FE0BC" }}>작은 증거</span>를 만들고 있어요.
+        </p>
       </section>
 
       {/* ⑩ 최종 CTA */}
