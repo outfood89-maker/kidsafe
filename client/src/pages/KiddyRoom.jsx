@@ -280,7 +280,8 @@ export default function KiddyRoom() {
           ‹ 홈으로
         </button>
         <p className="text-sm font-extrabold" style={{ color: "#5FE0BC" }}>말하기 연습 🦕</p>
-        <span className="w-12" />
+        {/* AD: 가족 책장 진입 (그림일기 — feature/diary-v0 브랜치 전용 ADD, 기존 로직 무접촉) */}
+        <button onClick={() => navigate("/family-shelf")} className="text-sm font-bold" style={{ color: "#90A9A8" }}>📚 책장</button>
       </div>
 
       {/* 큰 키디 + 현재 한 줄 (로그 리스트 없음 — 지금 말하는 한 줄만) */}

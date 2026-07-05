@@ -6,6 +6,9 @@ import KiddyGreeting from "./KiddyGreeting";
 import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting, createCareSignal } from "../utils/api";
 import { screenText, fixedResponse, isHigh } from "../utils/safetyLexicon";
 import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowup, moodFollowupClosing } from "../utils/kiddyLines";
+// AD 그림일기 (feature/diary-v0 브랜치 전용 — 7/14 전 main 머지 금지). main엔 이 파일 diff가 아예 없어야 함.
+import DiaryFlow from "./DiaryFlow";
+import * as diaryStore from "../utils/diaryStore";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 import { hasBatchim } from "../utils/korean";
 import useKiddyVoice from "../hooks/useKiddyVoice";
@@ -79,8 +82,13 @@ function StreamingText({ target = "", streaming = false, onComplete, speed = 30,
   );
 }
 
+// AD §1: 그림일기 진입 플래그 (브랜치 전용 — main엔 이 파일 diff 없음)
+const DIARY_V0 = true;
+
 export default function DailyCheckin({ profile, onComplete, onSkip }) {
   const name = profile?.name || "친구";
+  // AD: 그림일기 오버레이 열림 상태 (DIARY_V0 뒤에만 동작)
+  const [diaryOpen, setDiaryOpen] = useState(false);
 
   const [phase, setPhase] = useState("loading"); // loading | greeting | questions | share | reward
   const [questions, setQuestions] = useState([]);
@@ -517,6 +525,24 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     }
   };
 
+  // ── AD 그림일기 진입 (feature/diary-v0 브랜치 전용) ──
+  // 재료 2개만 사용(§2 두 채널 구분): mood(moodEmoji) + 한 일. 볼것·비공개 후속답은 일기에 안 씀.
+  const diaryToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); // YYYY-MM-DD (KST)
+  const diaryDidToday = () => {
+    const a = answers.find((x) => x.qId !== "mood_today" && x.qId !== "watch_genre"); // 하루 = 기분·볼것 아닌 답
+    return a?.answer || "";
+  };
+  // reward 완료 버튼 핸들러 — R5(체크인 완료됨)+R8(빈도) 통과 시 일기 제안, 아니면 기존대로 완료.
+  const diaryFinish = () => {
+    try {
+      if (DIARY_V0 && profile?.id && diaryStore.shouldProposeToday(profile.id, diaryToday(), true)) {
+        setDiaryOpen(true);
+        return; // 일기 오버레이 → 닫힐 때 onComplete
+      }
+    } catch { /* 무시 — 실패 시 정상 완료 */ }
+    onComplete?.({ watchKeyword });
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-5 py-8 overflow-y-auto"
@@ -871,13 +897,24 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
             {replayBtn}
 
             <button
-              onClick={() => onComplete?.({ watchKeyword })}
+              onClick={diaryFinish}
               className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
               style={btnPrimary}
             >
               영상 보러 가자! 🚀
             </button>
           </div>
+        )}
+
+        {/* AD: 그림일기 진입 오버레이 (DIARY_V0 뒤에만, 브랜치 전용). 기존 체크인 흐름·비밀 약속 무접촉. */}
+        {DIARY_V0 && diaryOpen && (
+          <DiaryFlow
+            profile={profile}
+            today={diaryToday()}
+            checkinMood={moodEmoji}
+            checkinDidToday={diaryDidToday()}
+            onClose={() => { setDiaryOpen(false); onComplete?.({ watchKeyword }); }}
+          />
         )}
 
       </div>

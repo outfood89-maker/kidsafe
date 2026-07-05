@@ -8,6 +8,7 @@ import Account from './pages/Account'
 import ParentDashboard from './pages/ParentDashboard'
 import KidHome from './pages/KidHome'
 import KiddyRoom from './pages/KiddyRoom'
+import FamilyShelf from './pages/FamilyShelf' // AD: 그림일기 가족 책장 (feature/diary-v0 브랜치 전용)
 import ProfileSelect from './pages/ProfileSelect'
 import Favorites from './pages/Favorites'
 import BadgeCollection from './pages/BadgeCollection'
@@ -42,6 +43,8 @@ function App() {
           <Route path="/profiles" element={<ProtectedRoute><ProfileSelect /></ProtectedRoute>} />
           <Route path="/kids" element={<ProtectedRoute><KidHome /></ProtectedRoute>} />
           <Route path="/kiddy-room" element={<ProtectedRoute><KiddyRoom /></ProtectedRoute>} />
+          {/* AD: 그림일기 가족 책장 (feature/diary-v0 브랜치 전용 — 7/14 전 main 머지 금지) */}
+          <Route path="/family-shelf" element={<ProtectedRoute><FamilyShelf /></ProtectedRoute>} />
           <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
           <Route path="/badges" element={<ProtectedRoute><BadgeCollection /></ProtectedRoute>} />
           <Route path="/games" element={<ProtectedRoute><MiniGame /></ProtectedRoute>} />
