@@ -79,8 +79,19 @@ export default function FamilyShelf() {
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
+        {/* 찢은 직후 확인 — 엔트리 삭제로 openEntry가 사라져도 표시 (상세 언마운트 버그 수정, DOM 테스트 발견) */}
+        {torn && (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <KiddyImg pose="greet" size={120} />
+            <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>
+              <Typewriter key="torn" text={TEAR.done} speed={26} />
+            </p>
+            <button onClick={() => { setOpenId(null); setTorn(false); }} className="rounded-2xl px-6 py-3 text-base font-bold" style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}>책장으로</button>
+          </div>
+        )}
+
         {/* 빈 책장 */}
-        {entries.length === 0 && (
+        {!torn && !openEntry && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
             <KiddyImg pose="reading" size={140} float />
             <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>아직 책장이 비어 있어!</p>
@@ -89,7 +100,7 @@ export default function FamilyShelf() {
         )}
 
         {/* 월별 '한 권' 목록 */}
-        {!openEntry && entries.length > 0 && months.map((mo) => (
+        {!torn && !openEntry && entries.length > 0 && months.map((mo) => (
           <section key={mo.ym} className="mb-8">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">{mo.cover}</span>
@@ -116,38 +127,24 @@ export default function FamilyShelf() {
           </section>
         ))}
 
-        {/* 페이지 상세 */}
-        {openEntry && (
+        {/* 페이지 상세 (torn 아닐 때 — 찢음 확인은 위 최상위에서) */}
+        {!torn && openEntry && (
           <div className="flex flex-col gap-4">
             <button onClick={() => { setOpenId(null); setTorn(false); }} className="self-start text-sm font-bold" style={{ color: "#90A9A8" }}>‹ 책장으로</button>
-
-            {torn ? (
-              <div className="flex flex-col items-center gap-4 py-16 text-center">
-                <KiddyImg pose="greet" size={120} />
-                <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>
-                  <Typewriter key="torn" text={TEAR.done} speed={26} />
-                </p>
-                <button onClick={() => { setOpenId(null); setTorn(false); }} className="rounded-2xl px-6 py-3 text-base font-bold" style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}>책장으로</button>
+            {/* 크림 톤 '종이' 카드 — 작품 지면 예외 */}
+            <div className="rounded-2xl p-5" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+              <p className="text-sm font-bold mb-3" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</p>
+              <div className="rounded-xl mb-3 flex items-center justify-center text-center px-4" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                <span className="text-sm font-bold">{IMAGE_PLACEHOLDER}</span>
               </div>
-            ) : (
-              <>
-                {/* 크림 톤 '종이' 카드 — 작품 지면 예외 */}
-                <div className="rounded-2xl p-5" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-                  <p className="text-sm font-bold mb-3" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</p>
-                  <div className="rounded-xl mb-3 flex items-center justify-center text-center px-4" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
-                    <span className="text-sm font-bold">{IMAGE_PLACEHOLDER}</span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {(openEntry.sentences || []).map((s, i) => (
-                      <p key={i} className="text-base leading-relaxed" style={{ color: "#4A4433" }}>{s}</p>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 찢어버리기 — 아이의 삭제권(부모 삭제 불가). 배지·보상 없음. */}
-                <button onClick={() => setTearing(true)} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>🗑️ 찢어버리기</button>
-              </>
-            )}
+              <div className="flex flex-col gap-1.5">
+                {(openEntry.sentences || []).map((s, i) => (
+                  <p key={i} className="text-base leading-relaxed" style={{ color: "#4A4433" }}>{s}</p>
+                ))}
+              </div>
+            </div>
+            {/* 찢어버리기 — 아이의 삭제권(부모 삭제 불가). 배지·보상 없음. */}
+            <button onClick={() => setTearing(true)} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>🗑️ 찢어버리기</button>
           </div>
         )}
       </div>
