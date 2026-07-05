@@ -82,10 +82,10 @@ function StreamingText({ target = "", streaming = false, onComplete, speed = 30,
   );
 }
 
-// AD §1: 그림일기 진입 플래그 (브랜치 전용 — main엔 이 파일 diff 없음)
-const DIARY_V0 = true;
+// AD-2 §1: 그림일기 진입 플래그는 diaryStore.DIARY_V0 로 승격(단일 소스). 아래는 참조로 교체.
+// const DIARY_V0 = true; // (승격 — diaryStore.DIARY_V0 사용)
 
-export default function DailyCheckin({ profile, onComplete, onSkip }) {
+export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent = false }) {
   const name = profile?.name || "친구";
   // AD: 그림일기 오버레이 열림 상태 (DIARY_V0 뒤에만 동작)
   const [diaryOpen, setDiaryOpen] = useState(false);
@@ -527,15 +527,18 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
 
   // ── AD 그림일기 진입 (feature/diary-v0 브랜치 전용) ──
   // 재료 2개만 사용(§2 두 채널 구분): mood(moodEmoji) + 한 일. 볼것·비공개 후속답은 일기에 안 씀.
-  const diaryToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); // YYYY-MM-DD (KST)
+  // AD-2 §1: 날짜는 diaryStore.todayKST() 로 승격(단일 소스). 기존 로컬 함수는 보존용 주석.
+  // const diaryToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   const diaryDidToday = () => {
     const a = answers.find((x) => x.qId === "what_did_today"); // 하루 = 오늘 한 일 (양성 필터 — 질문 증설 시 방어)
     return a?.answer || "";
   };
-  // reward 완료 버튼 핸들러 — R5(체크인 완료됨)+R8(빈도) 통과 시 일기 제안, 아니면 기존대로 완료.
+  // reward 완료 버튼 핸들러 — diaryIntent(그림일기 홈 브릿지 경유, 아이가 방금 명시적으로 원함)면 R8 빈도 게이트 우회.
+  //   아니면 R5(체크인 완료됨)+R8(빈도) 통과 시에만 제안, 그 외 기존대로 완료.
   const diaryFinish = () => {
     try {
-      if (DIARY_V0 && profile?.id && diaryStore.shouldProposeToday(profile.id, diaryToday(), true)) {
+      if (diaryStore.DIARY_V0 && profile?.id &&
+          (diaryIntent || diaryStore.shouldProposeToday(profile.id, diaryStore.todayKST(), true))) {
         setDiaryOpen(true);
         return; // 일기 오버레이 → 닫힐 때 onComplete
       }
@@ -907,12 +910,13 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
         )}
 
         {/* AD: 그림일기 진입 오버레이 (DIARY_V0 뒤에만, 브랜치 전용). 기존 체크인 흐름·비밀 약속 무접촉. */}
-        {DIARY_V0 && diaryOpen && (
+        {diaryStore.DIARY_V0 && diaryOpen && (
           <DiaryFlow
             profile={profile}
-            today={diaryToday()}
+            today={diaryStore.todayKST()}
             checkinMood={moodEmoji}
             checkinDidToday={diaryDidToday()}
+            selfInitiated={diaryIntent}
             onClose={() => { setDiaryOpen(false); onComplete?.({ watchKeyword }); }}
           />
         )}

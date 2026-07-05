@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import KiddyImg from "../components/KiddyImg";
 import Typewriter from "../components/Typewriter";
+import DiaryFlow from "../components/DiaryFlow";
+import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR } from "../utils/diaryCopy";
+import { getTodayCheckin } from "../utils/api";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, TILE, HOME_WRITE, BRIDGE } from "../utils/diaryCopy";
 
-// ── 가족 책장 (AD §6) — 월별 '한 권' 묶음 + 페이지 상세 + 찢어버리기 ──
-// v0 저장 = localStorage(diaryStore). 서버·DB 무접촉. ⚠️ feature/diary-v0 브랜치 전용.
+// ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
+// v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const dateLabel = (ymd) => {
@@ -29,11 +32,15 @@ const topMood = (entries) => {
 
 export default function FamilyShelf() {
   const navigate = useNavigate();
+  const voice = useKiddyVoice();
   const [profile, setProfile] = useState(null);
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null); // 상세 열람 중인 페이지
   const [tearing, setTearing] = useState(false); // 찢기 확인 다이얼로그
   const [torn, setTorn] = useState(false); // 찢은 직후 안내
+  const [writing, setWriting] = useState(false); // AD-2 §3: 자발 진입 DiaryFlow 오버레이
+  const [checkinForDiary, setCheckinForDiary] = useState(null); // 쓰기 시작 시 조회한 오늘 체크인
+  const [bridge, setBridge] = useState(false); // 미체크인 브릿지 뷰
 
   useEffect(() => {
     try {
@@ -45,6 +52,13 @@ export default function FamilyShelf() {
       }
     } catch { /* 무시 */ }
   }, []);
+
+  // AD-2 §3: 브릿지 뷰가 뜨면 키디 대사 TTS 1회. 언마운트 시 유령 TTS 방지(voice.stop, X-2 교훈).
+  useEffect(() => {
+    if (bridge) { try { voice.speak(BRIDGE.line, "bright"); } catch { /* 무시 */ } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bridge]);
+  useEffect(() => () => { try { voice.stop(); } catch { /* 무시 */ } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 월별 그룹 (최신 월 먼저, 각 월 내 날짜순)
   const months = useMemo(() => {
@@ -61,6 +75,21 @@ export default function FamilyShelf() {
   }, [entries]);
 
   const openEntry = entries.find((e) => e.id === openId) || null;
+  // AD-2 §3: 오늘 이미 쓴 일기(있으면 상단 카드가 '완료' 상태 + 상세로 바로 열기)
+  const todayEntry = useMemo(() => entries.find((e) => e.date === diary.todayKST()) || null, [entries]);
+
+  // '오늘 일기 쓰기' 클릭 — 체크인 있으면 DiaryFlow, 없거나 실패면 브릿지(§4). 오늘 이미 썼으면 상세로.
+  const startWrite = async () => {
+    if (!profile?.id) return;
+    if (todayEntry) { setOpenId(todayEntry.id); return; }
+    try {
+      const { checkin } = await getTodayCheckin(profile.id); // 읽기 전용(이미 배포된 GET)
+      if (checkin) { setCheckinForDiary(checkin); setWriting(true); }
+      else setBridge(true);
+    } catch { setBridge(true); }
+  };
+  // 브릿지 → 홈으로 넘어가 체크인부터(기존 F1 자동 오픈 재사용). 의도 플래그만 전달.
+  const goBridge = () => navigate("/kids", { state: { diaryAfter: true } });
 
   const doTear = () => {
     if (profile && openId) diary.tearEntry(profile.id, openId); // 즉시 완전 삭제(복구 불가)
@@ -90,8 +119,49 @@ export default function FamilyShelf() {
           </div>
         )}
 
+        {/* AD-2 §3: 미체크인 브릿지 — 홈으로 넘어가 오늘 안부(체크인)부터. */}
+        {!torn && !openEntry && bridge && (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <KiddyImg pose="greet" size={120} />
+            <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>
+              <Typewriter key="bridge" text={BRIDGE.line} speed={26} />
+            </p>
+            <button onClick={goBridge} className="rounded-2xl px-6 py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>{BRIDGE.go}</button>
+          </div>
+        )}
+
+        {/* AD-2 §3: 상단 '오늘 일기 쓰기' 카드 (기존 상호배타 게이트에 합류) */}
+        {!torn && !openEntry && !writing && !bridge && (
+          <div className="mb-6">
+            {todayEntry ? (
+              <button
+                onClick={() => setOpenId(todayEntry.id)}
+                className="w-full rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
+                style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
+              >
+                <KiddyImg pose="greet" size={48} />
+                <p className="min-w-0 flex-1 text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.done}</p>
+                <span className="shrink-0 text-xl font-black" style={{ color: "#3A1A0E" }}>›</span>
+              </button>
+            ) : (
+              <button
+                onClick={startWrite}
+                className="w-full rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
+                style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
+              >
+                <KiddyImg pose="greet" size={48} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{HOME_WRITE}</p>
+                  <p className="text-xs font-bold" style={{ color: "#3A1A0E", opacity: 0.8 }}>{TILE.sub}</p>
+                </div>
+                <span className="shrink-0 text-xl font-black" style={{ color: "#3A1A0E" }}>›</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 빈 책장 */}
-        {!torn && !openEntry && entries.length === 0 && (
+        {!torn && !openEntry && !bridge && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
             <KiddyImg pose="reading" size={140} float />
             <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>아직 책장이 비어 있어!</p>
@@ -100,7 +170,7 @@ export default function FamilyShelf() {
         )}
 
         {/* 월별 '한 권' 목록 */}
-        {!torn && !openEntry && entries.length > 0 && months.map((mo) => (
+        {!torn && !openEntry && !bridge && entries.length > 0 && months.map((mo) => (
           <section key={mo.ym} className="mb-8">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">{mo.cover}</span>
@@ -160,6 +230,18 @@ export default function FamilyShelf() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* AD-2 §3: 자발 진입 DiaryFlow 오버레이 — 닫힐 때 책장 즉시 갱신(오늘 카드 '완료'로 전환). */}
+      {diary.DIARY_V0 && writing && checkinForDiary && profile && (
+        <DiaryFlow
+          profile={profile}
+          today={diary.todayKST()}
+          checkinMood={checkinForDiary.moodEmoji}
+          checkinDidToday={(checkinForDiary.answers || []).find((a) => a.qId === "what_did_today")?.answer || ""}
+          selfInitiated={true}
+          onClose={() => { setWriting(false); setCheckinForDiary(null); setEntries(diary.getEntries(profile.id)); }}
+        />
       )}
     </div>
   );

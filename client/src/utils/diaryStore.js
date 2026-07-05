@@ -5,6 +5,12 @@
 //   ④찢기=페이지 단위 즉시 완전 삭제(복구 불가) ⑤배지·보상·알림 연결 금지.
 // ⚠️ feature/diary-v0 브랜치 전용.
 
+// AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
+//   → main엔 이 브랜치 diff가 없어야 하므로 플래그로 신규 UI 전체를 게이트한다.
+export const DIARY_V0 = true;
+// 오늘 날짜(KST, YYYY-MM-DD) — 날짜 계산 중복 신설 금지, 신규 3곳(타일·홈·브릿지) 모두 이것만 사용.
+export const todayKST = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+
 const ENTRIES_KEY = (pid) => `diary_v0_${pid}`;
 const META_KEY = (pid) => `diary_v0_meta_${pid}`;
 

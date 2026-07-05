@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
@@ -23,6 +23,10 @@ import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
 import DailyCheckin from "../components/DailyCheckin";
+// AD-2: 그림일기 홈 진입 (feature/diary-v0 브랜치 전용 — main 무접촉, DIARY_V0 게이트 뒤)
+import * as diaryStore from "../utils/diaryStore";
+import { DIARY_V0, todayKST } from "../utils/diaryStore";
+import { TILE } from "../utils/diaryCopy";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
 //    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "") — 배포 청소로 리셋됨.
@@ -142,6 +146,7 @@ export default function KidHome() {
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
+  const diaryAfterRef = useRef(false); // AD-2 §4: 그림일기 홈 브릿지에서 넘어온 의도(체크인 완료 후 일기 연속 진행), 1회성
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -266,6 +271,23 @@ export default function KidHome() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // AD-2 §4: 그림일기 홈 '미체크인 브릿지'에서 navigate("/kids", { state: { diaryAfter: true } })로 돌아오면
+  //          체크인 자동 오픈(기존 F1 로직 재사용)이 뜨고, 완료 후 일기로 연속 진행하도록 의도 플래그만 세운다. state 즉시 소거(Z 패턴).
+  useEffect(() => {
+    if (location.state?.diaryAfter) {
+      diaryAfterRef.current = true;
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // AD-2 §2: 오늘 그림일기 작성 여부 — 타일 상태(제목 vs 완료) 전환용. 체크인 열림/닫힘·프로필 변화 시만 재계산(과도한 localStorage 파싱 방지).
+  const hasDiaryToday = useMemo(() => {
+    if (!DIARY_V0 || !selectedProfile?.id) return false;
+    try { return diaryStore.getEntries(selectedProfile.id).some((e) => e.date === todayKST()); }
+    catch { return false; }
+  }, [selectedProfile?.id, checkinOpen]);
 
   const fetchSearchHistory = async (profileId) => {
     try { const data = await getSearchHistory(profileId); setSearchHistory(data); }
@@ -1292,6 +1314,28 @@ export default function KidHome() {
                   <span className="shrink-0 text-xl font-black" style={{ color: "#08160F" }}>›</span>
                 </button>
 
+                {/* AD-2 §2: 그림일기 타일 — 주 진입 (feature/diary-v0 브랜치 전용, 순수 ADD). 웜톤으로 말하기연습(청록)과 구분. */}
+                {DIARY_V0 && selectedProfile && (
+                  <button
+                    onClick={() => navigate("/family-shelf")}
+                    className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
+                    style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
+                  >
+                    <KiddyImg pose="greet" size={54} />
+                    <div className="min-w-0 flex-1">
+                      {hasDiaryToday ? (
+                        <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.done}</p>
+                      ) : (
+                        <>
+                          <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.title}</p>
+                          <p className="text-xs font-bold" style={{ color: "#3A1A0E", opacity: 0.8 }}>{TILE.sub}</p>
+                        </>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-xl font-black" style={{ color: "#3A1A0E" }}>›</span>
+                  </button>
+                )}
+
                 {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
                 {(recommendLoading || recommendedVideos.length > 0) && (
                   <section className="mb-6">
@@ -1490,8 +1534,10 @@ export default function KidHome() {
       {checkinOpen && selectedProfile && (
         <DailyCheckin
           profile={selectedProfile}
-          onSkip={() => setCheckinOpen(false)}
+          diaryIntent={diaryAfterRef.current}
+          onSkip={() => { diaryAfterRef.current = false; setCheckinOpen(false); }}
           onComplete={({ watchKeyword }) => {
+            diaryAfterRef.current = false; // 1회성 의도 소거 (그림일기 진입은 DailyCheckin 내부에서 이미 처리됨)
             setCheckinOpen(false);
             // '볼 것' 답이 있으면 그 키워드로 바로 검색 (데모 시나리오의 payoff)
             if (watchKeyword) {

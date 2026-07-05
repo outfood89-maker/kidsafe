@@ -28,7 +28,8 @@ const dateLabel = (ymd) => {
 };
 const uid = (today) => `${today}_${Math.floor(Math.random() * 1e6)}`;
 
-export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, onClose }) {
+// selfInitiated=true → 자발 진입(그림일기 홈/브릿지 경유). '제안'이 아니므로 제안 통계(markProposed·recordProposalResult)에 기록하지 않음(R8 취지).
+export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, onClose }) {
   const navigate = useNavigate();
   const voice = useKiddyVoice();
   const speech = useKiddySpeech();
@@ -63,7 +64,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   // 마운트: 제안 표시 기록 + 인사 TTS
   useEffect(() => {
     mountedRef.current = true;
-    if (pid && today) diary.markProposed(pid, today);
+    if (!selfInitiated && pid && today) diary.markProposed(pid, today); // 자발 진입은 당일 제안 쿼터 미소비(§5)
     voice.speak(isSad ? ENTRY.sad : ENTRY.base, "bright");
     return () => { mountedRef.current = false; voice.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,14 +111,14 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
   // ── 스텝 전이 ──
   const declineAndClose = () => {
-    if (pid) diary.recordProposalResult(pid, false); // R8 거절 streak++
+    if (!selfInitiated && pid) diary.recordProposalResult(pid, false); // R8 거절 streak++ (자발 진입은 통계 무오염, §5)
     setKiddyLine(ENTRY.declineReply);
     voice.speak(ENTRY.declineReply, "bright");
     setStep("entry");
     setTimeout(() => { if (mountedRef.current) onClose?.(); }, 1400);
   };
   const acceptEntry = () => {
-    if (pid) diary.recordProposalResult(pid, true); // 제안 수락 → streak 리셋
+    if (!selfInitiated && pid) diary.recordProposalResult(pid, true); // 제안 수락 → streak 리셋 (자발 진입은 통계 무오염, §5)
     setStep("weather");
     setKiddyLine(WEATHER_ASK);
     voice.speak(WEATHER_ASK, "bright");
@@ -129,28 +130,33 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     setSafetyMsg(null);
     if (question?.ask) voice.speak(question.ask, "bright");
   };
+  // 3층 그림 참여 칩 — 그날의 답에서 자동 생성(명사 후보). 문장 미포함, child_pick 저장만.
+  const buildPickChips = (rot) => {
+    const cands = [checkinDidToday, rot && !rot.noAnswer && !rot.isSpeech ? rot.answer : null,
+      WEATHER_CHIPS.find((w) => w.key === weather && w.key !== "unknown")?.label?.replace(/^[^ ]+ /, "")];
+    return [...new Set(cands.filter((c) => c && String(c).trim()))].slice(0, 5);
+  };
   const answerRotating = ({ answer, isSpeech = false, noAnswer = false }) => {
-    setRotating({ qid: question.qid, answer, isSpeech, noAnswer });
+    const next = { qid: question.qid, answer, isSpeech, noAnswer };
+    setRotating(next);
     if (noAnswer) { setReaction(NO_ANSWER_REACTION); voice.speak(NO_ANSWER_REACTION, "bright"); } // R2
+    // §3 방어(비공개 체크인 엣지): pick 칩 0개 + 말하기 불가면 빈 화면 대신 바로 낭독으로.
+    //   (didToday="" + R2 무답 + 날씨 '모르겠어'가 겹칠 때만 발생 — 그 외엔 최소 1칩 보장)
+    if (buildPickChips(next).length === 0 && !canSpeak) { goResult({ rot: next }); return; }
     setStep("pick");
     setKiddyLine(PICK_ASK);
     setSafetyMsg(null);
     voice.speak(PICK_ASK, "bright");
   };
-  // 3층 그림 참여 칩 — 그날의 답에서 자동 생성(명사 후보). 문장 미포함, child_pick 저장만.
-  const pickChips = useMemo(() => {
-    const cands = [checkinDidToday, rotating && !rotating.noAnswer && !rotating.isSpeech ? rotating.answer : null,
-      WEATHER_CHIPS.find((w) => w.key === weather && w.key !== "unknown")?.label?.replace(/^[^ ]+ /, "")];
-    return [...new Set(cands.filter((c) => c && String(c).trim()))].slice(0, 5);
-  }, [checkinDidToday, rotating, weather]);
+  const pickChips = useMemo(() => buildPickChips(rotating), [checkinDidToday, rotating, weather]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goResult = ({ pickValue } = {}) => {
+  const goResult = ({ pickValue, rot } = {}) => {
     const recentClosings = diary.getRecentClosings(pid);
     const s = assembleDiary({
       weather,
       mood: checkinMood,
       didToday: checkinDidToday,
-      rotating,
+      rotating: rot !== undefined ? rot : rotating, // 방어 경로는 setRotating 반영 전이라 명시 전달
       recentClosings,
     });
     setSentences(s);
