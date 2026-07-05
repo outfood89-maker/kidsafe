@@ -119,6 +119,20 @@ describe("V3 — 미체크인 브릿지 → 홈으로(diaryAfter)", () => {
     await act(async () => { fireEvent.click(screen.getByText(HOME_WRITE)); });
     expect(await screen.findByText(BRIDGE.line)).toBeTruthy();
   });
+  it("'다음에 할래'(거절 출구) → 홈 카드 복귀 + 이동 없음 + 제안 통계 무기록", async () => {
+    H.api.getTodayCheckin.mockResolvedValueOnce({ checkin: null });
+    renderShelf();
+    await act(async () => { fireEvent.click(screen.getByText(HOME_WRITE)); });
+    expect(await screen.findByText(BRIDGE.line)).toBeTruthy();
+    fireEvent.click(screen.getByText(BRIDGE.later));
+    expect(screen.queryByText(BRIDGE.line)).toBeNull();     // 브릿지 닫힘
+    expect(screen.getByText(HOME_WRITE)).toBeTruthy();      // 홈 카드 복귀
+    expect(H.nav).not.toHaveBeenCalled();                   // /kids 이동 없음
+    // 제안 통계 무기록 — 마운트 시 recordShelfVisit(R8 방문 리셋, 기존 규칙)만 있고 제안·거절 흔적 없음
+    const meta = JSON.parse(localStorage.getItem("diary_v0_meta_t1") || "null");
+    expect(meta?.lastProposalDate ?? null).toBeNull();
+    expect(meta?.rejectStreak ?? 0).toBe(0);
+  });
 });
 
 describe("V4 — diaryIntent 우회(제안 빈도 미충족에도 열림)", () => {

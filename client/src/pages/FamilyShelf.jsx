@@ -127,6 +127,8 @@ export default function FamilyShelf() {
               <Typewriter key="bridge" text={BRIDGE.line} speed={26} />
             </p>
             <button onClick={goBridge} className="rounded-2xl px-6 py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>{BRIDGE.go}</button>
+            {/* AD-2 보완(팀장 스탬프): 거절 출구 — 홈 카드로 복귀, 아무 기록 없음(자발 진입의 철회, R8 통계 미기록) */}
+            <button onClick={() => { setBridge(false); try { voice.stop(); } catch { /* 무시 */ } }} className="text-sm font-bold" style={{ color: "#90A9A8" }}>{BRIDGE.later}</button>
           </div>
         )}
 
