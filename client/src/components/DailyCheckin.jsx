@@ -529,7 +529,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
   // 재료 2개만 사용(§2 두 채널 구분): mood(moodEmoji) + 한 일. 볼것·비공개 후속답은 일기에 안 씀.
   const diaryToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }); // YYYY-MM-DD (KST)
   const diaryDidToday = () => {
-    const a = answers.find((x) => x.qId !== "mood_today" && x.qId !== "watch_genre"); // 하루 = 기분·볼것 아닌 답
+    const a = answers.find((x) => x.qId === "what_did_today"); // 하루 = 오늘 한 일 (양성 필터 — 질문 증설 시 방어)
     return a?.answer || "";
   };
   // reward 완료 버튼 핸들러 — R5(체크인 완료됨)+R8(빈도) 통과 시 일기 제안, 아니면 기존대로 완료.
