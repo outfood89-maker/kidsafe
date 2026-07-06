@@ -43,20 +43,44 @@ SCENE_RULES = (
     "- 날씨 → 하늘 표현 (맑음=해, 비=구름과 빗줄기 등).\n"
     "- 한 일 → 장면의 중심 행동.\n"
     "- 누구랑 → 동반 인물 수 (인물은 전부 일반화된 아이/어른 캐릭터).\n"
-    "- 기분 → 표정과 팔레트 온도 (😢인 날은 차분한 톤 — 단, 어둡거나 무섭지 않게).\n"
+    "- 놀이기구: 미끄럼틀은 경사진 미끄럼판(sloped sliding surface)이 반드시 보이게 — 사다리만 그리지 말 것.\n"
+    "- 기분 → 표정과 팔레트 온도. 😢😡인 날은 차분한 톤(단, 어둡거나 무섭지 않게)이고 표정도 그에 맞게(처진 눈·입) — 과한 웃음 금지(슬픈 날 억지 웃음도 왜곡).\n"
     "- 그림 참여 답(child_pick)은 반드시 화면에 등장 — 아이와의 약속.\n"
     "- 키디(작은 초록 아기공룡) 동반: 기본 포함 (브랜드 각인 + 인물 일반화 보조)."
 )
 
-SYSTEM_PROMPT = (
-    "너는 아이의 그림일기 문장(한국어)을 이미지 생성용 영어 프롬프트로 바꾸는 변환기야.\n\n"
-    "[고정 스타일 블록 — 생성 프롬프트 맨 앞에 반드시 그대로 포함]\n" + STYLE_BLOCK + "\n\n"
-    + SCENE_RULES + "\n\n"
-    "[안전 제약 — 생성 프롬프트 맨 뒤에 반드시 그대로 포함]\n" + SAFETY_BLOCK + "\n\n"
-    "출력은 오직 JSON 하나: {\"prompt\": \"...\"}\n"
-    "prompt는 영어 한 문단으로, 고정 스타일 블록으로 시작 → 일기 소재만으로 장면 묘사 → 안전 제약으로 끝나야 해. "
-    "설명·코드펜스·다른 말 금지."
-)
+
+# ── 인물 규정 (AD-5 시정): 일기 주인공 = 그 아이(한국 아이·검은 머리). 성별은 코드가 결정(LLM 추정 금지, "사실은 코드가" 계보). ──
+def _main_char(gender: str) -> str:
+    g = (gender or "").strip()
+    if g in ("남자", "male", "boy"):
+        return "a Korean boy"
+    if g in ("여자", "female", "girl"):
+        return "a Korean girl"
+    return "a young Korean child"  # 미설정/예상밖 → 중성(성별 추정 금지)
+
+
+def _character_block(gender: str) -> str:
+    main = _main_char(gender)
+    return (
+        f"All people in the picture are Korean with black hair. The main character is {main} with black hair. "
+        "Any family members or friends (mother, father, friends) are also Korean with black hair. "
+        "This specifies HOW to draw the people — it does NOT add any new people beyond the diary."
+    )
+
+
+def _build_system_prompt(gender: str) -> str:
+    """성별 반영 시스템 프롬프트 조립 — 스타일 블록 바로 뒤에 인물 규정 삽입(성별별로 달라지므로 상수 대신 빌더)."""
+    return (
+        "너는 아이의 그림일기 문장(한국어)을 이미지 생성용 영어 프롬프트로 바꾸는 변환기야.\n\n"
+        "[고정 스타일 블록 — 생성 프롬프트 맨 앞에 반드시 그대로 포함]\n" + STYLE_BLOCK + "\n\n"
+        "[인물 규정 — 스타일 블록 바로 뒤에 반드시 그대로 포함]\n" + _character_block(gender) + "\n\n"
+        + SCENE_RULES + "\n\n"
+        "[안전 제약 — 생성 프롬프트 맨 뒤에 반드시 그대로 포함]\n" + SAFETY_BLOCK + "\n\n"
+        "출력은 오직 JSON 하나: {\"prompt\": \"...\"}\n"
+        "prompt는 영어 한 문단으로, 고정 스타일 블록 → 인물 규정(한국 아이·검은 머리) → 일기 소재만으로 장면 묘사 → 안전 제약 순으로 이어져야 해. "
+        "설명·코드펜스·다른 말 금지."
+    )
 
 
 class GenerateRequest(BaseModel):
@@ -65,15 +89,16 @@ class GenerateRequest(BaseModel):
     childPick: Optional[str] = ""
     moodEmoji: Optional[str] = ""
     weatherKey: Optional[str] = ""
+    profileGender: Optional[str] = ""  # 기존 프로필 gender("남자"/"여자"). 그 외/빈값 → 중성(성별 추정 금지)
 
 
-def _fallback_prompt(child_pick: str, mood: str) -> str:
-    """Sonnet 실패/파싱불가 시 코드 조립 폴백 — child_pick 등장·안전블록 보장(LLM 실패가 그림 실패로 번지지 않게)."""
+def _fallback_prompt(child_pick: str, mood: str, gender: str = "") -> str:
+    """Sonnet 실패/파싱불가 시 코드 조립 폴백 — 인물 규정·child_pick 등장·안전블록 보장(LLM 실패가 그림 실패로 번지지 않게)."""
     tone = "in calm, gentle pastel colors" if mood in ("😢", "😡") else "in bright cheerful pastel colors"
     pick = (child_pick or "").strip()
-    subject = "A happy little child with a small green baby dinosaur friend"
+    subject = "A happy young Korean child with black hair and a small green baby dinosaur friend"
     scene = f"{subject}, {pick} in the scene, {tone}." if pick else f"{subject}, {tone}."
-    return f"{STYLE_BLOCK} {scene} {SAFETY_BLOCK}"
+    return f"{STYLE_BLOCK} {_character_block(gender)} {scene} {SAFETY_BLOCK}"
 
 
 async def _to_image_prompt(req: "GenerateRequest") -> str:
@@ -90,7 +115,7 @@ async def _to_image_prompt(req: "GenerateRequest") -> str:
             model=IMAGE_PROMPT_MODEL,
             max_tokens=500,
             temperature=0.4,
-            system=SYSTEM_PROMPT,
+            system=_build_system_prompt(req.profileGender or ""),
             messages=[{"role": "user", "content": user}],
         )
         text = "".join(
@@ -106,7 +131,7 @@ async def _to_image_prompt(req: "GenerateRequest") -> str:
     except Exception as e:
         # 키가 노출될 수 있는 응답 본문은 찍지 않는다 — 예외 타입만
         print("[diary_image] Sonnet 변환 실패 → 폴백:", type(e).__name__)
-    return _fallback_prompt(req.childPick or "", req.moodEmoji or "")
+    return _fallback_prompt(req.childPick or "", req.moodEmoji or "", req.profileGender or "")
 
 
 async def _generate_image_b64(prompt: str) -> Optional[str]:
