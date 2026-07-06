@@ -137,7 +137,7 @@ async def _to_image_prompt(req: "GenerateRequest") -> str:
             return prompt
     except Exception as e:
         # 키가 노출될 수 있는 응답 본문은 찍지 않는다 — 예외 타입만
-        print("[diary_image] Sonnet 변환 실패 → 폴백:", type(e).__name__)
+        print("[diary_image] Sonnet 변환 실패 → 폴백:", type(e).__name__, "-", str(e)[:200])  # Anthropic 오류 메시지엔 키 없음(헤더에만) — 안전
     return _fallback_prompt(req.childPick or "", req.moodEmoji or "", req.profileGender or "")
 
 
@@ -253,7 +253,7 @@ async def _to_continue_prompt(req: ContinueRequest) -> str:
         if prompt:
             return prompt
     except Exception as e:
-        print("[diary_image] 이어그리기 Sonnet 변환 실패 → 폴백:", type(e).__name__)
+        print("[diary_image] 이어그리기 Sonnet 변환 실패 → 폴백:", type(e).__name__, "-", str(e)[:200])  # Anthropic 오류 메시지엔 키 없음(헤더에만) — 안전
     return _fallback_continue_prompt(req.moodEmoji or "", req.profileGender or "")
 
 

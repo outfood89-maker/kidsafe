@@ -4,7 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-load_dotenv()
+# ⚠️ server/.env를 명시 경로로 + override=True 로 로드 — 셸/OS에 남은 낡은 env(예전 export 등)가
+#    새 키를 가리는 것 방지(load_dotenv 기본 override=False의 함정, 실기기서 실제 발생).
+#    Railway엔 .env 파일이 없어 no-op → 배포 env 변수 그대로 사용(안전).
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 
 def ensure_data_files():
