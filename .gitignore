@@ -16,3 +16,6 @@ server/data/audit-log.json
 server/data/*.backup-*.json
 # 키디 로딩 영상 — 런타임은 투명 webp만 커밋. mp4(마젠타 원본/teal/구 압축본)는 대용량이라 제외
 client/public/videos/*.mp4
+
+# AD-5/AD-8 PoC 산출물·낙서 표본 (로컬 전용)
+scratch/

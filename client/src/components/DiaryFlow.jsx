@@ -5,13 +5,15 @@ import useKiddySpeech from "../hooks/useKiddySpeech";
 import Typewriter from "./Typewriter";
 import KiddyImg from "./KiddyImg";
 import { screenText, fixedResponse, isHigh } from "../utils/safetyLexicon";
-import { createCareSignal } from "../utils/api";
+import { createCareSignal, generateDiaryImage } from "../utils/api";
 import { assembleDiary, pickClosing } from "../utils/diaryAssembler";
 import * as diary from "../utils/diaryStore";
+import { putImage } from "../utils/diaryImageStore";
 import {
   ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
   DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI,
+  IMG_WAIT, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
 } from "../utils/diaryCopy";
 
 // ── 우리 그림일기 v0 — 플로우 오버레이 (AD §2·§3·§4·§5) ──
@@ -51,6 +53,10 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const [kiddyLine, setKiddyLine] = useState(initLine);
   const [safetyMsg, setSafetyMsg] = useState(null); // 위기 스크리닝 고정 응답(표시용)
   const [reaction, setReaction] = useState(null); // "그런 날도 있지!" 등 짧은 반응
+  // AD-5: 그림 상태 — idle(그림 전) | wait(생성 중) | done(성공) | fail(실패=플레이스홀더)
+  const [imgState, setImgState] = useState("idle");
+  const [imgUrl, setImgUrl] = useState(null);
+  const imgIdRef = useRef(null);
   const mountedRef = useRef(true);
   const savedEntryRef = useRef(null);
 
@@ -169,6 +175,41 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     setKiddyLine(READ_INTRO);
     voice.speak(READ_INTRO, "bright");
     s.forEach((line) => voice.enqueue(line, "calm")); // 완성 일기 전문 낭독(문장별 이어붙임)
+    runImage(s); // AD-5 §2: 낭독 뒤 그림 생성(대기→완성/실패). 실패해도 텍스트 저장 불변.
+  };
+
+  // AD-5 §2·§3: 그림 생성/재생성. regen=true면 하루 2회 한도 소비. 실패는 플레이스홀더 폴백.
+  const runImage = async (s, { regen = false } = {}) => {
+    if (regen) {
+      if (!pid || diary.getRegenLeft(pid, today) <= 0) return; // 소진 — 버튼이 이미 숨겨졌지만 이중 방어
+      diary.recordRegen(pid, today);
+      voice.stop();
+    }
+    setImgState("wait");
+    setKiddyLine(IMG_WAIT);
+    voice.enqueue(IMG_WAIT, "bright"); // 낭독 뒤 이어서(초기) / 재생성은 stop 후 바로
+    try {
+      const res = await generateDiaryImage({ sentences: s, childPick, moodEmoji: checkinMood, weatherKey: weather });
+      if (!mountedRef.current) return;
+      if (res && res.ok && res.b64) {
+        const url = `data:image/png;base64,${res.b64}`;
+        const id = imgIdRef.current || `img_${uid(today)}`;
+        imgIdRef.current = id;
+        await putImage(id, url); // IDB 저장(실패해도 화면엔 imgUrl로 렌더)
+        if (!mountedRef.current) return;
+        setImgUrl(url);
+        setImgState("done");
+        setKiddyLine(IMG_DONE);
+        voice.enqueue(IMG_DONE, "bright");
+        return;
+      }
+      throw new Error("no-image");
+    } catch {
+      if (!mountedRef.current) return;
+      setImgState("fail");
+      setKiddyLine(IMG_FAIL);
+      voice.enqueue(IMG_FAIL, "bright");
+    }
   };
 
   const keep = () => {
@@ -180,6 +221,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       childPick,
       keptAt: today,
     };
+    if (imgState === "done" && imgIdRef.current) entry.imageId = imgIdRef.current; // 그림 성공분만 imageId
     if (pid) {
       diary.saveEntry(pid, entry); // '간직' 선택분만 저장
       diary.recordQid(pid, question.qid, today);
@@ -315,9 +357,11 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(today)}</span>
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{weatherEmoji ? `날씨 ${weatherEmoji} · ` : ""}기분 {checkinMood}</span>
                 </div>
-                {/* 그림 자리 플레이스홀더 (이미지 생성 코드 없음 — v0) */}
-                <div className="rounded-xl mb-3 flex items-center justify-center text-center px-4" style={{ height: 140, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
-                  <span className="text-sm font-bold">{IMAGE_PLACEHOLDER}</span>
+                {/* 그림 자리 — 생성 성공 시 이미지, 그 외(대기·실패) 플레이스홀더 (§2) */}
+                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 140, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                  {imgState === "done" && imgUrl
+                    ? <img src={imgUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span className="text-sm font-bold px-4">{imgState === "wait" ? IMG_WAIT : IMAGE_PLACEHOLDER}</span>}
                 </div>
                 <div className="flex flex-col gap-2">
                   {sentences.map((s, i) => (
@@ -325,11 +369,18 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                   ))}
                 </div>
               </div>
-              <div className="flex flex-col gap-2.5">
-                <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{KEEP.ask}</p>
-                <button onClick={keep} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{KEEP.yes}</button>
-                <button onClick={() => onClose?.()} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{KEEP.no}</button>
-              </div>
+              {/* 대기 중엔 간직 버튼 숨김(대기→완성/실패 뒤 KEEP). §2 순서 */}
+              {imgState !== "wait" && (
+                <div className="flex flex-col gap-2.5">
+                  {/* AD-5 §3: 그림 다시 그리기 (하루 2회) — 소진 시 REGEN_OUT */}
+                  {pid && (diary.getRegenLeft(pid, today) > 0
+                    ? <button onClick={() => runImage(sentences, { regen: true })} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
+                    : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>)}
+                  <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{KEEP.ask}</p>
+                  <button onClick={keep} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{KEEP.yes}</button>
+                  <button onClick={() => onClose?.()} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{KEEP.no}</button>
+                </div>
+              )}
             </div>
           )}
 

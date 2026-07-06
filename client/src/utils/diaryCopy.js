@@ -160,3 +160,16 @@ export const ROOM_INVITE = {
   go: "좋아!",       // 기존 ENTRY.baseYes 스탬프 재사용
   later: "나중에",    // 신규 스탬프(팀장 버튼 지정) — 방 기능 정상 진행, 아무 기록 없음
 };
+
+// ── AD-5 §5: 그림 파이프라인 카피 (전부 기확정 verbatim — 대본 §1 + 팀장 지시) ──
+export const IMG_WAIT = "이제 키디가 그림을 그릴게. 잠깐만 기다려 줘! ✏️";           // 대본 §1
+export const IMG_DONE = "짜잔! 오늘의 그림이야!";                                    // 대본 §1
+export const IMG_FAIL = "오늘은 그림이 잘 안 그려졌어. 이야기만 먼저 간직해 둘게! 그림은 다음에 다시 그려볼게."; // 대본 §1
+export const REGEN = { btn: "🎨 그림 다시 그려줘" };                                 // 팀장 지시
+export const REGEN_OUT = "오늘은 그림을 다 그렸어! 내일 또 그려줄게.";                 // 팀장 지시(하루 2회 소진 시)
+export const REMAKE = {
+  btn: "다시 만들래",                                        // 팀장 지시
+  confirm: "지금 일기는 사라지고, 처음부터 다시 만들어! 괜찮아?", // 팀장 지시(선삭제를 정직하게 고지)
+  yes: "응, 다시 만들래!",
+  no: "아니야, 그대로 둘래",
+};

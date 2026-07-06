@@ -6,8 +6,9 @@ import DiaryFlow from "../components/DiaryFlow";
 import KiddyFab from "../components/KiddyFab";
 import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
-import { getTodayCheckin } from "../utils/api";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, monthBookTitle, monthBookMeta } from "../utils/diaryCopy";
+import { getTodayCheckin, generateDiaryImage } from "../utils/api";
+import { getImage, putImage } from "../utils/diaryImageStore";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -47,6 +48,9 @@ export default function FamilyShelf() {
   const [checkinForDiary, setCheckinForDiary] = useState(null); // 쓰기 시작 시 조회한 오늘 체크인
   const [bridge, setBridge] = useState(false); // 미체크인 브릿지 뷰
   const [openMonth, setOpenMonth] = useState(null); // AD-3 §5: 월 '한 권' 열람(그 달 페이지 목록 하위화면)
+  const [detailImg, setDetailImg] = useState(null); // AD-5: 상세 페이지 그림(IDB 로드)
+  const [detailBusy, setDetailBusy] = useState(false); // 그림 생성/재생성 중
+  const [remaking, setRemaking] = useState(false); // AD-5 §3: 다시 만들기 확인 다이얼로그
 
   useEffect(() => {
     try {
@@ -102,24 +106,74 @@ export default function FamilyShelf() {
   // AD-2 §3: 오늘 이미 쓴 일기(있으면 상단 카드가 '완료' 상태 + 상세로 바로 열기)
   const todayEntry = useMemo(() => entries.find((e) => e.date === diary.todayKST()) || null, [entries]);
 
-  // '오늘 일기 쓰기' 클릭 — 체크인 있으면 DiaryFlow, 없거나 실패면 브릿지(§4). 오늘 이미 썼으면 상세로.
-  const startWrite = async () => {
+  // 쓰기 시작 코어 — 체크인 있으면 DiaryFlow, 없거나 실패면 브릿지(§4). (다시 만들기는 이걸 직접 호출)
+  const beginWrite = async () => {
     if (!profile?.id) return;
-    if (todayEntry) { setOpenId(todayEntry.id); return; }
     try {
       const { checkin } = await getTodayCheckin(profile.id); // 읽기 전용(이미 배포된 GET)
       if (checkin) { setCheckinForDiary(checkin); setWriting(true); }
       else setBridge(true);
     } catch { setBridge(true); }
   };
+  // '오늘 일기 쓰기' 클릭 — 오늘 이미 썼으면 상세로, 아니면 쓰기 시작.
+  const startWrite = async () => {
+    if (!profile?.id) return;
+    if (todayEntry) { setOpenId(todayEntry.id); return; }
+    beginWrite();
+  };
   // 브릿지 → 홈으로 넘어가 체크인부터(기존 F1 자동 오픈 재사용). 의도 플래그만 전달.
   const goBridge = () => navigate("/kids", { state: { diaryAfter: true } });
 
   const doTear = () => {
-    if (profile && openId) diary.tearEntry(profile.id, openId); // 즉시 완전 삭제(복구 불가)
+    if (profile && openId) diary.tearEntry(profile.id, openId); // 즉시 완전 삭제(복구 불가, 이미지 포함)
     setEntries(profile ? diary.getEntries(profile.id) : []);
     setTearing(false);
     setTorn(true);
+  };
+
+  const isTodayEntry = (e) => !!e && e.date === diary.todayKST();
+
+  // AD-5 §2: 상세 페이지 열릴 때 IDB에서 그림 로드
+  useEffect(() => {
+    let alive = true;
+    setDetailImg(null);
+    if (openEntry?.imageId) {
+      getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
+    }
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId]);
+
+  // AD-5 §2·§3: 상세 페이지 그림 생성 — retry(최초 실패 복구) 또는 regen(다시 그리기, 하루 2회).
+  const genForEntry = async (entry, { regen = false } = {}) => {
+    if (!profile?.id || !entry || detailBusy) return;
+    const today = diary.todayKST();
+    if (regen) {
+      if (diary.getRegenLeft(profile.id, today) <= 0) return; // 소진(버튼 숨김 이중방어)
+      diary.recordRegen(profile.id, today);
+    }
+    setDetailBusy(true);
+    try {
+      const res = await generateDiaryImage({ sentences: entry.sentences, childPick: entry.childPick, moodEmoji: entry.moodEmoji, weatherKey: "" });
+      if (res && res.ok && res.b64) {
+        const url = `data:image/png;base64,${res.b64}`;
+        const id = entry.imageId || `img_${entry.id}`;
+        await putImage(id, url);
+        if (!entry.imageId) { diary.setEntryImage(profile.id, entry.id, id); setEntries(diary.getEntries(profile.id)); } // 최초 연결 영구화
+        setDetailImg(url);
+      }
+    } catch { /* 무시 — 실패해도 텍스트 유지 */ }
+    finally { setDetailBusy(false); }
+  };
+
+  // AD-5 §3: 다시 만들기 — 오늘 엔트리+이미지 선삭제(tear 경로) → startWrite 재사용. '간직' 완료 시에만 새 일기 대체.
+  const doRemake = () => {
+    if (!profile?.id || !openEntry) return;
+    diary.tearEntry(profile.id, openEntry.id); // 선삭제(확인 다이얼로그가 정직하게 고지, 이미지 포함)
+    setEntries(diary.getEntries(profile.id));
+    setRemaking(false);
+    setOpenId(null);
+    beginWrite(); // 삭제 직후 stale todayEntry에 걸리지 않게 코어 직접 호출(재시작)
   };
 
   return (
@@ -254,9 +308,11 @@ export default function FamilyShelf() {
                 <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</span>
                 {openEntry.moodEmoji ? <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>기분 {openEntry.moodEmoji}</span> : null}
               </div>
-              {/* 날씨는 v0 저장물에 없음 → 기분만 표기(날씨는 미저장) */}
-              <div className="rounded-xl mb-3 flex items-center justify-center text-center px-4" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
-                <span className="text-sm font-bold">{IMAGE_PLACEHOLDER}</span>
+              {/* AD-5: 그림 있으면 렌더, 없으면 플레이스홀더(+오늘 페이지 한정 재시도). 날씨는 v0 미저장→기분만. */}
+              <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                {detailImg
+                  ? <img src={detailImg} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span className="text-sm font-bold px-4">{IMAGE_PLACEHOLDER}</span>}
               </div>
               <div className="flex flex-col gap-2">
                 {(openEntry.sentences || []).map((s, i) => (
@@ -264,6 +320,25 @@ export default function FamilyShelf() {
                 ))}
               </div>
             </div>
+
+            {/* AD-5 §2·§3: 오늘 페이지 한정 그림 액션 */}
+            {isTodayEntry(openEntry) && (
+              <div className="flex flex-col gap-2">
+                {/* 최초 생성 실패 복구: 그림 없을 때 재시도 (재생성 한도와 별개). ⚠️ §5에 재시도 전용 라벨 없어 REGEN.btn 재사용(팀장 확인 필요). */}
+                {!detailImg && !openEntry.imageId && (
+                  <button onClick={() => genForEntry(openEntry, { regen: false })} disabled={detailBusy} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full disabled:opacity-60" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
+                )}
+                {/* 다시 그리기 (하루 2회) — 그림 있을 때만. 소진 시 REGEN_OUT */}
+                {(detailImg || openEntry.imageId) && (
+                  diary.getRegenLeft(profile.id, diary.todayKST()) > 0
+                    ? <button onClick={() => genForEntry(openEntry, { regen: true })} disabled={detailBusy} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full disabled:opacity-60" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
+                    : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>
+                )}
+                {/* 다시 만들기 (선삭제 → 처음부터) */}
+                <button onClick={() => setRemaking(true)} className="self-center text-sm font-bold mt-1" style={{ color: "#90A9A8" }}>{REMAKE.btn}</button>
+              </div>
+            )}
+
             {/* 찢어버리기 — 아이의 삭제권(부모 삭제 불가). 배지·보상 없음. */}
             <button onClick={() => setTearing(true)} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>🗑️ 찢어버리기</button>
           </div>
@@ -283,8 +358,21 @@ export default function FamilyShelf() {
         </div>
       )}
 
-      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/찢기 확인 시 숨김(몰입) */}
-      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing} />
+      {/* AD-5 §3: 다시 만들기 확인 다이얼로그 — 선삭제를 정직하게 고지 */}
+      {remaking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={() => setRemaking(false)}>
+          <div className="rounded-2xl p-5 flex flex-col gap-4 w-full max-w-xs" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.1)" }} onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-bold text-center" style={{ color: "#EAF5F1" }}>{REMAKE.confirm}</p>
+            <div className="flex flex-col gap-2.5">
+              <button onClick={doRemake} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{REMAKE.yes}</button>
+              <button onClick={() => setRemaking(false)} className="rounded-2xl py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}>{REMAKE.no}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/찢기/다시만들기 확인 시 숨김(몰입) */}
+      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing || remaking} />
 
       {/* AD-2 §3: 자발 진입 DiaryFlow 오버레이 — 닫힐 때 책장 즉시 갱신(오늘 카드 '완료'로 전환). */}
       {diary.DIARY_V0 && writing && checkinForDiary && profile && (

@@ -293,6 +293,11 @@ export default function KiddyRoom() {
     : phase === "idle" && turnCount === 0 ? "hello"
     : "chat";
 
+  // AD-5 §7: 방 오브젝트 존 — 배열 매핑(공통 위치·받침·라벨). 향후 마이크 등 추가 상정. 현재 책장 1개.
+  const roomObjects = [
+    { key: "shelf", emoji: "📚", label: SHELF_NAME, onTap: () => { if (lastReplyCareRef.current) return; navigate("/family-shelf"); } },
+  ];
+
   return (
     <div className="relative overflow-hidden min-h-screen flex flex-col" style={{ backgroundColor: "#0E2A2A", isolation: "isolate" }}>
       <RoomDeco />
@@ -310,17 +315,27 @@ export default function KiddyRoom() {
         )}
       </div>
 
-      {/* AD-4 건1: 방 안 책장 오브젝트 — 이모지 레이어(에셋 0), 우하단 코너(마이크 위). 위기 calm 표시 중 탭 무시(P 계보). */}
+      {/* AD-5 §7(AD-4 건1 시정): 방 오브젝트 존 — '사물이 놓인 공간'감(≥64px·이모지 크게·받침 선반+그림자·부유 애니).
+          위치·받침·라벨 공통 처리(향후 마이크 등 추가 상정). 현재 책장 1개. 위기 calm 표시 중 탭 무시(P 계보). */}
       {diary.DIARY_V0 && (
-        <button
-          onClick={() => { if (lastReplyCareRef.current) return; navigate("/family-shelf"); }}
-          aria-label={`📚 ${SHELF_NAME}`}
-          className="absolute z-10 flex flex-col items-center gap-0.5 active:scale-95 transition"
-          style={{ right: 14, bottom: 116, padding: 6 }}
-        >
-          <span style={{ fontSize: 34, lineHeight: 1, filter: "drop-shadow(0 4px 14px rgba(24,196,154,0.5))" }}>📚</span>
-          <span className="text-[11px] font-bold" style={{ color: "#90A9A8" }}>{SHELF_NAME}</span>
-        </button>
+        <div className="absolute z-10 flex flex-col items-center" style={{ right: 12, bottom: 96 }}>
+          <style>{`@keyframes kiddyObjFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}`}</style>
+          {roomObjects.map((obj) => (
+            <button
+              key={obj.key}
+              onClick={obj.onTap}
+              aria-label={`${obj.emoji} ${obj.label}`}
+              className="flex flex-col items-center active:scale-95 transition"
+              style={{ minWidth: 64, minHeight: 64, padding: 4 }}
+            >
+              {/* 이모지(놓인 사물 — 부유·기울임 애니 + drop-shadow) */}
+              <span style={{ fontSize: 50, lineHeight: 1, filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))", animation: "kiddyObjFloat 2.8s ease-in-out infinite" }}>{obj.emoji}</span>
+              {/* 받침 선반 바 + 바닥 그림자 → '떠 있는 아이콘'이 아니라 '놓인 사물' */}
+              <span style={{ width: 46, height: 6, borderRadius: 99, marginTop: 3, background: "linear-gradient(#2c5049,#173a34)", boxShadow: "0 6px 10px rgba(0,0,0,0.4)" }} />
+              <span className="text-[11px] font-bold mt-1" style={{ color: "#90A9A8" }}>{obj.label}</span>
+            </button>
+          ))}
+        </div>
       )}
 
       {/* 큰 키디 + 현재 한 줄 (로그 리스트 없음 — 지금 말하는 한 줄만) */}

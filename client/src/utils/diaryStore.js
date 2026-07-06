@@ -6,6 +6,7 @@
 // ⚠️ feature/diary-v0 브랜치 전용.
 
 import { ROTATING_QUESTIONS } from "./diaryCopy"; // AD-4 §4: getTodayQuestion 선정 풀(단방향 의존)
+import { deleteImage } from "./diaryImageStore"; // AD-5: 찢기 시 IDB 이미지 완전삭제(브라우저 전용, 노드선 no-op)
 
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
 //   → main엔 이 브랜치 diff가 없어야 하므로 플래그로 신규 UI 전체를 게이트한다.
@@ -32,7 +33,7 @@ const writeJson = (key, val) => {
   }
 };
 
-const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null });
+const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null, regen: null });
 const getMeta = (pid) => ({ ...defaultMeta(), ...readJson(META_KEY(pid), {}) });
 const setMeta = (pid, meta) => writeJson(META_KEY(pid), meta);
 
@@ -50,15 +51,18 @@ export function saveEntry(pid, entry) {
     childPick: entry.childPick || "",
     keptAt: entry.keptAt,
   };
+  if (entry.imageId) clean.imageId = entry.imageId; // AD-5: 그림 있을 때만(선택 필드 — 직렬화 불변식 유지)
   entries.push(clean);
   writeJson(ENTRIES_KEY(pid), entries);
   return clean;
 }
 
-// 찢기 — 페이지 단위 즉시 완전 삭제(AD5, 복구 불가). 부모 삭제 기능 없음.
+// 찢기 — 페이지 단위 즉시 완전 삭제(AD5, 복구 불가). 부모 삭제 기능 없음. AD-5: IDB 이미지도 함께 삭제.
 export function tearEntry(pid, entryId) {
-  const entries = getEntries(pid).filter((e) => e.id !== entryId);
-  writeJson(ENTRIES_KEY(pid), entries);
+  const all = getEntries(pid);
+  const torn = all.find((e) => e.id === entryId);
+  writeJson(ENTRIES_KEY(pid), all.filter((e) => e.id !== entryId));
+  if (torn?.imageId) { try { deleteImage(torn.imageId); } catch { /* 무시 */ } } // 그림 완전삭제
 }
 
 // ── 회전 질문 dedup (최근 3일 사용 qid 회피) ──
@@ -145,6 +149,28 @@ export const getTeaserDate = (pid) => getMeta(pid).teaserDate;
 export function markTeaserShown(pid, today) {
   const meta = getMeta(pid);
   meta.teaserDate = today;
+  setMeta(pid, meta);
+}
+
+// AD-5 §2: 저장된 엔트리에 뒤늦게 그림 연결(최초 생성 실패 복구=책장 재시도). 없으면 무시.
+export function setEntryImage(pid, entryId, imageId) {
+  const entries = getEntries(pid);
+  const e = entries.find((x) => x.id === entryId);
+  if (e) { e.imageId = imageId; writeJson(ENTRIES_KEY(pid), entries); }
+}
+
+// ── AD-5 §3: 그림 다시 그리기 하루 2회 한도 (meta.regen {date,count}, 날짜 바뀌면 리셋) ──
+export const REGEN_MAX = 2;
+export function getRegenLeft(pid, today) {
+  const r = getMeta(pid).regen;
+  const used = r && r.date === today ? (r.count || 0) : 0;
+  return Math.max(0, REGEN_MAX - used);
+}
+export function recordRegen(pid, today) {
+  const meta = getMeta(pid);
+  const r = meta.regen;
+  const used = r && r.date === today ? (r.count || 0) : 0;
+  meta.regen = { date: today, count: used + 1 };
   setMeta(pid, meta);
 }
 

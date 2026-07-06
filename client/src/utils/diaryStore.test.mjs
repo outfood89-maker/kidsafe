@@ -122,5 +122,26 @@ console.log("── AD-4 §4: getTodayQuestion(하루 고정) + 티저 게이트
   chk("V3 표시 즉시 기록 → 그 날짜(같은 날 재표시 금지 근거)", diary.getTeaserDate(PID) === "2026-07-06");
 }
 
+console.log("── AD-5 §2·§3: imageId 저장·연결 + 다시 그리기 한도 ──");
+{
+  _mem.clear();
+  diary.saveEntry(PID, { id: "e1", date: "2026-07-06", sentences: ["a", "b", "c"], moodEmoji: "🙂", childPick: "", keptAt: "2026-07-06" });
+  chk("AD-5 imageId 없으면 필드 없음(직렬화 불변식 유지)", !("imageId" in diary.getEntries(PID)[0]));
+  diary.setEntryImage(PID, "e1", "img_e1");
+  chk("AD-5 setEntryImage → 뒤늦게 imageId 연결(책장 재시도 복구)", diary.getEntries(PID)[0].imageId === "img_e1");
+  diary.saveEntry(PID, { id: "e2", date: "2026-07-06", sentences: ["x"], moodEmoji: "😄", childPick: "", keptAt: "2026-07-06", imageId: "img_e2" });
+  chk("AD-5 imageId 있으면 저장", diary.getEntries(PID).find((e) => e.id === "e2").imageId === "img_e2");
+}
+{
+  _mem.clear();
+  const today = "2026-07-06";
+  chk("V3 초기 2회 남음", diary.getRegenLeft(PID, today) === 2);
+  diary.recordRegen(PID, today);
+  chk("V3 1회 후 1 남음", diary.getRegenLeft(PID, today) === 1);
+  diary.recordRegen(PID, today);
+  chk("V3 2회 소진 → 0(REGEN_OUT 조건)", diary.getRegenLeft(PID, today) === 0);
+  chk("V3 다음날 리셋 → 2", diary.getRegenLeft(PID, "2026-07-07") === 2);
+}
+
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
