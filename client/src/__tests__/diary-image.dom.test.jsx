@@ -33,7 +33,7 @@ vi.mock("../components/Typewriter", () => ({ default: ({ text }) => text }));
 import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import * as diaryStore from "../utils/diaryStore";
-import { KEEP, REGEN, REMAKE, IMG_DONE, IMG_FAIL, IMAGE_PLACEHOLDER, WAIT_SEQ, monthBookTitle } from "../utils/diaryCopy";
+import { KEEP, REGEN, REMAKE, IMG_DONE, IMG_FAIL, IMAGE_PLACEHOLDER, WAIT_SEQ, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy";
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -57,7 +57,8 @@ const runToResult = async () => {
   const utils = renderFlow();
   fireEvent.click(screen.getByText(SUNNY));
   fireEvent.click(screen.getByText("엄마"));
-  await act(async () => { fireEvent.click(screen.getByText("블록 놀이")); }); // pick → goResult → runImage
+  fireEvent.click(screen.getByText("블록 놀이")); // pick → 생성 방식 선택(genchoice)
+  await act(async () => { fireEvent.click(screen.getByText(CONTINUE_CHIP.ai)); }); // 키디가 그려줘 → runImage(ai)
   return utils;
 };
 

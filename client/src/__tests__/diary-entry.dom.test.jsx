@@ -18,6 +18,8 @@ const H = vi.hoisted(() => ({
     getCheckinGreeting: vi.fn(() => Promise.resolve("안녕")),
     saveCheckin: vi.fn(() => Promise.resolve({})),
     reactToCheckinStream: vi.fn(() => Promise.resolve()),
+    generateDiaryImage: vi.fn(() => Promise.resolve({ ok: false })), // AD-5/AD-8: 그림 생성(모킹 실패→플레이스홀더로 KEEP 노출)
+    continueDiaryImage: vi.fn(() => Promise.resolve({ ok: false })),
   },
   speechCtl: { setListening: null, setTranscript: null },
 }));
@@ -51,7 +53,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import DailyCheckin from "../components/DailyCheckin";
 import * as diaryStore from "../utils/diaryStore";
-import { TILE, HOME_WRITE, BRIDGE, ENTRY, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, monthBookTitle } from "../utils/diaryCopy";
+import { TILE, HOME_WRITE, BRIDGE, ENTRY, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy";
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -93,6 +95,7 @@ describe("V2 — 홈 쓰기 → 체크인 있음 → DiaryFlow 완주 → 책장
     fireEvent.click(await screen.findByText(SUNNY_LABEL));
     fireEvent.click(screen.getByText("엄마"));       // who Q (Math.random=0)
     fireEvent.click(screen.getByText("블록 놀이"));   // pick 칩(=체크인 한 일)
+    await act(async () => { fireEvent.click(screen.getByText(CONTINUE_CHIP.ai)); }); // AD-8: 생성 방식 선택(키디가 그려줘)
     fireEvent.click(screen.getByText(KEEP.yes));      // 간직하기
     const entries = diaryStore.getEntries("t1");
     expect(entries.length).toBe(1);
@@ -165,14 +168,15 @@ describe("V5 — 자발 진입 통계 무오염 (markProposed 가드)", () => {
 });
 
 describe("V6 — 비공개 체크인 엣지(pick 칩 0개 방어)", () => {
-  it("didToday='' + 날씨 모르겠어 + R2 무답 + 말하기불가(4세) → pick 단계 건너뛰고 바로 낭독", () => {
+  it("didToday='' + 날씨 모르겠어 + R2 무답 + 말하기불가(4세) → pick 단계 건너뛰고 바로 낭독", async () => {
     const child = { id: "t1", name: "해인", age: 4 }; // canSpeak=false
     render(<MemoryRouter><DiaryFlow profile={child} today={TODAY} checkinMood="🙂" checkinDidToday="" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
     fireEvent.click(screen.getByText(UNKNOWN));             // 날씨 모르겠어(문장 생략)
-    fireEvent.click(screen.getByText(NO_ANSWER_CHIP));      // R2 무답
-    // pick 단계(PICK_ASK)를 건너뛰고 바로 result(간직하기) — 빈 화면 방어 동작
+    fireEvent.click(screen.getByText(NO_ANSWER_CHIP));      // R2 무답 → 방어: pick 건너뛰고 result(genchoice)
+    expect(screen.queryByText(PICK_ASK)).toBeNull();       // pick 단계 건너뜀
+    await act(async () => { fireEvent.click(screen.getByText(CONTINUE_CHIP.ai)); }); // AD-8: 생성 방식 선택 → 그림 생성
+    // 생성 방식 선택 뒤 간직하기 노출(빈 화면 방어 동작)
     expect(screen.getByText(KEEP.yes)).toBeTruthy();
-    expect(screen.queryByText(PICK_ASK)).toBeNull();
   });
 });
 

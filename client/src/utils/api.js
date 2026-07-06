@@ -24,6 +24,12 @@ export const generateDiaryImage = async (payload) => {
   return response.data
 }
 
+// ── AD-8: 이어 그리기 (아이 낙서 + AI 완성). payload에 drawingB64(data URL) 포함. { ok, b64, prompt } | { ok:false } ──
+export const continueDiaryImage = async (payload) => {
+  const response = await axios.post(`${BASE_URL}/diary-image/continue`, payload)
+  return response.data
+}
+
 // 키워드로 YouTube 영상 검색
 export const searchVideos = async (keyword) => {
   const response = await axios.get(`${BASE_URL}/search`, {

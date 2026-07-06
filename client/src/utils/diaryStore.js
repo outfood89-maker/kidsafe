@@ -33,7 +33,7 @@ const writeJson = (key, val) => {
   }
 };
 
-const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null, regen: null });
+const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null, regen: null, continueUsed: null });
 const getMeta = (pid) => ({ ...defaultMeta(), ...readJson(META_KEY(pid), {}) });
 const setMeta = (pid, meta) => writeJson(META_KEY(pid), meta);
 
@@ -41,6 +41,7 @@ const setMeta = (pid, meta) => writeJson(META_KEY(pid), meta);
 export const getEntries = (pid) => readJson(ENTRIES_KEY(pid), []);
 
 // ⚠️ 저장물 = { id, date, sentences[], moodEmoji, childPick, keptAt } 만. transcript 등 원문 금지(불변식②③).
+//   AD-8: imageId(채택본)·drawingId(원본 낙서)는 선택 필드 — 있을 때만(직렬화 불변식 유지).
 export function saveEntry(pid, entry) {
   const entries = getEntries(pid);
   const clean = {
@@ -51,18 +52,20 @@ export function saveEntry(pid, entry) {
     childPick: entry.childPick || "",
     keptAt: entry.keptAt,
   };
-  if (entry.imageId) clean.imageId = entry.imageId; // AD-5: 그림 있을 때만(선택 필드 — 직렬화 불변식 유지)
+  if (entry.imageId) clean.imageId = entry.imageId; // AD-5: 그림 있을 때만(선택 필드)
+  if (entry.drawingId) clean.drawingId = entry.drawingId; // AD-8: 이어 그린 그림 채택 시 원본 낙서도 함께 보관(원칙③ 병치)
   entries.push(clean);
   writeJson(ENTRIES_KEY(pid), entries);
   return clean;
 }
 
-// 찢기 — 페이지 단위 즉시 완전 삭제(AD5, 복구 불가). 부모 삭제 기능 없음. AD-5: IDB 이미지도 함께 삭제.
+// 찢기 — 페이지 단위 즉시 완전 삭제(AD5, 복구 불가). 부모 삭제 기능 없음. AD-5/AD-8: IDB 이미지(완성본+원본) 함께 삭제.
 export function tearEntry(pid, entryId) {
   const all = getEntries(pid);
   const torn = all.find((e) => e.id === entryId);
   writeJson(ENTRIES_KEY(pid), all.filter((e) => e.id !== entryId));
-  if (torn?.imageId) { try { deleteImage(torn.imageId); } catch { /* 무시 */ } } // 그림 완전삭제
+  if (torn?.imageId) { try { deleteImage(torn.imageId); } catch { /* 무시 */ } } // 채택본 완전삭제
+  if (torn?.drawingId) { try { deleteImage(torn.drawingId); } catch { /* 무시 */ } } // AD-8: 원본 낙서도 완전삭제
 }
 
 // ── 회전 질문 dedup (최근 3일 사용 qid 회피) ──
@@ -178,5 +181,21 @@ export function recordRegen(pid, today) {
 export function recordShelfVisit(pid) {
   const meta = getMeta(pid);
   meta.rejectStreak = 0;
+  setMeta(pid, meta);
+}
+
+// ── AD-8 §0-3: 이어 그리기 하루 1회 한도 (regen 2회와 별도 쿼터). meta.continueUsed {date,count} ──
+//   ⚠️ 소비는 '간직(채택) 시'에만(recordContinue) — 이탈/미간직은 미소비·같은 날 재시도 가능(하루1회 헛소비 금지, 팀장 확정 ①).
+export const CONTINUE_MAX = 1;
+export function getContinueLeft(pid, today) {
+  const c = getMeta(pid).continueUsed;
+  const used = c && c.date === today ? (c.count || 0) : 0;
+  return Math.max(0, CONTINUE_MAX - used);
+}
+export function recordContinue(pid, today) {
+  const meta = getMeta(pid);
+  const c = meta.continueUsed;
+  const used = c && c.date === today ? (c.count || 0) : 0;
+  meta.continueUsed = { date: today, count: used + 1 };
   setMeta(pid, meta);
 }

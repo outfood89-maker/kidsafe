@@ -143,5 +143,26 @@ console.log("── AD-5 §2·§3: imageId 저장·연결 + 다시 그리기 한
   chk("V3 다음날 리셋 → 2", diary.getRegenLeft(PID, "2026-07-07") === 2);
 }
 
+console.log("── AD-8: 이어 그리기 쿼터(하루 1회, regen과 독립) + drawingId 저장 ──");
+{
+  _mem.clear();
+  const today = "2026-07-06";
+  chk("AD-8 이어그리기 초기 1회 남음", diary.getContinueLeft(PID, today) === 1);
+  diary.recordContinue(PID, today);
+  chk("AD-8 1회 소진 → 0(칩 미노출 조건)", diary.getContinueLeft(PID, today) === 0);
+  chk("AD-8 regen과 독립(이어그리기 소진해도 regen 2회 그대로)", diary.getRegenLeft(PID, today) === 2);
+  diary.recordRegen(PID, today); diary.recordRegen(PID, today);
+  chk("AD-8 regen 2회 소진해도 이어그리기 쿼터 무관", diary.getContinueLeft(PID, today) === 0);
+  chk("AD-8 다음날 이어그리기 리셋 → 1", diary.getContinueLeft(PID, "2026-07-07") === 1);
+}
+{
+  _mem.clear();
+  diary.saveEntry(PID, { id: "e1", date: "2026-07-06", sentences: ["a"], moodEmoji: "🙂", childPick: "", keptAt: "2026-07-06", imageId: "img1", drawingId: "draw1" });
+  const e1 = diary.getEntries(PID)[0];
+  chk("AD-8 drawingId 있으면 저장(원본·완성본 병치)", e1.imageId === "img1" && e1.drawingId === "draw1");
+  diary.saveEntry(PID, { id: "e2", date: "2026-07-06", sentences: ["b"], moodEmoji: "🙂", childPick: "", keptAt: "2026-07-06", imageId: "img2" });
+  chk("AD-8 drawingId 없으면 필드 없음(직렬화 불변식)", !("drawingId" in diary.getEntries(PID).find((x) => x.id === "e2")));
+}
+
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

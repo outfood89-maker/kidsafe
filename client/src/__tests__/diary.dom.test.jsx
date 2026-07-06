@@ -13,7 +13,7 @@ const H = vi.hoisted(() => ({
   speechCtl: { setListening: null, setTranscript: null },
 }));
 vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice }));
-vi.mock("../utils/api", () => ({ createCareSignal: H.createCareSignal, sendChatMessage: H.sendChatMessage }));
+vi.mock("../utils/api", () => ({ createCareSignal: H.createCareSignal, sendChatMessage: H.sendChatMessage, generateDiaryImage: () => Promise.resolve({ ok: false }), continueDiaryImage: () => Promise.resolve({ ok: false }) }));
 vi.mock("../components/Typewriter", () => ({ default: ({ text }) => text })); // 타이핑 애니 → 즉시 렌더(결정적)
 vi.mock("../hooks/useKiddySpeech", async () => {
   const React = await import("react");
@@ -33,7 +33,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import * as diaryStore from "../utils/diaryStore";
 import { RESPONSE_HIGH_SELF } from "../utils/safetyLexicon";
-import { CRISIS_RETURN_HINT, TEAR, FLOW_STOP, monthBookTitle } from "../utils/diaryCopy";
+import { CRISIS_RETURN_HINT, TEAR, FLOW_STOP, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy";
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -71,6 +71,7 @@ describe("AD1 — 전 플로우 완주(칩) → 간직 → 책장(월 그리드)
     expect(screen.getByText("오늘 날씨는 맑았어요.")).toBeTruthy();
     expect(screen.getByText("엄마랑 같이였어요.")).toBeTruthy();
     expect(screen.getByText("오늘은 블록 놀이를 했어요.")).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByText(CONTINUE_CHIP.ai)); }); // AD-8: 생성 방식 선택(키디가 그려줘) → 그림 생성(모킹 실패→플레이스홀더)
     fireEvent.click(screen.getByText("간직하기"));
 
     const entries = diaryStore.getEntries("t1");
@@ -112,6 +113,7 @@ describe("AD2 — 위기(말하기 '죽고 싶어')", () => {
     expect(screen.getByText("엄마")).toBeTruthy();
     fireEvent.click(screen.getByText("엄마"));
     fireEvent.click(screen.getByText("블록 놀이"));
+    await act(async () => { fireEvent.click(screen.getByText(CONTINUE_CHIP.ai)); }); // AD-8: 생성 방식 선택
     fireEvent.click(screen.getByText("간직하기"));
     const e = diaryStore.getEntries("t1");
     expect(e.length).toBe(1);

@@ -49,6 +49,7 @@ export default function FamilyShelf() {
   const [bridge, setBridge] = useState(false); // 미체크인 브릿지 뷰
   const [openMonth, setOpenMonth] = useState(null); // AD-3 §5: 월 '한 권' 열람(그 달 페이지 목록 하위화면)
   const [detailImg, setDetailImg] = useState(null); // AD-5: 상세 페이지 그림(IDB 로드)
+  const [detailDrawing, setDetailDrawing] = useState(null); // AD-8: 원본 낙서(이어그리기 채택본 병치)
   const [detailBusy, setDetailBusy] = useState(false); // 그림 생성/재생성 중
   const [remaking, setRemaking] = useState(false); // AD-5 §3: 다시 만들기 확인 다이얼로그
 
@@ -137,9 +138,9 @@ export default function FamilyShelf() {
   useEffect(() => {
     let alive = true;
     setDetailImg(null);
-    if (openEntry?.imageId) {
-      getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
-    }
+    setDetailDrawing(null);
+    if (openEntry?.imageId) getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
+    if (openEntry?.drawingId) getImage(openEntry.drawingId).then((url) => { if (alive) setDetailDrawing(url); }).catch(() => {}); // AD-8: 원본 낙서(병치)
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
@@ -308,12 +309,23 @@ export default function FamilyShelf() {
                 <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</span>
                 {openEntry.moodEmoji ? <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>기분 {openEntry.moodEmoji}</span> : null}
               </div>
-              {/* AD-5: 그림 있으면 렌더, 없으면 플레이스홀더(+오늘 페이지 한정 재시도). 날씨는 v0 미저장→기분만. */}
-              <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
-                {detailImg
-                  ? <img src={detailImg} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span className="text-sm font-bold px-4">{IMAGE_PLACEHOLDER}</span>}
-              </div>
+              {/* AD-5/AD-8: 그림 렌더. 이어 그리기 채택(both, drawingId 존재)이면 원본 낙서 + 완성본 나란히(원칙③ 병치). */}
+              {detailDrawing ? (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
+                    <img src={detailDrawing} alt="내 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                  <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
+                    {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                  {detailImg
+                    ? <img src={detailImg} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span className="text-sm font-bold px-4">{IMAGE_PLACEHOLDER}</span>}
+                </div>
+              )}
               <div className="flex flex-col gap-2">
                 {(openEntry.sentences || []).map((s, i) => (
                   <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
@@ -328,8 +340,8 @@ export default function FamilyShelf() {
                 {!detailImg && !openEntry.imageId && (
                   <button onClick={() => genForEntry(openEntry, { regen: false })} disabled={detailBusy} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full disabled:opacity-60" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                 )}
-                {/* 다시 그리기 (하루 2회) — 그림 있을 때만. 소진 시 REGEN_OUT */}
-                {(detailImg || openEntry.imageId) && (
+                {/* 다시 그리기 (하루 2회, AI 경로) — 그림 있을 때만. 이어그리기 채택(both, drawingId)은 별개라 미노출. 소진 시 REGEN_OUT */}
+                {(detailImg || openEntry.imageId) && !openEntry.drawingId && (
                   diary.getRegenLeft(profile.id, diary.todayKST()) > 0
                     ? <button onClick={() => genForEntry(openEntry, { regen: true })} disabled={detailBusy} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full disabled:opacity-60" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                     : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>

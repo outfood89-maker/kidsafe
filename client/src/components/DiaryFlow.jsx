@@ -5,15 +5,17 @@ import useKiddySpeech from "../hooks/useKiddySpeech";
 import Typewriter from "./Typewriter";
 import KiddyImg from "./KiddyImg";
 import { screenText, fixedResponse, isHigh } from "../utils/safetyLexicon";
-import { createCareSignal, generateDiaryImage } from "../utils/api";
+import { createCareSignal, generateDiaryImage, continueDiaryImage } from "../utils/api";
 import { assembleDiary, pickClosing } from "../utils/diaryAssembler";
 import * as diary from "../utils/diaryStore";
 import { putImage } from "../utils/diaryImageStore";
+import DoodleCanvas from "./DoodleCanvas";
 import {
   ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
   DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI,
   WAIT_SEQ, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
+  CONTINUE_CHIP, CONTINUE_DONE, CONTINUE_PICK, CONTINUE_FAIL, CONTINUE_WAIT_SEQ,
 } from "../utils/diaryCopy";
 
 // ── 우리 그림일기 v0 — 플로우 오버레이 (AD §2·§3·§4·§5) ──
@@ -31,6 +33,7 @@ const dateLabel = (ymd) => {
 };
 const uid = (today) => `${today}_${Math.floor(Math.random() * 1e6)}`;
 const WAIT_STEP_MS = 5000; // (a) 대기연출: 약 5초마다 다음 단(마지막 단에서 정지)
+const CONTINUE_WAIT_STEP_MS = 11000; // AD-8 이어그리기 4단(~11s×4≈44s, 실측 평균 50s에 맞춤)
 
 // selfInitiated=true → 자발 진입(그림일기 홈/브릿지 경유). '제안'이 아니므로 제안 통계(markProposed·recordProposalResult)에 기록하지 않음(R8 취지).
 // startAt="weather" → AD-3 §4: 진입 제안(entry)은 이제 caller(체크인 reward·홈 쓰기·브릿지)가 담당하므로 플로우는 날씨부터 시작. "entry"는 비활성 보존.
@@ -57,7 +60,13 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   // AD-5: 그림 상태 — idle(그림 전) | wait(생성 중) | done(성공) | fail(실패=플레이스홀더)
   const [imgState, setImgState] = useState("idle");
   const [imgUrl, setImgUrl] = useState(null);
-  const [waitStage, setWaitStage] = useState(0); // (a) 대기연출 단계(0..WAIT_SEQ.length-1)
+  const [waitStage, setWaitStage] = useState(0); // 대기연출 단계(0..seq.length-1)
+  // AD-8 이어 그리기: genMode null(생성 방식 미선택) | "ai"(키디 단독) | "me"(내 낙서+이어그리기)
+  const [genMode, setGenMode] = useState(null);
+  const [canvasOpen, setCanvasOpen] = useState(false);       // 낙서 캔버스 오버레이
+  const [drawingUrl, setDrawingUrl] = useState(null);        // 아이 원본 낙서(data URL)
+  const [completedUrl, setCompletedUrl] = useState(null);    // 이어 그린 완성본(data URL)
+  const [continueChoice, setContinueChoice] = useState(null); // null(선택 대기) | "mine" | "both" | "failadopt"
   const imgIdRef = useRef(null);
   const mountedRef = useRef(true);
   const savedEntryRef = useRef(null);
@@ -177,7 +186,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     setKiddyLine(READ_INTRO);
     voice.speak(READ_INTRO, "bright");
     s.forEach((line) => voice.enqueue(line, "calm")); // 완성 일기 전문 낭독(문장별 이어붙임)
-    runImage(s); // AD-5 §2: 낭독 뒤 그림 생성(대기→완성/실패). 실패해도 텍스트 저장 불변.
+    // AD-8: 낭독 뒤 '생성 방식' 선택(genMode). 칩 선택 시 runImage(ai)/캔버스(me)로 분기. (기존 AD-5 자동생성 → 선택 뒤로 이동)
   };
 
   // AD-5 §2·§3: 그림 생성/재생성. regen=true면 하루 2회 한도 소비. 실패는 플레이스홀더 폴백.
@@ -212,34 +221,86 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     }
   };
 
-  // (a) 대기연출 3단 순차 — imgState==="wait" 동안 ~5초마다 다음 멘트(마지막 단 고정). done/fail/언마운트 시 타이머 정리(X-2 유령 TTS 교훈).
+  // AD-8 §2: 생성 방식 선택 — "ai"=키디 단독(AD-5 runImage) / "me"=낙서 캔버스 → 이어 그리기.
+  const chooseGen = (mode) => {
+    setGenMode(mode);
+    if (mode === "ai") runImage(sentences);
+    else { voice.stop(); setCanvasOpen(true); } // 캔버스 진입
+  };
+  const onDoodleCancel = () => { setCanvasOpen(false); setGenMode(null); }; // 캔버스 취소 → 방식 선택으로 복귀
+  const onDoodleDone = (dataUrl) => {
+    setCanvasOpen(false);
+    setDrawingUrl(dataUrl);
+    runContinue(dataUrl);
+  };
+
+  // AD-8 §2: 이어 그리기 — 낙서 + 일기 → 서버 편집(gpt-image-1). 실패 시 자동 재시도 1회 → 그래도 실패면 아이 원본 채택.
+  //   ⚠️ 이탈(언마운트) = 깨끗한 중단: mountedRef 폐기(결과 무시, IDB/쿼터/pending 미기록 — 팀장 확정 ②). 쿼터는 '간직 시'에만 소비.
+  const runContinue = async (dataUrl, { retried = false } = {}) => {
+    setImgState("wait"); // 4단 대기연출은 imgState effect가 담당(genMode==="me")
+    try {
+      const res = await continueDiaryImage({ drawingB64: dataUrl, sentences, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender });
+      if (!mountedRef.current) return; // 이탈 → 결과 폐기(아무것도 안 남김)
+      if (res && res.ok && res.b64) {
+        setCompletedUrl(`data:image/png;base64,${res.b64}`);
+        setContinueChoice(null); // mine/both 선택 대기
+        setImgState("done");
+        setKiddyLine(CONTINUE_DONE);
+        voice.enqueue(CONTINUE_DONE, "bright");
+        return;
+      }
+      throw new Error("no-continue");
+    } catch {
+      if (!mountedRef.current) return;
+      if (!retried) { runContinue(dataUrl, { retried: true }); return; } // §0-4 자동 재시도 1회
+      // 최종 실패 → 아이 원본 채택(실패를 실패로 안 보임)
+      setContinueChoice("failadopt");
+      setImgState("done");
+      setKiddyLine(CONTINUE_FAIL);
+      voice.enqueue(CONTINUE_FAIL, "bright");
+    }
+  };
+
+  // 대기연출 순차 — imgState==="wait" 동안 다음 멘트(마지막 단 고정). ai=3단·5s / me(이어그리기)=4단·~11s. done/fail/언마운트 시 타이머 정리(X-2 유령 TTS 교훈).
   useEffect(() => {
     if (imgState !== "wait") return;
+    const seq = genMode === "me" ? CONTINUE_WAIT_SEQ : WAIT_SEQ; // me=4단(첫 단 '들여다보는') / ai=3단
+    const stepMs = genMode === "me" ? CONTINUE_WAIT_STEP_MS : WAIT_STEP_MS;
     setWaitStage(0);
-    setKiddyLine(WAIT_SEQ[0]);
-    voice.enqueue(WAIT_SEQ[0], "bright"); // 낭독 뒤 이어서(초기) / 재생성은 stop 후 바로
+    setKiddyLine(seq[0]);
+    voice.enqueue(seq[0], "bright"); // 낭독/캔버스 뒤 이어서
     let stage = 0;
     const timer = setInterval(() => {
-      if (!mountedRef.current || stage >= WAIT_SEQ.length - 1) return; // 마지막 단 clamp
+      if (!mountedRef.current || stage >= seq.length - 1) return; // 마지막 단 clamp
       stage += 1;
       setWaitStage(stage);
-      setKiddyLine(WAIT_SEQ[stage]);
-      voice.enqueue(WAIT_SEQ[stage], "bright");
-    }, WAIT_STEP_MS);
+      setKiddyLine(seq[stage]);
+      voice.enqueue(seq[stage], "bright");
+    }, stepMs);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgState]);
 
-  const keep = () => {
-    const entry = {
-      id: uid(today),
-      date: today,
-      sentences,
-      moodEmoji: checkinMood,
-      childPick,
-      keptAt: today,
-    };
-    if (imgState === "done" && imgIdRef.current) entry.imageId = imgIdRef.current; // 그림 성공분만 imageId
+  const keep = async () => {
+    const id = uid(today);
+    const entry = { id, date: today, sentences, moodEmoji: checkinMood, childPick, keptAt: today };
+    if (genMode === "me") {
+      // AD-8: 이어 그리기 채택 — 채택 이미지(+원본)를 이 시점에 IDB 저장(간직분만 → orphan 없음). 쿼터도 여기서 소비(①).
+      const imgId = `img_${id}`;
+      if (continueChoice === "both") {
+        const drawId = `draw_${id}`;
+        await putImage(drawId, drawingUrl);   // 원본 낙서 보관(원칙③ 병치)
+        await putImage(imgId, completedUrl);  // 완성본 = 채택본
+        entry.imageId = imgId;
+        entry.drawingId = drawId;
+      } else { // "mine" 또는 "failadopt" → 아이 원본만
+        await putImage(imgId, drawingUrl);
+        entry.imageId = imgId;
+      }
+      if (pid && continueChoice !== "failadopt") diary.recordContinue(pid, today); // 성공 채택(mine/both)만 소비 — 실패(failadopt)는 미소비(rule#3, 팀장 확정 7/6)
+    } else if (imgState === "done" && imgIdRef.current) {
+      entry.imageId = imgIdRef.current; // AD-5 AI path: 그림 성공분만 imageId
+    }
     if (pid) {
       diary.saveEntry(pid, entry); // '간직' 선택분만 저장
       diary.recordQid(pid, question.qid, today);
@@ -258,6 +319,12 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const STEP_ORDER = ["weather", "rotating", "pick", "result", "done"]; // 진행 점 5단계(§1)
   const stepIdx = STEP_ORDER.indexOf(step); // entry(비활성) → -1
   const weatherEmoji = WEATHER_CHIPS.find((w) => w.key === weather && w.key !== "unknown")?.label?.split(" ")[0] || "";
+  const activeWaitSeq = genMode === "me" ? CONTINUE_WAIT_SEQ : WAIT_SEQ; // 대기 문구(방식별)
+  // 카드에 실을 이미지: AI 완성(imgUrl) / 이어그리기 채택(both=완성본, mine·failadopt=원본)
+  const cardImageUrl = genMode === "me"
+    ? (continueChoice === "both" ? completedUrl : (continueChoice ? drawingUrl : null))
+    : imgUrl;
+  const continuePicking = genMode === "me" && imgState === "done" && continueChoice === null; // mine/both 선택 화면
 
   const screenBg = { background: "radial-gradient(120% 90% at 50% 0%, #123a35 0%, #0c1f1d 60%)" }; // 다크 에메랄드 라디얼(§1)
   const chipCls = "flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-4 text-base font-bold active:scale-95 transition";
@@ -299,6 +366,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   );
 
   return (
+    <>
     <div className="fixed inset-0 z-50 overflow-y-auto" style={screenBg}>
       {/* 헤더: ‹ 그만하기 / 문패 / 여백 (§1) */}
       <div className="flex items-center justify-between px-4 py-3">
@@ -370,19 +438,38 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
             </div>
           )}
 
-          {/* RESULT (크림 종이 카드 + 날짜·날씨·기분 라인 §1 ③ + 간직) */}
-          {step === "result" && (
+          {/* RESULT (크림 종이 카드 + 날짜·날씨·기분 라인 §1 ③ + 생성방식 선택 + 간직) */}
+          {step === "result" && (continuePicking ? (
+            /* AD-8: 이어 그리기 완성 → mine/both 선택(아이 최종 선택권, 원본·완성본 병치) */
+            <div className="flex flex-col gap-4">
+              <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{CONTINUE_PICK.ask}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setContinueChoice("mine")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                  <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2" }}>
+                    {drawingUrl && <img src={drawingUrl} alt={CONTINUE_PICK.mine} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
+                  <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.mine}</span>
+                </button>
+                <button onClick={() => setContinueChoice("both")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                  <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2" }}>
+                    {completedUrl && <img src={completedUrl} alt={CONTINUE_PICK.both} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
+                  <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.both}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="flex flex-col gap-4">
               <div className="rounded-2xl p-5 text-left" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
                 <div className="flex items-center justify-between pb-2 mb-3" style={{ borderBottom: "1px dashed #C9BC93" }}>
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(today)}</span>
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{weatherEmoji ? `날씨 ${weatherEmoji} · ` : ""}기분 {checkinMood}</span>
                 </div>
-                {/* 그림 자리 — 생성 성공 시 이미지, 그 외(대기·실패) 플레이스홀더 (§2) */}
+                {/* 그림 자리 — 채택 이미지 있으면 렌더, 그 외(대기·실패·선택전) 플레이스홀더/대기문구 (§2) */}
                 <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 140, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
-                  {imgState === "done" && imgUrl
-                    ? <img src={imgUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : <span className="text-sm font-bold px-4">{imgState === "wait" ? WAIT_SEQ[waitStage] : IMAGE_PLACEHOLDER}</span>}
+                  {cardImageUrl
+                    ? <img src={cardImageUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span className="text-sm font-bold px-4">{imgState === "wait" ? activeWaitSeq[waitStage] : IMAGE_PLACEHOLDER}</span>}
                 </div>
                 <div className="flex flex-col gap-2">
                   {sentences.map((s, i) => (
@@ -390,11 +477,19 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                   ))}
                 </div>
               </div>
-              {/* 대기 중엔 간직 버튼 숨김(대기→완성/실패 뒤 KEEP). §2 순서 */}
-              {imgState !== "wait" && (
+              {/* 액션 영역: 방식 선택(genMode null) → 대기 중 숨김 → 완성/실패 뒤 간직 */}
+              {genMode === null ? (
                 <div className="flex flex-col gap-2.5">
-                  {/* AD-5 §3: 그림 다시 그리기 (하루 2회) — 소진 시 REGEN_OUT */}
-                  {pid && (diary.getRegenLeft(pid, today) > 0
+                  <button onClick={() => chooseGen("ai")} className="rounded-2xl px-4 py-3.5 text-base font-bold w-full" style={primaryStyle}>{CONTINUE_CHIP.ai}</button>
+                  {/* 이어 그리기 쿼터 소진 시 미노출(첫 칩만 — 촉구·아쉬움 카피 없음) */}
+                  {pid && diary.getContinueLeft(pid, today) > 0 && (
+                    <button onClick={() => chooseGen("me")} className="rounded-2xl px-4 py-3.5 text-base font-bold w-full" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.35)" }}>{CONTINUE_CHIP.me}</button>
+                  )}
+                </div>
+              ) : imgState !== "wait" && (
+                <div className="flex flex-col gap-2.5">
+                  {/* AD-5 §3: 다시 그리기(하루 2회) — AI 경로만. 이어그리기(me)는 하루 1회라 재생성 버튼 없음 */}
+                  {genMode !== "me" && pid && (diary.getRegenLeft(pid, today) > 0
                     ? <button onClick={() => runImage(sentences, { regen: true })} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                     : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>)}
                   <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{KEEP.ask}</p>
@@ -403,7 +498,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                 </div>
               )}
             </div>
-          )}
+          ))}
 
           {/* DONE */}
           {step === "done" && (
@@ -418,5 +513,8 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
         {stepIdx >= 0 && <div className="mt-auto w-full"><ProgressDots /></div>}
       </div>
     </div>
+    {/* AD-8: 낙서 캔버스 오버레이(이어 그리기 진입 시 — 사진·카메라 경로 없음) */}
+    {canvasOpen && <DoodleCanvas onDone={onDoodleDone} onCancel={onDoodleCancel} />}
+    </>
   );
 }
