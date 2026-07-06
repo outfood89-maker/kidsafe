@@ -162,7 +162,9 @@ export const ROOM_INVITE = {
 };
 
 // ── AD-5 §5: 그림 파이프라인 카피 (전부 기확정 verbatim — 대본 §1 + 팀장 지시) ──
-export const IMG_WAIT = "이제 키디가 그림을 그릴게. 잠깐만 기다려 줘! ✏️";           // 대본 §1
+// (a) 대기연출 3단 순차 (일반 생성 공통, AD-5 시정 §5 팀장 스탬프 verbatim). ~5초마다 다음 단, 마지막 단 고정.
+export const WAIT_SEQ = ["키디가 크레용을 골랐어! 🖍", "쓱쓱… 열심히 그리는 중이야", "거의 다 됐어!"];
+export const IMG_WAIT = "이제 키디가 그림을 그릴게. 잠깐만 기다려 줘! ✏️";           // 대본 §1 (폴백/존치)
 export const IMG_DONE = "짜잔! 오늘의 그림이야!";                                    // 대본 §1
 export const IMG_FAIL = "오늘은 그림이 잘 안 그려졌어. 이야기만 먼저 간직해 둘게! 그림은 다음에 다시 그려볼게."; // 대본 §1
 export const REGEN = { btn: "🎨 그림 다시 그려줘" };                                 // 팀장 지시

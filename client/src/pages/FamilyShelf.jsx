@@ -154,7 +154,7 @@ export default function FamilyShelf() {
     }
     setDetailBusy(true);
     try {
-      const res = await generateDiaryImage({ sentences: entry.sentences, childPick: entry.childPick, moodEmoji: entry.moodEmoji, weatherKey: "" });
+      const res = await generateDiaryImage({ sentences: entry.sentences, childPick: entry.childPick, moodEmoji: entry.moodEmoji, weatherKey: "", profileGender: profile?.gender });
       if (res && res.ok && res.b64) {
         const url = `data:image/png;base64,${res.b64}`;
         const id = entry.imageId || `img_${entry.id}`;

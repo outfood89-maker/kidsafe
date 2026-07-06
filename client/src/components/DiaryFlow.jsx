@@ -13,7 +13,7 @@ import {
   ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
   DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI,
-  IMG_WAIT, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
+  WAIT_SEQ, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
 } from "../utils/diaryCopy";
 
 // ── 우리 그림일기 v0 — 플로우 오버레이 (AD §2·§3·§4·§5) ──
@@ -30,6 +30,7 @@ const dateLabel = (ymd) => {
   }
 };
 const uid = (today) => `${today}_${Math.floor(Math.random() * 1e6)}`;
+const WAIT_STEP_MS = 5000; // (a) 대기연출: 약 5초마다 다음 단(마지막 단에서 정지)
 
 // selfInitiated=true → 자발 진입(그림일기 홈/브릿지 경유). '제안'이 아니므로 제안 통계(markProposed·recordProposalResult)에 기록하지 않음(R8 취지).
 // startAt="weather" → AD-3 §4: 진입 제안(entry)은 이제 caller(체크인 reward·홈 쓰기·브릿지)가 담당하므로 플로우는 날씨부터 시작. "entry"는 비활성 보존.
@@ -56,6 +57,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   // AD-5: 그림 상태 — idle(그림 전) | wait(생성 중) | done(성공) | fail(실패=플레이스홀더)
   const [imgState, setImgState] = useState("idle");
   const [imgUrl, setImgUrl] = useState(null);
+  const [waitStage, setWaitStage] = useState(0); // (a) 대기연출 단계(0..WAIT_SEQ.length-1)
   const imgIdRef = useRef(null);
   const mountedRef = useRef(true);
   const savedEntryRef = useRef(null);
@@ -185,11 +187,9 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       diary.recordRegen(pid, today);
       voice.stop();
     }
-    setImgState("wait");
-    setKiddyLine(IMG_WAIT);
-    voice.enqueue(IMG_WAIT, "bright"); // 낭독 뒤 이어서(초기) / 재생성은 stop 후 바로
+    setImgState("wait"); // 대기연출(3단 멘트·타이머·enqueue)은 imgState effect가 담당(§3-a)
     try {
-      const res = await generateDiaryImage({ sentences: s, childPick, moodEmoji: checkinMood, weatherKey: weather });
+      const res = await generateDiaryImage({ sentences: s, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender });
       if (!mountedRef.current) return;
       if (res && res.ok && res.b64) {
         const url = `data:image/png;base64,${res.b64}`;
@@ -211,6 +211,24 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       voice.enqueue(IMG_FAIL, "bright");
     }
   };
+
+  // (a) 대기연출 3단 순차 — imgState==="wait" 동안 ~5초마다 다음 멘트(마지막 단 고정). done/fail/언마운트 시 타이머 정리(X-2 유령 TTS 교훈).
+  useEffect(() => {
+    if (imgState !== "wait") return;
+    setWaitStage(0);
+    setKiddyLine(WAIT_SEQ[0]);
+    voice.enqueue(WAIT_SEQ[0], "bright"); // 낭독 뒤 이어서(초기) / 재생성은 stop 후 바로
+    let stage = 0;
+    const timer = setInterval(() => {
+      if (!mountedRef.current || stage >= WAIT_SEQ.length - 1) return; // 마지막 단 clamp
+      stage += 1;
+      setWaitStage(stage);
+      setKiddyLine(WAIT_SEQ[stage]);
+      voice.enqueue(WAIT_SEQ[stage], "bright");
+    }, WAIT_STEP_MS);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgState]);
 
   const keep = () => {
     const entry = {
@@ -290,8 +308,11 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       </div>
 
       <div className="mx-auto flex max-w-md flex-col items-center px-5 pb-8 text-center" style={{ minHeight: "calc(100vh - 56px)" }}>
-        {/* 키디 1회(크게·상단 중앙, §3) + 말풍선 */}
-        <KiddyImg pose={isSad ? "think" : "hello"} size={128} float />
+        {/* 키디 1회(크게·상단 중앙, §3) + 말풍선. 대기 중엔 '그리는 느낌' 살짝 흔들(전용 자산 없어 wrapper 회전 — (a) 연출) */}
+        {imgState === "wait" && <style>{`@keyframes kiddyDraw{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}`}</style>}
+        <div style={imgState === "wait" ? { animation: "kiddyDraw 0.85s ease-in-out infinite" } : undefined}>
+          <KiddyImg pose={isSad ? "think" : "hello"} size={128} float />
+        </div>
         <div className="mt-3 w-full rounded-2xl px-5 py-4" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
           <p className="text-lg font-bold leading-snug" style={{ color: "#EAF5F1" }}>
             <Typewriter key={kiddyLine} text={kiddyLine} speed={26} />
@@ -361,7 +382,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                 <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 140, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                   {imgState === "done" && imgUrl
                     ? <img src={imgUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : <span className="text-sm font-bold px-4">{imgState === "wait" ? IMG_WAIT : IMAGE_PLACEHOLDER}</span>}
+                    : <span className="text-sm font-bold px-4">{imgState === "wait" ? WAIT_SEQ[waitStage] : IMAGE_PLACEHOLDER}</span>}
                 </div>
                 <div className="flex flex-col gap-2">
                   {sentences.map((s, i) => (

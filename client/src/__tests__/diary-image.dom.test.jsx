@@ -33,12 +33,13 @@ vi.mock("../components/Typewriter", () => ({ default: ({ text }) => text }));
 import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import * as diaryStore from "../utils/diaryStore";
-import { KEEP, REGEN, REMAKE, IMG_DONE, IMG_FAIL, IMAGE_PLACEHOLDER, monthBookTitle } from "../utils/diaryCopy";
+import { KEEP, REGEN, REMAKE, IMG_DONE, IMG_FAIL, IMAGE_PLACEHOLDER, WAIT_SEQ, monthBookTitle } from "../utils/diaryCopy";
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
 const MONTH_TITLE = monthBookTitle(TODAY.split("-")[1]);
 const SUNNY = "맑음";
+const WAIT_STEP = 5000; // DiaryFlow WAIT_STEP_MS와 일치
 
 beforeEach(() => {
   localStorage.clear();
@@ -48,15 +49,16 @@ beforeEach(() => {
   localStorage.setItem("diary_v0_meta_t1", JSON.stringify({ todayQ: { date: TODAY, qid: "who" } })); // 질문 고정(who → '엄마' 칩)
   localStorage.setItem("selectedProfile", JSON.stringify(PROFILE));
 });
-afterEach(() => { cleanup(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 const renderFlow = () =>
   render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
 const runToResult = async () => {
-  renderFlow();
+  const utils = renderFlow();
   fireEvent.click(screen.getByText(SUNNY));
   fireEvent.click(screen.getByText("엄마"));
   await act(async () => { fireEvent.click(screen.getByText("블록 놀이")); }); // pick → goResult → runImage
+  return utils;
 };
 
 describe("V1 — 그림 성공: 완성 카피 + 이미지 렌더 + imageId 저장", () => {
@@ -89,6 +91,37 @@ describe("V2 — 그림 실패: IMG_FAIL + 플레이스홀더 + 텍스트 저장
     fireEvent.click(screen.getByText(MONTH_TITLE));
     fireEvent.click(screen.getByText(e[0].sentences[0]));
     expect(screen.getByText(REGEN.btn)).toBeTruthy();
+  });
+});
+
+describe("V3 — (a) 대기연출 3단 순차 + 언마운트 타이머 정리", () => {
+  it("WAIT_SEQ 진행 → clamp → 완성(IMG_DONE)", async () => {
+    vi.useFakeTimers();
+    let resolveGen;
+    H.api.generateDiaryImage.mockReturnValue(new Promise((r) => { resolveGen = r; })); // 제어된 pending → wait 고정
+    await runToResult();
+    expect(screen.getAllByText(WAIT_SEQ[0]).length).toBeGreaterThan(0); // 대기 진입 = 1단(말풍선+플레이스홀더)
+    await act(async () => { vi.advanceTimersByTime(WAIT_STEP); });
+    expect(screen.getAllByText(WAIT_SEQ[1]).length).toBeGreaterThan(0); // 5초 → 2단
+    await act(async () => { vi.advanceTimersByTime(WAIT_STEP); });
+    expect(screen.getAllByText(WAIT_SEQ[2]).length).toBeGreaterThan(0); // 5초 → 3단
+    await act(async () => { vi.advanceTimersByTime(WAIT_STEP); });
+    expect(screen.getAllByText(WAIT_SEQ[2]).length).toBeGreaterThan(0); // 추가 5초 → 여전히 3단(clamp)
+    await act(async () => { resolveGen({ ok: true, b64: "AAAA" }); await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
+    expect(screen.getByText(IMG_DONE)).toBeTruthy(); // 생성 완료 → 완성 카피
+    vi.useRealTimers();
+  });
+
+  it("언마운트 시 타이머 정리 — 이후 대기 enqueue 증가 0(유령 TTS 방지)", async () => {
+    vi.useFakeTimers();
+    H.api.generateDiaryImage.mockReturnValue(new Promise(() => {})); // 영원히 pending → wait 유지
+    const { unmount } = await runToResult();
+    expect(screen.getAllByText(WAIT_SEQ[0]).length).toBeGreaterThan(0);
+    const before = H.voice.enqueue.mock.calls.length;
+    unmount();
+    await act(async () => { vi.advanceTimersByTime(WAIT_STEP * 3); });
+    expect(H.voice.enqueue.mock.calls.length).toBe(before); // 언마운트 후 다음 단 enqueue 없음
+    vi.useRealTimers();
   });
 });
 
