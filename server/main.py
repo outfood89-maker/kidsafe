@@ -39,6 +39,7 @@ def ensure_data_files():
 ensure_data_files()
 
 from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit, me, recommend, reports, checkins, schedules, kiddy_greeting, tts, care_signals
+from routers import diary_image  # AD-5: 그림일기 이미지 파이프라인 (feature/diary-v0 브랜치 전용)
 
 app = FastAPI(
     title="KidSafe API",
@@ -78,6 +79,7 @@ app.include_router(schedules.router, prefix="/schedules")
 app.include_router(kiddy_greeting.router, prefix="/kiddy-greeting")
 app.include_router(tts.router, prefix="/tts")
 app.include_router(care_signals.router, prefix="/care-signals")
+app.include_router(diary_image.router, prefix="/diary-image")  # AD-5 (브랜치 전용)
 
 
 @app.get("/")
