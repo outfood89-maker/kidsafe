@@ -11,6 +11,7 @@
 
 import os
 import json
+import base64
 import httpx
 import anthropic
 from fastapi import APIRouter, Depends
@@ -23,6 +24,10 @@ router = APIRouter()
 # 모델 (env override 가능) — 프롬프트 변환은 Sonnet(reports.py 계보), 이미지는 gpt-image-1-mini
 IMAGE_PROMPT_MODEL = os.getenv("IMAGE_PROMPT_MODEL", "claude-sonnet-5")
 OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1-mini")
+# AD-8 모델 이원화: 이어 그리기만 gpt-image-1(+input_fidelity:high — mini 미지원). 일반 생성은 mini 불변.
+OPENAI_CONTINUE_MODEL = os.getenv("OPENAI_CONTINUE_MODEL", "gpt-image-1")
+MAX_DRAWING_BYTES = 2 * 1024 * 1024     # 디코드된 낙서 상한(§2 비용·방어)
+MAX_DRAWING_B64_LEN = 3 * 1024 * 1024   # 디코드 전 b64 문자열 상한(과대 페이로드 조기 차단)
 
 # ── 대본 §2 verbatim 3블록 ──
 # ① 고정 스타일 블록 (그림체 일관성 핵심 — 프롬프트 맨 앞 고정)
@@ -167,4 +172,149 @@ async def generate(req: GenerateRequest, user: dict = Depends(get_current_user))
         return {"ok": True, "b64": b64, "prompt": prompt}
     except Exception as e:
         print("[diary_image] generate 예외:", type(e).__name__)
+        return {"ok": False}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# AD-8 이어 그리기 — 아이 낙서 + AI 완성 (보존 우선, 관문 5/5 통과 방식)
+#   ⚠️ 아이 그림 보존이 최우선(관문=스펙). Sonnet은 색감·분위기·배경 톤만, 장면 미주입(팀장 확정).
+#   ⚠️ 입력은 인앱 캔버스 PNG만(§0-2). 확정 설정: input_fidelity:high · quality:medium · size:auto(불변).
+# ══════════════════════════════════════════════════════════════════════
+
+# 보존 지시 블록 (관문 PoC 통과본 계보 — "변신이 배신이 되지 않게")
+CONTINUE_PRESERVE = (
+    "Continue and complete this child's own drawing. "
+    "Carefully preserve its original composition, shapes, and every element the child drew — "
+    "keep the child's lines and forms clearly recognizable; do not remove, replace, or redraw what they made. "
+    "Only add gentle finishing touches: fill with soft crayon color, add a simple matching background and sky, "
+    "in the same hand-drawn style."
+)
+
+
+class ContinueRequest(BaseModel):
+    drawingB64: str = ""  # 인앱 캔버스 PNG(data URL 또는 순수 b64). 외부 사진·카메라 경로 금지(§0-2)
+    sentences: List[str] = []
+    childPick: Optional[str] = ""
+    moodEmoji: Optional[str] = ""
+    weatherKey: Optional[str] = ""
+    profileGender: Optional[str] = ""
+
+
+def _continue_system_prompt(gender: str) -> str:
+    """보존 우선 편집 프롬프트 조립 — 아이 그림 절대 보존, 일기는 색감·분위기·배경만 참고(장면 미주입)."""
+    return (
+        "너는 아이가 직접 그린 그림(낙서)을 '이어 그리기'로 완성하는 이미지 편집 프롬프트를 만드는 변환기야.\n"
+        "★ 최우선 규칙: 아이가 그린 것을 절대 지우거나 바꾸지 말고 그대로 보존해. 완성본에서 아이 그림이 또렷이 알아보여야 해(구도·형태 보존). "
+        "일기 내용으로 새 장면·인물·사물을 아이 그림 위에 강제로 그려 넣지 말 것.\n\n"
+        "[고정 스타일 블록 — 맨 앞 포함]\n" + STYLE_BLOCK + "\n\n"
+        "[보존 지시 — 반드시 그대로 포함]\n" + CONTINUE_PRESERVE + "\n\n"
+        "[인물 규정 — 새로 더해지는 사람이 있으면 이 규정 따름]\n" + _character_block(gender) + "\n\n"
+        "일기 맥락(문장·기분·날씨)은 오직 색감·분위기·배경 톤 결정에만 참고해.\n\n"
+        "[안전 제약 — 맨 뒤 포함]\n" + SAFETY_BLOCK + "\n\n"
+        "출력은 오직 JSON 하나: {\"prompt\": \"...\"} (영어 한 문단, 설명·코드펜스 금지)."
+    )
+
+
+def _fallback_continue_prompt(mood: str, gender: str) -> str:
+    """Sonnet 실패 시 코드 조립 폴백 — 보존 지시·안전블록 보장(관문 통과 프롬프트 계보)."""
+    tone = "in calm, gentle pastel colors" if mood in ("😢", "😡") else "in bright cheerful pastel colors"
+    return (
+        f"{STYLE_BLOCK} {CONTINUE_PRESERVE} Color it {tone}. {_character_block(gender)} "
+        f"Optionally include a small green baby dinosaur friend if it fits naturally. {SAFETY_BLOCK}"
+    )
+
+
+async def _to_continue_prompt(req: ContinueRequest) -> str:
+    """① Sonnet(보존 우선) 변환. 실패/파싱불가 → 검증된 폴백."""
+    try:
+        client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        user = (
+            f"일기 문장: {' '.join(req.sentences)}\n"
+            f"오늘 기분: {req.moodEmoji or '(미상)'}\n"
+            f"날씨: {req.weatherKey or '(미상)'}\n"
+            f"(참고만: 아이가 고른 것 {req.childPick or '(없음)'})"
+        )
+        resp = await client.messages.create(
+            model=IMAGE_PROMPT_MODEL,
+            max_tokens=500,
+            temperature=0.4,
+            system=_continue_system_prompt(req.profileGender or ""),
+            messages=[{"role": "user", "content": user}],
+        )
+        text = "".join(
+            getattr(block, "text", "") for block in resp.content if getattr(block, "type", "") == "text"
+        ).strip()
+        if "{" in text and "}" in text:
+            text = text[text.index("{"): text.rindex("}") + 1]
+        data = json.loads(text)
+        prompt = (data.get("prompt") or "").strip()
+        if prompt:
+            return prompt
+    except Exception as e:
+        print("[diary_image] 이어그리기 Sonnet 변환 실패 → 폴백:", type(e).__name__)
+    return _fallback_continue_prompt(req.moodEmoji or "", req.profileGender or "")
+
+
+def _decode_drawing(b64: str):
+    """data URL/순수 b64 → bytes. 빈값·상한 초과·디코드 오류 시 None(500 금지)."""
+    try:
+        s = (b64 or "").strip()
+        if not s or len(s) > MAX_DRAWING_B64_LEN:  # 디코드 전 문자열 방어(과대 페이로드)
+            return None
+        if s.startswith("data:"):
+            s = s.split(",", 1)[1] if "," in s else ""
+        raw = base64.b64decode(s, validate=False)
+        if not raw or len(raw) > MAX_DRAWING_BYTES:
+            return None
+        return raw
+    except Exception:
+        return None
+
+
+async def _edit_image_b64(prompt: str, drawing: bytes) -> Optional[str]:
+    """② OpenAI Images edits — gpt-image-1 + 확정 설정(fidelity high·quality medium·size auto). 실패/키없음 → None(500 금지)."""
+    key = os.getenv("OPENAI_API_KEY")
+    if not key:
+        print("[diary_image] OPENAI_API_KEY 없음 — 이어그리기 생략")
+        return None
+    try:
+        files = {"image": ("drawing.png", drawing, "image/png")}
+        data = {
+            "model": OPENAI_CONTINUE_MODEL,
+            "prompt": prompt,
+            "input_fidelity": "high",  # 확정 설정(불변) — 낙서 보존 핵심. gpt-image-1 전용
+            "quality": "medium",
+            "size": "auto",            # 정사각 강제 금지(가로 낙서 크롭 방지 — 보존)
+            "n": "1",
+        }
+        async with httpx.AsyncClient(timeout=120.0) as client:  # 이어그리기 실측 평균 50s·최대 63s
+            resp = await client.post(
+                "https://api.openai.com/v1/images/edits",
+                headers={"Authorization": f"Bearer {key}"},  # multipart Content-Type은 httpx가 boundary와 자동 설정
+                data=data,
+                files=files,
+            )
+        payload = resp.json()
+        b64 = ((payload.get("data") or [{}])[0] or {}).get("b64_json")  # .get() 방어
+        return b64 or None
+    except Exception as e:
+        print("[diary_image] 이어그리기 생성 실패:", type(e).__name__)
+        return None
+
+
+@router.post("/continue")
+async def continue_drawing(req: ContinueRequest, user: dict = Depends(get_current_user)):
+    """아이 낙서(b64) + 일기 → 이어 그리기 편집(gpt-image-1). 어느 단계 실패든 { ok: false }(500 금지).
+    인증 필수 · 낙서 b64 상한 방어 · 확정 설정(fidelity:high·quality:medium·size:auto)."""
+    try:
+        drawing = _decode_drawing(req.drawingB64)
+        if drawing is None:  # 빈값·상한 초과·디코드 실패
+            return {"ok": False}
+        prompt = await _to_continue_prompt(req)
+        b64 = await _edit_image_b64(prompt, drawing)
+        if not b64:
+            return {"ok": False}
+        return {"ok": True, "b64": b64, "prompt": prompt}
+    except Exception as e:
+        print("[diary_image] continue 예외:", type(e).__name__)
         return {"ok": False}
