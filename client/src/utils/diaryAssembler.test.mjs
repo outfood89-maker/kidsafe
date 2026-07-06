@@ -50,19 +50,19 @@ console.log("── 재료 밖 창작 0 · josa 받침 처리 ──");
   chk("josa 받침(밥을/선생님이)", has(s, "밥을 했어요") && has(s, "선생님이 고마웠어요"));
 }
 
-console.log("── ② '내일' 조립문 (§1.6-b — 이에요/예요) ──");
+console.log("── ② 이에요/예요 조립문 (§1.6-b — fun 계열; tomorrow 제외 후 josa 커버 승계) ──");
 {
-  const s = assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid: "tomorrow", answer: "소풍" } });
-  chk("tomorrow 받침O(소풍이에요)", has(s, "내일 하고 싶은 건 소풍이에요."));
+  const s = assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid: "fun", answer: "소풍" } });
+  chk("fun 받침O(소풍이에요)", has(s, "제일 재미있었던 건 소풍이에요."));
 }
 {
-  const s = assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid: "tomorrow", answer: "놀이터" } });
-  chk("tomorrow 받침X(놀이터예요)", has(s, "내일 하고 싶은 건 놀이터예요."));
+  const s = assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid: "fun", answer: "놀이터" } });
+  chk("fun 받침X(놀이터예요)", has(s, "제일 재미있었던 건 놀이터예요."));
 }
 {
-  // R6 인용 리드도 '내일 하고 싶은 건,' 으로 (말하기)
-  const s = assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid: "tomorrow", answer: "동생이랑 병원", isSpeech: true } });
-  chk("tomorrow 말하기 인용 리드", s.some((x) => x === '내일 하고 싶은 건, "동생이랑 병원" 하고 이야기했어요.'));
+  // R6 인용 리드(말하기)
+  const s = assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid: "fun", answer: "동생이랑 병원", isSpeech: true } });
+  chk("fun 말하기 인용 리드", s.some((x) => x === '제일 재미있었던 건, "동생이랑 병원" 하고 이야기했어요.'));
 }
 
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);

@@ -18,7 +18,6 @@ const CHIP_TEMPLATE = {
   firstsaw: (a) => `오늘 ${josa(a, "을", "를")} 처음 봤어요`,
   thanks: (a) => `${josa(a, "이", "가")} 고마웠어요`,
   sound: (a) => `${a} 소리가 기억나요`,
-  tomorrow: (a) => `내일 하고 싶은 건 ${josa(a, "이에요", "예요")}`, // §1.6-b 확정본 (소풍이에요/놀이터예요)
   bestdid: (a) => `나는 오늘 ${josa(a, "을", "를")} 잘했어요`,
 };
 
@@ -32,7 +31,6 @@ const QUOTE_LEAD = {
   firstsaw: "오늘 처음 본 건,",
   thanks: "오늘 고마웠던 건,",
   sound: "제일 기억나는 소리는,",
-  tomorrow: "내일 하고 싶은 건,",
   bestdid: "오늘 제일 잘한 건,",
 };
 
