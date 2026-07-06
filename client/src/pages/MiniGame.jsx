@@ -9,6 +9,7 @@ import SortGame from "../components/games/SortGame";
 import MathQuiz from "../components/games/MathQuiz";
 import KiddyImg from "../components/KiddyImg";
 import BottomTabBar from "../components/BottomTabBar";
+import KiddyFab from "../components/KiddyFab"; // AD-4 §2 (feature/diary-v0 브랜치 전용)
 import ChatWidget from "../components/ChatWidget";
 import { getGameBonus, saveGameBonus, checkBadges } from "../utils/api";
 import { computeGameBonus } from "../utils/gameBonus";
@@ -483,6 +484,9 @@ export default function MiniGame() {
       <div className="md:hidden">
         <BottomTabBar activeTab="games" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
+
+      {/* AD-4 §2: 키디 플로팅 (허브 화면만 — 게임 플레이 화면은 별도 return이라 미표시) */}
+      <KiddyFab profile={selectedProfile} bottomOffset={84} />
 
     </div>
   );

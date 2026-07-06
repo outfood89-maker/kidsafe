@@ -79,5 +79,48 @@ console.log("── AD13/AD15: 진입 빈도 (R5·R8) ──");
   chk("AD15 책장 방문 → 기본 빈도 복귀(4일째도 제안)", diary.shouldProposeToday(PID, "2026-07-04", true) === true);
 }
 
+console.log("── AD-4 §4: getTodayQuestion(하루 고정) + 티저 게이트 ──");
+{
+  _mem.clear();
+  const q1 = diary.getTodayQuestion(PID, { age: 7, isSad: false });
+  const q2 = diary.getTodayQuestion(PID, { age: 7, isSad: false });
+  chk("V4 같은 날 2회 = 같은 qid(고정)", !!q1 && q1.qid === q2.qid);
+}
+{
+  _mem.clear();
+  const qt = diary.getTodayQuestion(PID, { age: 7 }); // 무드 미상(티저) → sunnyOnly 제외(안전)
+  chk("V4 티저(무드 미상) 선정 = sunnyOnly 아님", ROTATING_QUESTIONS.find((x) => x.qid === qt.qid)?.sunnyOnly !== true);
+  const qs = diary.getTodayQuestion(PID, { age: 7, isSad: true }); // 이어 흐림 플로우
+  chk("V4 티저 후 흐림 플로우도 규칙 위반 없이 동일 반환", qs.qid === qt.qid);
+}
+{
+  _mem.clear();
+  const q5 = diary.getTodayQuestion(PID, { age: 5 }); // 6세+ 전용(sound) 배제
+  chk("V4 5세 → sound(6세+) 미선정", q5.qid !== "sound");
+}
+{
+  _mem.clear();
+  // 저장된 todayQ가 sunnyOnly(fun)인데 흐림(isSad=true)으로 호출 → 필터 위반 → 재선정(전천후)
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  _mem.set(`diary_v0_meta_${PID}`, JSON.stringify({ todayQ: { date: today, qid: "fun" } }));
+  const q = diary.getTodayQuestion(PID, { age: 7, isSad: true });
+  chk("V4 저장 sunnyOnly가 흐림 필터 위반 → 재선정(sunnyOnly 아님)", ROTATING_QUESTIONS.find((x) => x.qid === q.qid)?.sunnyOnly !== true);
+}
+{
+  _mem.clear();
+  // 컨트롤타워 리뷰 수정 검증: 시드 선택도 최근 3일 dedup 준수 (fresh[0] 고정이던 시절의 기아와 무관하게 불변식 유지)
+  diary.recordQid(PID, "who", "2026-07-04");
+  diary.recordQid(PID, "tasty", "2026-07-05");
+  diary.recordQid(PID, "firstsaw", "2026-07-06");
+  const qd = diary.getTodayQuestion(PID, { age: 7, isSad: false });
+  chk("V4 시드 선택도 최근 3일 dedup 준수", !["who", "tasty", "firstsaw"].includes(qd.qid));
+}
+{
+  _mem.clear();
+  chk("V3 티저 게이트 초기 = 미표시(teaserDate 없음)", !diary.getTeaserDate(PID));
+  diary.markTeaserShown(PID, "2026-07-06");
+  chk("V3 표시 즉시 기록 → 그 날짜(같은 날 재표시 금지 근거)", diary.getTeaserDate(PID) === "2026-07-06");
+}
+
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

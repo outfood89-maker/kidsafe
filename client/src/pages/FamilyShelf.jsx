@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import KiddyImg from "../components/KiddyImg";
 import Typewriter from "../components/Typewriter";
 import DiaryFlow from "../components/DiaryFlow";
+import KiddyFab from "../components/KiddyFab";
 import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin } from "../utils/api";
@@ -34,7 +35,9 @@ const topMood = (entries) => {
 
 export default function FamilyShelf() {
   const navigate = useNavigate();
+  const location = useLocation();
   const voice = useKiddyVoice();
+  const startWriteWanted = useRef(false); // AD-4 §5: 방 초대 '좋아!' 경유 자동 쓰기 의도
   const [profile, setProfile] = useState(null);
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null); // 상세 열람 중인 페이지
@@ -62,6 +65,23 @@ export default function FamilyShelf() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bridge]);
   useEffect(() => () => { try { voice.stop(); } catch { /* 무시 */ } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // AD-4 §5: 방 초대 '좋아!'에서 navigate(state:{startWrite:true})로 오면 자동 쓰기 시작. state 즉시 소거(Z 패턴).
+  useEffect(() => {
+    if (location.state?.startWrite) {
+      startWriteWanted.current = true;
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // 프로필 로드되면 자동 startWrite (체크인 있으면 DiaryFlow, 없으면 기존 브릿지 경유 — startWrite 내부 로직 그대로)
+  useEffect(() => {
+    if (startWriteWanted.current && profile?.id) {
+      startWriteWanted.current = false;
+      startWrite();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
   // 월별 그룹 (최신 월 먼저, 각 월 내 날짜순)
   const months = useMemo(() => {
@@ -262,6 +282,9 @@ export default function FamilyShelf() {
           </div>
         </div>
       )}
+
+      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/찢기 확인 시 숨김(몰입) */}
+      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing} />
 
       {/* AD-2 §3: 자발 진입 DiaryFlow 오버레이 — 닫힐 때 책장 즉시 갱신(오늘 카드 '완료'로 전환). */}
       {diary.DIARY_V0 && writing && checkinForDiary && profile && (

@@ -5,6 +5,9 @@ import useKiddyVoice from "../hooks/useKiddyVoice";
 import { sendChatMessage, createCareSignal } from "../utils/api";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
+// AD-4 §1·§5: 방 책장 오브젝트 + 방 인사 초대 변주 (feature/diary-v0 브랜치 전용 — DIARY_V0 게이트 뒤)
+import * as diary from "../utils/diaryStore";
+import { SHELF_NAME, ROOM_INVITE } from "../utils/diaryCopy";
 
 // ── 키디의 방 v0 — '말하기 연습' (X, 스트레치 2 / X-2 리뷰 반영) ──
 //   프레임은 오직 '말하기 연습'(친구 방 아님). 음성 루프만: 텍스트 채팅 로그 없음.
@@ -106,6 +109,7 @@ export default function KiddyRoom() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [phase, setPhase] = useState("idle"); // idle | listening | thinking | ended
   const [kiddyLine, setKiddyLine] = useState(GREETING);
+  const [inviteMode, setInviteMode] = useState(false); // AD-4 §5: 오늘 미작성이면 방 초대 인사(인사 단계 한정)
   const [micBlocked, setMicBlocked] = useState(false); // m6: 마이크 거부 래치(reset이 error 지워도 유지)
   const lastReplyCareRef = useRef(false); // m3: isCrisis||isSoft (리추얼 마무리 억제 판정)
   const endedRef = useRef(false);
@@ -116,7 +120,15 @@ export default function KiddyRoom() {
   // 입장 인사(TTS 1회) + 5분 리추얼 타이머(마운트 시 1회). 리셋은 오직 재입장(재마운트)뿐.
   useEffect(() => {
     mountedRef.current = true;
-    voice.speak(GREETING, "bright");
+    // AD-4 §5: 오늘 그림일기 미작성이면 초대 인사 변주, 아니면 기존 GREETING.
+    //   profile state는 아직 null일 수 있어 localStorage를 동기로 읽어 판정(입장 인사 타이밍 유지).
+    let invite = false;
+    try {
+      const p = JSON.parse(localStorage.getItem("selectedProfile") || "null");
+      if (diary.DIARY_V0 && p?.id) invite = !diary.getEntries(p.id).some((e) => e.date === diary.todayKST());
+    } catch { /* 무시 */ }
+    if (invite) { setInviteMode(true); setKiddyLine(ROOM_INVITE.line); voice.speak(ROOM_INVITE.line, "bright"); }
+    else { voice.speak(GREETING, "bright"); }
     const t = setTimeout(() => finishSession({ silent: lastReplyCareRef.current }), SESSION_MS);
     return () => {
       mountedRef.current = false;
@@ -245,11 +257,21 @@ export default function KiddyRoom() {
   // Z §2: 마이크 폴백 — KidHome 경유로 타이핑 챗봇 자동 오픈 (접근성 폴백). 대화 저장 없음은 챗봇 쪽에서도 동일.
   const goTextChat = () => navigate("/kids", { state: { openChat: true } });
 
+  // AD-4 §5: 방 초대 — '좋아!' → 일기 직행(FamilyShelf가 startWrite 자동 실행) / '나중에' → 방 기능(말하기 연습) 정상 진행, 기록 0.
+  const goInvite = () => navigate("/family-shelf", { state: { startWrite: true } });
+  const dismissInvite = () => {
+    setInviteMode(false);
+    setKiddyLine(GREETING);
+    try { voice.stop(); } catch { /* 무시 */ }
+    voice.speak(GREETING, "bright");
+  };
+
   const handleTap = () => {
     if (sessionEnded || phase === "thinking") return;
     if (speech.listening) {
       speech.stop(); // 다 말함 → 종료 감지 effect가 전송
     } else {
+      if (inviteMode) setInviteMode(false); // 초대 무시하고 바로 말하기 시작 → 초대 버튼 소거
       voice.stop(); // 키디가 말하는 중이면 멈추고 듣기
       speech.reset();
       speech.start();
@@ -280,9 +302,26 @@ export default function KiddyRoom() {
           ‹ 홈으로
         </button>
         <p className="text-sm font-extrabold" style={{ color: "#5FE0BC" }}>말하기 연습 🦕</p>
-        {/* AD: 가족 책장 진입 (그림일기 — feature/diary-v0 브랜치 전용 ADD, 기존 로직 무접촉) */}
-        <button onClick={() => navigate("/family-shelf")} className="text-sm font-bold" style={{ color: "#90A9A8" }}>📚 책장</button>
+        {/* AD-4 건1: 정문이 방 안 실체 오브젝트(책장)로 승격 → 헤더 임시 텍스트 버튼 비활성 보존({false}). */}
+        {false ? (
+          <button onClick={() => navigate("/family-shelf")} className="text-sm font-bold" style={{ color: "#90A9A8" }}>📚 책장</button>
+        ) : (
+          <span className="w-12" />
+        )}
       </div>
+
+      {/* AD-4 건1: 방 안 책장 오브젝트 — 이모지 레이어(에셋 0), 우하단 코너(마이크 위). 위기 calm 표시 중 탭 무시(P 계보). */}
+      {diary.DIARY_V0 && (
+        <button
+          onClick={() => { if (lastReplyCareRef.current) return; navigate("/family-shelf"); }}
+          aria-label={`📚 ${SHELF_NAME}`}
+          className="absolute z-10 flex flex-col items-center gap-0.5 active:scale-95 transition"
+          style={{ right: 14, bottom: 116, padding: 6 }}
+        >
+          <span style={{ fontSize: 34, lineHeight: 1, filter: "drop-shadow(0 4px 14px rgba(24,196,154,0.5))" }}>📚</span>
+          <span className="text-[11px] font-bold" style={{ color: "#90A9A8" }}>{SHELF_NAME}</span>
+        </button>
+      )}
 
       {/* 큰 키디 + 현재 한 줄 (로그 리스트 없음 — 지금 말하는 한 줄만) */}
       {/* AA A6: 데스크톱 밀도 — 컬럼 최대 폭 제한(넓은 모니터 여백 정리). 모바일 무변경. */}
@@ -298,6 +337,13 @@ export default function KiddyRoom() {
 
       {/* 하단 — 탭 버튼 / 마무리 후 홈으로 / 마이크 거부 안내 */}
       <div className="px-6 pb-10 pt-2 flex flex-col items-center gap-3">
+        {/* AD-4 §5: 방 초대 버튼(인사 단계 한정 — turnCount 0, 대화 시작 전). 말하기 UI 위. */}
+        {inviteMode && !sessionEnded && phase === "idle" && turnCount === 0 && (
+          <div className="w-full max-w-xs flex flex-col gap-2.5">
+            <button onClick={goInvite} className="w-full rounded-2xl py-4 text-base font-extrabold active:scale-95 transition" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>{ROOM_INVITE.go}</button>
+            <button onClick={dismissInvite} className="w-full rounded-2xl py-3 text-base font-bold active:scale-95 transition" style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}>{ROOM_INVITE.later}</button>
+          </div>
+        )}
         {sessionEnded ? (
           <button
             onClick={() => navigate("/kids")}

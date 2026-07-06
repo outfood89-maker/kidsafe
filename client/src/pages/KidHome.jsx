@@ -23,10 +23,11 @@ import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
 import DailyCheckin from "../components/DailyCheckin";
-// AD-2: 그림일기 홈 진입 (feature/diary-v0 브랜치 전용 — main 무접촉, DIARY_V0 게이트 뒤)
+// AD-2/AD-4: 그림일기 홈 진입 + 키디 플로팅/티저 (feature/diary-v0 브랜치 전용 — main 무접촉, DIARY_V0 게이트 뒤)
 import * as diaryStore from "../utils/diaryStore";
 import { DIARY_V0, todayKST } from "../utils/diaryStore";
 import { TILE } from "../utils/diaryCopy";
+import KiddyFab from "../components/KiddyFab";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
 //    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "") — 배포 청소로 리셋됨.
@@ -143,6 +144,9 @@ export default function KidHome() {
   const [kiddyClicked, setKiddyClicked] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false); // F1 오늘의 체크인 오버레이 (오늘 미체크인 시)
+  const [diaryTeaser, setDiaryTeaser] = useState(null); // AD-4 §4: 하루 첫 진입 티저 말풍선(오늘의 질문 ask)
+  const teaserTimerRef = useRef(null);
+  const teaserTriedRef = useRef(false);
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -288,6 +292,26 @@ export default function KidHome() {
     try { return diaryStore.getEntries(selectedProfile.id).some((e) => e.date === todayKST()); }
     catch { return false; }
   }, [selectedProfile?.id, checkinOpen]);
+
+  // AD-4 §4: 하루 첫 키즈 홈 진입 1회 티저 — 오늘의 질문 ask를 3~4초 노출(신규 카피 0). 몰입(체크인 등) 중엔 보류→닫히면 재평가.
+  //   teaserDate가 유일 기준(표시 즉시 기록) → 같은 날 재진입/리렌더 미표시. 오늘 일기 완료면 미표시.
+  useEffect(() => {
+    if (teaserTriedRef.current) return;
+    if (!DIARY_V0 || !selectedProfile?.id) return;
+    if (checkinOpen) return; // 몰입 중 보류(체크인 닫히면 checkinOpen 변화로 재실행)
+    try {
+      const today = todayKST();
+      if (diaryStore.getTeaserDate(selectedProfile.id) === today) { teaserTriedRef.current = true; return; }
+      const has = diaryStore.getEntries(selectedProfile.id).some((e) => e.date === today);
+      if (has) { teaserTriedRef.current = true; return; } // 오늘 작성 완료 → 티저 없음
+      teaserTriedRef.current = true;
+      const q = diaryStore.getTodayQuestion(selectedProfile.id, { age: selectedProfile.age }); // 무드 미상 → sunnyOnly 제외(안전)
+      diaryStore.markTeaserShown(selectedProfile.id, today);
+      setDiaryTeaser(q?.ask || null);
+      teaserTimerRef.current = setTimeout(() => setDiaryTeaser(null), 3500); // 3~4초 자동 소멸
+    } catch { /* 무시 */ }
+  }, [selectedProfile?.id, checkinOpen]);
+  useEffect(() => () => { if (teaserTimerRef.current) clearTimeout(teaserTimerRef.current); }, []);
 
   const fetchSearchHistory = async (profileId) => {
     try { const data = await getSearchHistory(profileId); setSearchHistory(data); }
@@ -1603,6 +1627,24 @@ export default function KidHome() {
           onChatToggle={() => navigate("/kiddy-room")}
         />
       </div>
+
+      {/* AD-4 §2·§4: 키디 플로팅 + 하루 첫 진입 티저 (DIARY_V0 뒤). 몰입 오버레이 열림 시 숨김(이중 방어). */}
+      {(() => {
+        const fabHidden = checkinOpen || !!selectedVideo || !!selectedPlaylist || !!playingVideo
+          || newBadges.length > 0 || (timeLimitReached && !timeLimitModalDismissed) || chatOpen;
+        return (
+          <>
+            {DIARY_V0 && diaryTeaser && !fabHidden && (
+              <div className="fixed z-40" style={{ right: 16, bottom: 152 }} onClick={() => setDiaryTeaser(null)}>
+                <div className="rounded-2xl px-4 py-2.5" style={{ maxWidth: 220, backgroundColor: "#0E2A2A", border: "1px solid rgba(95,224,188,0.35)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}>
+                  <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{diaryTeaser}</p>
+                </div>
+              </div>
+            )}
+            <KiddyFab profile={selectedProfile} bottomOffset={84} hidden={fabHidden} />
+          </>
+        );
+      })()}
 
     </div>
   );

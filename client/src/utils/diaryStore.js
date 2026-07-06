@@ -5,6 +5,8 @@
 //   ④찢기=페이지 단위 즉시 완전 삭제(복구 불가) ⑤배지·보상·알림 연결 금지.
 // ⚠️ feature/diary-v0 브랜치 전용.
 
+import { ROTATING_QUESTIONS } from "./diaryCopy"; // AD-4 §4: getTodayQuestion 선정 풀(단방향 의존)
+
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
 //   → main엔 이 브랜치 diff가 없어야 하므로 플래그로 신규 UI 전체를 게이트한다.
 export const DIARY_V0 = true;
@@ -30,7 +32,7 @@ const writeJson = (key, val) => {
   }
 };
 
-const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null });
+const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null });
 const getMeta = (pid) => ({ ...defaultMeta(), ...readJson(META_KEY(pid), {}) });
 const setMeta = (pid, meta) => writeJson(META_KEY(pid), meta);
 
@@ -105,6 +107,44 @@ export function markProposed(pid, today) {
 export function recordProposalResult(pid, accepted) {
   const meta = getMeta(pid);
   meta.rejectStreak = accepted ? 0 : (meta.rejectStreak || 0) + 1;
+  setMeta(pid, meta);
+}
+
+// ── AD-4 §4: '오늘의 질문' 하루 고정 선정 (티저↔플로우 일치, "사실은 코드가" 계보) ──
+//   isSad: true(흐림)·false(맑음)·undefined(무드 미상=티저). 결과를 meta.todayQ에 고정 → 같은 날 재호출 시 동일 qid.
+//   선정은 결정적(날짜+pid 시드) — 랜덤 제거로 티저·재진입·플로우가 완전히 일치.
+export function getTodayQuestion(pid, { age = 7, isSad } = {}) {
+  const today = todayKST();
+  const meta = getMeta(pid);
+  const agePool = ROTATING_QUESTIONS.filter((q) => age >= q.minAge); // 연령 필터(Q6 6세+)
+  const passes = (qid) => {
+    const q = agePool.find((x) => x.qid === qid);
+    if (!q) return false;
+    if (isSad && q.sunnyOnly) return false; // R1: 흐린 날 sunnyOnly 제외
+    return true;
+  };
+  // 오늘 이미 고정된 질문이 현재 필터를 통과하면 그대로(재진입·플로우 일치)
+  if (meta.todayQ && meta.todayQ.date === today && passes(meta.todayQ.qid)) {
+    return agePool.find((x) => x.qid === meta.todayQ.qid);
+  }
+  // 재선정: 흐림 또는 무드 미상(티저) → sunnyOnly 제외(R1/안전) · 맑음(isSad===false) → 전체
+  const selectPool = isSad === false ? agePool : agePool.filter((q) => !q.sunnyOnly);
+  const recent = getRecentQids(pid);
+  const fresh = selectPool.filter((q) => !recent.includes(q.qid));
+  const pool = fresh.length ? fresh : selectPool;
+  // ⚠️ fresh[0] 고정 선택 금지 — 최근3 dedup과 결합하면 배열 앞 4종만 영원히 순환(뒤 질문 기아, 회전 8종 취지 위반).
+  //    날짜+pid 시드 결정적 선택: 하루 고정·티저 일치 성질은 유지하면서 날마다 인덱스가 움직여 전 질문 커버. (컨트롤타워 리뷰 수정)
+  const seed = [...`${pid}_${today}`].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const chosen = pool[seed % pool.length] || agePool[0] || ROTATING_QUESTIONS[0];
+  if (chosen) { meta.todayQ = { date: today, qid: chosen.qid }; setMeta(pid, meta); }
+  return chosen;
+}
+
+// AD-4 §4: 티저 노출 날짜 (하루 1회 게이트 — 표시 즉시 기록, 유일 기준)
+export const getTeaserDate = (pid) => getMeta(pid).teaserDate;
+export function markTeaserShown(pid, today) {
+  const meta = getMeta(pid);
+  meta.teaserDate = today;
   setMeta(pid, meta);
 }
 

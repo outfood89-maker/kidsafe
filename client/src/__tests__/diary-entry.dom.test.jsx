@@ -61,8 +61,10 @@ const UNKNOWN = WEATHER_CHIPS.find((w) => w.key === "unknown").label; // "모르
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
-  vi.spyOn(Math, "random").mockReturnValue(0); // 회전질문 who + uid 고정
+  vi.spyOn(Math, "random").mockReturnValue(0); // uid 고정
   localStorage.setItem("selectedProfile", JSON.stringify(PROFILE));
+  // AD-4: 질문 선정이 날짜+pid 시드 결정적 → 날에 따라 달라짐. 테스트는 todayQ를 who로 고정('엄마' 칩 의존).
+  localStorage.setItem("diary_v0_meta_t1", JSON.stringify({ todayQ: { date: TODAY, qid: "who" } }));
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -151,7 +153,9 @@ describe("V4 — diaryIntent 연속 진행(제안 빈도 미충족에도, 재제
 describe("V5 — 자발 진입 통계 무오염 (markProposed 가드)", () => {
   it("selfInitiated + weather-start → markProposed 미기록 / 비자발 → 기록됨(대조)", () => {
     const { unmount } = render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
-    expect(localStorage.getItem("diary_v0_meta_t1")).toBeNull(); // 자발 → markProposed 안 함
+    // AD-4: 오늘의 질문 고정(todayQ)은 기록되지만 제안 통계(lastProposalDate)는 자발이라 미기록
+    const meta1 = JSON.parse(localStorage.getItem("diary_v0_meta_t1") || "{}");
+    expect(meta1.lastProposalDate ?? null).toBeNull();
     unmount();
     // 대조: 비자발(selfInitiated=false)은 마운트 시 markProposed
     render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
@@ -202,9 +206,10 @@ describe("A2(AD3 §7-V3) — 화면당 키디 1회", () => {
     render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
     expect(document.querySelectorAll('img[alt^="키디"]').length).toBe(1);
   });
-  it("FamilyShelf 빈 책장 = 키디 img 1개(상단 카드는 📖만)", () => {
+  it("FamilyShelf 빈 책장 = 콘텐츠 키디 1개(상단 카드는 📖만, FAB는 별도 chrome)", () => {
     render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
-    expect(document.querySelectorAll('img[alt^="키디"]').length).toBe(1);
+    // 빈 책장 안내 키디(reading) 정확히 1 — 카드엔 키디 없음(📖 텍스트만). FAB 키디(greet)는 상시 chrome이라 별도.
+    expect(document.querySelectorAll('img[alt="키디 reading"]').length).toBe(1);
   });
 });
 

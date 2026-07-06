@@ -54,7 +54,9 @@ const utter = async (text) => {
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
-  vi.spyOn(Math, "random").mockReturnValue(0); // 회전 질문 결정적(who) + uid 고정
+  vi.spyOn(Math, "random").mockReturnValue(0); // uid 고정
+  // AD-4: 질문 선정이 날짜+pid 시드 결정적 → 날에 따라 달라짐. 테스트는 todayQ를 who로 고정('엄마' 칩 의존).
+  localStorage.setItem("diary_v0_meta_t1", JSON.stringify({ todayQ: { date: TODAY, qid: "who" } }));
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 

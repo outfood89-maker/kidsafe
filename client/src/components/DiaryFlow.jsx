@@ -54,15 +54,16 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const mountedRef = useRef(true);
   const savedEntryRef = useRef(null);
 
-  // 오늘의 회전 질문 1개 선정 (R1 감정태그 · 연령 · 최근3일 dedup)
-  const question = useMemo(() => {
-    const recent = diary.getRecentQids(pid);
-    let pool = ROTATING_QUESTIONS.filter((q) => age >= q.minAge); // 연령 (Q6 6세+)
-    if (isSad) pool = pool.filter((q) => !q.sunnyOnly); // R1: 흐린 날 전천후만
-    const fresh = pool.filter((q) => !recent.includes(q.qid));
-    const usable = fresh.length ? fresh : pool; // 다 겹치면 전체에서
-    return usable[Math.floor(Math.random() * usable.length)] || pool[0];
-  }, [pid, age, isSad]);
+  // AD-4 §4: 오늘의 회전 질문 = 하루 고정(diaryStore 승격) — 티저↔재진입↔플로우 일치. 기존 랜덤 선정은 아래 주석 보존.
+  // const question = useMemo(() => {
+  //   const recent = diary.getRecentQids(pid);
+  //   let pool = ROTATING_QUESTIONS.filter((q) => age >= q.minAge); // 연령 (Q6 6세+)
+  //   if (isSad) pool = pool.filter((q) => !q.sunnyOnly); // R1: 흐린 날 전천후만
+  //   const fresh = pool.filter((q) => !recent.includes(q.qid));
+  //   const usable = fresh.length ? fresh : pool; // 다 겹치면 전체에서
+  //   return usable[Math.floor(Math.random() * usable.length)] || pool[0];
+  // }, [pid, age, isSad]);
+  const question = useMemo(() => diary.getTodayQuestion(pid, { age, isSad }), [pid, age, isSad]);
 
   // 마운트: 제안 표시 기록 + 인사 TTS
   useEffect(() => {
