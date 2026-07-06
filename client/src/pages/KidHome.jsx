@@ -31,7 +31,7 @@ import KiddyFab from "../components/KiddyFab";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
 //    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "") — 배포 청소로 리셋됨.
-const CHECKIN_TEST_PROFILE = "";
+const CHECKIN_TEST_PROFILE = ""; // ⚠️ 테스트 켜짐(2026-07-03 오너 요청) — 배포 태울 커밋 전 반드시 ""로!
 
 // 깡총 점프 키프레임 주입 (한 번만)
 if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {
@@ -1345,7 +1345,7 @@ export default function KidHome() {
                     className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
                     style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
                   >
-                    <KiddyImg pose="greet" size={54} />
+                    <KiddyImg pose="jump" size={54} />
                     <div className="min-w-0 flex-1">
                       {hasDiaryToday ? (
                         <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.done}</p>

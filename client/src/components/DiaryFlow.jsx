@@ -249,7 +249,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
       <div className="mx-auto flex max-w-md flex-col items-center px-5 pb-8 text-center" style={{ minHeight: "calc(100vh - 56px)" }}>
         {/* 키디 1회(크게·상단 중앙, §3) + 말풍선 */}
-        <KiddyImg pose={isSad ? "think" : "greet"} size={128} float />
+        <KiddyImg pose={isSad ? "think" : "hello"} size={128} float />
         <div className="mt-3 w-full rounded-2xl px-5 py-4" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
           <p className="text-lg font-bold leading-snug" style={{ color: "#EAF5F1" }}>
             <Typewriter key={kiddyLine} text={kiddyLine} speed={26} />

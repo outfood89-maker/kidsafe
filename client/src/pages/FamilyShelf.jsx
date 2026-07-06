@@ -135,7 +135,7 @@ export default function FamilyShelf() {
         {/* 찢은 직후 확인 — 엔트리 삭제로 openEntry가 사라져도 표시 (상세 언마운트 버그 수정, DOM 테스트 발견) */}
         {torn && (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <KiddyImg pose="greet" size={120} />
+            <KiddyImg pose="hello" size={120} />
             <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>
               <Typewriter key="torn" text={TEAR.done} speed={26} />
             </p>
@@ -146,7 +146,7 @@ export default function FamilyShelf() {
         {/* AD-2 §3: 미체크인 브릿지 — 홈으로 넘어가 오늘 안부(체크인)부터. */}
         {!torn && !openEntry && bridge && (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <KiddyImg pose="greet" size={120} />
+            <KiddyImg pose="hello" size={120} />
             <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>
               <Typewriter key="bridge" text={BRIDGE.line} speed={26} />
             </p>

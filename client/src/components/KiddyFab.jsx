@@ -22,20 +22,27 @@ export default function KiddyFab({ profile, bottomOffset = 16, hidden = false })
     <button
       onClick={() => navigate("/kiddy-room")}
       aria-label="키디의 방"
-      className="fixed right-4 z-40 rounded-full active:scale-95 transition"
-      style={{
-        bottom: bottomOffset, width: 60, height: 60,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "radial-gradient(circle at 50% 32%, #18C49A, #0E2A2A)",
-        boxShadow: "0 8px 24px rgba(20,184,196,0.45)",
-      }}
+      className="fixed right-4 z-40 active:scale-95 transition"
+      style={{ bottom: bottomOffset, width: 60, height: 60, position: "fixed" }}
     >
-      <KiddyImg pose="greet" size={52} />
+      {/* 원형 클립 — 얼굴 클로즈업: 키디를 확대(머리 중심)해서 얼굴만 크게. 전신 대신 얼굴. */}
+      <div
+        className="absolute inset-0 rounded-full overflow-hidden"
+        style={{
+          background: "radial-gradient(circle at 50% 32%, #18C49A, #0E2A2A)",
+          boxShadow: "0 8px 24px rgba(20,184,196,0.45)",
+        }}
+      >
+        <div style={{ width: "100%", height: "100%", transform: "scale(1.9)", transformOrigin: "50% 0%" }}>
+          <KiddyImg pose="jump" size={60} />
+        </div>
+      </div>
+      {/* 오버레이(📖✨/기분) — 클립 밖 버튼에 두어 잘리지 않음 */}
       {overlay && (
         <span
           className="absolute"
           style={{
-            top: -6, right: -4, lineHeight: 1,
+            top: -6, right: -4, lineHeight: 1, zIndex: 1,
             fontSize: overlay === "📖✨" ? 17 : 22,
             filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.45))",
             animation: "kiddyFloat 2.5s ease-in-out infinite", // KiddyImg가 주입한 키프레임 재사용
