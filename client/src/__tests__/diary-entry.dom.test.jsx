@@ -51,12 +51,12 @@ import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import DailyCheckin from "../components/DailyCheckin";
 import * as diaryStore from "../utils/diaryStore";
-import { TILE, HOME_WRITE, BRIDGE, ENTRY, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP } from "../utils/diaryCopy";
+import { TILE, HOME_WRITE, BRIDGE, ENTRY, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, monthBookTitle } from "../utils/diaryCopy";
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
-const SUNNY = WEATHER_CHIPS.find((w) => w.key === "sunny").label;   // "☀️ 맑음"
-const UNKNOWN = WEATHER_CHIPS.find((w) => w.key === "unknown").label; // "모르겠어"
+const SUNNY_LABEL = WEATHER_CHIPS.find((w) => w.key === "sunny").label.split(" ")[1]; // "맑음"(AD-3 칩=이모지+라벨, 라벨로 클릭)
+const UNKNOWN = WEATHER_CHIPS.find((w) => w.key === "unknown").label; // "모르겠어"(공백 없음 → 그대로)
 
 beforeEach(() => {
   localStorage.clear();
@@ -87,10 +87,8 @@ describe("V2 — 홈 쓰기 → 체크인 있음 → DiaryFlow 완주 → 책장
     H.api.getTodayCheckin.mockResolvedValueOnce({ checkin: { moodEmoji: "🙂", answers: [{ qId: "what_did_today", answer: "블록 놀이" }] } });
     renderShelf();
     await act(async () => { fireEvent.click(screen.getByText(HOME_WRITE)); });
-    // DiaryFlow(자발) 진입 제안
-    expect(await screen.findByText(ENTRY.baseYes)).toBeTruthy();
-    fireEvent.click(screen.getByText(ENTRY.baseYes));
-    fireEvent.click(screen.getByText(SUNNY));
+    // AD-3: DiaryFlow는 weather부터(진입 제안 생략 — 홈 쓰기 = 명시적 의도)
+    fireEvent.click(await screen.findByText(SUNNY_LABEL));
     fireEvent.click(screen.getByText("엄마"));       // who Q (Math.random=0)
     fireEvent.click(screen.getByText("블록 놀이"));   // pick 칩(=체크인 한 일)
     fireEvent.click(screen.getByText(KEEP.yes));      // 간직하기
@@ -135,45 +133,100 @@ describe("V3 — 미체크인 브릿지 → 홈으로(diaryAfter)", () => {
   });
 });
 
-describe("V4 — diaryIntent 우회(제안 빈도 미충족에도 열림)", () => {
-  it("lastProposalDate=오늘(shouldProposeToday=false) + diaryIntent → reward 완료 시 DiaryFlow 열림", async () => {
+describe("V4 — diaryIntent 연속 진행(제안 빈도 미충족에도, 재제안 없이 weather부터)", () => {
+  it("lastProposalDate=오늘(shouldProposeToday=false) + diaryIntent → reward '영상 보러 가자' → DiaryFlow weather", async () => {
     diaryStore.markProposed("t1", TODAY); // 오늘 이미 제안함 → 빈도 게이트 false 유도
     expect(diaryStore.shouldProposeToday("t1", TODAY, true)).toBe(false);
     const onComplete = vi.fn();
     render(<MemoryRouter><DailyCheckin profile={PROFILE} diaryIntent={true} onComplete={onComplete} onSkip={vi.fn()} /></MemoryRouter>);
     fireEvent.click(await screen.findByText("인사-계속"));        // greeting → (질문0) → share
     fireEvent.click(await screen.findByText("응, 들려줄래 💚"));   // share → saveCheckin → reward
-    fireEvent.click(await screen.findByText("영상 보러 가자! 🚀")); // diaryFinish
-    // 우회로 DiaryFlow 열림(제안 통계 미충족에도)
-    expect(await screen.findByText(new RegExp("그림일기 만들어볼까"))).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled(); // 아직 완료 아님(일기 닫힐 때 완료)
+    // diaryIntent라 reward 안 제안 없음 → 완료 버튼이 연속 진행 트리거
+    fireEvent.click(await screen.findByText("영상 보러 가자! 🚀"));
+    expect(await screen.findByText(SUNNY_LABEL)).toBeTruthy(); // DiaryFlow weather부터(entry 생략)
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });
 
-describe("V5 — 자발 진입('안 할래') 통계 무오염", () => {
-  it("selfInitiated=true 거절 → 메타 미기록 / 일반 제안 거절 → 기록됨(대조)", () => {
-    const { unmount } = render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated={true} onClose={vi.fn()} /></MemoryRouter>);
-    fireEvent.click(screen.getByText(ENTRY.baseNo)); // "오늘은 안 할래"
-    expect(localStorage.getItem("diary_v0_meta_t1")).toBeNull(); // markProposed·recordProposalResult 미호출
+describe("V5 — 자발 진입 통계 무오염 (markProposed 가드)", () => {
+  it("selfInitiated + weather-start → markProposed 미기록 / 비자발 → 기록됨(대조)", () => {
+    const { unmount } = render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
+    expect(localStorage.getItem("diary_v0_meta_t1")).toBeNull(); // 자발 → markProposed 안 함
     unmount();
-    // 대조: 일반 제안(selfInitiated=false)은 마운트 시 markProposed + 거절 시 rejectStreak++
-    render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" onClose={vi.fn()} /></MemoryRouter>);
-    fireEvent.click(screen.getByText(ENTRY.baseNo));
+    // 대조: 비자발(selfInitiated=false)은 마운트 시 markProposed
+    render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
     const meta = JSON.parse(localStorage.getItem("diary_v0_meta_t1"));
     expect(meta.lastProposalDate).toBe(TODAY);
-    expect(meta.rejectStreak).toBe(1);
   });
 });
 
 describe("V6 — 비공개 체크인 엣지(pick 칩 0개 방어)", () => {
   it("didToday='' + 날씨 모르겠어 + R2 무답 + 말하기불가(4세) → pick 단계 건너뛰고 바로 낭독", () => {
     const child = { id: "t1", name: "해인", age: 4 }; // canSpeak=false
-    render(<MemoryRouter><DiaryFlow profile={child} today={TODAY} checkinMood="🙂" checkinDidToday="" selfInitiated={true} onClose={vi.fn()} /></MemoryRouter>);
-    fireEvent.click(screen.getByText(ENTRY.baseYes));       // 좋아!
+    render(<MemoryRouter><DiaryFlow profile={child} today={TODAY} checkinMood="🙂" checkinDidToday="" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
     fireEvent.click(screen.getByText(UNKNOWN));             // 날씨 모르겠어(문장 생략)
     fireEvent.click(screen.getByText(NO_ANSWER_CHIP));      // R2 무답
     // pick 단계(PICK_ASK)를 건너뛰고 바로 result(간직하기) — 빈 화면 방어 동작
     expect(screen.getByText(KEEP.yes)).toBeTruthy();
     expect(screen.queryByText(PICK_ASK)).toBeNull();
+  });
+});
+
+// ── AD-3 신규 검증 (§7-V2·V3·V4·V5) ──
+describe("A1(AD3 §7-V2) — reward 제안 요소(자동 팝업 아님)", () => {
+  it("제안 충족 → reward에 ENTRY 제안 노출(완료버튼 대신) → 좋아! → DiaryFlow weather", async () => {
+    const onComplete = vi.fn();
+    render(<MemoryRouter><DailyCheckin profile={PROFILE} onComplete={onComplete} onSkip={vi.fn()} /></MemoryRouter>);
+    fireEvent.click(await screen.findByText("인사-계속"));
+    fireEvent.click(await screen.findByText("응, 들려줄래 💚"));
+    expect(await screen.findByText(new RegExp("그림일기 만들어볼까"))).toBeTruthy(); // 제안 요소
+    expect(screen.queryByText("영상 보러 가자! 🚀")).toBeNull();                    // 제안 시 완료버튼 대체
+    fireEvent.click(screen.getByText(ENTRY.baseYes));            // 좋아!
+    expect(await screen.findByText(SUNNY_LABEL)).toBeTruthy();   // DiaryFlow weather부터
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+  it("제안 '안 할래' → recordProposalResult(false) + 정상 완료", async () => {
+    const onComplete = vi.fn();
+    render(<MemoryRouter><DailyCheckin profile={PROFILE} onComplete={onComplete} onSkip={vi.fn()} /></MemoryRouter>);
+    fireEvent.click(await screen.findByText("인사-계속"));
+    fireEvent.click(await screen.findByText("응, 들려줄래 💚"));
+    fireEvent.click(await screen.findByText(ENTRY.baseNo));      // 안 할래
+    expect(onComplete).toHaveBeenCalled();
+    const meta = JSON.parse(localStorage.getItem("diary_v0_meta_t1"));
+    expect(meta.rejectStreak).toBe(1); // R8 거절 기록
+  });
+});
+
+describe("A2(AD3 §7-V3) — 화면당 키디 1회", () => {
+  it("DiaryFlow weather 화면 = 키디 img 1개", () => {
+    render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
+    expect(document.querySelectorAll('img[alt^="키디"]').length).toBe(1);
+  });
+  it("FamilyShelf 빈 책장 = 키디 img 1개(상단 카드는 📖만)", () => {
+    render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
+    expect(document.querySelectorAll('img[alt^="키디"]').length).toBe(1);
+  });
+});
+
+describe("A3(AD3 §7-V4) — 진행 점", () => {
+  it("weather에서 1번째 활성, pick에서 3번째 활성", () => {
+    render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
+    expect(screen.getByTestId("dot-weather").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("dot-pick").getAttribute("data-active")).toBe("false");
+    fireEvent.click(screen.getByText(SUNNY_LABEL)); // → rotating
+    fireEvent.click(screen.getByText("엄마"));       // → pick
+    expect(screen.getByTestId("dot-pick").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("dot-weather").getAttribute("data-active")).toBe("false");
+  });
+});
+
+describe("A4(AD3 §7-V5) — 월 그리드 → 목록 → 상세", () => {
+  it("월 카드 → 그 달 페이지 목록 → 페이지 상세 + 하단 안내 노출", () => {
+    diaryStore.saveEntry("t1", { id: "e1", date: TODAY, sentences: ["오늘은 좋은 하루였어요."], moodEmoji: "🙂", childPick: "", keptAt: TODAY });
+    render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
+    expect(screen.getByText(SHELF_FOOTER)).toBeTruthy();                 // 하단 안내(목업 ④)
+    fireEvent.click(screen.getByText(monthBookTitle(TODAY.split("-")[1]))); // 월 '한 권'
+    fireEvent.click(screen.getByText("오늘은 좋은 하루였어요."));           // 페이지 preview
+    expect(screen.getByText("🗑️ 찢어버리기")).toBeTruthy();              // 상세 진입 확인
   });
 });

@@ -77,6 +77,23 @@ export const ROTATING_QUESTIONS = [
     chips: ["정리", "인사", "양보", "심부름"] }, // ✅ 스탬프 확정
 ];
 
+// AD-3 §1: 칩 '이모지 위 + 라벨 아래'(목업 .chip 문법) — 회전/그림참여 칩 라벨별 이모지(시각 전용, 라벨=스탬프 불변).
+//   목업 ②가 보여주는 문법을 회전 칩 어휘 전체로 확장. 라벨에 없는 값은 이모지 생략(undefined).
+export const CHIP_EMOJI = {
+  // who / thanks (사람)
+  "엄마": "👩", "아빠": "👨", "친구": "🧒", "선생님": "🧑‍🏫", "할머니·할아버지": "👵", "혼자": "🧍",
+  // tasty
+  "밥": "🍚", "과일": "🍓", "간식": "🍪", "아이스크림": "🍦",
+  // fun / tomorrow (활동)
+  "놀이터": "🛝", "그림 그리기": "🎨", "산책": "🚶", "블록 놀이": "🧱", "소풍": "🧺", "친구 만나기": "🧒",
+  // firstsaw
+  "곤충": "🐛", "꽃": "🌸", "새": "🐦", "무지개": "🌈",
+  // sound
+  "비": "🌧️", "음악": "🎵", "웃음": "😄",
+  // bestdid
+  "정리": "🧹", "인사": "👋", "양보": "🤝", "심부름": "🛍️",
+};
+
 // R2 출구 (§7-⑧ verbatim) — 모든 회전 질문 칩 끝에 상시
 export const NO_ANSWER_CHIP = "음… 오늘은 없었어!";
 export const NO_ANSWER_REACTION = "그런 날도 있지!";
@@ -125,3 +142,13 @@ export const BRIDGE = {
   go: "좋아!", // 진행 버튼 — 기존 ENTRY.baseYes 스탬프 재사용(신규 아님)
   later: "다음에 할래", // 거절 출구(팀장 신규 스탬프 2026-07-05) — 홈 복귀, 아무 기록 없음(R8 통계 미기록 = 자발 진입의 철회)
 };
+
+// ── AD-3 §6: UI 목업 정렬 카피 (목업 4컷 verbatim + 보류 기본값, 2026-07-05) ──
+// §0 시각 기준의 일부로 목업 문구를 사용. 보류1(문패)·보류2(말하기)는 팀장 회신 전 기본값.
+export const DIARY_TITLE = "우리 그림일기 🎨"; // 보류1 기본값(플로우 문패) — 기능명 확정 시 이 1줄 교체
+export const FLOW_STOP = "‹ 그만하기";          // 플로우 헤더 좌측(목업 verbatim) = 기존 onClose 경로
+export const REPLAY_HINT = "🔊 다시 듣기";       // 말풍선 아래 재발화 pill(목업 verbatim)
+export const SHELF_FOOTER = "한 장 한 장이 우리 가족의 추억이 돼요"; // 가족 책장 하단 안내(목업 ④ verbatim)
+// 월 카드 라벨(목업 ④ verbatim 조립): "{n}월의 이야기" · "N개의 이야기 · 쓰는 중|완성!"
+export const monthBookTitle = (m) => `${Number(m)}월의 이야기`;
+export const monthBookMeta = (n, isCurrent) => `${n}개의 이야기 · ${isCurrent ? "쓰는 중" : "완성!"}`;

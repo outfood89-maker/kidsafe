@@ -9,6 +9,7 @@ import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowu
 // AD 그림일기 (feature/diary-v0 브랜치 전용 — 7/14 전 main 머지 금지). main엔 이 파일 diff가 아예 없어야 함.
 import DiaryFlow from "./DiaryFlow";
 import * as diaryStore from "../utils/diaryStore";
+import { ENTRY, SAD_MOODS } from "../utils/diaryCopy";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 import { hasBatchim } from "../utils/korean";
 import useKiddyVoice from "../hooks/useKiddyVoice";
@@ -89,6 +90,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
   const name = profile?.name || "친구";
   // AD: 그림일기 오버레이 열림 상태 (DIARY_V0 뒤에만 동작)
   const [diaryOpen, setDiaryOpen] = useState(false);
+  // AD-3 §4: reward 화면 안의 '제안 요소'(자동 팝업 금지). 제안 노출 여부 + DiaryFlow 시작 스텝.
+  const [diaryPropose, setDiaryPropose] = useState(false);
+  const [diaryStartAt, setDiaryStartAt] = useState("weather");
 
   const [phase, setPhase] = useState("loading"); // loading | greeting | questions | share | reward
   const [questions, setQuestions] = useState([]);
@@ -533,12 +537,38 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
     const a = answers.find((x) => x.qId === "what_did_today"); // 하루 = 오늘 한 일 (양성 필터 — 질문 증설 시 방어)
     return a?.answer || "";
   };
-  // reward 완료 버튼 핸들러 — diaryIntent(그림일기 홈 브릿지 경유, 아이가 방금 명시적으로 원함)면 R8 빈도 게이트 우회.
-  //   아니면 R5(체크인 완료됨)+R8(빈도) 통과 시에만 제안, 그 외 기존대로 완료.
+  // AD-3 §4: reward 진입 시 제안 노출 판정 — R5(체크인 완료)+R8(빈도) 통과 & 브릿지 의도가 아니면 '제안 요소'를 화면에 노출(자동 팝업 아님).
+  //   제안을 노출한 순간 = 당일 제안 쿼터 소비(markProposed) → DiaryFlow 마운트가 다시 기록하지 않게 이관.
+  useEffect(() => {
+    if (phase !== "reward") return;
+    try {
+      if (diaryStore.DIARY_V0 && profile?.id && !diaryIntent &&
+          diaryStore.shouldProposeToday(profile.id, diaryStore.todayKST(), true)) {
+        diaryStore.markProposed(profile.id, diaryStore.todayKST());
+        setDiaryPropose(true);
+      }
+    } catch { /* 무시 */ }
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 제안 '좋아!' — 수락 통계 기록 후 DiaryFlow(날씨부터). 통계는 여기서 처리하므로 selfInitiated로 진입.
+  const acceptDiaryProposal = () => {
+    try { if (profile?.id) diaryStore.recordProposalResult(profile.id, true); } catch { /* 무시 */ }
+    setDiaryPropose(false);
+    setDiaryStartAt("weather");
+    setDiaryOpen(true);
+  };
+  // 제안 '안 할래' — 거절 통계(R8 streak++) 기록 후 정상 완료.
+  const declineDiaryProposal = () => {
+    try { if (profile?.id) diaryStore.recordProposalResult(profile.id, false); } catch { /* 무시 */ }
+    onComplete?.({ watchKeyword });
+  };
+
+  // reward 완료 버튼 핸들러 — diaryIntent(브릿지에서 아이가 이미 '좋아!' 탭)면 연속 진행(제안 재확인 없이 날씨부터).
+  //   그 외(제안 없음/미충족)는 기존대로 정상 완료.
   const diaryFinish = () => {
     try {
-      if (diaryStore.DIARY_V0 && profile?.id &&
-          (diaryIntent || diaryStore.shouldProposeToday(profile.id, diaryStore.todayKST(), true))) {
+      if (diaryStore.DIARY_V0 && profile?.id && diaryIntent) {
+        setDiaryStartAt("weather");
         setDiaryOpen(true);
         return; // 일기 오버레이 → 닫힐 때 onComplete
       }
@@ -899,13 +929,30 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
             {/* 키디 목소리 다시듣기 (메모리 재생) */}
             {replayBtn}
 
-            <button
-              onClick={diaryFinish}
-              className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
-              style={btnPrimary}
-            >
-              영상 보러 가자! 🚀
-            </button>
+            {/* AD-3 §4: 자동 팝업 대신 reward 안의 '제안 요소' — 좋아!/안 할래(기존 ENTRY 스탬프·분기·통계 이관). */}
+            {diaryPropose ? (
+              <div className="w-full flex flex-col gap-3">
+                <div className="w-full rounded-2xl px-5 py-4" style={{ backgroundColor: C.chip, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="font-bold leading-snug" style={{ color: C.ink, fontSize: "17px" }}>
+                    {SAD_MOODS.includes(moodEmoji) ? ENTRY.sad : ENTRY.base}
+                  </p>
+                </div>
+                <button onClick={acceptDiaryProposal} className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95" style={btnPrimary}>
+                  {SAD_MOODS.includes(moodEmoji) ? ENTRY.sadYes : ENTRY.baseYes}
+                </button>
+                <button onClick={declineDiaryProposal} className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95" style={btnGhost}>
+                  {SAD_MOODS.includes(moodEmoji) ? ENTRY.sadNo : ENTRY.baseNo}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={diaryFinish}
+                className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
+                style={btnPrimary}
+              >
+                영상 보러 가자! 🚀
+              </button>
+            )}
           </div>
         )}
 
@@ -916,7 +963,8 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
             today={diaryStore.todayKST()}
             checkinMood={moodEmoji}
             checkinDidToday={diaryDidToday()}
-            selfInitiated={diaryIntent}
+            selfInitiated={true}
+            startAt={diaryStartAt}
             onClose={() => { setDiaryOpen(false); onComplete?.({ watchKeyword }); }}
           />
         )}

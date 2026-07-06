@@ -11,6 +11,7 @@ import * as diary from "../utils/diaryStore";
 import {
   ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
+  DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI,
 } from "../utils/diaryCopy";
 
 // ── 우리 그림일기 v0 — 플로우 오버레이 (AD §2·§3·§4·§5) ──
@@ -29,7 +30,8 @@ const dateLabel = (ymd) => {
 const uid = (today) => `${today}_${Math.floor(Math.random() * 1e6)}`;
 
 // selfInitiated=true → 자발 진입(그림일기 홈/브릿지 경유). '제안'이 아니므로 제안 통계(markProposed·recordProposalResult)에 기록하지 않음(R8 취지).
-export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, onClose }) {
+// startAt="weather" → AD-3 §4: 진입 제안(entry)은 이제 caller(체크인 reward·홈 쓰기·브릿지)가 담당하므로 플로우는 날씨부터 시작. "entry"는 비활성 보존.
+export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, startAt = "entry", onClose }) {
   const navigate = useNavigate();
   const voice = useKiddyVoice();
   const speech = useKiddySpeech();
@@ -39,13 +41,14 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const isSad = SAD_MOODS.includes(checkinMood);
   const pid = profile?.id;
 
-  // step: entry → weather → rotating → pick → result → done
-  const [step, setStep] = useState("entry");
+  // step: (entry 비활성) → weather → rotating → pick → result → done
+  const initLine = startAt === "weather" ? WEATHER_ASK : (isSad ? ENTRY.sad : ENTRY.base);
+  const [step, setStep] = useState(startAt);
   const [weather, setWeather] = useState(null);
   const [rotating, setRotating] = useState(null); // { qid, answer, isSpeech, noAnswer }
   const [childPick, setChildPick] = useState("");
   const [sentences, setSentences] = useState([]);
-  const [kiddyLine, setKiddyLine] = useState(isSad ? ENTRY.sad : ENTRY.base);
+  const [kiddyLine, setKiddyLine] = useState(initLine);
   const [safetyMsg, setSafetyMsg] = useState(null); // 위기 스크리닝 고정 응답(표시용)
   const [reaction, setReaction] = useState(null); // "그런 날도 있지!" 등 짧은 반응
   const mountedRef = useRef(true);
@@ -65,7 +68,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   useEffect(() => {
     mountedRef.current = true;
     if (!selfInitiated && pid && today) diary.markProposed(pid, today); // 자발 진입은 당일 제안 쿼터 미소비(§5)
-    voice.speak(isSad ? ENTRY.sad : ENTRY.base, "bright");
+    voice.speak(initLine, "bright"); // 시작 스텝의 첫 대사(weather부터면 WEATHER_ASK)
     return () => { mountedRef.current = false; voice.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -187,57 +190,92 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     voice.speak(KEEP.done, "bright");
   };
 
-  // ── 렌더 ──
-  const overlay = "fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 py-6";
-  const sheet = { backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "24px", maxWidth: 520, width: "100%", maxHeight: "92vh", overflowY: "auto" };
-  const chipBtn = "rounded-2xl px-4 py-3 text-base font-bold active:scale-95 transition";
+  // 현재 대사 재발화 (🔊 다시 듣기) — 낭독 중이면 멈추고 다시.
+  const replayLine = () => { try { voice.stop(); voice.speak(kiddyLine, "bright"); } catch { /* 무시 */ } };
+
+  // ── 렌더 (AD-3 §1·§2·§3: 전용 풀스크린, 화면당 키디 1회, 목업 4컷 문법) ──
+  const STEP_ORDER = ["weather", "rotating", "pick", "result", "done"]; // 진행 점 5단계(§1)
+  const stepIdx = STEP_ORDER.indexOf(step); // entry(비활성) → -1
+  const weatherEmoji = WEATHER_CHIPS.find((w) => w.key === weather && w.key !== "unknown")?.label?.split(" ")[0] || "";
+
+  const screenBg = { background: "radial-gradient(120% 90% at 50% 0%, #123a35 0%, #0c1f1d 60%)" }; // 다크 에메랄드 라디얼(§1)
+  const chipCls = "flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-4 text-base font-bold active:scale-95 transition";
   const chipStyle = { backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" };
   const primaryStyle = { background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" };
 
-  // 위기 고정 응답이 떠 있으면 칩 위에 안내
   const SafetyBanner = () => safetyMsg ? (
-    <div className="rounded-2xl px-4 py-3 mb-3 whitespace-pre-line" style={{ backgroundColor: "#13302B", border: "1.5px solid #5FE0BC55", color: "#EAF5F1" }}>
+    <div className="w-full rounded-2xl px-4 py-3 mb-2 whitespace-pre-line text-left" style={{ backgroundColor: "#13302B", border: "1.5px solid #5FE0BC55", color: "#EAF5F1" }}>
       <Typewriter key={safetyMsg} text={safetyMsg} speed={22} />
       <p className="mt-2 text-sm" style={{ color: "#90A9A8" }}>{CRISIS_RETURN_HINT}</p>
     </div>
   ) : null;
 
+  // 큰 칩(이모지 위 + 라벨 아래) — 목업 .chip 문법(§1)
+  const BigChip = ({ emoji, label, onClick, muted }) => (
+    <button onClick={onClick} className={chipCls} style={{ ...chipStyle, color: muted ? "#90A9A8" : "#EAF5F1" }}>
+      {emoji ? <span className="text-2xl leading-none">{emoji}</span> : null}
+      <span>{label}</span>
+    </button>
+  );
   const SpeakButton = ({ slot }) => canSpeak ? (
     <button
       onClick={() => (speech.listening ? speech.stop() : startSpeak(slot))}
-      className="w-full rounded-2xl py-3 text-base font-bold active:scale-95 transition mt-1"
+      className="col-span-2 w-full rounded-2xl py-3.5 text-base font-bold active:scale-95 transition"
       style={{ backgroundColor: speech.listening ? "#F2655C" : "#13302B", color: speech.listening ? "#fff" : "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}
     >
       {speech.listening ? "🎙️ 듣는 중... 다 말하면 콕!" : "🎤 말로 할래"}
     </button>
   ) : null;
 
-  return (
-    <div className={overlay} style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
-      <div style={sheet} onClick={(e) => e.stopPropagation()}>
-        <div className="p-5 flex flex-col gap-4">
-          {/* 키디 + 한 줄 */}
-          <div className="flex items-center gap-3">
-            <KiddyImg pose={isSad ? "think" : "greet"} size={56} />
-            <p className="min-w-0 flex-1 text-base font-bold leading-snug" style={{ color: "#EAF5F1" }}>
-              <Typewriter key={kiddyLine} text={kiddyLine} speed={26} />
-            </p>
-          </div>
+  const ProgressDots = () => (
+    <div className="flex items-center justify-center gap-1.5 pt-6" style={{ flexWrap: "nowrap" }}>
+      {STEP_ORDER.map((name, i) => (
+        <span key={name} data-testid={`dot-${name}`} data-active={i === stepIdx}
+          style={{ height: 6, borderRadius: 999, flexShrink: 0, transition: "all .2s",
+            width: i === stepIdx ? 22 : 6, backgroundColor: i === stepIdx ? "#18C49A" : "rgba(255,255,255,0.18)" }} />
+      ))}
+    </div>
+  );
 
-          {/* ENTRY */}
-          {step === "entry" && (
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={screenBg}>
+      {/* 헤더: ‹ 그만하기 / 문패 / 여백 (§1) */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <button onClick={() => onClose?.()} className="text-sm font-bold" style={{ color: "#90A9A8" }}>{FLOW_STOP}</button>
+        <p className="text-sm font-extrabold" style={{ color: "#5FE0BC" }}>{DIARY_TITLE}</p>
+        <span className="w-14" />
+      </div>
+
+      <div className="mx-auto flex max-w-md flex-col items-center px-5 pb-8 text-center" style={{ minHeight: "calc(100vh - 56px)" }}>
+        {/* 키디 1회(크게·상단 중앙, §3) + 말풍선 */}
+        <KiddyImg pose={isSad ? "think" : "greet"} size={128} float />
+        <div className="mt-3 w-full rounded-2xl px-5 py-4" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-lg font-bold leading-snug" style={{ color: "#EAF5F1" }}>
+            <Typewriter key={kiddyLine} text={kiddyLine} speed={26} />
+          </p>
+        </div>
+        {/* 🔊 다시 듣기 (§1) — 완성 이후 화면(done) 제외 */}
+        {step !== "done" && (
+          <button onClick={replayLine} className="mt-2 rounded-full px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.25)" }}>{REPLAY_HINT}</button>
+        )}
+
+        <div className="mt-5 w-full">
+          {/* ENTRY — AD-3 §4: 비활성 보존(진입 제안은 caller가 담당). 삭제 금지, 복구용. */}
+          {false && step === "entry" && (
             <div className="flex flex-col gap-2.5">
-              <button onClick={acceptEntry} className={`${chipBtn} w-full`} style={primaryStyle}>{isSad ? ENTRY.sadYes : ENTRY.baseYes}</button>
-              <button onClick={declineAndClose} className={`${chipBtn} w-full`} style={chipStyle}>{isSad ? ENTRY.sadNo : ENTRY.baseNo}</button>
+              <button onClick={acceptEntry} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{isSad ? ENTRY.sadYes : ENTRY.baseYes}</button>
+              <button onClick={declineAndClose} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{isSad ? ENTRY.sadNo : ENTRY.baseNo}</button>
             </div>
           )}
 
-          {/* WEATHER (칩만 — 날씨는 칩 전용) */}
+          {/* WEATHER */}
           {step === "weather" && (
             <div className="grid grid-cols-2 gap-2.5">
-              {WEATHER_CHIPS.map((w) => (
-                <button key={w.key} onClick={() => chooseWeather(w.key)} className={chipBtn} style={chipStyle}>{w.label}</button>
-              ))}
+              {WEATHER_CHIPS.map((w) => {
+                const [em, ...rest] = w.label.split(" ");
+                const hasEmoji = rest.length > 0;
+                return <BigChip key={w.key} emoji={hasEmoji ? em : null} label={hasEmoji ? rest.join(" ") : w.label} onClick={() => chooseWeather(w.key)} />;
+              })}
             </div>
           )}
 
@@ -247,11 +285,11 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
               <SafetyBanner />
               <div className="grid grid-cols-2 gap-2.5">
                 {question?.chips?.map((c) => (
-                  <button key={c} onClick={() => answerRotating({ answer: c })} className={chipBtn} style={chipStyle}>{c}</button>
+                  <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => answerRotating({ answer: c })} />
                 ))}
+                <button onClick={() => answerRotating({ answer: "", noAnswer: true })} className="col-span-2 rounded-2xl px-4 py-3 text-base font-bold" style={{ ...chipStyle, color: "#90A9A8" }}>{NO_ANSWER_CHIP}</button>
+                <SpeakButton slot="rotating" />
               </div>
-              <button onClick={() => answerRotating({ answer: "", noAnswer: true })} className={`${chipBtn} w-full`} style={{ ...chipStyle, color: "#90A9A8" }}>{NO_ANSWER_CHIP}</button>
-              <SpeakButton slot="rotating" />
             </div>
           )}
 
@@ -261,33 +299,35 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
               <SafetyBanner />
               <div className="grid grid-cols-2 gap-2.5">
                 {pickChips.map((c) => (
-                  <button key={c} onClick={() => { setChildPick(c); goResult({ pickValue: c }); }} className={chipBtn} style={chipStyle}>{c}</button>
+                  <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => { setChildPick(c); goResult({ pickValue: c }); }} />
                 ))}
+                <SpeakButton slot="pick" />
               </div>
-              <SpeakButton slot="pick" />
             </div>
           )}
 
-          {/* RESULT (낭독 + 종이 카드 + 간직) */}
+          {/* RESULT (크림 종이 카드 + 날짜·날씨·기분 라인 §1 ③ + 간직) */}
           {step === "result" && (
             <div className="flex flex-col gap-4">
-              {/* 크림 톤 '종이' 카드 — 작품 지면 예외(설계 v2 §6-5) */}
-              <div className="rounded-2xl p-5" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-                <p className="text-sm font-bold mb-3" style={{ color: "#9A8B63" }}>{dateLabel(today)}</p>
+              <div className="rounded-2xl p-5 text-left" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+                <div className="flex items-center justify-between pb-2 mb-3" style={{ borderBottom: "1px dashed #C9BC93" }}>
+                  <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(today)}</span>
+                  <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{weatherEmoji ? `날씨 ${weatherEmoji} · ` : ""}기분 {checkinMood}</span>
+                </div>
                 {/* 그림 자리 플레이스홀더 (이미지 생성 코드 없음 — v0) */}
                 <div className="rounded-xl mb-3 flex items-center justify-center text-center px-4" style={{ height: 140, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                   <span className="text-sm font-bold">{IMAGE_PLACEHOLDER}</span>
                 </div>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-2">
                   {sentences.map((s, i) => (
-                    <p key={i} className="text-base leading-relaxed" style={{ color: "#4A4433" }}>{s}</p>
+                    <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
                   ))}
                 </div>
               </div>
               <div className="flex flex-col gap-2.5">
                 <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{KEEP.ask}</p>
-                <button onClick={keep} className={`${chipBtn} w-full`} style={primaryStyle}>{KEEP.yes}</button>
-                <button onClick={() => onClose?.()} className={`${chipBtn} w-full`} style={chipStyle}>{KEEP.no}</button>
+                <button onClick={keep} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{KEEP.yes}</button>
+                <button onClick={() => onClose?.()} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{KEEP.no}</button>
               </div>
             </div>
           )}
@@ -295,11 +335,14 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
           {/* DONE */}
           {step === "done" && (
             <div className="flex flex-col gap-2.5">
-              <button onClick={() => { onClose?.(); navigate("/family-shelf"); }} className={`${chipBtn} w-full`} style={primaryStyle}>📚 {SHELF_NAME} 보러 가기</button>
-              <button onClick={() => onClose?.()} className={`${chipBtn} w-full`} style={chipStyle}>닫기</button>
+              <button onClick={() => { onClose?.(); navigate("/family-shelf"); }} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>📚 {SHELF_NAME} 보러 가기</button>
+              <button onClick={() => onClose?.()} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>닫기</button>
             </div>
           )}
         </div>
+
+        {/* 진행 점 (§1) — 하단 고정(목업 margin-top:auto). 비활성 entry(-1) 제외 */}
+        {stepIdx >= 0 && <div className="mt-auto w-full"><ProgressDots /></div>}
       </div>
     </div>
   );

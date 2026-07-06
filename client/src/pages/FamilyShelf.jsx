@@ -6,7 +6,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin } from "../utils/api";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, TILE, HOME_WRITE, BRIDGE } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, monthBookTitle, monthBookMeta } from "../utils/diaryCopy";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -22,6 +22,8 @@ const monthLabel = (ym) => {
   const [y, m] = ym.split("-");
   return `${y}년 ${Number(m)}월`;
 };
+// AD-3 §5: 월 카드 좌측 컬러 바(월별 순환) — 목업 ④ 팔레트(앰버·핑크·그린)
+const BAR_COLORS = ["#f4a935", "#e58fb1", "#5ec98a"];
 // 최다 기분 이모지 (월 표지)
 const topMood = (entries) => {
   const count = {};
@@ -41,6 +43,7 @@ export default function FamilyShelf() {
   const [writing, setWriting] = useState(false); // AD-2 §3: 자발 진입 DiaryFlow 오버레이
   const [checkinForDiary, setCheckinForDiary] = useState(null); // 쓰기 시작 시 조회한 오늘 체크인
   const [bridge, setBridge] = useState(false); // 미체크인 브릿지 뷰
+  const [openMonth, setOpenMonth] = useState(null); // AD-3 §5: 월 '한 권' 열람(그 달 페이지 목록 하위화면)
 
   useEffect(() => {
     try {
@@ -75,6 +78,7 @@ export default function FamilyShelf() {
   }, [entries]);
 
   const openEntry = entries.find((e) => e.id === openId) || null;
+  const curYm = diary.todayKST().slice(0, 7); // AD-3 §5: 당월 판정('쓰는 중' vs '완성!')
   // AD-2 §3: 오늘 이미 쓴 일기(있으면 상단 카드가 '완료' 상태 + 상세로 바로 열기)
   const todayEntry = useMemo(() => entries.find((e) => e.date === diary.todayKST()) || null, [entries]);
 
@@ -132,8 +136,8 @@ export default function FamilyShelf() {
           </div>
         )}
 
-        {/* AD-2 §3: 상단 '오늘 일기 쓰기' 카드 (기존 상호배타 게이트에 합류) */}
-        {!torn && !openEntry && !writing && !bridge && (
+        {/* AD-2 §3 + AD-3 §3: 상단 '오늘 일기 쓰기' 카드 — 키디 제거(화면당 1회 원칙: 키디는 빈 책장 안내 1회만), 📖 이모지+텍스트만 */}
+        {!torn && !openEntry && !writing && !bridge && !openMonth && (
           <div className="mb-6">
             {todayEntry ? (
               <button
@@ -141,7 +145,7 @@ export default function FamilyShelf() {
                 className="w-full rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
                 style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
               >
-                <KiddyImg pose="greet" size={48} />
+                <span className="text-2xl shrink-0">📖</span>
                 <p className="min-w-0 flex-1 text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.done}</p>
                 <span className="shrink-0 text-xl font-black" style={{ color: "#3A1A0E" }}>›</span>
               </button>
@@ -151,7 +155,7 @@ export default function FamilyShelf() {
                 className="w-full rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
                 style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
               >
-                <KiddyImg pose="greet" size={48} />
+                <span className="text-2xl shrink-0">📖</span>
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{HOME_WRITE}</p>
                   <p className="text-xs font-bold" style={{ color: "#3A1A0E", opacity: 0.8 }}>{TILE.sub}</p>
@@ -162,8 +166,8 @@ export default function FamilyShelf() {
           </div>
         )}
 
-        {/* 빈 책장 */}
-        {!torn && !openEntry && !bridge && entries.length === 0 && (
+        {/* 빈 책장 (키디 1회 — §3) */}
+        {!torn && !openEntry && !bridge && !openMonth && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
             <KiddyImg pose="reading" size={140} float />
             <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>아직 책장이 비어 있어!</p>
@@ -171,47 +175,72 @@ export default function FamilyShelf() {
           </div>
         )}
 
-        {/* 월별 '한 권' 목록 */}
-        {!torn && !openEntry && !bridge && entries.length > 0 && months.map((mo) => (
-          <section key={mo.ym} className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">{mo.cover}</span>
-              <h2 className="text-lg font-extrabold" style={{ color: "#EAF5F1" }}>{monthLabel(mo.ym)}</h2>
-              <span className="text-xs" style={{ color: "#90A9A8" }}>{mo.pages.length}편</span>
+        {/* AD-3 §5: 월별 '한 권' 2열 그리드 크림 카드 (목업 ④) */}
+        {!torn && !openEntry && !bridge && !openMonth && entries.length > 0 && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              {months.map((mo, i) => {
+                const isCurrent = mo.ym === curYm;
+                return (
+                  <button
+                    key={mo.ym}
+                    onClick={() => setOpenMonth(mo.ym)}
+                    className="relative overflow-hidden rounded-2xl p-4 pl-5 text-left active:scale-[0.99] transition"
+                    style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}
+                  >
+                    {/* 좌측 컬러 바(월별 순환) */}
+                    <span className="absolute left-0 top-0 h-full" style={{ width: 8, backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }} />
+                    <span className="text-3xl">{mo.cover === "📔" ? "📕" : mo.cover}</span>
+                    <p className="mt-2 text-base font-extrabold" style={{ color: "#4A4433" }}>{monthBookTitle(mo.ym.split("-")[1])}</p>
+                    <p className="text-xs font-bold" style={{ color: "#9A8B63" }}>{monthBookMeta(mo.pages.length, isCurrent)}</p>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex flex-col gap-2.5">
-              {mo.pages.map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => { setOpenId(e.id); setTorn(false); }}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left active:scale-[0.99] transition"
-                  style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <span className="text-xl shrink-0">{e.moodEmoji || "📔"}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{dateLabel(e.date)}</p>
-                    <p className="text-xs truncate" style={{ color: "#90A9A8" }}>{(e.sentences || [])[0] || ""}</p>
-                  </div>
-                  <span className="text-lg" style={{ color: "#90A9A8" }}>›</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
+            <p className="mt-6 text-center text-sm" style={{ color: "#90A9A8" }}>{SHELF_FOOTER}</p>
+          </>
+        )}
+
+        {/* AD-3 §5: 월 '한 권' 열람 = 그 달 페이지 목록(하위화면) */}
+        {!torn && !openEntry && !bridge && openMonth && (
+          <div className="flex flex-col gap-2.5">
+            <button onClick={() => setOpenMonth(null)} className="self-start text-sm font-bold mb-1" style={{ color: "#90A9A8" }}>‹ {SHELF_NAME}</button>
+            <h2 className="text-lg font-extrabold mb-1" style={{ color: "#EAF5F1" }}>{monthLabel(openMonth)}</h2>
+            {(months.find((m) => m.ym === openMonth)?.pages || []).map((e) => (
+              <button
+                key={e.id}
+                onClick={() => { setOpenId(e.id); setTorn(false); }}
+                className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left active:scale-[0.99] transition"
+                style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <span className="text-xl shrink-0">{e.moodEmoji || "📔"}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{dateLabel(e.date)}</p>
+                  <p className="text-xs truncate" style={{ color: "#90A9A8" }}>{(e.sentences || [])[0] || ""}</p>
+                </div>
+                <span className="text-lg" style={{ color: "#90A9A8" }}>›</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 페이지 상세 (torn 아닐 때 — 찢음 확인은 위 최상위에서) */}
         {!torn && openEntry && (
           <div className="flex flex-col gap-4">
             <button onClick={() => { setOpenId(null); setTorn(false); }} className="self-start text-sm font-bold" style={{ color: "#90A9A8" }}>‹ 책장으로</button>
-            {/* 크림 톤 '종이' 카드 — 작품 지면 예외 */}
+            {/* 크림 톤 '종이' 카드 — 작품 지면 예외 (목업 ③: 날짜|기분 라인 + 밑줄 문장) */}
             <div className="rounded-2xl p-5" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-              <p className="text-sm font-bold mb-3" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</p>
+              <div className="flex items-center justify-between pb-2 mb-3" style={{ borderBottom: "1px dashed #C9BC93" }}>
+                <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</span>
+                {openEntry.moodEmoji ? <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>기분 {openEntry.moodEmoji}</span> : null}
+              </div>
+              {/* 날씨는 v0 저장물에 없음 → 기분만 표기(날씨는 미저장) */}
               <div className="rounded-xl mb-3 flex items-center justify-center text-center px-4" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                 <span className="text-sm font-bold">{IMAGE_PLACEHOLDER}</span>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 {(openEntry.sentences || []).map((s, i) => (
-                  <p key={i} className="text-base leading-relaxed" style={{ color: "#4A4433" }}>{s}</p>
+                  <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
                 ))}
               </div>
             </div>
@@ -242,6 +271,7 @@ export default function FamilyShelf() {
           checkinMood={checkinForDiary.moodEmoji}
           checkinDidToday={(checkinForDiary.answers || []).find((a) => a.qId === "what_did_today")?.answer || ""}
           selfInitiated={true}
+          startAt="weather"
           onClose={() => { setWriting(false); setCheckinForDiary(null); setEntries(diary.getEntries(profile.id)); }}
         />
       )}
