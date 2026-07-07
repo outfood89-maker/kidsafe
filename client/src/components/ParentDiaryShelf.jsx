@@ -48,6 +48,7 @@ export default function ParentDiaryShelf({ profileId }) {
   // 도장·편지 쓰기 로컬 상태(페이지 상세에서만) — openEntry.stamp로 초기화
   const [selEmoji, setSelEmoji] = useState("");
   const [letterText, setLetterText] = useState("");
+  const [saved, setSaved] = useState(false); // 저장 완료 피드백(다음 편집/페이지 전환 시 해제)
 
   useEffect(() => {
     setOpenId(null); setOpenMonth(null);
@@ -79,6 +80,7 @@ export default function ParentDiaryShelf({ profileId }) {
     if (openEntry?.drawingId) getImage(openEntry.drawingId).then((url) => { if (alive) setDetailDrawing(url); }).catch(() => {});
     setSelEmoji(openEntry?.stamp?.emoji || "");
     setLetterText(openEntry?.stamp?.letter || "");
+    setSaved(false); // 페이지 전환 시 저장 표시 초기화
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
@@ -105,6 +107,7 @@ export default function ParentDiaryShelf({ profileId }) {
     try {
       diary.setStamp(profileId, openId, { emoji: selEmoji, letter: letterText });
       setEntries(diary.getEntries(profileId));
+      setSaved(true); // 저장 완료 → 버튼에 확인 피드백
     } catch { /* 무시 */ }
   };
 
@@ -160,7 +163,7 @@ export default function ParentDiaryShelf({ profileId }) {
             {STAMP_EMOJIS.map((em) => (
               <button
                 key={em}
-                onClick={() => setSelEmoji(em)}
+                onClick={() => { setSelEmoji(em); setSaved(false); }}
                 aria-label={`도장 ${em}`}
                 className="flex items-center justify-center rounded-2xl transition active:scale-95"
                 style={{ width: 52, height: 52, fontSize: 24, backgroundColor: selEmoji === em ? "rgba(24,196,154,0.2)" : "#163635", border: selEmoji === em ? "2px solid #18C49A" : "1px solid rgba(255,255,255,0.1)" }}
@@ -173,7 +176,7 @@ export default function ParentDiaryShelf({ profileId }) {
                 type="text"
                 value={letterText}
                 maxLength={30}
-                onChange={(e) => setLetterText(e.target.value)}
+                onChange={(e) => { setLetterText(e.target.value); setSaved(false); }}
                 placeholder={LETTER_PLACEHOLDER}
                 className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
                 style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.12)", color: "#EAF5F1" }}
@@ -185,9 +188,11 @@ export default function ParentDiaryShelf({ profileId }) {
           <button
             onClick={saveStamp}
             disabled={!selEmoji}
-            className="rounded-xl py-2.5 text-sm font-bold transition disabled:opacity-50"
-            style={{ backgroundColor: "#18C49A", color: "#08160F" }}
-          >저장</button>
+            className="rounded-xl py-2.5 text-sm font-bold transition active:scale-95 disabled:opacity-50"
+            style={saved
+              ? { backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.45)" }
+              : { backgroundColor: "#18C49A", color: "#08160F" }}
+          >{saved ? "저장했어요 ✓" : "저장"}</button>
         </div>
       </div>
     );

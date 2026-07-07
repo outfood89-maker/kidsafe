@@ -118,3 +118,19 @@ describe("AD-6 §2 V7 — 미리보기 ✉️는 라이브 입력 기준(저장 
     expect(screen.queryByText("✉️")).toBeNull();                        // 지우면 즉시 사라짐(저장값 아님)
   });
 });
+
+describe("AD-6 §2 V8 — 저장 버튼 피드백(눌림 확인)", () => {
+  it("저장 → '저장했어요 ✓' 확인 표시 · 이후 편집하면 '저장'으로 복귀", () => {
+    seed();
+    openDetail();
+    fireEvent.click(screen.getByLabelText(`도장 ${STAMP_EMOJIS[0]}`));
+    const btn = screen.getByText("저장");
+    expect(btn.className).toContain("active:scale-95"); // 눌림 애니메이션
+    fireEvent.click(btn);
+    expect(screen.getByText("저장했어요 ✓")).toBeTruthy();               // 저장 완료 피드백
+    expect(screen.queryByText("저장")).toBeNull();
+    fireEvent.click(screen.getByLabelText(`도장 ${STAMP_EMOJIS[1]}`));   // 재편집 → 복귀
+    expect(screen.getByText("저장")).toBeTruthy();
+    expect(screen.queryByText("저장했어요 ✓")).toBeNull();
+  });
+});
