@@ -486,7 +486,7 @@ export default function MiniGame() {
       </div>
 
       {/* AD-4 §2: 키디 플로팅 (허브 화면만 — 게임 플레이 화면은 별도 return이라 미표시) */}
-      <KiddyFab profile={selectedProfile} bottomOffset={84} />
+      <KiddyFab profile={profile} bottomOffset={84} />
 
     </div>
   );

@@ -237,7 +237,7 @@ export default function BadgeCollection() {
         <BottomTabBar activeTab="badges" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
       {/* AD-4 §2: 키디 플로팅 */}
-      <KiddyFab profile={selectedProfile} bottomOffset={84} />
+      <KiddyFab profile={profile} bottomOffset={84} />
     </div>
   );
 }
