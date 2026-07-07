@@ -280,3 +280,35 @@ describe("§2B(AD-10 §2) — 음성 게이트 4세+", () => {
     expect(screen.queryByText("🎤 말로 할래")).toBeNull();   // rotating도 미노출
   });
 });
+
+// ── AD-10 §3-A — 회전질문 칩 풀 확충 렌더 (커밋 A) ──
+describe("§3-A(AD-10 §3) — 칩 풀 확충 렌더", () => {
+  const toRotating = (gender, qid = "who") => {
+    localStorage.setItem("diary_v0_meta_t1", JSON.stringify({ todayQ: { date: TODAY, qid } }));
+    render(<MemoryRouter><DiaryFlow profile={{ id: "t1", name: "해인", age: 7, gender }} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
+    fireEvent.click(screen.getByText(SUNNY_LABEL)); // 맑음 → rotating
+  };
+  it("who = 8칩 + '혼자' 하단 단독 버튼 + 결합칩 폐기", () => {
+    toRotating("남자");
+    ["엄마", "아빠", "친구", "동생", "형·누나", "할머니", "할아버지", "선생님"].forEach((c) =>
+      expect(screen.getByText(c)).toBeTruthy());
+    expect(screen.getByText("혼자")).toBeTruthy();            // 하단 단독(정서 신호)
+    expect(screen.queryByText("할머니·할아버지")).toBeNull();  // 결합칩 폐기
+  });
+  it("gender 남자 → '형·누나'(오빠·언니 없음)", () => {
+    toRotating("남자");
+    expect(screen.getByText("형·누나")).toBeTruthy();
+    expect(screen.queryByText("오빠·언니")).toBeNull();
+  });
+  it("gender 여자 → '오빠·언니'(형·누나 없음)", () => {
+    toRotating("여자");
+    expect(screen.getByText("오빠·언니")).toBeTruthy();
+    expect(screen.queryByText("형·누나")).toBeNull();
+  });
+  it("thanks = 8칩(조부모 2칩 분리 + 형제 성별연동)", () => {
+    toRotating("여자", "thanks");
+    ["엄마", "아빠", "친구", "선생님", "할머니", "할아버지", "동생", "오빠·언니"].forEach((c) =>
+      expect(screen.getByText(c)).toBeTruthy());
+    expect(screen.queryByText("할머니·할아버지")).toBeNull();
+  });
+});

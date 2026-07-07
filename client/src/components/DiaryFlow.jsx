@@ -11,7 +11,7 @@ import * as diary from "../utils/diaryStore";
 import { putImage } from "../utils/diaryImageStore";
 import DoodleCanvas from "./DoodleCanvas";
 import {
-  ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
+  ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, resolveChips, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
   DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI,
   WAIT_SEQ, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
@@ -96,6 +96,8 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   //   return usable[Math.floor(Math.random() * usable.length)] || pool[0];
   // }, [pid, age, isSad]);
   const question = useMemo(() => diary.getTodayQuestion(pid, { age, isSad }), [pid, age, isSad]);
+  // AD-10 §3: 형제 자리표시자(SIBLING)를 profile.gender로 치환한 렌더용 칩. 답 확정·되묻기·조립 모두 이 라벨 사용.
+  const resolvedChips = useMemo(() => resolveChips(question?.chips, profile?.gender), [question, profile?.gender]);
 
   // 마운트: 제안 표시 기록 + 인사 TTS
   useEffect(() => {
@@ -436,9 +438,16 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
             <div className="flex flex-col gap-2.5">
               <SafetyBanner />
               <div className="grid grid-cols-2 gap-2.5">
-                {question?.chips?.map((c) => (
+                {resolvedChips.map((c) => (
                   <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => answerRotating({ answer: c })} />
                 ))}
+                {/* AD-10 §3: '혼자' 하단 단독 버튼(who 전용) — col-span-2 full-width로 정서 신호 시각 구분. 일반 칩과 동일 커밋 경로 */}
+                {question?.solo && (
+                  <button onClick={() => answerRotating({ answer: question.solo })} className="col-span-2 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-bold active:scale-95 transition" style={{ ...chipStyle, color: "#EAF5F1" }}>
+                    {CHIP_EMOJI[question.solo] ? <span className="text-xl leading-none">{CHIP_EMOJI[question.solo]}</span> : null}
+                    <span>{question.solo}</span>
+                  </button>
+                )}
                 <button onClick={() => answerRotating({ answer: "", noAnswer: true })} className="col-span-2 rounded-2xl px-4 py-3 text-base font-bold" style={{ ...chipStyle, color: "#90A9A8" }}>{NO_ANSWER_CHIP}</button>
                 <SpeakButton slot="rotating" />
               </div>

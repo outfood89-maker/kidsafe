@@ -65,5 +65,35 @@ console.log("── ② 이에요/예요 조립문 (§1.6-b — fun 계열; tomo
   chk("fun 말하기 인용 리드", s.some((x) => x === '제일 재미있었던 건, "동생이랑 병원" 하고 이야기했어요.'));
 }
 
+console.log("── AD-10 §3: 신규 칩 josa 검증 + 형제 결합 라벨 + 혼자 ──");
+{
+  const A = (qid, answer) => assembleDiary({ mood: "🙂", didToday: "밥", rotating: { qid, answer } });
+  // tasty 받침 분기(이었어요/였어요)
+  chk("tasty 고기(받침X→고기였어요)", has(A("tasty", "고기"), "제일 맛있었던 건 고기였어요."));
+  chk("tasty 김밥(받침O→김밥이었어요)", has(A("tasty", "김밥"), "제일 맛있었던 건 김밥이었어요."));
+  chk("tasty 치킨(받침O→치킨이었어요)", has(A("tasty", "치킨"), "제일 맛있었던 건 치킨이었어요."));
+  // fun 받침 분기(이에요/예요)
+  chk("fun 숨바꼭질(받침O→숨바꼭질이에요)", has(A("fun", "숨바꼭질"), "제일 재미있었던 건 숨바꼭질이에요."));
+  chk("fun 소꿉놀이(받침X→소꿉놀이예요)", has(A("fun", "소꿉놀이"), "제일 재미있었던 건 소꿉놀이예요."));
+  // firstsaw 받침 분기(을/를)
+  chk("firstsaw 별(받침O→별을)", has(A("firstsaw", "별"), "오늘 별을 처음 봤어요."));
+  chk("firstsaw 달팽이(받침X→달팽이를)", has(A("firstsaw", "달팽이"), "오늘 달팽이를 처음 봤어요."));
+  // sound(○○ 소리가)
+  chk("sound 강아지 소리가", has(A("sound", "강아지"), "강아지 소리가 기억나요."));
+  chk("sound 청소기 소리가", has(A("sound", "청소기"), "청소기 소리가 기억나요."));
+  // bestdid 받침 분기(을/를)
+  chk("bestdid 양치(받침X→양치를)", has(A("bestdid", "양치"), "양치를 잘했어요."));
+  chk("bestdid 손 씻기(받침X→손 씻기를)", has(A("bestdid", "손 씻기"), "손 씻기를 잘했어요."));
+  chk("bestdid 나눔(받침O→나눔을)", has(A("bestdid", "나눔"), "나눔을 잘했어요."));
+  // 형제 결합 라벨(· 마지막 글자 기준 josa)
+  chk("who 형·누나(→형·누나랑)", has(A("who", "형·누나"), "형·누나랑 같이였어요."));
+  chk("thanks 형·누나(→형·누나가)", has(A("thanks", "형·누나"), "형·누나가 고마웠어요."));
+  chk("who 오빠·언니(→오빠·언니랑)", has(A("who", "오빠·언니"), "오빠·언니랑 같이였어요."));
+  // 혼자 = 전용 문장(팀장 스탬프) — 비문 없음 + 뼈대·마무리 유지
+  const solo = assembleDiary({ weather: "sunny", mood: "🙂", didToday: "블록 놀이", rotating: { qid: "who", answer: "혼자" } });
+  chk("who 혼자 → '오늘은 혼자서 놀았어요.'(혼자랑 비문 없음)", has(solo, "오늘은 혼자서 놀았어요.") && !has(solo, "혼자랑"));
+  chk("who 혼자 + 뼈대·마무리 유지", has(solo, "블록 놀이를 했어요.") && has(solo, "오늘도 참 좋은 하루였어요."));
+}
+
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
