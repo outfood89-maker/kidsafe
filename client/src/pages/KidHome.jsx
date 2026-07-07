@@ -27,6 +27,7 @@ import DailyCheckin from "../components/DailyCheckin";
 import * as diaryStore from "../utils/diaryStore";
 import { DIARY_V0, todayKST } from "../utils/diaryStore";
 import { TILE } from "../utils/diaryCopy";
+import StampNoticeCard from "../components/StampNoticeCard"; // AD-6 §4: 부모 도장 미확인 알림 카드
 import KiddyFab from "../components/KiddyFab";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
@@ -145,6 +146,7 @@ export default function KidHome() {
   const [isListening, setIsListening] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false); // F1 오늘의 체크인 오버레이 (오늘 미체크인 시)
   const [diaryTeaser, setDiaryTeaser] = useState(null); // AD-4 §4: 하루 첫 진입 티저 말풍선(오늘의 질문 ask)
+  const [stampNotice, setStampNotice] = useState(null); // AD-6 §4: 부모 도장 미확인 알림 { hasLetter } | null (티저보다 우선)
   const teaserTimerRef = useRef(null);
   const teaserTriedRef = useRef(false);
   const searchBoxRef = useRef(null);
@@ -295,6 +297,16 @@ export default function KidHome() {
     catch { return false; }
   }, [selectedProfile?.id, checkinOpen]);
 
+  // AD-6 §4: 진입 시 부모 도장 미확인 알림 계산 — 있으면 인앱 카드(도장만/편지 포함 분기). 푸시·뱃지·숫자 없음.
+  //   확인(=책장 상세 열람 → markStampSeen)하면 다음 접속 시 자연 소멸. 닫기(✕)는 이번 세션만, 다음 접속 재노출.
+  useEffect(() => {
+    if (!DIARY_V0 || !selectedProfile?.id) { setStampNotice(null); return; }
+    try {
+      const unseen = diaryStore.getUnseenStamps(selectedProfile.id);
+      setStampNotice(unseen.length ? { hasLetter: unseen.some((s) => s.hasLetter) } : null);
+    } catch { setStampNotice(null); }
+  }, [selectedProfile?.id]);
+
   // AD-4 §4: 하루 첫 키즈 홈 진입 1회 티저 — 오늘의 질문 ask를 3~4초 노출(신규 카피 0). 몰입(체크인 등) 중엔 보류→닫히면 재평가.
   //   teaserDate가 유일 기준(표시 즉시 기록) → 같은 날 재진입/리렌더 미표시. 오늘 일기 완료면 미표시.
   useEffect(() => {
@@ -303,6 +315,8 @@ export default function KidHome() {
     if (checkinOpen) return; // 몰입 중 보류(체크인 닫히면 checkinOpen 변화로 재실행)
     try {
       const today = todayKST();
+      // AD-6 §4: 도장 알림이 티저보다 우선 — 미확인 도장 있으면 티저 보류(동시표시 금지)
+      if (diaryStore.getUnseenStamps(selectedProfile.id).length) { teaserTriedRef.current = true; return; }
       if (diaryStore.getTeaserDate(selectedProfile.id) === today) { teaserTriedRef.current = true; return; }
       const has = diaryStore.getEntries(selectedProfile.id).some((e) => e.date === today);
       if (has) { teaserTriedRef.current = true; return; } // 오늘 작성 완료 → 티저 없음
@@ -1642,6 +1656,14 @@ export default function KidHome() {
                   <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{diaryTeaser}</p>
                 </div>
               </div>
+            )}
+            {/* AD-6 §4: 부모 도장 미확인 알림 — 티저와 같은 자리, 티저보다 우선(위 가드로 동시표시 방지). FAB 숨김과 독립. 탭→책장, ✕→이번 세션만 닫힘 */}
+            {DIARY_V0 && stampNotice && (
+              <StampNoticeCard
+                hasLetter={stampNotice.hasLetter}
+                onOpen={() => navigate("/family-shelf")}
+                onClose={() => setStampNotice(null)}
+              />
             )}
             <KiddyFab profile={selectedProfile} bottomOffset={84} hidden={fabHidden} />
           </>

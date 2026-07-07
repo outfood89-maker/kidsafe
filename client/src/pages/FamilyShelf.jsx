@@ -8,7 +8,7 @@ import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -26,6 +26,12 @@ const monthLabel = (ym) => {
 };
 // AD-3 §5: 월 카드 좌측 컬러 바(월별 순환) — 목업 ④ 팔레트(앰버·핑크·그린)
 const BAR_COLORS = ["#f4a935", "#e58fb1", "#5ec98a"];
+// AD-6 §3: 부모 도장 표시(목업③ 점선 원형·기울임 — 이모지 반응, 문구 없음)
+const StampMark = ({ emoji, size = 64 }) => (
+  <div style={{ width: size, height: size, border: "2.5px dashed #d8b56a", borderRadius: 99, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-8deg)", flexShrink: 0 }}>
+    <span style={{ fontSize: size * 0.44, lineHeight: 1 }}>{emoji}</span>
+  </div>
+);
 // 최다 기분 이모지 (월 표지)
 const topMood = (entries) => {
   const count = {};
@@ -60,6 +66,7 @@ export default function FamilyShelf() {
   const [returnMode, setReturnMode] = useState("banner");   // "banner" | "pick"
   const [returnDrawing, setReturnDrawing] = useState(null); // pending 원본 낙서 dataURL(IDB 로드)
   const [returnCompleted, setReturnCompleted] = useState(null); // pending 완성본 dataURL(IDB 로드)
+  const [letterOpen, setLetterOpen] = useState(false); // AD-6 §3: 편지 ✉️ 열림(탭 시 LETTER_READ 안내+본문 낭독)
 
   useEffect(() => {
     try {
@@ -161,6 +168,10 @@ export default function FamilyShelf() {
     let alive = true;
     setDetailImg(null);
     setDetailDrawing(null);
+    setLetterOpen(false); // AD-6 §3: 상세 전환 시 편지 접힘 초기화
+    try { voice.stop(); } catch { /* 무시 */ } // AD-6 §3 유령TTS 차단(X-2 규율): 편지 낭독 중 상세 이탈·엔트리 전환 시 부모 편지 음성 중단(화면 단서 없는 유령 재생 방지)
+    // AD-6 §3: 상세 열람 = 확인 → 도장 seen 처리(아이 홈 알림 자연 소멸). 표시는 seenAt 무관하게 항상.
+    if (openEntry?.stamp && profile?.id) { try { diary.markStampSeen(profile.id, openEntry.id); } catch { /* 무시 */ } }
     if (openEntry?.imageId) getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
     if (openEntry?.drawingId) getImage(openEntry.drawingId).then((url) => { if (alive) setDetailDrawing(url); }).catch(() => {}); // AD-8: 원본 낙서(병치)
     return () => { alive = false; };
@@ -242,6 +253,16 @@ export default function FamilyShelf() {
     if (!profile?.id) return;
     diary.discardPendingContinue(profile.id); // AD-8b-FIX: orphan 삭제+clear 공용(DRY)
     closeReturn();
+  };
+
+  // AD-6 §3: ✉️ 탭 → LETTER_READ 안내(TTS) → 이어서 편지 본문 낭독 + 화면 표시. 편지 본문=부모 작성(카피게이트 아님).
+  const onLetterTap = () => {
+    setLetterOpen(true);
+    try {
+      voice.speak(LETTER_READ, "bright");
+      const body = openEntry?.stamp?.letter;
+      if (body && body.trim()) voice.enqueue(body, "bright"); // 안내 뒤 본문 이어 낭독
+    } catch { /* 무시 */ }
   };
 
   return (
@@ -393,6 +414,10 @@ export default function FamilyShelf() {
                             style={{ width: 40, height: 40, backgroundColor: "rgba(14,42,42,0.92)", color: "#F2655C", border: "1px solid rgba(242,101,92,0.5)" }}
                           >🗑</button>
                         )}
+                        {/* AD-6 §3: 부모 도장 있으면 타일 좌상단 표시(시각 전용) */}
+                        {e.stamp?.emoji && (
+                          <span className="absolute top-1.5 left-1.5 text-lg" aria-label="도장">{e.stamp.emoji}</span>
+                        )}
                       </div>
                     );
                   })}
@@ -434,6 +459,23 @@ export default function FamilyShelf() {
                   <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
                 ))}
               </div>
+              {/* AD-6 §3: 부모 도장(우하단, 목업③ 문법) + 편지 있으면 ✉️. 편지 본문은 기본 숨김 → ✉️ 탭 시 낭독+표시 */}
+              {openEntry.stamp?.emoji && (
+                <>
+                  <div className="flex items-end justify-end gap-2 mt-4">
+                    {openEntry.stamp.letter?.trim() && (
+                      <button onClick={onLetterTap} aria-label="편지 보기" className="text-2xl active:scale-95 transition">✉️</button>
+                    )}
+                    <StampMark emoji={openEntry.stamp.emoji} />
+                  </div>
+                  {letterOpen && openEntry.stamp.letter?.trim() && (
+                    <div className="mt-3 rounded-xl px-4 py-3" style={{ backgroundColor: "#FFF7E6", border: "1px solid #E7D9B0" }}>
+                      <p className="text-sm font-bold mb-1" style={{ color: "#9A8B63" }}>{LETTER_READ}</p>
+                      <p className="text-base leading-relaxed" style={{ color: "#4A4433" }}>{openEntry.stamp.letter}</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* AD-5 §2·§3: 오늘 페이지 한정 그림 액션 */}
