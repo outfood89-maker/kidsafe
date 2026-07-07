@@ -7,8 +7,8 @@ import { DIARY_TITLE, FLOW_STOP, DOODLE_DONE_BTN } from "../utils/diaryCopy";
 // 출력 = 크림 배경 합성 PNG(투명 배경이 편집 API에서 왜곡되지 않게). ⚠️ feature/diary-v0 브랜치 전용.
 
 const CREAM = "#FBF6E9";
-const CANVAS_W = 720;
-const CANVAS_H = 960;   // 3:4 세로(size:auto가 낙서 세로 비율 보존 — 크롭 방지)
+const CANVAS_W = 960;
+const CANVAS_H = 720;   // 4:3 가로(size:auto가 낙서 가로 비율 보존 — 크롭 방지, 오너 확정 7/6)
 const BRUSH = 18;       // 큰 붓 1종
 // 크레용 6색(검정·빨강·주황·노랑·초록·파랑)
 const COLORS = ["#3A3A3A", "#E5484D", "#F2A63B", "#F6C945", "#3F9E5A", "#3E7BD6"];
@@ -141,7 +141,7 @@ export default function DoodleCanvas({ onDone, onCancel }) {
           onPointerCancel={up}
           onPointerLeave={up}
           className="rounded-2xl"
-          style={{ width: "100%", maxWidth: 360, aspectRatio: "3 / 4", backgroundColor: CREAM, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", touchAction: "none" }}
+          style={{ width: "100%", maxWidth: 360, aspectRatio: "4 / 3", backgroundColor: CREAM, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", touchAction: "none" }}
         />
         {/* 되돌리기(아이콘) + 다 그렸어! */}
         <div className="flex w-full items-center gap-2" style={{ maxWidth: 360 }}>

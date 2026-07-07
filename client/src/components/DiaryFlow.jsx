@@ -445,14 +445,14 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
               <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{CONTINUE_PICK.ask}</p>
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setContinueChoice("mine")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
-                  <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2" }}>
-                    {drawingUrl && <img src={drawingUrl} alt={CONTINUE_PICK.mine} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
+                    {drawingUrl && <img src={drawingUrl} alt={CONTINUE_PICK.mine} style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>
                   <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.mine}</span>
                 </button>
                 <button onClick={() => setContinueChoice("both")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
-                  <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2" }}>
-                    {completedUrl && <img src={completedUrl} alt={CONTINUE_PICK.both} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
+                    {completedUrl && <img src={completedUrl} alt={CONTINUE_PICK.both} style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>
                   <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.both}</span>
                 </button>
@@ -466,9 +466,9 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{weatherEmoji ? `날씨 ${weatherEmoji} · ` : ""}기분 {checkinMood}</span>
                 </div>
                 {/* 그림 자리 — 채택 이미지 있으면 렌더, 그 외(대기·실패·선택전) 플레이스홀더/대기문구 (§2) */}
-                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 140, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                   {cardImageUrl
-                    ? <img src={cardImageUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={cardImageUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     : <span className="text-sm font-bold px-4">{imgState === "wait" ? activeWaitSeq[waitStage] : IMAGE_PLACEHOLDER}</span>}
                 </div>
                 <div className="flex flex-col gap-2">

@@ -312,17 +312,17 @@ export default function FamilyShelf() {
               {/* AD-5/AD-8: 그림 렌더. 이어 그리기 채택(both, drawingId 존재)이면 원본 낙서 + 완성본 나란히(원칙③ 병치). */}
               {detailDrawing ? (
                 <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
-                    <img src={detailDrawing} alt="내 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
+                    <img src={detailDrawing} alt="내 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
-                  <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "3 / 4", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
-                    {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
+                    {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ height: 150, backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                   {detailImg
-                    ? <img src={detailImg} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={detailImg} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     : <span className="text-sm font-bold px-4">{IMAGE_PLACEHOLDER}</span>}
                 </div>
               )}

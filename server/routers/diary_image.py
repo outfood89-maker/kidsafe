@@ -152,7 +152,7 @@ async def _generate_image_b64(prompt: str) -> Optional[str]:
             resp = await client.post(
                 "https://api.openai.com/v1/images/generations",
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": OPENAI_IMAGE_MODEL, "prompt": prompt, "size": "1024x1024", "n": 1},
+                json={"model": OPENAI_IMAGE_MODEL, "prompt": prompt, "size": "1536x1024", "n": 1},  # 가로(4:3 계열) — 도화지·이어그리기와 방향 통일(오너 확정 7/6)
             )
         payload = resp.json()  # gpt-image-1 계열은 항상 b64_json 반환
         b64 = ((payload.get("data") or [{}])[0] or {}).get("b64_json")  # .get() 방어(KeyError→500 전례)
