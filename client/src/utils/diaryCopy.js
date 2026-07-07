@@ -106,6 +106,23 @@ export const CHIP_EMOJI = {
 export const NO_ANSWER_CHIP = "음… 오늘은 없었어!";
 export const NO_ANSWER_REACTION = "그런 날도 있지!";
 
+// ── AD-10 §3: 음성 되묻기 리추얼 카피 (팀장 스탬프 verbatim 2026-07-07) ──
+// '음성 = 말로 고르는 칩' — 매칭된 칩만 되물어 확정. raw 자유텍스트 유입 폐기. ○○=매핑 칩 라벨만.
+export const REASK = {
+  // 날씨 되물음 4종(키별). unknown은 되묻지 않음(음성 미매칭으로 처리 → 재시도)
+  weather: {
+    sunny: "오, 해가 쨍쨍했구나?",
+    cloudy: "오, 구름이 많았구나?",
+    rainy: "오, 비가 왔구나?",
+    snowy: "오, 눈이 왔구나?",
+  },
+  ask: (label) => `${label}! 맞아?`, // 질문·그림참여 틀 — label=매핑된 칩 라벨(raw 음성 아님)
+  yes: "응, 맞아!",
+  no: "아니야, 다시!",
+  retry: "그럼 다시 말해줄래?",        // '아니야, 다시!' 또는 미매칭 시
+  fallback: "그럼 손가락으로 골라볼까?", // '다시' 2회 실패 → 칩 폴백
+};
+
 // ③ 3층 그림 참여 (대본 §1 verbatim) — 칩은 그날 답에서 자동 생성 + 말하기. 문장 미포함(child_pick 저장만)
 export const PICK_ASK = "오늘 그림에 꼭 넣고 싶은 거, 하나만 골라줘!";
 

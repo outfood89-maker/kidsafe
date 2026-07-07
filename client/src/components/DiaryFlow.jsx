@@ -13,7 +13,7 @@ import DoodleCanvas from "./DoodleCanvas";
 import {
   ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, resolveChips, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
-  DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI,
+  DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI, REASK,
   WAIT_SEQ, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
   CONTINUE_CHIP, CONTINUE_DONE, CONTINUE_PICK, CONTINUE_FAIL, CONTINUE_WAIT_SEQ,
 } from "../utils/diaryCopy";
@@ -52,6 +52,22 @@ const matchWeatherKey = (text) => {
   return "unknown";
 };
 
+// AD-10 §3: 발화 → 화면 칩 매칭. 결합 라벨(형·누나)·복합어(그림 그리기) 대응.
+//   1) 토큰 정확 일치 우선 2) 포함 매칭은 긴 토큰 우선(김밥 vs 밥 충돌 방지). 미매칭 null.
+const normSp = (s) => (s || "").replace(/\s+/g, "");
+const matchChip = (text, chips) => {
+  const t = normSp(text);
+  if (!t) return null;
+  for (const c of chips)                                   // 1) 정확 일치
+    for (const tok of String(c).split("·").map(normSp))
+      if (tok && tok === t) return c;
+  const ranked = chips.flatMap((c) =>                      // 2) 포함(긴 토큰 우선)
+    String(c).split("·").map(normSp).filter(Boolean).map((tok) => ({ c, tok }))
+  ).sort((a, b) => b.tok.length - a.tok.length);
+  for (const { c, tok } of ranked) if (t.includes(tok)) return c;
+  return null;
+};
+
 export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, startAt = "entry", onClose }) {
   const navigate = useNavigate();
   const voice = useKiddyVoice();
@@ -72,6 +88,10 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const [kiddyLine, setKiddyLine] = useState(initLine);
   const [safetyMsg, setSafetyMsg] = useState(null); // 위기 스크리닝 고정 응답(표시용)
   const [reaction, setReaction] = useState(null); // "그런 날도 있지!" 등 짧은 반응
+  // AD-10 §3: 음성 되묻기 리추얼 — 매칭된 칩을 즉시 확정하지 않고 되물어 확정
+  const [pendingConfirm, setPendingConfirm] = useState(null); // { slot, value } | null (되묻기 대기)
+  const [retryCount, setRetryCount] = useState(0);            // 현재 슬롯 음성 실패 횟수
+  const [voiceLocked, setVoiceLocked] = useState(false);      // 2회 실패 후 말하기 잠금(칩 폴백)
   // AD-5: 그림 상태 — idle(그림 전) | wait(생성 중) | done(성공) | fail(실패=플레이스홀더)
   const [imgState, setImgState] = useState("idle");
   const [imgUrl, setImgUrl] = useState(null);
@@ -127,14 +147,25 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
           try { if (pid) createCareSignal(pid, "high").catch(() => {}); } catch { /* 무시 */ }
         }
         pendingUseRef.current = null;
+        setPendingConfirm(null); // AD-10 §3: 위기 통과 시 되묻기 대기도 해제(안전). 위기어는 절대 되묻거나 커밋되지 않음
         return;
       }
-      // 정상 → 해당 슬롯에 답으로 사용
+      // AD-10 §3: 정상 발화 → 즉시 확정 금지. 화면 칩/키에 매칭해 '되묻기' 진입(미매칭=다시). raw 텍스트 유입 폐기.
       const slot = pendingUseRef.current;
       pendingUseRef.current = null;
-      if (slot === "rotating") answerRotating({ answer: t, isSpeech: true });
-      else if (slot === "pick") { setChildPick(t); goResult({ pickValue: t }); }
-      else if (slot === "weather") chooseWeather(matchWeatherKey(t)); // AD-10 §2: 날씨 음성 → 키만 저장(원문 미유입, 칩 클릭과 동일 경로)
+      if (slot === "weather") {
+        const key = matchWeatherKey(t);
+        if (key === "unknown") { onVoiceMiss(); return; } // 미매칭('모르겠어'류) → 다시
+        askConfirm({ slot, value: key, reaskText: REASK.weather[key] });
+      } else if (slot === "rotating") {
+        const chip = matchChip(t, resolvedChips);
+        if (!chip) { onVoiceMiss(); return; }
+        askConfirm({ slot, value: chip, reaskText: REASK.ask(chip) });
+      } else if (slot === "pick") {
+        const chip = matchChip(t, pickChips);
+        if (!chip) { onVoiceMiss(); return; }
+        askConfirm({ slot, value: chip, reaskText: REASK.ask(chip) });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speech.listening]);
@@ -167,6 +198,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     setStep("rotating");
     setKiddyLine(question?.ask || "");
     setSafetyMsg(null);
+    setRetryCount(0); setVoiceLocked(false); // AD-10 §3: 슬롯 전환 → 되묻기 상태 초기화
     if (question?.ask) voice.speak(question.ask, "bright");
   };
   // 3층 그림 참여 칩 — 그날의 답에서 자동 생성(명사 후보). 문장 미포함, child_pick 저장만.
@@ -178,6 +210,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const answerRotating = ({ answer, isSpeech = false, noAnswer = false }) => {
     const next = { qid: question.qid, answer, isSpeech, noAnswer };
     setRotating(next);
+    setRetryCount(0); setVoiceLocked(false); // AD-10 §3: 슬롯 전환 → 되묻기 상태 초기화
     if (noAnswer) { setReaction(NO_ANSWER_REACTION); voice.speak(NO_ANSWER_REACTION, "bright"); } // R2
     // §3 방어(비공개 체크인 엣지): pick 칩 0개 + 말하기 불가면 빈 화면 대신 바로 낭독으로.
     //   (didToday="" + R2 무답 + 날씨 '모르겠어'가 겹칠 때만 발생 — 그 외엔 최소 1칩 보장)
@@ -206,6 +239,29 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     s.forEach((line) => voice.enqueue(line, "calm")); // 완성 일기 전문 낭독(문장별 이어붙임)
     // AD-8: 낭독 뒤 '생성 방식' 선택(genMode). 칩 선택 시 runImage(ai)/캔버스(me)로 분기. (기존 AD-5 자동생성 → 선택 뒤로 이동)
   };
+
+  // ── AD-10 §3: 음성 되묻기 핸들러 — 매칭 결과를 되물어 [응]=확정 / [아니야·미매칭]=다시(2회 실패 시 칩 폴백) ──
+  const askConfirm = ({ slot, value, reaskText }) => {
+    setPendingConfirm({ slot, value });
+    setKiddyLine(reaskText);
+    voice.speak(reaskText, "bright");
+  };
+  const confirmYes = () => {
+    const pc = pendingConfirm; if (!pc) return;
+    setPendingConfirm(null); setRetryCount(0); setVoiceLocked(false);
+    // ⚠️ 확정 = 칩 커밋(isSpeech:false) — value가 칩 라벨이므로 조립도 CHIP_TEMPLATE로. R6 인용 프레임 미사용.
+    if (pc.slot === "weather") chooseWeather(pc.value);
+    else if (pc.slot === "rotating") answerRotating({ answer: pc.value });
+    else if (pc.slot === "pick") { setChildPick(pc.value); goResult({ pickValue: pc.value }); }
+  };
+  const onVoiceMiss = () => { // 미매칭 또는 '아니야, 다시!'
+    const n = retryCount + 1;
+    setRetryCount(n);
+    setPendingConfirm(null);
+    if (n >= 2) { setVoiceLocked(true); setKiddyLine(REASK.fallback); voice.speak(REASK.fallback, "bright"); } // 2회 실패 → 칩 폴백(음성 잠금)
+    else { setKiddyLine(REASK.retry); voice.speak(REASK.retry, "bright"); }
+  };
+  const confirmNo = () => onVoiceMiss();
 
   // AD-5 §2·§3: 그림 생성/재생성. regen=true면 하루 2회 한도 소비. 실패는 플레이스홀더 폴백.
   const runImage = async (s, { regen = false } = {}) => {
@@ -363,7 +419,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       <span>{label}</span>
     </button>
   );
-  const SpeakButton = ({ slot }) => canSpeak ? (
+  const SpeakButton = ({ slot }) => (canSpeak && !voiceLocked) ? ( // AD-10 §3: 2회 실패 시 잠금 → 칩만
     <button
       onClick={() => (speech.listening ? speech.stop() : startSpeak(slot))}
       className="col-span-2 w-full rounded-2xl py-3.5 text-base font-bold active:scale-95 transition"
@@ -372,6 +428,13 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       {speech.listening ? "🎙️ 듣는 중... 다 말하면 콕!" : "🎤 말로 할래"}
     </button>
   ) : null;
+  // AD-10 §3: 되묻기 확정 버튼 — pendingConfirm 있을 때 칩 그리드 대신 노출(각 스텝 공통)
+  const ConfirmButtons = () => (
+    <div className="flex flex-col gap-2.5">
+      <button onClick={confirmYes} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{REASK.yes}</button>
+      <button onClick={confirmNo} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{REASK.no}</button>
+    </div>
+  );
 
   const ProgressDots = () => (
     <div className="flex items-center justify-center gap-1.5 pt-6" style={{ flexWrap: "nowrap" }}>
@@ -418,52 +481,58 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
             </div>
           )}
 
-          {/* WEATHER — AD-10 §2: rotating 구조로 통일(SafetyBanner 상단 + 칩 그대로 + 말하기). 칩은 항상 렌더, 음성은 추가만. */}
+          {/* WEATHER — AD-10 §2: rotating 구조로 통일(SafetyBanner 상단 + 칩 그대로 + 말하기). AD-10 §3: 되묻기 대기 시 확정 버튼. 칩은 항상 렌더, 음성은 추가만. */}
           {step === "weather" && (
             <div className="flex flex-col gap-2.5">
               <SafetyBanner />
-              <div className="grid grid-cols-2 gap-2.5">
-                {WEATHER_CHIPS.map((w) => {
-                  const [em, ...rest] = w.label.split(" ");
-                  const hasEmoji = rest.length > 0;
-                  return <BigChip key={w.key} emoji={hasEmoji ? em : null} label={hasEmoji ? rest.join(" ") : w.label} onClick={() => chooseWeather(w.key)} />;
-                })}
-                <SpeakButton slot="weather" />
-              </div>
+              {pendingConfirm ? <ConfirmButtons /> : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {WEATHER_CHIPS.map((w) => {
+                    const [em, ...rest] = w.label.split(" ");
+                    const hasEmoji = rest.length > 0;
+                    return <BigChip key={w.key} emoji={hasEmoji ? em : null} label={hasEmoji ? rest.join(" ") : w.label} onClick={() => chooseWeather(w.key)} />;
+                  })}
+                  <SpeakButton slot="weather" />
+                </div>
+              )}
             </div>
           )}
 
-          {/* ROTATING (오늘의 질문) */}
+          {/* ROTATING (오늘의 질문) — AD-10 §3: 되묻기 대기 시 확정 버튼 */}
           {step === "rotating" && (
             <div className="flex flex-col gap-2.5">
               <SafetyBanner />
-              <div className="grid grid-cols-2 gap-2.5">
-                {resolvedChips.map((c) => (
-                  <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => answerRotating({ answer: c })} />
-                ))}
-                {/* AD-10 §3: '혼자' 하단 단독 버튼(who 전용) — col-span-2 full-width로 정서 신호 시각 구분. 일반 칩과 동일 커밋 경로 */}
-                {question?.solo && (
-                  <button onClick={() => answerRotating({ answer: question.solo })} className="col-span-2 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-bold active:scale-95 transition" style={{ ...chipStyle, color: "#EAF5F1" }}>
-                    {CHIP_EMOJI[question.solo] ? <span className="text-xl leading-none">{CHIP_EMOJI[question.solo]}</span> : null}
-                    <span>{question.solo}</span>
-                  </button>
-                )}
-                <button onClick={() => answerRotating({ answer: "", noAnswer: true })} className="col-span-2 rounded-2xl px-4 py-3 text-base font-bold" style={{ ...chipStyle, color: "#90A9A8" }}>{NO_ANSWER_CHIP}</button>
-                <SpeakButton slot="rotating" />
-              </div>
+              {pendingConfirm ? <ConfirmButtons /> : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {resolvedChips.map((c) => (
+                    <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => answerRotating({ answer: c })} />
+                  ))}
+                  {/* AD-10 §3: '혼자' 하단 단독 버튼(who 전용) — col-span-2 full-width로 정서 신호 시각 구분. 일반 칩과 동일 커밋 경로 */}
+                  {question?.solo && (
+                    <button onClick={() => answerRotating({ answer: question.solo })} className="col-span-2 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-bold active:scale-95 transition" style={{ ...chipStyle, color: "#EAF5F1" }}>
+                      {CHIP_EMOJI[question.solo] ? <span className="text-xl leading-none">{CHIP_EMOJI[question.solo]}</span> : null}
+                      <span>{question.solo}</span>
+                    </button>
+                  )}
+                  <button onClick={() => answerRotating({ answer: "", noAnswer: true })} className="col-span-2 rounded-2xl px-4 py-3 text-base font-bold" style={{ ...chipStyle, color: "#90A9A8" }}>{NO_ANSWER_CHIP}</button>
+                  <SpeakButton slot="rotating" />
+                </div>
+              )}
             </div>
           )}
 
-          {/* PICK (그림 참여) */}
+          {/* PICK (그림 참여) — AD-10 §3: 되묻기 대기 시 확정 버튼 */}
           {step === "pick" && (
             <div className="flex flex-col gap-2.5">
               <SafetyBanner />
-              <div className="grid grid-cols-2 gap-2.5">
-                {pickChips.map((c) => (
-                  <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => { setChildPick(c); goResult({ pickValue: c }); }} />
-                ))}
-                <SpeakButton slot="pick" />
-              </div>
+              {pendingConfirm ? <ConfirmButtons /> : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {pickChips.map((c) => (
+                    <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => { setChildPick(c); goResult({ pickValue: c }); }} />
+                  ))}
+                  <SpeakButton slot="pick" />
+                </div>
+              )}
             </div>
           )}
 

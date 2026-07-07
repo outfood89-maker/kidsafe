@@ -53,7 +53,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import DailyCheckin from "../components/DailyCheckin";
 import * as diaryStore from "../utils/diaryStore";
-import { TILE, HOME_WRITE, BRIDGE, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, CRISIS_RETURN_HINT, monthBookTitle } from "../utils/diaryCopy"; // AD-10 §2: CRISIS_RETURN_HINT(날씨 음성 위기 복귀 검증)
+import { TILE, HOME_WRITE, BRIDGE, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, CRISIS_RETURN_HINT, REASK, monthBookTitle } from "../utils/diaryCopy"; // AD-10 §2: CRISIS_RETURN_HINT · §3: REASK(되묻기)
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -242,10 +242,12 @@ describe("§2A(AD-10 §2) — 날씨 단계 음성 입력", () => {
   const renderWeather = () => render(
     <MemoryRouter><DiaryFlow profile={P5} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>
   );
-  it("날씨 음성 '비 왔어' → rainy 확정(칩 클릭 동일 경로) → 결과 '오늘은 비가 왔어요.'", async () => {
+  it("날씨 음성 '비 왔어' → 되묻기 '오, 비가 왔구나?' → 응=rainy 확정 → 결과 '오늘은 비가 왔어요.'", async () => {
     renderWeather();
     fireEvent.click(screen.getByText("🎤 말로 할래")); // weather 말하기
-    await utter("비 왔어");                              // matchWeatherKey→rainy→chooseWeather→rotating
+    await utter("비 왔어");                              // matchWeatherKey→rainy→되묻기(자동확정 아님)
+    expect(screen.getByText(REASK.weather.rainy)).toBeTruthy();   // "오, 비가 왔구나?"
+    fireEvent.click(screen.getByText(REASK.yes));       // 응, 맞아! → rainy 확정 → rotating
     fireEvent.click(screen.getByText("엄마"));           // rotating(who) 칩
     fireEvent.click(screen.getByText("블록 놀이"));       // pick 칩 → result
     expect(screen.getByText("오늘은 비가 왔어요.")).toBeTruthy(); // 날씨 음성이 문장에 반영
@@ -310,5 +312,72 @@ describe("§3-A(AD-10 §3) — 칩 풀 확충 렌더", () => {
     ["엄마", "아빠", "친구", "선생님", "할머니", "할아버지", "동생", "오빠·언니"].forEach((c) =>
       expect(screen.getByText(c)).toBeTruthy());
     expect(screen.queryByText("할머니·할아버지")).toBeNull();
+  });
+});
+
+// ── AD-10 §3-B — 음성 되묻기 리추얼 (커밋 B) ──
+describe("§3-B(AD-10 §3) — 음성 되묻기 리추얼", () => {
+  const toRotating = (qid = "who") => {
+    localStorage.setItem("diary_v0_meta_t1", JSON.stringify({ todayQ: { date: TODAY, qid } }));
+    render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
+    fireEvent.click(screen.getByText(SUNNY_LABEL)); // → rotating
+  };
+  const renderWeather = () =>
+    render(<MemoryRouter><DiaryFlow profile={PROFILE} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
+
+  it("rotating 음성 '엄마야' → '엄마! 맞아?' 되묻기(자동진행 X) → 응=pick 진행", async () => {
+    toRotating("who");
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("엄마야");
+    expect(screen.getByText(REASK.ask("엄마"))).toBeTruthy(); // "엄마! 맞아?"(매칭 라벨)
+    expect(screen.getByText(REASK.yes)).toBeTruthy();
+    expect(screen.getByText(REASK.no)).toBeTruthy();
+    expect(screen.queryByText(PICK_ASK)).toBeNull();          // 자동 진행 안 함
+    fireEvent.click(screen.getByText(REASK.yes));             // 응 → 확정 → pick
+    expect(screen.getByText(PICK_ASK)).toBeTruthy();
+  });
+  it("rotating 되묻기 '아니야' → REASK.retry + 칩 복귀", async () => {
+    toRotating("who");
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("엄마야");
+    fireEvent.click(screen.getByText(REASK.no));              // 아니야, 다시!
+    expect(screen.getByText(REASK.retry)).toBeTruthy();       // "그럼 다시 말해줄래?"
+    expect(screen.getByText("엄마")).toBeTruthy();            // 칩 복귀(pendingConfirm 해제)
+  });
+  it("matchChip 충돌 — tasty '김밥' → '김밥! 맞아?'(≠'밥! 맞아?')", async () => {
+    toRotating("tasty");
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("김밥");
+    expect(screen.getByText(REASK.ask("김밥"))).toBeTruthy();
+    expect(screen.queryByText(REASK.ask("밥"))).toBeNull();
+  });
+  it("weather 음성 '비 왔어' → '오, 비가 왔구나?' 되묻기(자동진행 X) → 응=rotating 진행", async () => {
+    renderWeather();
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("비 왔어");
+    expect(screen.getByText(REASK.weather.rainy)).toBeTruthy(); // "오, 비가 왔구나?"
+    expect(screen.queryByText("엄마")).toBeNull();              // rotating 아직 안 옴
+    fireEvent.click(screen.getByText(REASK.yes));
+    expect(screen.getByText("엄마")).toBeTruthy();              // rotating(who) 진행
+  });
+  it("음성 2회 미매칭 → REASK.fallback + 🎤 사라짐(voiceLocked)", async () => {
+    toRotating("who");
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("라라라라");                                   // 미매칭 1
+    expect(screen.getByText(REASK.retry)).toBeTruthy();
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("로로로로");                                   // 미매칭 2
+    expect(screen.getByText(REASK.fallback)).toBeTruthy();      // "그럼 손가락으로 골라볼까?"
+    expect(screen.queryByText("🎤 말로 할래")).toBeNull();      // 음성 잠금(칩 폴백)
+  });
+  it("crisis-first 불변 — rotating 위기어 '죽고 싶어' → 고정응답·care·되묻기 미노출·칩 미커밋", async () => {
+    toRotating("who");
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("죽고 싶어");
+    expect(screen.getByText(new RegExp("말해줘서 정말 고마워"))).toBeTruthy(); // 고정응답(SafetyBanner)
+    expect(H.api.createCareSignal).toHaveBeenCalledWith("t1", "high");        // 부모 신호
+    expect(screen.queryByText(REASK.yes)).toBeNull();          // 되묻기 안 뜸(위기 선행)
+    expect(screen.getByText(CRISIS_RETURN_HINT)).toBeTruthy(); // 복귀 안내
+    expect(screen.getByText("엄마")).toBeTruthy();             // 칩 복귀(미커밋)
   });
 });
