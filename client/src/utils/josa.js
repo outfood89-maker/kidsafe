@@ -36,6 +36,9 @@ export function renderKiddyMessage(message, rawName) {
   if (!message) return message;
   const name = rawName || "아이";
   const stem = childStem(name); // 해인이 / 지우 — 여기에 모음형 조사를 붙인다
+  // ⚠️ LLM 토큰 오타 방어: 이 출력의 유일한 플레이스홀더는 '아이 이름'이므로, 어떤 {{...}}든(예: {{CHILE}}, {{child}}, {{ CHILD }})
+  //    표준 토큰으로 정규화한다. 안 하면 오타 토큰이 리터럴로 화면에 노출됨(실제 사고: {{CHILE}} 그대로 표기).
+  message = message.replace(/\{\{[^{}]*\}\}/g, "{{CHILD}}");
   const C = "\\{\\{CHILD\\}\\}";
   const H = "(?![가-힣])"; // 뒤에 한글이 오면 조사가 아니라 단어 일부 → 제외
   // Haiku 가 어떤 조사를 추측해 붙였든(이/가/이가, 은/는, 을/를 …) 항상 애칭체 어간+모음형 조사로 정규화.
