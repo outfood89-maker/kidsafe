@@ -33,7 +33,7 @@ const writeJson = (key, val) => {
   }
 };
 
-const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null, regen: null, continueUsed: null });
+const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null, regen: null, continueUsed: null, pendingContinue: null });
 const getMeta = (pid) => ({ ...defaultMeta(), ...readJson(META_KEY(pid), {}) });
 const setMeta = (pid, meta) => writeJson(META_KEY(pid), meta);
 
@@ -54,6 +54,7 @@ export function saveEntry(pid, entry) {
   };
   if (entry.imageId) clean.imageId = entry.imageId; // AD-5: 그림 있을 때만(선택 필드)
   if (entry.drawingId) clean.drawingId = entry.drawingId; // AD-8: 이어 그린 그림 채택 시 원본 낙서도 함께 보관(원칙③ 병치)
+  if (entry.imgSource) clean.imgSource = entry.imgSource; // AD-8b §3b: "ai"|"continue"|"mine" — regen 게이트 판정(mine/failadopt는 AI 덮어쓰기 미제안)
   entries.push(clean);
   writeJson(ENTRIES_KEY(pid), entries);
   return clean;
@@ -198,4 +199,31 @@ export function recordContinue(pid, today) {
   const used = c && c.date === today ? (c.count || 0) : 0;
   meta.continueUsed = { date: today, count: used + 1 };
   setMeta(pid, meta);
+}
+
+// ── AD-8b: 대기 중 이탈 → 완성본 보존(pendingContinue). 채택 재료 최소만(위기 텍스트·transcript 금지, 불변식 유지) ──
+//   { id, date, drawingId, imageId, sentences[], childPick, moodEmoji }. 채택/안볼래/만료 시 clear.
+export const getPendingContinue = (pid) => getMeta(pid).pendingContinue;
+export function setPendingContinue(pid, pc) {
+  const meta = getMeta(pid);
+  const prev = meta.pendingContinue;
+  // AD-8b: 같은 날 2차 이탈 등으로 미해결 이전 pending을 덮어쓸 때 그 orphan IDB(완성본·원본) 삭제 — blob 누수 방지(적대리뷰 발견)
+  if (prev && prev !== pc) { if (prev.imageId) { try { deleteImage(prev.imageId); } catch { /* 무시 */ } } if (prev.drawingId) { try { deleteImage(prev.drawingId); } catch { /* 무시 */ } } }
+  meta.pendingContinue = pc;
+  setMeta(pid, meta);
+}
+export function clearPendingContinue(pid) {
+  const meta = getMeta(pid);
+  meta.pendingContinue = null;
+  setMeta(pid, meta);
+}
+// AD-8b-FIX(HIGH): pending 폐기 = orphan IDB(완성본·원본) 삭제 + meta clear를 한 번에.
+//   dismissReturn('안 볼래')·만료 청소·keep(새 일기 완성 시 미해결 pending 폐기) 공용 진입점(DRY).
+export function discardPendingContinue(pid) {
+  const pc = getPendingContinue(pid);
+  if (pc) {
+    if (pc.imageId) { try { deleteImage(pc.imageId); } catch { /* 무시 */ } }
+    if (pc.drawingId) { try { deleteImage(pc.drawingId); } catch { /* 무시 */ } }
+  }
+  clearPendingContinue(pid);
 }

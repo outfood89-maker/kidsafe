@@ -105,6 +105,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const imgIdRef = useRef(null);
   const mountedRef = useRef(true);
   const savedEntryRef = useRef(null);
+  const savingRef = useRef(false); // AD-8b-FIX(MED): keep 더블탭 재진입 차단(4~7세 연타 → 중복 엔트리·쿼터 이중 방지)
 
   // AD-4 §4: 오늘의 회전 질문 = 하루 고정(diaryStore 승격) — 티저↔재진입↔플로우 일치. 기존 랜덤 선정은 아래 주석 보존.
   // const question = useMemo(() => {
@@ -310,30 +311,45 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     runContinue(dataUrl);
   };
 
-  // AD-8 §2: 이어 그리기 — 낙서 + 일기 → 서버 편집(gpt-image-1). 실패 시 자동 재시도 1회 → 그래도 실패면 아이 원본 채택.
-  //   ⚠️ 이탈(언마운트) = 깨끗한 중단: mountedRef 폐기(결과 무시, IDB/쿼터/pending 미기록 — 팀장 확정 ②). 쿼터는 '간직 시'에만 소비.
-  const runContinue = async (dataUrl, { retried = false } = {}) => {
-    setImgState("wait"); // 4단 대기연출은 imgState effect가 담당(genMode==="me")
+  // AD-8b: 대기 중 이탈 후에도 완성본을 잃지 않는 detached 저장 — IDB(원본+완성본) + meta.pendingContinue만.
+  //   ⚠️ UI/음성 절대 미터치(setState·voice 0) — 유령 TTS/렌더 방어는 그대로, 저장 경로만 예외적으로 살림.
+  const persistPendingContinue = async (dataUrl, b64) => {
     try {
-      const res = await continueDiaryImage({ drawingB64: dataUrl, sentences, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender });
-      if (!mountedRef.current) return; // 이탈 → 결과 폐기(아무것도 안 남김)
-      if (res && res.ok && res.b64) {
+      const id = uid(today);
+      const drawId = `draw_${id}`;
+      const imgId = `img_${id}`;
+      await putImage(drawId, dataUrl);
+      await putImage(imgId, `data:image/png;base64,${b64}`);
+      if (pid) diary.setPendingContinue(pid, { id, date: today, drawingId: drawId, imageId: imgId, sentences, childPick, moodEmoji: checkinMood });
+    } catch { /* 무시 — 저장 실패는 조용히 */ }
+  };
+
+  // AD-8 §2: 이어 그리기 — 낙서 + 일기 → 서버 편집(gpt-image-1). 실패 시 자동 재시도 1회 → 그래도 실패면 아이 원본 채택.
+  //   AD-8b: 대기 중 이탈해도 promise는 계속 살아 완성 시 pendingContinue로 보존(복귀 시 채택). 쿼터는 '채택 시'에만 소비.
+  //   실패(재시도 후에도)면 미기록·미소비(조용히 종료 = 같은 날 재시도). 마운트 중엔 기존 동작 그대로.
+  const runContinue = async (dataUrl, { retried = false } = {}) => {
+    if (mountedRef.current) setImgState("wait"); // 4단 대기연출은 imgState effect가 담당(genMode==="me")
+    let res = null;
+    try { res = await continueDiaryImage({ drawingB64: dataUrl, sentences, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender }); }
+    catch { res = null; }
+    const ok = !!(res && res.ok && res.b64);
+    if (!ok && !retried) return runContinue(dataUrl, { retried: true }); // §0-4 자동 재시도 1회(마운트 무관 — 이탈해도 완성 시도)
+    if (mountedRef.current) {
+      if (ok) {
         setCompletedUrl(`data:image/png;base64,${res.b64}`);
         setContinueChoice(null); // mine/both 선택 대기
         setImgState("done");
         setKiddyLine(CONTINUE_DONE);
         voice.enqueue(CONTINUE_DONE, "bright");
-        return;
+      } else {
+        // 최종 실패 → 아이 원본 채택(실패를 실패로 안 보임)
+        setContinueChoice("failadopt");
+        setImgState("done");
+        setKiddyLine(CONTINUE_FAIL);
+        voice.enqueue(CONTINUE_FAIL, "bright");
       }
-      throw new Error("no-continue");
-    } catch {
-      if (!mountedRef.current) return;
-      if (!retried) { runContinue(dataUrl, { retried: true }); return; } // §0-4 자동 재시도 1회
-      // 최종 실패 → 아이 원본 채택(실패를 실패로 안 보임)
-      setContinueChoice("failadopt");
-      setImgState("done");
-      setKiddyLine(CONTINUE_FAIL);
-      voice.enqueue(CONTINUE_FAIL, "bright");
+    } else if (ok) {
+      await persistPendingContinue(dataUrl, res.b64); // AD-8b: 이탈 후 완성 도착 → 보존(실패는 미기록)
     }
   };
 
@@ -358,6 +374,8 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   }, [imgState]);
 
   const keep = async () => {
+    if (savingRef.current) return; // AD-8b-FIX(MED): 더블탭 진입가드 — keep은 terminal(step→done)이라 리셋 불필요. setState는 async라 같은 tick 연타를 못 막음 → ref로 차단
+    savingRef.current = true;
     const id = uid(today);
     const entry = { id, date: today, sentences, moodEmoji: checkinMood, childPick, keptAt: today };
     if (genMode === "me") {
@@ -369,18 +387,22 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
         await putImage(imgId, completedUrl);  // 완성본 = 채택본
         entry.imageId = imgId;
         entry.drawingId = drawId;
+        entry.imgSource = "continue"; // AD-8b §3b: AI 완성본 채택(원본 병치) → regen 미제안
       } else { // "mine" 또는 "failadopt" → 아이 원본만
         await putImage(imgId, drawingUrl);
         entry.imageId = imgId;
+        entry.imgSource = "mine"; // AD-8b §3b: 아이가 '내 그림' 최종 선택 → AI 덮어쓰기 미제안(최종 선택권 연장)
       }
       if (pid && continueChoice !== "failadopt") diary.recordContinue(pid, today); // 성공 채택(mine/both)만 소비 — 실패(failadopt)는 미소비(rule#3, 팀장 확정 7/6)
     } else if (imgState === "done" && imgIdRef.current) {
       entry.imageId = imgIdRef.current; // AD-5 AI path: 그림 성공분만 imageId
+      entry.imgSource = "ai"; // AD-8b §3b: 순수 AI 생성 → regen(다시 그리기) 제안 유지
     }
     if (pid) {
       diary.saveEntry(pid, entry); // '간직' 선택분만 저장
       diary.recordQid(pid, question.qid, today);
       diary.recordClosing(pid, pickClosing(checkinMood, diary.getRecentClosings(pid)));
+      diary.discardPendingContinue(pid); // AD-8b-FIX(HIGH): 새 일기를 완성하면 이탈로 남은 미해결 pending 폐기(상호배타). in-flow keep엔 pending 없어 no-op(안전)
     }
     savedEntryRef.current = entry;
     setStep("done");

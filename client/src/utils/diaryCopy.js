@@ -231,3 +231,8 @@ export const CONTINUE_WAIT_SEQ = [
   "쓱쓱… 열심히 그리는 중이야",
   "거의 다 됐어!",
 ];
+// AD-8b: 대기 중 이탈 → 완성본을 잃지 않고 복귀 시 노출(팀장 스탬프 verbatim 2026-07-06). 선택·채택 카피는 CONTINUE_PICK·CONTINUE_DONE 재사용.
+export const CONTINUE_RETURN = {
+  banner: "키디가 다 그렸어! 보러 갈래?",
+  dismiss: "안 볼래", // AD-8b-FIX: 복귀 선택화면 닫기(팀장 스탬프 verbatim 2026-07-07)
+};

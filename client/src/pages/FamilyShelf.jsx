@@ -7,8 +7,8 @@ import KiddyFab from "../components/KiddyFab";
 import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
-import { getImage, putImage } from "../utils/diaryImageStore";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
+import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -55,6 +55,11 @@ export default function FamilyShelf() {
   const [detailDrawing, setDetailDrawing] = useState(null); // AD-8: 원본 낙서(이어그리기 채택본 병치)
   const [detailBusy, setDetailBusy] = useState(false); // 그림 생성/재생성 중
   const [remaking, setRemaking] = useState(false); // AD-5 §3: 다시 만들기 확인 다이얼로그
+  // AD-8b: 이어그리기 대기 중 이탈 → 완성본 복귀 노출
+  const [pendingReturn, setPendingReturn] = useState(null); // pendingContinue {id,date,drawingId,imageId,sentences,childPick,moodEmoji}
+  const [returnMode, setReturnMode] = useState("banner");   // "banner" | "pick"
+  const [returnDrawing, setReturnDrawing] = useState(null); // pending 원본 낙서 dataURL(IDB 로드)
+  const [returnCompleted, setReturnCompleted] = useState(null); // pending 완성본 dataURL(IDB 로드)
 
   useEffect(() => {
     try {
@@ -63,6 +68,12 @@ export default function FamilyShelf() {
         setProfile(p);
         setEntries(diary.getEntries(p.id));
         diary.recordShelfVisit(p.id); // R8: 자발 방문 → 기본 빈도 복귀
+        // AD-8b: 복귀 시 pendingContinue 점검 — 오늘분이면 배너, 만료(다른 날)면 청소(meta 제거 + orphan IDB 삭제). 별도 스케줄러 불필요.
+        const pc = diary.getPendingContinue(p.id);
+        if (pc) {
+          if (pc.date === diary.todayKST()) setPendingReturn(pc);
+          else diary.discardPendingContinue(p.id); // AD-8b-FIX: 만료(다른 날) pending 청소 = orphan 삭제+clear 공용(DRY)
+        }
       }
     } catch { /* 무시 */ }
   }, []);
@@ -205,6 +216,34 @@ export default function FamilyShelf() {
     beginWrite(); // 삭제 직후 stale todayEntry에 걸리지 않게 코어 직접 호출(재시작)
   };
 
+  // ── AD-8b: 이어그리기 완성본 복귀 노출 핸들러 ──
+  const openReturnPick = async () => { // 배너 탭 → 선택 화면(pending 이미지 IDB 로드)
+    setReturnMode("pick");
+    try {
+      if (pendingReturn?.drawingId) { const u = await getImage(pendingReturn.drawingId); setReturnDrawing(u); }
+      if (pendingReturn?.imageId) { const u = await getImage(pendingReturn.imageId); setReturnCompleted(u); }
+    } catch { /* 무시 — 못 불러오면 텍스트만 */ }
+  };
+  const closeReturn = () => { setPendingReturn(null); setReturnMode("banner"); setReturnDrawing(null); setReturnCompleted(null); };
+  const adoptReturn = (choice) => { // "mine"=아이 원본만 / "both"=완성본+원본 병치. 채택 시 쿼터 소비(팀장 조건①).
+    if (!profile?.id || !pendingReturn) return;
+    const pc = pendingReturn;
+    const entry = { id: pc.id, date: pc.date, sentences: pc.sentences || [], moodEmoji: pc.moodEmoji || "", childPick: pc.childPick || "", keptAt: diary.todayKST() };
+    if (choice === "both") { entry.imageId = pc.imageId; entry.drawingId = pc.drawingId; entry.imgSource = "continue"; }
+    else { entry.imageId = pc.drawingId; entry.imgSource = "mine"; if (pc.imageId) deleteImage(pc.imageId); } // mine: 아이 원본만 + 완성본 orphan 삭제
+    diary.saveEntry(profile.id, entry); // '간직(채택)' 선택분만 저장
+    // AD-8b-FIX(HIGH): 채택 시 하루 1회 소비 — 단 이미 소비된 상태(같은 날 keep 경유 등)면 이중소비 차단(방어적 가드)
+    if (diary.getContinueLeft(profile.id, diary.todayKST()) > 0) diary.recordContinue(profile.id, diary.todayKST());
+    diary.clearPendingContinue(profile.id);
+    closeReturn();
+    setEntries(diary.getEntries(profile.id));
+  };
+  const dismissReturn = () => { // '안 볼래' — 폐기(orphan 삭제+clear) + 쿼터 미소비(같은 날 재시도 가능)
+    if (!profile?.id) return;
+    diary.discardPendingContinue(profile.id); // AD-8b-FIX: orphan 삭제+clear 공용(DRY)
+    closeReturn();
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0A1E1E" }}>
       {/* 헤더 */}
@@ -215,6 +254,13 @@ export default function FamilyShelf() {
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
+        {/* AD-8b: 이어그리기 완성본 복귀 배너 — 대기 중 이탈해도 '나중에 받기'. 브라우징 뷰에서만 노출 */}
+        {pendingReturn && returnMode === "banner" && !openEntry && !bridge && !writing && !torn && (
+          <button onClick={openReturnPick} className="w-full mb-4 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>
+            <span className="text-2xl">🎨</span>
+            <span className="text-base font-extrabold" style={{ color: "#08160F" }}>{CONTINUE_RETURN.banner}</span>
+          </button>
+        )}
         {/* 찢은 직후 확인 — 엔트리 삭제로 openEntry가 사라져도 표시 (상세 언마운트 버그 수정, DOM 테스트 발견) */}
         {torn && (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
@@ -397,8 +443,8 @@ export default function FamilyShelf() {
                 {!detailImg && !openEntry.imageId && (
                   <button onClick={() => genForEntry(openEntry, { regen: false })} disabled={detailBusy} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full disabled:opacity-60" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                 )}
-                {/* 다시 그리기 (하루 2회, AI 경로) — 그림 있을 때만. 이어그리기 채택(both, drawingId)은 별개라 미노출. 소진 시 REGEN_OUT */}
-                {(detailImg || openEntry.imageId) && !openEntry.drawingId && (
+                {/* 다시 그리기 (하루 2회, AI 경로) — AI 생성 엔트리에만. AD-8b §3b: imgSource==="ai"만 노출(mine/failadopt·both는 아이 원본 존중 → AI 덮어쓰기 미제안). 레거시(imgSource 없음)는 기존 !drawingId 폴백. 소진 시 REGEN_OUT */}
+                {(detailImg || openEntry.imageId) && (openEntry.imgSource ? openEntry.imgSource === "ai" : !openEntry.drawingId) && (
                   diary.getRegenLeft(profile.id, diary.todayKST()) > 0
                     ? <button onClick={() => genForEntry(openEntry, { regen: true })} disabled={detailBusy} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full disabled:opacity-60" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                     : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>
@@ -460,8 +506,33 @@ export default function FamilyShelf() {
         </div>
       )}
 
-      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/지우기/부모삭제/다시만들기 확인 시 숨김(몰입) */}
-      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing || !!deleteTarget || remaking} />
+      {/* AD-8b: 복귀 선택 화면 — pending 완성본으로 mine/both 채택(AD-8 코어 CONTINUE_PICK 재사용). '안 볼래'=닫기 */}
+      {pendingReturn && returnMode === "pick" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-8 overflow-auto" style={{ backgroundColor: "rgba(8,22,20,0.96)" }}>
+          <div className="w-full max-w-md flex flex-col gap-4">
+            <p className="text-lg font-extrabold text-center" style={{ color: "#EAF5F1" }}>{CONTINUE_PICK.ask}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => adoptReturn("mine")} className="rounded-2xl p-2 flex flex-col items-center gap-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                <div className="rounded-xl overflow-hidden w-full" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
+                  {returnDrawing && <img src={returnDrawing} alt={CONTINUE_PICK.mine} style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
+                </div>
+                <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.mine}</span>
+              </button>
+              <button onClick={() => adoptReturn("both")} className="rounded-2xl p-2 flex flex-col items-center gap-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                <div className="rounded-xl overflow-hidden w-full" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
+                  {returnCompleted && <img src={returnCompleted} alt={CONTINUE_PICK.both} style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
+                </div>
+                <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.both}</span>
+              </button>
+            </div>
+            {/* AD-8b-FIX: '안 볼래' 스탬프 확정 → CONTINUE_RETURN.dismiss */}
+            <button onClick={dismissReturn} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>{CONTINUE_RETURN.dismiss}</button>
+          </div>
+        </div>
+      )}
+
+      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/지우기/부모삭제/다시만들기/복귀선택 시 숨김(몰입) */}
+      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing || !!deleteTarget || remaking || (!!pendingReturn && returnMode === "pick")} />
 
       {/* AD-2 §3: 자발 진입 DiaryFlow 오버레이 — 닫힐 때 책장 즉시 갱신(오늘 카드 '완료'로 전환). */}
       {diary.DIARY_V0 && writing && checkinForDiary && profile && (
@@ -472,7 +543,13 @@ export default function FamilyShelf() {
           checkinDidToday={(checkinForDiary.answers || []).find((a) => a.qId === "what_did_today")?.answer || ""}
           selfInitiated={true}
           startAt="weather"
-          onClose={() => { setWriting(false); setCheckinForDiary(null); setEntries(diary.getEntries(profile.id)); }}
+          onClose={() => {
+            setWriting(false); setCheckinForDiary(null); setEntries(diary.getEntries(profile.id));
+            // AD-8b-FIX(MED): 책장 안에서 쓰다 이어그리기 대기 중 이탈해 완성 보존된 pending을, 재마운트 없이 그 세션 즉시 배너로.
+            // ⚠️ 조건부 '추가'가 아니라 meta와 '동기'(pc-or-null) — in-shelf keep()이 pending 폐기하면 stale pendingReturn을 비워 유령 배너·삭제된 blob 채택을 막음(컨트롤타워 리뷰 발견).
+            const pc = diary.getPendingContinue(profile.id);
+            setPendingReturn(pc && pc.date === diary.todayKST() ? pc : null);
+          }}
         />
       )}
     </div>
