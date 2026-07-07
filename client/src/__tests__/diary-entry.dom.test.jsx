@@ -336,6 +336,14 @@ describe("§3-B(AD-10 §3) — 음성 되묻기 리추얼", () => {
     fireEvent.click(screen.getByText(REASK.yes));             // 응 → 확정 → pick
     expect(screen.getByText(PICK_ASK)).toBeTruthy();
   });
+  it("rotating 음성 '혼자'(solo) → '혼자! 맞아?' → 응=확정(pick 진행)", async () => {
+    toRotating("who");
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("혼자서 놀았어");                              // AD-10 §3 후속: solo도 매칭 풀 포함(오너 7/7)
+    expect(screen.getByText(REASK.ask("혼자"))).toBeTruthy();  // "혼자! 맞아?"
+    fireEvent.click(screen.getByText(REASK.yes));
+    expect(screen.getByText(PICK_ASK)).toBeTruthy();
+  });
   it("rotating 되묻기 '아니야' → REASK.retry + 칩 복귀", async () => {
     toRotating("who");
     fireEvent.click(screen.getByText("🎤 말로 할래"));

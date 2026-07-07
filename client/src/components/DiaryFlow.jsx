@@ -158,7 +158,9 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
         if (key === "unknown") { onVoiceMiss(); return; } // 미매칭('모르겠어'류) → 다시
         askConfirm({ slot, value: key, reaskText: REASK.weather[key] });
       } else if (slot === "rotating") {
-        const chip = matchChip(t, resolvedChips);
+        // AD-10 §3 후속(오너 7/7): '혼자'(solo)도 음성으로 고를 수 있게 매칭 풀에 포함. 확정 시 answerRotating 동일 경로.
+        const rotPool = question?.solo ? [...resolvedChips, question.solo] : resolvedChips;
+        const chip = matchChip(t, rotPool);
         if (!chip) { onVoiceMiss(); return; }
         askConfirm({ slot, value: chip, reaskText: REASK.ask(chip) });
       } else if (slot === "pick") {
