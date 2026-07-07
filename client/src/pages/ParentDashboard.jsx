@@ -803,7 +803,7 @@ export default function ParentDashboard() {
               {profiles.length === 0 ? (
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
-                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} watched={kiddyWatched} starCount={kiddyStars} />
+                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} avatarId={kiddyProfile?.avatarId} watched={kiddyWatched} starCount={kiddyStars} />
               )}
             </section>
           );

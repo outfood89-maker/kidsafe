@@ -80,7 +80,7 @@ const buildSeedFallback = (name, counts, highlights) => {
   return `오늘 저녁 ${who}에게 “오늘 제일 재밌었던 게 뭐야?” 하고 물어봐 주세요.`;
 };
 
-export default function KiddyReportCard({ profileId, profileName, watched, starCount = 0 }) {
+export default function KiddyReportCard({ profileId, profileName, avatarId, watched, starCount = 0 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [report, setReport] = useState(null);
@@ -144,10 +144,19 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── 편지 헤더 (이름·기간) ── */}
+      {/* ── 편지 헤더 (아바타·이름·기간) ── */}
       <div className="flex items-center gap-3">
-        <div className="shrink-0 flex h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(24,196,154,0.14)" }}>
-          <span style={{ fontSize: "22px" }}>🦕</span>
+        <div className="shrink-0 overflow-hidden flex h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: avatarId ? "#fff" : "rgba(24,196,154,0.14)" }}>
+          {/* 아이 프로필 아바타 — 아바타 렌더 표준(cover·center top·scale 1.04). id 없으면 🦕 폴백 */}
+          {avatarId ? (
+            <img
+              src={`/images/avatars/avatar_${String(avatarId).padStart(2, "0")}.png`}
+              alt={profileName || "아이"}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", transform: "scale(1.04)", transformOrigin: "center top" }}
+            />
+          ) : (
+            <span style={{ fontSize: "22px" }}>🦕</span>
+          )}
         </div>
         <div className="min-w-0">
           <h2 className="text-lg font-extrabold leading-tight" style={{ color: C.ink }}>
