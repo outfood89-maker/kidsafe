@@ -86,6 +86,7 @@ describe("V5 — 방 인사 초대 변주", () => {
     expect(screen.getByText(ROOM_INVITE.line)).toBeTruthy();
     expect(screen.getByText(ROOM_INVITE.go)).toBeTruthy();
     expect(screen.getByText(ROOM_INVITE.later)).toBeTruthy();
+    expect(H.voice.speak).toHaveBeenCalledWith(ROOM_INVITE.line, "bright"); // 초대 인사 음성은 유지(미작성 하루 유혹)
     fireEvent.click(screen.getByText(ROOM_INVITE.go));
     expect(H.nav).toHaveBeenCalledWith("/family-shelf", { state: { startWrite: true } });
   });
@@ -97,11 +98,12 @@ describe("V5 — 방 인사 초대 변주", () => {
     expect(diaryStore.getEntries("t1").length).toBe(0);
     expect(H.nav).not.toHaveBeenCalled();
   });
-  it("오늘 작성 완료 입장 → 초대 없이 기존 GREETING", () => {
+  it("오늘 작성 완료 입장 → 초대 없이 기존 GREETING(텍스트만·음성 억제)", () => {
     saveToday();
     render(<MemoryRouter><KiddyRoom /></MemoryRouter>);
     expect(screen.queryByText(ROOM_INVITE.line)).toBeNull();
-    expect(screen.getByText(new RegExp(GREETING_HINT))).toBeTruthy();
+    expect(screen.getByText(new RegExp(GREETING_HINT))).toBeTruthy();      // 안내는 텍스트로 유지
+    expect(H.voice.speak).not.toHaveBeenCalled();                          // 오너 지시: 입장 GREETING 음성 억제(과반복 제거)
   });
 });
 

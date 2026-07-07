@@ -128,7 +128,9 @@ export default function KiddyRoom() {
       if (diary.DIARY_V0 && p?.id) invite = !diary.getEntries(p.id).some((e) => e.date === diary.todayKST());
     } catch { /* 무시 */ }
     if (invite) { setInviteMode(true); setKiddyLine(ROOM_INVITE.line); voice.speak(ROOM_INVITE.line, "bright"); }
-    else { voice.speak(GREETING, "bright"); }
+    // 오너 지시(7/8): 일기 쓴 상태에선 이 방('말하기 연습')이 사실상 기본 화면 → 매 진입마다 GREETING 음성이 과하게 반복됨.
+    //   입장 GREETING '음성'만 억제(화면 안내는 kiddyLine=GREETING 초기 state 텍스트로 유지). 초대 인사(미작성 시 하루 유혹)는 음성 존치.
+    //   ⚠️ 아래는 의도적 제거(삭제 아님) — 기존: else { voice.speak(GREETING, "bright"); }
     const t = setTimeout(() => finishSession({ silent: lastReplyCareRef.current }), SESSION_MS);
     return () => {
       mountedRef.current = false;
