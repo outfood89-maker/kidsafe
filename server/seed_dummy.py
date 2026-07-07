@@ -59,7 +59,7 @@ CAT_KEYS = ["violence", "language", "sexual", "scary", "imitationRisk", "educati
 
 
 def thumb(vid: str) -> str:
-    return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
+    return ""   # seedtom 더미는 실제 영상이 없음 → 썸네일 URL 비워서 404 차단
 
 
 async def clean(pid: str):
