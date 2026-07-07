@@ -349,7 +349,7 @@ describe("§3-B(AD-10 §3) — 음성 되묻기 리추얼", () => {
     fireEvent.click(screen.getByText("🎤 말로 할래"));
     await utter("엄마야");
     fireEvent.click(screen.getByText(REASK.no));              // 아니야, 다시!
-    expect(screen.getByText(REASK.retry)).toBeTruthy();       // "그럼 다시 말해줄래?"
+    expect(screen.getByText(REASK.retry)).toBeTruthy();       // "어? 잘 못 들었어! 다시 말해줄래?"(오너 개정 7/8)
     expect(screen.getByText("엄마")).toBeTruthy();            // 칩 복귀(pendingConfirm 해제)
   });
   it("matchChip 충돌 — tasty '김밥' → '김밥! 맞아?'(≠'밥! 맞아?')", async () => {
