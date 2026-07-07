@@ -164,5 +164,40 @@ console.log("── AD-8: 이어 그리기 쿼터(하루 1회, regen과 독립) 
   chk("AD-8 drawingId 없으면 필드 없음(직렬화 불변식)", !("drawingId" in diary.getEntries(PID).find((x) => x.id === "e2")));
 }
 
+console.log("── AD-6: 부모 도장·편지(setStamp/markStampSeen/getUnseenStamps) ──");
+{
+  _mem.clear();
+  const today = diary.todayKST();
+  diary.saveEntry(PID, { id: "s1", date: "2026-06-20", sentences: ["a"], moodEmoji: "🙂", childPick: "", keptAt: "2026-06-20" });
+  // 도장 찍기
+  diary.setStamp(PID, "s1", { emoji: "❤️", letter: "네 이야기 잘 읽었어" });
+  let e = diary.getEntries(PID)[0];
+  chk("AD-6 setStamp → emoji·letter·at 설정·seenAt null", e.stamp.emoji === "❤️" && e.stamp.letter === "네 이야기 잘 읽었어" && e.stamp.at === today && e.stamp.seenAt === null);
+  // 미확인 목록(편지 있음)
+  let un = diary.getUnseenStamps(PID);
+  chk("AD-6 getUnseenStamps → 미확인 1건·hasLetter true", un.length === 1 && un[0].entryId === "s1" && un[0].hasLetter === true);
+  // seen 처리 → 미확인에서 빠짐
+  diary.markStampSeen(PID, "s1");
+  chk("AD-6 markStampSeen → seenAt 기록", diary.getEntries(PID)[0].stamp.seenAt === today);
+  chk("AD-6 seen 후 getUnseenStamps 0", diary.getUnseenStamps(PID).length === 0);
+  // 변경=덮어쓰기: emoji 교체·letter 비움·seenAt 리셋(다시 미확인)
+  diary.setStamp(PID, "s1", { emoji: "🌟", letter: "" });
+  e = diary.getEntries(PID)[0];
+  chk("AD-6 재도장=덮어쓰기(emoji 교체·seenAt 리셋)", e.stamp.emoji === "🌟" && e.stamp.seenAt === null);
+  un = diary.getUnseenStamps(PID);
+  chk("AD-6 편지 없으면 hasLetter false(도장만 분기)", un.length === 1 && un[0].hasLetter === false);
+  // letter 30자 방어(UI maxLength와 별개)
+  diary.setStamp(PID, "s1", { emoji: "👍", letter: "가".repeat(50) });
+  chk("AD-6 letter store slice(0,30) 방어", diary.getEntries(PID)[0].stamp.letter.length === 30);
+  // 없는 entryId → 무시(throw 없음·무효)
+  diary.setStamp(PID, "nope", { emoji: "🐾" });
+  chk("AD-6 없는 entryId setStamp 무시", diary.getEntries(PID).length === 1);
+  diary.markStampSeen(PID, "nope"); // no-op
+  chk("AD-6 없는 entryId markStampSeen 무시(throw 없음)", true);
+  // 찢기 → stamp 소멸(entry 통삭제, 아이 삭제권 우선)
+  diary.tearEntry(PID, "s1");
+  chk("AD-6 tearEntry → stamp 함께 소멸", diary.getEntries(PID).length === 0 && diary.getUnseenStamps(PID).length === 0);
+}
+
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

@@ -236,3 +236,16 @@ export const CONTINUE_RETURN = {
   banner: "키디가 다 그렸어! 보러 갈래?",
   dismiss: "안 볼래", // AD-8b-FIX: 복귀 선택화면 닫기(팀장 스탬프 verbatim 2026-07-07)
 };
+
+// ── AD-6: 부모 도장·짧은 편지 카피 (팀장 스탬프 verbatim 2026-07-07) ──
+// 부모→아이 방향(비밀채널 무침식). 도장=문구 없는 이모지 반응 4종(배지·평가 아님, §0-3).
+export const STAMP_EMOJIS = ["❤️", "👍", "🌟", "🐾"]; // 도장 이모지 4종(§2·§3)
+// 아이 홈 인앱 알림(도장만 / 편지 포함 분기) — 대본§1·팀장 스탬프 verbatim
+export const STAMP_NOTICE = {
+  stamp: "엄마아빠가 네 일기에 도장을 찍어줬어! 보러 갈까?",
+  letter: "엄마아빠가 도장이랑 편지를 남겼어! 보러 갈까?",
+};
+export const LETTER_READ = "엄마아빠의 편지야. 키디가 읽어줄게!"; // ✉️ 탭 시 키디 안내(TTS) — 팀장 verbatim
+export const LETTER_PLACEHOLDER = "아이에게 전할 한마디 (30자)"; // 부모 편지 입력 placeholder — 팀장 verbatim
+export const LETTER_NUDGE = "칭찬보다, 마음을 전해보세요 — \"네 이야기 잘 읽었어\" 처럼요."; // 입력 아래 서브 넛지 — 팀장 verbatim
+export const BLANK_SHELF_PARENT = "아직 아이가 간직한 이야기가 없어요."; // 부모 책장 빈 상태 — 겸임 팀장 스탬프 2026-07-07

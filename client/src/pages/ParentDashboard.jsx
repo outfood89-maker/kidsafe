@@ -41,6 +41,8 @@ import PaywallModal from "../components/PaywallModal";
 import PinModal from "../components/PinModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
+import ParentDiaryShelf from "../components/ParentDiaryShelf"; // AD-6 §2: 부모 가족 책장(열람+도장·편지)
+import { DIARY_V0 } from "../utils/diaryStore"; // AD-6: feature/diary-v0 게이트
 
 const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 
@@ -99,6 +101,8 @@ const gradeStyle = (grade) => {
 const MAIN_NAV = [
   { id: "overview", icon: "📊", label: "한눈에 보기", short: "개요" },
   { id: "kiddy",    icon: "🦕", label: "키디의 한 주", short: "키디" },
+  // AD-6: 가족 책장(부모 열람+도장·편지) — DIARY_V0 게이트 뒤에서만 노출(main 무접촉)
+  ...(DIARY_V0 ? [{ id: "shelf", icon: "📖", label: "가족 책장", short: "책장" }] : []),
   { id: "schedule", icon: "📅", label: "스케줄", short: "스케줄" },
   { id: "children", icon: "👶", label: "자녀 설정", short: "자녀" },
   { id: "history",  icon: "📺", label: "시청 기록", short: "기록" },
@@ -121,6 +125,7 @@ export default function ParentDashboard() {
   const [chartTab, setChartTab] = useState(scopedId || "전체");
   const [reportTab, setReportTab] = useState(scopedId || "all");
   const [kiddyTab, setKiddyTab] = useState(scopedId || ""); // 키디의 한 주 — 아이별(전체 없음)
+  const [shelfTab, setShelfTab] = useState(scopedId || ""); // AD-6: 가족 책장 — 아이별(전체 없음, kiddyTab 패턴)
   const [scheduleTab, setScheduleTab] = useState(scopedId || ""); // 스케줄 — 아이별(전체 없음)
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showProfilePaywall, setShowProfilePaywall] = useState(false);
@@ -784,6 +789,48 @@ export default function ParentDashboard() {
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
                 <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} watched={kiddyWatched} starCount={kiddyStars} />
+              )}
+            </section>
+          );
+        })()}
+
+        {/* AD-6 §2: 가족 책장 (부모 열람 + 도장·짧은 편지) — DIARY_V0 게이트 뒤. 데이터=diaryStore 직접 읽기(v0: 부모·아이 동일 브라우저 전제) */}
+        {DIARY_V0 && mainTab === "shelf" && !loading && (() => {
+          const shelfProfileId = shelfTab || scopedId || profiles[0]?.id || "";
+          return (
+            <section
+              className="p-4 md:p-6 mb-5"
+              style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">📖</span>
+                <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>가족 책장</h2>
+                <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>아이가 간직한 그림일기를 함께 봐요</span>
+              </div>
+
+              {/* 아이 선택 탭 — 스코프 잠금 시 숨김 (아이별, 전체 없음) */}
+              {!scopedId && profiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {profiles.map((profile) => (
+                    <button
+                      key={profile.id}
+                      onClick={() => setShelfTab(profile.id)}
+                      className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                      style={shelfProfileId === profile.id
+                        ? { backgroundColor: "#18C49A", color: "#08160F" }
+                        : { backgroundColor: "#163635", color: "#90A9A8" }}
+                    >
+                      <img src={getAvatarUrl(profile)} alt={profile.name} className="h-5 w-5 rounded-full bg-white" />
+                      {profile.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {profiles.length === 0 ? (
+                <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
+              ) : (
+                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} />
               )}
             </section>
           );

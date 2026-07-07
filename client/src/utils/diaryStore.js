@@ -227,3 +227,27 @@ export function discardPendingContinue(pid) {
   }
   clearPendingContinue(pid);
 }
+
+// ── AD-6: 부모 도장·편지 (entry 선택 필드 stamp). 사후 setStamp로만 설정 — saveEntry 저장경로 무접촉 ──
+//   stamp: { emoji, letter, at, seenAt }. entry에 얹히므로 tearEntry(통삭제) 시 함께 소멸(아이 삭제권 우선, 불변식④).
+//   ⚠️ 배지·보상·평가 연결 금지(§0-3). letter는 부모→아이 방향(비밀채널 무침식).
+export function setStamp(pid, entryId, { emoji, letter } = {}) {
+  const entries = getEntries(pid);
+  const e = entries.find((x) => x.id === entryId);
+  if (!e) return; // 없는 entryId면 무시
+  // 변경=덮어쓰기: at 갱신·seenAt 리셋(재도장 시 아이에게 다시 '미확인'으로). letter 30자 방어(UI maxLength와 별개).
+  e.stamp = { emoji: emoji || "", letter: String(letter || "").slice(0, 30), at: todayKST(), seenAt: null };
+  writeJson(ENTRIES_KEY(pid), entries);
+}
+// 아이가 상세를 열어 확인 → seenAt 기록(알림 자연 소멸용).
+export function markStampSeen(pid, entryId) {
+  const entries = getEntries(pid);
+  const e = entries.find((x) => x.id === entryId);
+  if (e && e.stamp) { e.stamp.seenAt = todayKST(); writeJson(ENTRIES_KEY(pid), entries); }
+}
+// 미확인 도장 목록(도장 있고 seenAt 없음) → 아이 홈 알림 분기(도장만 vs 편지 포함).
+export function getUnseenStamps(pid) {
+  return getEntries(pid)
+    .filter((e) => e.stamp && !e.stamp.seenAt)
+    .map((e) => ({ entryId: e.id, hasLetter: !!(e.stamp.letter && e.stamp.letter.trim()) }));
+}
