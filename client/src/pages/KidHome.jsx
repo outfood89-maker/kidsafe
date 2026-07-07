@@ -150,7 +150,8 @@ export default function KidHome() {
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
-  const diaryAfterRef = useRef(false); // AD-2 §4: 그림일기 홈 브릿지에서 넘어온 의도(체크인 완료 후 일기 연속 진행), 1회성
+  // AD-2 §4: 그림일기 홈 브릿지에서 넘어온 의도(체크인 완료 후 일기 연속 진행), 1회성. AD-10 재개정: ⓑ 명시적 의도 연속 복구
+  const diaryAfterRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -278,6 +279,7 @@ export default function KidHome() {
 
   // AD-2 §4: 그림일기 홈 '미체크인 브릿지'에서 navigate("/kids", { state: { diaryAfter: true } })로 돌아오면
   //          체크인 자동 오픈(기존 F1 로직 재사용)이 뜨고, 완료 후 일기로 연속 진행하도록 의도 플래그만 세운다. state 즉시 소거(Z 패턴).
+  // AD-10 재개정: 명시적 일기 의도(타일·방 초대 '좋아!') 브릿지 연속 복구(ⓑ). 부르지 않은 제안(ⓐ)만 폐기.
   useEffect(() => {
     if (location.state?.diaryAfter) {
       diaryAfterRef.current = true;

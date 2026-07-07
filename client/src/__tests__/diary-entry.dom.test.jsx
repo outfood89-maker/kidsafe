@@ -53,7 +53,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import DailyCheckin from "../components/DailyCheckin";
 import * as diaryStore from "../utils/diaryStore";
-import { TILE, HOME_WRITE, BRIDGE, ENTRY, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy";
+import { TILE, HOME_WRITE, BRIDGE, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy"; // AD-10: ENTRY 제거(제안 요소 폐기로 미사용)
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -138,17 +138,15 @@ describe("V3 — 미체크인 브릿지 → 홈으로(diaryAfter)", () => {
   });
 });
 
-describe("V4 — diaryIntent 연속 진행(제안 빈도 미충족에도, 재제안 없이 weather부터)", () => {
-  it("lastProposalDate=오늘(shouldProposeToday=false) + diaryIntent → reward '영상 보러 가자' → DiaryFlow weather", async () => {
-    diaryStore.markProposed("t1", TODAY); // 오늘 이미 제안함 → 빈도 게이트 false 유도
-    expect(diaryStore.shouldProposeToday("t1", TODAY, true)).toBe(false);
+describe("V4(AD-10 재개정) — 명시적 의도(diaryIntent) 연속 진행 복구", () => {
+  it("diaryIntent=true → '영상 보러 가자! 🚀' → DiaryFlow weather 노출 + onComplete 미호출", async () => {
     const onComplete = vi.fn();
     render(<MemoryRouter><DailyCheckin profile={PROFILE} diaryIntent={true} onComplete={onComplete} onSkip={vi.fn()} /></MemoryRouter>);
     fireEvent.click(await screen.findByText("인사-계속"));        // greeting → (질문0) → share
     fireEvent.click(await screen.findByText("응, 들려줄래 💚"));   // share → saveCheckin → reward
-    // diaryIntent라 reward 안 제안 없음 → 완료 버튼이 연속 진행 트리거
+    // ⓑ 명시적 의도: 완료 버튼이 연속 진행 트리거(제안 재확인 없이 날씨부터)
     fireEvent.click(await screen.findByText("영상 보러 가자! 🚀"));
-    expect(await screen.findByText(SUNNY_LABEL)).toBeTruthy(); // DiaryFlow weather부터(entry 생략)
+    expect(await screen.findByText(SUNNY_LABEL)).toBeTruthy();   // DiaryFlow weather부터(연속)
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
@@ -180,29 +178,19 @@ describe("V6 — 비공개 체크인 엣지(pick 칩 0개 방어)", () => {
   });
 });
 
-// ── AD-3 신규 검증 (§7-V2·V3·V4·V5) ──
-describe("A1(AD3 §7-V2) — reward 제안 요소(자동 팝업 아님)", () => {
-  it("제안 충족 → reward에 ENTRY 제안 노출(완료버튼 대신) → 좋아! → DiaryFlow weather", async () => {
+// ── AD-10 반전: reward '제안 요소' 폐기 검증 (구 AD-3 §7-V2) ──
+describe("A1(AD-10 반전) — reward 제안 요소 미노출, '영상 보러 가자'만", () => {
+  it("제안 충족 프로필이어도 제안 미노출 → '영상 보러 가자'만 → onComplete", async () => {
     const onComplete = vi.fn();
     render(<MemoryRouter><DailyCheckin profile={PROFILE} onComplete={onComplete} onSkip={vi.fn()} /></MemoryRouter>);
     fireEvent.click(await screen.findByText("인사-계속"));
     fireEvent.click(await screen.findByText("응, 들려줄래 💚"));
-    expect(await screen.findByText(new RegExp("그림일기 만들어볼까"))).toBeTruthy(); // 제안 요소
-    expect(screen.queryByText("영상 보러 가자! 🚀")).toBeNull();                    // 제안 시 완료버튼 대체
-    fireEvent.click(screen.getByText(ENTRY.baseYes));            // 좋아!
-    expect(await screen.findByText(SUNNY_LABEL)).toBeTruthy();   // DiaryFlow weather부터
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-  it("제안 '안 할래' → recordProposalResult(false) + 정상 완료", async () => {
-    const onComplete = vi.fn();
-    render(<MemoryRouter><DailyCheckin profile={PROFILE} onComplete={onComplete} onSkip={vi.fn()} /></MemoryRouter>);
-    fireEvent.click(await screen.findByText("인사-계속"));
-    fireEvent.click(await screen.findByText("응, 들려줄래 💚"));
-    fireEvent.click(await screen.findByText(ENTRY.baseNo));      // 안 할래
+    expect(await screen.findByText("영상 보러 가자! 🚀")).toBeTruthy();          // 항상 완료 버튼
+    expect(screen.queryByText(new RegExp("그림일기 만들어볼까"))).toBeNull();     // 제안 요소 미노출(폐기)
+    fireEvent.click(screen.getByText("영상 보러 가자! 🚀"));
     expect(onComplete).toHaveBeenCalled();
-    const meta = JSON.parse(localStorage.getItem("diary_v0_meta_t1"));
-    expect(meta.rejectStreak).toBe(1); // R8 거절 기록
   });
+  // AD-10 제거: 제안 '안 할래' → rejectStreak 테스트 — 제안 요소 폐기로 무효(구 AD-3 §7-V2 #2)
 });
 
 describe("A2(AD3 §7-V3) — 화면당 키디 1회", () => {
