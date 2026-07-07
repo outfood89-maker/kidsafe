@@ -8,7 +8,7 @@ import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage } from "../utils/diaryImageStore";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -48,6 +48,9 @@ export default function FamilyShelf() {
   const [checkinForDiary, setCheckinForDiary] = useState(null); // 쓰기 시작 시 조회한 오늘 체크인
   const [bridge, setBridge] = useState(false); // 미체크인 브릿지 뷰
   const [openMonth, setOpenMonth] = useState(null); // AD-3 §5: 월 '한 권' 열람(그 달 페이지 목록 하위화면)
+  const [editMode, setEditMode] = useState(false); // AD-9 §2: 부모 '수정(삭제)' 모드 — 월 나가면 리셋
+  const [deleteTarget, setDeleteTarget] = useState(null); // AD-9 §2: 부모 삭제 대상 엔트리 id(확인 다이얼로그 표시 조건)
+  const [thumbs, setThumbs] = useState({}); // AD-9 §1: 열린 월 페이지 썸네일(entry.id → dataURL)
   const [detailImg, setDetailImg] = useState(null); // AD-5: 상세 페이지 그림(IDB 로드)
   const [detailDrawing, setDetailDrawing] = useState(null); // AD-8: 원본 낙서(이어그리기 채택본 병치)
   const [detailBusy, setDetailBusy] = useState(false); // 그림 생성/재생성 중
@@ -132,6 +135,14 @@ export default function FamilyShelf() {
     setTorn(true);
   };
 
+  // AD-9 §2: 부모 삭제 — 그리드 수정 모드에서 특정 페이지 지우기. tearEntry 재사용(엔트리+이미지 완전삭제).
+  //   아이용 doTear와 달리 torn '지웠어' 화면 없이 조용히 삭제하고 그리드에 머문다(editMode 유지, done 문구 불필요).
+  const doShelfDelete = () => {
+    if (profile && deleteTarget) diary.tearEntry(profile.id, deleteTarget);
+    setEntries(profile ? diary.getEntries(profile.id) : []);
+    setDeleteTarget(null);
+  };
+
   const isTodayEntry = (e) => !!e && e.date === diary.todayKST();
 
   // AD-5 §2: 상세 페이지 열릴 때 IDB에서 그림 로드
@@ -144,6 +155,23 @@ export default function FamilyShelf() {
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
+
+  // AD-9 §1: 월 열람 시 그 달 페이지 썸네일(imageId) 병렬 로드. 월을 나가면 수정 모드도 리셋.
+  //   실패는 조용히 무시 → 플레이스홀더 폴백. alive 가드로 언마운트/월전환 후 setState 방지.
+  useEffect(() => {
+    if (!openMonth) { setEditMode(false); return; }
+    let alive = true;
+    const pages = months.find((m) => m.ym === openMonth)?.pages || [];
+    const next = {};
+    Promise.all(
+      pages.map(async (e) => {
+        if (!e.imageId) return; // 그림 없는 페이지 → 플레이스홀더
+        try { const url = await getImage(e.imageId); if (url) next[e.id] = url; } catch { /* 무시 */ }
+      })
+    ).then(() => { if (alive) setThumbs(next); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openMonth, entries]);
 
   // AD-5 §2·§3: 상세 페이지 그림 생성 — retry(최초 실패 복구) 또는 regen(다시 그리기, 하루 2회).
   const genForEntry = async (entry, { regen = false } = {}) => {
@@ -276,26 +304,55 @@ export default function FamilyShelf() {
           </>
         )}
 
-        {/* AD-3 §5: 월 '한 권' 열람 = 그 달 페이지 목록(하위화면) */}
+        {/* AD-3 §5 → AD-9 §1: 월 '한 권' 열람 = 앨범 그리드(2열 썸네일) + AD-9 §2 부모 '수정(삭제)' 모드 */}
         {!torn && !openEntry && !bridge && openMonth && (
-          <div className="flex flex-col gap-2.5">
-            <button onClick={() => setOpenMonth(null)} className="self-start text-sm font-bold mb-1" style={{ color: "#90A9A8" }}>‹ {SHELF_NAME}</button>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <button onClick={() => setOpenMonth(null)} className="text-sm font-bold" style={{ color: "#90A9A8" }}>‹ {SHELF_NAME}</button>
+              {/* AD-9 §2: 부모 수정(삭제) 토글 — 월 나가면 자동 리셋(useEffect) */}
+              <button onClick={() => setEditMode((v) => !v)} className="text-sm font-bold" style={{ color: editMode ? "#5FE0BC" : "#90A9A8" }}>{editMode ? "완료" : "✏️ 수정"}</button>
+            </div>
             <h2 className="text-lg font-extrabold mb-1" style={{ color: "#EAF5F1" }}>{monthLabel(openMonth)}</h2>
-            {(months.find((m) => m.ym === openMonth)?.pages || []).map((e) => (
-              <button
-                key={e.id}
-                onClick={() => { setOpenId(e.id); setTorn(false); }}
-                className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left active:scale-[0.99] transition"
-                style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
-              >
-                <span className="text-xl shrink-0">{e.moodEmoji || "📔"}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{dateLabel(e.date)}</p>
-                  <p className="text-xs truncate" style={{ color: "#90A9A8" }}>{(e.sentences || [])[0] || ""}</p>
+            {(() => {
+              const pages = months.find((m) => m.ym === openMonth)?.pages || [];
+              if (pages.length === 0) return <p className="py-16 text-center text-sm" style={{ color: "#90A9A8" }}>이 달 일기가 없어요.</p>;
+              return (
+                <div className="grid grid-cols-2 gap-3">
+                  {pages.map((e) => {
+                    const d = new Date(`${e.date}T00:00:00`);
+                    return (
+                      <div key={e.id} className="relative">
+                        <button
+                          onClick={editMode ? undefined : () => { setOpenId(e.id); setTorn(false); }}
+                          className={`w-full text-left rounded-2xl overflow-hidden transition ${editMode ? "" : "active:scale-[0.99]"}`}
+                          style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)", cursor: editMode ? "default" : "pointer" }}
+                        >
+                          {/* 썸네일(새 4:3 이미지=무크롭 cover) — 없으면 faint 플레이스홀더 */}
+                          <div className="overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
+                            {thumbs[e.id]
+                              ? <img src={thumbs[e.id]} alt="그림일기" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : <div className="flex items-center justify-center h-full text-3xl" style={{ color: "#C9BC93" }}>📔</div>}
+                          </div>
+                          <div className="flex items-center justify-between px-3 py-2">
+                            <span className="text-xs font-bold" style={{ color: "#9A8B63" }}>{`${d.getDate()}일 ${WEEKDAYS[d.getDay()]}`}</span>
+                            <span className="text-base">{e.moodEmoji || "📔"}</span>
+                          </div>
+                        </button>
+                        {/* AD-9 §2: 수정 모드 삭제 배지 — 본문 탭은 상세 안 열림(오삭제 방지), 🗑만 반응 */}
+                        {editMode && (
+                          <button
+                            onClick={() => setDeleteTarget(e.id)}
+                            aria-label="일기 지우기"
+                            className="absolute top-1.5 right-1.5 flex items-center justify-center rounded-full text-base"
+                            style={{ width: 40, height: 40, backgroundColor: "rgba(14,42,42,0.92)", color: "#F2655C", border: "1px solid rgba(242,101,92,0.5)" }}
+                          >🗑</button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <span className="text-lg" style={{ color: "#90A9A8" }}>›</span>
-              </button>
-            ))}
+              );
+            })()}
           </div>
         )}
 
@@ -351,8 +408,8 @@ export default function FamilyShelf() {
               </div>
             )}
 
-            {/* 찢어버리기 — 아이의 삭제권(부모 삭제 불가). 배지·보상 없음. */}
-            <button onClick={() => setTearing(true)} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>🗑️ 찢어버리기</button>
+            {/* AD-9 후속(오너 7/7): 아이 상세의 '지우기' 제거 — 4~7세 오탭 삭제 위험 방지. 삭제는 부모 전용(앨범 '수정' 모드 §2)으로 일원화. TEAR 다이얼로그·doTear는 코드 보존(복구 가능). */}
+            {/* <button onClick={() => setTearing(true)} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>🗑️ 지우기</button> */}
           </div>
         )}
       </div>
@@ -361,10 +418,30 @@ export default function FamilyShelf() {
       {tearing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={() => setTearing(false)}>
           <div className="rounded-2xl p-5 flex flex-col gap-4 w-full max-w-xs" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.1)" }} onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-bold text-center" style={{ color: "#EAF5F1" }}>{TEAR.confirm}</p>
+            {/* AD-9 §2.5: 정직한 되물음 — 제목 + '되돌릴 수 없어요' 무게 문구 */}
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-bold text-center" style={{ color: "#EAF5F1" }}>{TEAR.confirm}</p>
+              <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{TEAR.desc}</p>
+            </div>
             <div className="flex flex-col gap-2.5">
               <button onClick={doTear} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{TEAR.yes}</button>
               <button onClick={() => setTearing(false)} className="rounded-2xl py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}>{TEAR.no}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AD-9 §2: 부모 삭제 확인 다이얼로그 — '삭제의 무게'(아이가 만든 일기, 팀장 스탬프) */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={() => setDeleteTarget(null)}>
+          <div className="rounded-2xl p-5 flex flex-col gap-4 w-full max-w-xs" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.1)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-bold text-center" style={{ color: "#EAF5F1" }}>{SHELF_DELETE.confirm}</p>
+              <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{SHELF_DELETE.desc}</p>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <button onClick={doShelfDelete} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{SHELF_DELETE.yes}</button>
+              <button onClick={() => setDeleteTarget(null)} className="rounded-2xl py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}>{SHELF_DELETE.no}</button>
             </div>
           </div>
         </div>
@@ -383,8 +460,8 @@ export default function FamilyShelf() {
         </div>
       )}
 
-      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/찢기/다시만들기 확인 시 숨김(몰입) */}
-      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing || remaking} />
+      {/* AD-4 §2: 키디 플로팅 — 작성 중/브릿지/지우기/부모삭제/다시만들기 확인 시 숨김(몰입) */}
+      <KiddyFab profile={profile} bottomOffset={16} hidden={writing || bridge || tearing || !!deleteTarget || remaking} />
 
       {/* AD-2 §3: 자발 진입 DiaryFlow 오버레이 — 닫힐 때 책장 즉시 갱신(오늘 카드 '완료'로 전환). */}
       {diary.DIARY_V0 && writing && checkinForDiary && profile && (

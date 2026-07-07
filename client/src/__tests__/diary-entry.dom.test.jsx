@@ -217,13 +217,16 @@ describe("A3(AD3 §7-V4) — 진행 점", () => {
   });
 });
 
-describe("A4(AD3 §7-V5) — 월 그리드 → 목록 → 상세", () => {
-  it("월 카드 → 그 달 페이지 목록 → 페이지 상세 + 하단 안내 노출", () => {
+describe("A4(AD3 §7-V5 · AD-9 §1) — 월 카드 → 앨범 그리드 → 상세", () => {
+  it("월 카드 → 그 달 앨범 그리드(날짜 타일) → 페이지 상세 + 하단 안내 노출", () => {
     diaryStore.saveEntry("t1", { id: "e1", date: TODAY, sentences: ["오늘은 좋은 하루였어요."], moodEmoji: "🙂", childPick: "", keptAt: TODAY });
     render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
     expect(screen.getByText(SHELF_FOOTER)).toBeTruthy();                 // 하단 안내(목업 ④)
     fireEvent.click(screen.getByText(monthBookTitle(TODAY.split("-")[1]))); // 월 '한 권'
-    fireEvent.click(screen.getByText("오늘은 좋은 하루였어요."));           // 페이지 preview
-    expect(screen.getByText("🗑️ 찢어버리기")).toBeTruthy();              // 상세 진입 확인
+    // AD-9 §1: 앨범 타일은 문장이 아니라 날짜+기분 렌더 → 날짜 라벨로 상세 진입
+    const dA = new Date(`${TODAY}T00:00:00`);
+    const WD = ["일", "월", "화", "수", "목", "금", "토"];
+    fireEvent.click(screen.getByText(`${dA.getDate()}일 ${WD[dA.getDay()]}`)); // 앨범 타일 → 상세
+    expect(screen.getByText("오늘은 좋은 하루였어요.")).toBeTruthy();     // 상세 진입 확인(문장 노출 — 아이 지우기 제거)
   });
 });

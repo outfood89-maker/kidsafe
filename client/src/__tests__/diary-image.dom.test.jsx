@@ -40,6 +40,9 @@ const TODAY = diaryStore.todayKST();
 const MONTH_TITLE = monthBookTitle(TODAY.split("-")[1]);
 const SUNNY = "맑음";
 const WAIT_STEP = 5000; // DiaryFlow WAIT_STEP_MS와 일치
+// AD-9 §1: 앨범 타일은 문장이 아니라 날짜 라벨 렌더 → 상세 진입은 날짜로 클릭
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const shortDate = (ymd) => { const d = new Date(`${ymd}T00:00:00`); return `${d.getDate()}일 ${WEEKDAYS[d.getDay()]}`; };
 
 beforeEach(() => {
   localStorage.clear();
@@ -90,7 +93,7 @@ describe("V2 — 그림 실패: IMG_FAIL + 플레이스홀더 + 텍스트 저장
     cleanup();
     render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
     fireEvent.click(screen.getByText(MONTH_TITLE));
-    fireEvent.click(screen.getByText(e[0].sentences[0]));
+    fireEvent.click(screen.getByText(shortDate(e[0].date))); // AD-9 §1: 앨범 타일(날짜) → 상세
     expect(screen.getByText(REGEN.btn)).toBeTruthy();
   });
 });
@@ -133,7 +136,7 @@ describe("V4 — 다시 만들기: confirm→yes 삭제+재시작 / no 무변화
     H.api.getTodayCheckin.mockResolvedValue({ checkin: { moodEmoji: "🙂", answers: [{ qId: "what_did_today", answer: "블록 놀이" }] } });
     render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
     fireEvent.click(screen.getByText(MONTH_TITLE));
-    fireEvent.click(screen.getByText("오늘은 좋은 하루였어요."));
+    fireEvent.click(screen.getByText(shortDate(TODAY))); // AD-9 §1: 앨범 타일(날짜) → 상세
     // no → 무변화
     fireEvent.click(screen.getByText(REMAKE.btn));
     expect(screen.getByText(REMAKE.confirm)).toBeTruthy();
