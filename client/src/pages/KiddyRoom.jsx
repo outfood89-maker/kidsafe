@@ -317,8 +317,9 @@ export default function KiddyRoom() {
 
       {/* AD-5 §7(AD-4 건1 시정): 방 오브젝트 존 — '사물이 놓인 공간'감(≥64px·이모지 크게·받침 선반+그림자·부유 애니).
           위치·받침·라벨 공통 처리(향후 마이크 등 추가 상정). 현재 책장 1개. 위기 calm 표시 중 탭 무시(P 계보). */}
-      {diary.DIARY_V0 && (
-        <div className="absolute z-10 flex flex-col items-center" style={{ right: 12, bottom: 96 }}>
+      {/* AD-10: 초대 중엔 숨김(하단 3버튼과 겹침 방지) + bottom 96→132(모바일서 마이크 버튼과도 안 겹치게). */}
+      {diary.DIARY_V0 && !inviteMode && (
+        <div className="absolute z-10 flex flex-col items-center" style={{ right: 12, bottom: 132 }}>
           <style>{`@keyframes kiddyObjFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}`}</style>
           {roomObjects.map((obj) => (
             <button
