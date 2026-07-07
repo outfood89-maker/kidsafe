@@ -53,7 +53,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import DailyCheckin from "../components/DailyCheckin";
 import * as diaryStore from "../utils/diaryStore";
-import { TILE, HOME_WRITE, BRIDGE, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy"; // AD-10: ENTRY 제거(제안 요소 폐기로 미사용)
+import { TILE, HOME_WRITE, BRIDGE, PICK_ASK, KEEP, WEATHER_CHIPS, NO_ANSWER_CHIP, SHELF_FOOTER, CONTINUE_CHIP, CRISIS_RETURN_HINT, monthBookTitle } from "../utils/diaryCopy"; // AD-10 §2: CRISIS_RETURN_HINT(날씨 음성 위기 복귀 검증)
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -71,6 +71,11 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const renderShelf = () => render(<MemoryRouter><FamilyShelf /></MemoryRouter>);
+// AD-10 §2: 음성 발화 시뮬 — 🎤 클릭(listening=true) 뒤 호출. transcript 세팅 → stop → 전이 effect → 스크리닝.
+const utter = async (text) => {
+  await act(async () => { H.speechCtl.setTranscript(text); });
+  await act(async () => { H.speechCtl.setListening(false); });
+};
 
 describe("V1 — 오늘 카드 상태 전환 (홈=FamilyShelf 상단 카드)", () => {
   it("오늘 엔트리 0 → '오늘 일기 쓰기' / 오늘 저장 후 재마운트 → '완성! 보러 갈까?'", () => {
@@ -166,8 +171,8 @@ describe("V5 — 자발 진입 통계 무오염 (markProposed 가드)", () => {
 });
 
 describe("V6 — 비공개 체크인 엣지(pick 칩 0개 방어)", () => {
-  it("didToday='' + 날씨 모르겠어 + R2 무답 + 말하기불가(4세) → pick 단계 건너뛰고 바로 낭독", async () => {
-    const child = { id: "t1", name: "해인", age: 4 }; // canSpeak=false
+  it("didToday='' + 날씨 모르겠어 + R2 무답 + 말하기불가(3세) → pick 단계 건너뛰고 바로 낭독", async () => {
+    const child = { id: "t1", name: "해인", age: 3 }; // AD-10 §2: 말하기 4세+ 완화로 방어 전제(canSpeak=false)를 age<4로 이동
     render(<MemoryRouter><DiaryFlow profile={child} today={TODAY} checkinMood="🙂" checkinDidToday="" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>);
     fireEvent.click(screen.getByText(UNKNOWN));             // 날씨 모르겠어(문장 생략)
     fireEvent.click(screen.getByText(NO_ANSWER_CHIP));      // R2 무답 → 방어: pick 건너뛰고 result(genchoice)
@@ -228,5 +233,50 @@ describe("A4(AD3 §7-V5 · AD-9 §1) — 월 카드 → 앨범 그리드 → 상
     const WD = ["일", "월", "화", "수", "목", "금", "토"];
     fireEvent.click(screen.getByText(`${dA.getDate()}일 ${WD[dA.getDay()]}`)); // 앨범 타일 → 상세
     expect(screen.getByText("오늘은 좋은 하루였어요.")).toBeTruthy();     // 상세 진입 확인(문장 노출 — 아이 지우기 제거)
+  });
+});
+
+// ── AD-10 §2 — 일기 음성입력 확장 (4세 게이트 + 날씨 음성) ──
+describe("§2A(AD-10 §2) — 날씨 단계 음성 입력", () => {
+  const P5 = { id: "t1", name: "해인", age: 5 };
+  const renderWeather = () => render(
+    <MemoryRouter><DiaryFlow profile={P5} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>
+  );
+  it("날씨 음성 '비 왔어' → rainy 확정(칩 클릭 동일 경로) → 결과 '오늘은 비가 왔어요.'", async () => {
+    renderWeather();
+    fireEvent.click(screen.getByText("🎤 말로 할래")); // weather 말하기
+    await utter("비 왔어");                              // matchWeatherKey→rainy→chooseWeather→rotating
+    fireEvent.click(screen.getByText("엄마"));           // rotating(who) 칩
+    fireEvent.click(screen.getByText("블록 놀이"));       // pick 칩 → result
+    expect(screen.getByText("오늘은 비가 왔어요.")).toBeTruthy(); // 날씨 음성이 문장에 반영
+  });
+  it("날씨 음성 위기어 '죽고 싶어' → 고정응답·care('high')·미유입·SafetyBanner·칩 복귀", async () => {
+    renderWeather();
+    fireEvent.click(screen.getByText("🎤 말로 할래"));
+    await utter("죽고 싶어");
+    expect(screen.getByText(new RegExp("말해줘서 정말 고마워"))).toBeTruthy(); // 고정응답(SafetyBanner)
+    expect(H.api.createCareSignal).toHaveBeenCalledWith("t1", "high");        // 부모 신호
+    expect(screen.getByText(CRISIS_RETURN_HINT)).toBeTruthy();               // 복귀 안내
+    expect(screen.getByText(WEATHER_CHIPS.find((w) => w.key === "sunny").label.split(" ")[1])).toBeTruthy(); // 날씨 칩 그대로(복귀)
+    expect(screen.queryByText("오늘은 비가 왔어요.")).toBeNull();             // 위기 텍스트/날씨 미유입(weather 유지)
+  });
+});
+
+describe("§2B(AD-10 §2) — 음성 게이트 4세+", () => {
+  const SUNNY = WEATHER_CHIPS.find((w) => w.key === "sunny").label.split(" ")[1]; // "맑음"
+  const mk = (age) => (
+    <MemoryRouter><DiaryFlow profile={{ id: "t1", name: "해인", age }} today={TODAY} checkinMood="🙂" checkinDidToday="블록 놀이" selfInitiated startAt="weather" onClose={vi.fn()} /></MemoryRouter>
+  );
+  it("age 4 → weather·rotating에 🎤 노출", () => {
+    render(mk(4));
+    expect(screen.getByText("🎤 말로 할래")).toBeTruthy();  // weather 스텝
+    fireEvent.click(screen.getByText(SUNNY));               // → rotating
+    expect(screen.getByText("🎤 말로 할래")).toBeTruthy();  // rotating도 노출
+  });
+  it("age 3 → 🎤 미노출(칩만)", () => {
+    render(mk(3));
+    expect(screen.queryByText("🎤 말로 할래")).toBeNull();   // weather
+    fireEvent.click(screen.getByText(SUNNY));               // → rotating
+    expect(screen.queryByText("🎤 말로 할래")).toBeNull();   // rotating도 미노출
   });
 });

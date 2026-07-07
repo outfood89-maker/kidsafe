@@ -37,13 +37,28 @@ const CONTINUE_WAIT_STEP_MS = 11000; // AD-8 이어그리기 4단(~11s×4≈44s,
 
 // selfInitiated=true → 자발 진입(그림일기 홈/브릿지 경유). '제안'이 아니므로 제안 통계(markProposed·recordProposalResult)에 기록하지 않음(R8 취지).
 // startAt="weather" → AD-3 §4: 진입 제안(entry)은 이제 caller(체크인 reward·홈 쓰기·브릿지)가 담당하므로 플로우는 날씨부터 시작. "entry"는 비활성 보존.
+// AD-10 §2: 자유발화 → 날씨 키 매핑(내부 STT 힌트, 아동 비노출 → 카피게이트 무관). WEATHER_CHIPS 키와 일치.
+//   우선순위 snowy→rainy→sunny→cloudy→unknown. 미매칭 → unknown(날씨 문장 생략, 무해).
+const WEATHER_KEYWORDS = [
+  { key: "snowy",  words: ["눈", "함박눈", "눈사람"] },
+  { key: "rainy",  words: ["비", "소나기", "장마", "빗"] },
+  { key: "sunny",  words: ["맑", "화창", "햇", "해가", "해 떴", "해났"] },
+  { key: "cloudy", words: ["구름", "흐림", "흐렸", "흐린", "먹구름"] },
+];
+const matchWeatherKey = (text) => {
+  const t = (text || "").replace(/\s+/g, "");
+  for (const { key, words } of WEATHER_KEYWORDS)
+    if (words.some((w) => t.includes(w.replace(/\s+/g, "")))) return key;
+  return "unknown";
+};
+
 export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, startAt = "entry", onClose }) {
   const navigate = useNavigate();
   const voice = useKiddyVoice();
   const speech = useKiddySpeech();
 
   const age = profile?.age ?? 7;
-  const canSpeak = age >= 6 && speech.supported; // 연령 사다리: 4~5세 칩만 / 6세+ 칩+말하기
+  const canSpeak = age >= 4 && speech.supported; // AD-10 §2: 연령 사다리 완화 → 4세 미만 칩만 / 4세+ 칩+말하기 (미지원 브라우저는 연령 무관 칩만)
   const isSad = SAD_MOODS.includes(checkinMood);
   const pid = profile?.id;
 
@@ -93,7 +108,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
   // ── 말하기(STT) 종료 감지 → 안전 스크리닝 → 답 사용/거부 ──
   const prevListeningRef = useRef(false);
-  const pendingUseRef = useRef(null); // 스크리닝 통과 시 답을 어떤 슬롯에 쓸지: 'weather' 불가(칩만) · 'rotating' · 'pick'
+  const pendingUseRef = useRef(null); // 스크리닝 통과 시 답을 어떤 슬롯에 쓸지: 'weather'(→matchWeatherKey) · 'rotating' · 'pick'
   useEffect(() => {
     const was = prevListeningRef.current;
     prevListeningRef.current = speech.listening;
@@ -117,6 +132,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       pendingUseRef.current = null;
       if (slot === "rotating") answerRotating({ answer: t, isSpeech: true });
       else if (slot === "pick") { setChildPick(t); goResult({ pickValue: t }); }
+      else if (slot === "weather") chooseWeather(matchWeatherKey(t)); // AD-10 §2: 날씨 음성 → 키만 저장(원문 미유입, 칩 클릭과 동일 경로)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speech.listening]);
@@ -400,14 +416,18 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
             </div>
           )}
 
-          {/* WEATHER */}
+          {/* WEATHER — AD-10 §2: rotating 구조로 통일(SafetyBanner 상단 + 칩 그대로 + 말하기). 칩은 항상 렌더, 음성은 추가만. */}
           {step === "weather" && (
-            <div className="grid grid-cols-2 gap-2.5">
-              {WEATHER_CHIPS.map((w) => {
-                const [em, ...rest] = w.label.split(" ");
-                const hasEmoji = rest.length > 0;
-                return <BigChip key={w.key} emoji={hasEmoji ? em : null} label={hasEmoji ? rest.join(" ") : w.label} onClick={() => chooseWeather(w.key)} />;
-              })}
+            <div className="flex flex-col gap-2.5">
+              <SafetyBanner />
+              <div className="grid grid-cols-2 gap-2.5">
+                {WEATHER_CHIPS.map((w) => {
+                  const [em, ...rest] = w.label.split(" ");
+                  const hasEmoji = rest.length > 0;
+                  return <BigChip key={w.key} emoji={hasEmoji ? em : null} label={hasEmoji ? rest.join(" ") : w.label} onClick={() => chooseWeather(w.key)} />;
+                })}
+                <SpeakButton slot="weather" />
+              </div>
             </div>
           )}
 
