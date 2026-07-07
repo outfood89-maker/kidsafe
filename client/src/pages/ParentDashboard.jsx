@@ -182,12 +182,15 @@ export default function ParentDashboard() {
         setAlerts(alertData.alerts);
         setAlertSettings(settingsData);
 
-        // 위기 신호(P §4) — 프로필별 조회 후 이름 붙여 합침. 실패한 프로필은 조용히 건너뜀.
+        // 위기 신호(P §4) — 프로필별 조회 후 이름·id 붙여 합침. 실패한 프로필은 조용히 건너뜀.
+        // ⚠️ 프라이버시(멀티테넌시): 스코프 잠금(scopedId=아이별 부모페이지)에선 그 아이 신호만 조회 —
+        //    다른 아이의 위기 케어 신호가 유입/노출되는 교차 프라이버시 사고 방지(데이터 최소화).
+        const signalProfiles = scopedId ? profilesData.filter((p) => p.id === scopedId) : profilesData;
         const signalsNested = await Promise.all(
-          profilesData.map(async (p) => {
+          signalProfiles.map(async (p) => {
             try {
               const sigs = await getCareSignals(p.id);
-              return (sigs || []).map((s) => ({ ...s, profileName: p.name }));
+              return (sigs || []).map((s) => ({ ...s, profileName: p.name, profileId: p.id }));
             } catch { return []; }
           })
         );
@@ -238,6 +241,10 @@ export default function ParentDashboard() {
   // 스코프 잠금: :profileId 가 있으면 그 아이만 노출 (프로필 전환 탭/추가 숨김)
   const scopedProfile = scopedId ? profiles.find((p) => p.id === scopedId) : null;
   const visibleProfiles = scopedId ? profiles.filter((p) => p.id === scopedId) : profiles;
+  // 위기 신호 렌더용 — 미확인 + 스코프 잠금 시 그 아이만(조회도 이미 스코프하지만 렌더에서 2중 방어). 다른 아이 신호 노출 금지.
+  const visibleCareSignals = careSignals.filter((s) => !s.read && (!scopedId || s.profileId === scopedId));
+  // 위험 영상 알림 — getAlerts는 계정 전체(모든 아이) 반환 → 스코프 잠금 부모페이지는 그 아이 알림만 노출(다른 아이 위험영상 알림 유입 금지). alert.profileId로 필터.
+  const visibleAlerts = scopedId ? alerts.filter((a) => a.profileId === scopedId) : alerts;
 
   const handleCreateProfile = async () => {
     if (!newName.trim()) {
@@ -308,7 +315,7 @@ export default function ParentDashboard() {
     }
   };
 
-  const unreadCount = alerts.filter(a => !a.read).length;
+  const unreadCount = visibleAlerts.filter(a => !a.read).length; // 스코프 시 그 아이 알림만 카운트(뱃지도 교차 노출 금지)
 
   const handleMarkRead = async (id) => {
     await markAlertRead(id);
@@ -316,6 +323,14 @@ export default function ParentDashboard() {
   };
 
   const handleMarkAllRead = async () => {
+    // 스코프 잠금(아이별 부모페이지): 그 아이 미확인 알림만 읽음 처리 — 계정 전체(markAllAlertsRead)를 쓰면 다른 아이 알림까지 건드림(교차 쓰기 방지).
+    if (scopedId) {
+      const targets = visibleAlerts.filter(a => !a.read);
+      await Promise.all(targets.map(a => markAlertRead(a.id).catch(() => {})));
+      const ids = new Set(targets.map(t => t.id));
+      setAlerts(prev => prev.map(a => (ids.has(a.id) ? { ...a, read: true } : a)));
+      return;
+    }
     await markAllAlertsRead();
     setAlerts(prev => prev.map(a => ({ ...a, read: true })));
   };
@@ -1743,10 +1758,10 @@ export default function ParentDashboard() {
 
         {mainTab === "safety" && (<>
         {/* 🚨 위기 신호(P §4) — 부모에게 '존재만' 알림. 무슨 말이었는지는 어디에도 없음. 카피는 팀장 검수 verbatim. */}
-        {careSignals.filter((s) => !s.read).length > 0 && (
+        {visibleCareSignals.length > 0 && (
           <section className="mb-6">
             <div className="flex flex-col gap-3">
-              {careSignals.filter((s) => !s.read).map((sig) => (
+              {visibleCareSignals.map((sig) => (
                 <div
                   key={sig.id}
                   className="rounded-2xl p-5"
@@ -1856,15 +1871,15 @@ export default function ParentDashboard() {
             </div>
           )}
 
-          {/* 알림 목록 */}
-          {alerts.length === 0 ? (
+          {/* 알림 목록 — 스코프 잠금 시 그 아이 알림만(visibleAlerts) */}
+          {visibleAlerts.length === 0 ? (
             <div className="rounded-2xl px-6 py-8 text-center" style={{ backgroundColor: "#163635" }}>
               <p className="text-3xl mb-2">✅</p>
               <p className="text-sm font-bold" style={{ color: "#90A9A8" }}>위험 영상 알림이 없어요. 안전하게 시청 중이에요!</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {alerts.map((alert) => (
+              {visibleAlerts.map((alert) => (
                 <div
                   key={alert.id}
                   className="rounded-2xl p-4 transition"
