@@ -76,3 +76,45 @@ export const TOUR_SCHEDULES = [
 ];
 // 키디 인사말(투어 고정 — 실제론 getKiddyGreeting(Haiku)가 일정 수를 읽고 만드는 자리). 팀장 §5 verbatim.
 export const TOUR_GREETING = "이번 주엔 태권도랑 가족 여행이 기다리고 있어요. 즐거운 한 주 되세요! 🌈";
+
+// ── AD-7 확장: 부모 '둘러보기' 탭 데모 — 안전 알림 ──
+//   ⚠️ 서버 0(V1): getAlerts/getAlertSettings/getCareSignals/getBlockedKeywords는 fetchData(tourMode early-return)라 미발화.
+//   ⚠️ 이 탭은 인라인 섹션 → startTour가 state에 '직접 주입'(스케줄처럼 prop 아님). profileId=시드 아이 id(TOUR_PROFILE.id).
+//   ⚠️ visibleAlerts/visibleCareSignals가 scopedId 필터 → 스코프 페이지선 tourMode 우회(ParentDashboard §2) 없으면 다 걸러진다.
+//   ⚠️ 날짜 고정 ISO(결정적). 부모 노출 '문장'(제목/채널/차단이유/키워드)은 팀장 §7 스탬프 verbatim 확정(컨트롤타워).
+//   ⚠️ 썸네일 생략(network-0): {alert.thumbnail && <img>} 가드라 필드 없으면 이미지 없이 텍스트 카드로 안전 렌더.
+
+// 위험 영상 알림 3건 — 위험(danger) 1 + 주의(warning) 1 + 반복시청(danger·repeated) 1. read:false → 미읽음 뱃지·'전체 읽음' 노출.
+export const TOUR_ALERTS = [
+  { id: "tour_al1", profileId: TOUR_PROFILE.id, videoId: "tour_av1",
+    title: "괴물 슬라임 먹방 - 이상한 색 도전", channelTitle: "펀펀 챌린지",
+    reasons: ["과도한 먹방", "자극적 연출"],
+    severity: "danger", watchedAt: "2026-07-08T20:15:00",
+    watchCount: 1, repeated: false, read: false },
+  { id: "tour_al2", profileId: TOUR_PROFILE.id, videoId: "tour_av2",
+    title: "장난감 총 대결 배틀", channelTitle: "토이 배틀존",
+    reasons: ["모방 위험", "경쟁 조장"],
+    severity: "warning", watchedAt: "2026-07-07T18:40:00",
+    watchCount: 1, repeated: false, read: false },
+  { id: "tour_al3", profileId: TOUR_PROFILE.id, videoId: "tour_av3",
+    title: "한밤중 괴담 - 화장실 귀신", channelTitle: "미스터리 나이트",
+    reasons: ["공포 조장", "연령 부적합"],
+    severity: "danger", watchedAt: "2026-07-06T21:05:00",
+    watchCount: 3, repeated: true, read: false },
+];
+
+// 위기 관심 신호 1건(💛) — 부모에겐 '존재만' 알림. 문구는 고정 상수 PARENT_SIGNAL_MESSAGE(safetyLexicon)라 스탬프 대상 아님.
+//   ⚠️ profileName 필수 — 실플로우는 fetchData가 붙이지만 투어는 직접 주입이라 시드에 미리 포함해야 childStem(sig.profileName) 동작. TOUR_PROFILE.name(=라온) 사용.
+export const TOUR_CARE_SIGNALS = [
+  { id: "tour_cs1", profileId: TOUR_PROFILE.id, profileName: TOUR_PROFILE.name,
+    level: "high", read: false, createdAt: "2026-07-07T21:10:00" },
+];
+
+// 알림 설정 — 실데이터 잔존(부모의 실제 기준 점수) 덮기용. 전부 숫자/불리언(스탬프 아님). threshold는 TOUR_PROFILE.safetyThreshold(80)와 일치.
+export const TOUR_ALERT_SETTINGS = { threshold: 80, lateNightAlert: true, lateNightHour: 22 };
+
+// 걸러낼 키워드 — 실데이터 잔존(부모의 실제 커스텀 키워드) 덮기용. 부모 노출 '단어'라 팀장 §7 스탬프 verbatim 확정.
+export const TOUR_BLOCKED_KEYWORDS = {
+  system: ["폭력", "무서운"],
+  custom: ["귀신", "먹방 챌린지"],
+};
