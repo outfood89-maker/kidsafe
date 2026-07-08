@@ -69,7 +69,9 @@ afterEach(() => cleanup());
 // mount fetch가 비행 중일 때 진입하는 레이스를 배제(결정적). 진입 직전 api 스파이 리셋(마운트 호출 제외).
 const enterTour = async () => {
   render(<ParentDashboard />);
-  await waitFor(() => expect(screen.queryByText("불러오는 중...")).toBeNull()); // 초기 로드 완료(스코프 무관)
+  // 마운트의 '마지막' async(로딩 종료 후 마운트되는 KiddyReportCard의 getCheckinReport)까지 정착 대기 —
+  // 로딩 텍스트만 기다리면 그 직후 리포트카드 fetch가 clearAllMocks와 레이스(간헐 1콜 누수). 스코프 무관.
+  await waitFor(() => expect(H.api.getCheckinReport).toHaveBeenCalled());
   vi.clearAllMocks();
   fireEvent.click(screen.getByText(PARENT_TOUR.offer.start));
 };
@@ -215,6 +217,25 @@ describe("AD-7 B — V4 진입 제안 1회(플래그)", () => {
     render(<ParentDashboard />);
     await waitFor(() => expect(H.api.getProfiles).toHaveBeenCalled());
     expect(screen.queryByText(PARENT_TOUR.offer.title)).toBeNull();
+  });
+});
+
+describe("AD-7 B — 헤더 '둘러보기' 상시 버튼(오너 지시 7/8: 잘 보이는 자리)", () => {
+  it("진입 시 헤더 버튼 노출 + 제안 닫아도 유지 + 클릭 시 투어 시작(서버 0)", async () => {
+    render(<ParentDashboard />);
+    await waitFor(() => expect(screen.queryByText("불러오는 중...")).toBeNull());
+    fireEvent.click(screen.getByText(PARENT_TOUR.offer.later)); // 제안 카드 닫음
+    expect(screen.queryByText(PARENT_TOUR.offer.title)).toBeNull();
+    const headerBtn = screen.getByTestId("tour-header-btn"); // 제안 닫아도 헤더 버튼은 상시(재진입 보장)
+    expect(headerBtn).toBeTruthy();
+    vi.clearAllMocks();
+    fireEvent.click(headerBtn);
+    expect(screen.getByText(PARENT_TOUR.banner)).toBeTruthy(); // 투어 시작
+    Object.values(H.api).forEach((fn) => expect(fn).not.toHaveBeenCalled()); // 진입=시드만
+  });
+  it("투어 중엔 헤더 버튼 숨김(중복 진입 방지)", async () => {
+    await enterTour();
+    expect(screen.queryByTestId("tour-header-btn")).toBeNull();
   });
 });
 

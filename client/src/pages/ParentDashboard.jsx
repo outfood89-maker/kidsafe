@@ -699,12 +699,27 @@ export default function ParentDashboard() {
                 ☰ 메뉴
               </button>
             )}
-            <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
-            <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
-              {scopedProfile
-                ? `${childStem(scopedProfile.name)} · ${scopedProfile.age}세 전용 부모 페이지`
-                : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
+                <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
+                  {scopedProfile
+                    ? `${childStem(scopedProfile.name)} · ${scopedProfile.age}세 전용 부모 페이지`
+                    : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
+                </p>
+              </div>
+              {/* AD-7: 예시 가족 '둘러보기' — 헤더 우측 상시 버튼(가장 잘 보이는 자리, 오너 지시 7/8). DIARY_V0 게이트·투어 중 숨김. */}
+              {DIARY_V0 && !tourMode && (
+                <button
+                  data-testid="tour-header-btn"
+                  onClick={startTour}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
+                  style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+                >
+                  🦕 {PARENT_TOUR.offer.start}
+                </button>
+              )}
+            </div>
           </section>
 
           {/* AD-7 최초 진입 제안 — 예시 가족 둘러보기 (DIARY_V0 게이트·투어 중엔 숨김) */}
@@ -1052,7 +1067,7 @@ export default function ParentDashboard() {
               )}
             </div>
 
-            {/* AD-7 재진입 — 예시 가족 둘러보기 다시 하기 (DIARY_V0 게이트·투어 중엔 숨김) */}
+            {/* AD-7 재진입 링크 — 헤더 우측 상시 '둘러보기' 버튼으로 이전(오너 지시 7/8, 위치 개선). 복구 필요 시 주석 해제.
             {DIARY_V0 && !tourMode && (
               <button
                 onClick={startTour}
@@ -1061,7 +1076,7 @@ export default function ParentDashboard() {
               >
                 🦕 {PARENT_TOUR.reentry}
               </button>
-            )}
+            )} */}
 
             {showCreateForm && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4">
