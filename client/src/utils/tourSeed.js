@@ -118,3 +118,77 @@ export const TOUR_BLOCKED_KEYWORDS = {
   system: ["폭력", "무서운"],
   custom: ["귀신", "먹방 챌린지"],
 };
+
+// ── AD-7 확장: 부모 '둘러보기' 탭 데모 — 시청 분석(history·insights·coach) ──
+//   ⚠️ 투어는 서버 0(V1) → getReportInsights/getReportCoach를 못 부른다. 정적 시드로 채운다.
+//   ⚠️ ParentDashboard state에 직접 주입(startTour). 컴포넌트 prop 패턴 아님(이 탭은 인라인).
+//   ⚠️ 날짜는 고정 ISO(2026-07). watchedAt/weeklyTrend는 상대계산 금지(결정적).
+//   ⚠️ 부모 노출 문장(title·channelTitle·coach headline/comment/sections/todos)은 팀장 §8 스탬프 verbatim 확정(컨트롤타워). 숫자·enum·라벨은 확정.
+
+// 시청 기록/분석 공유 썸네일 플레이스홀더 — 투명 1x1 GIF(외부 GET 0·network-0). 회색 박스 위 폴백.
+export const TOUR_THUMB = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+
+// (1) 시청 기록 5건 — ⚠️ 시청기록(⑦) 정거장과 '공유'(⑦은 재정의 말고 import 재사용). title·channelTitle 스탬프는 공용(팀장 한 벌만 채움).
+export const TOUR_HISTORY = [
+  { videoId: "tour_v1", profileId: "tour_raon", totalScore: 96, watchedAt: "2026-07-03T08:20:00",
+    channelTitle: "동요친구 키즈", title: "가나다 노래 - 한글 배우기",
+    watchSeconds: 320, thumbnail: TOUR_THUMB },
+  { videoId: "tour_v2", profileId: "tour_raon", totalScore: 74, watchedAt: "2026-07-05T16:45:00",
+    channelTitle: "펀펀 챌린지", title: "젤리 산더미 먹방 챌린지",
+    watchSeconds: 300, thumbnail: TOUR_THUMB },
+  { videoId: "tour_v3", profileId: "tour_raon", totalScore: 92, watchedAt: "2026-07-06T10:05:00",
+    channelTitle: "동요친구 키즈", title: "무지개 색깔 이름 배우기",
+    watchSeconds: 410, thumbnail: TOUR_THUMB },
+  { videoId: "tour_v4", profileId: "tour_raon", totalScore: 88, watchedAt: "2026-07-07T18:30:00",
+    channelTitle: "만들기 대장", title: "색종이로 공룡 접기",
+    watchSeconds: 540, thumbnail: TOUR_THUMB },
+  { videoId: "tour_v5", profileId: "tour_raon", totalScore: 62, watchedAt: "2026-07-08T09:10:00",
+    channelTitle: "펀펀 챌린지", title: "한밤중 괴담 - 계단에서 생긴 일",
+    watchSeconds: 260, thumbnail: TOUR_THUMB },
+];
+
+// (2) 심화 분석(서버 getReportInsights 형태). 숫자·라벨·enum 전부 확정(스탬프 아님). 스키마 완전(정밀검수 무가드 접근 크래시 방지).
+export const TOUR_INSIGHTS = {
+  profileScope: "tour_raon",
+  totalWatched: 5,
+  analyzedCount: 3,
+  categoryAverages: [
+    { key: "violence",      label: "폭력성",   score: 94, count: 5 },
+    { key: "language",      label: "언어",     score: 90, count: 5 },
+    { key: "sexual",        label: "선정성",   score: 98, count: 5 },
+    { key: "scary",         label: "공포",     score: 82, count: 3 },  // 정밀분석 영상에서만 집계
+    { key: "imitationRisk", label: "모방위험", score: 76, count: 3 },  // 정밀분석 영상에서만 집계
+    { key: "educational",   label: "교육성",   score: 88, count: 5 },
+    { key: "commercialism", label: "상업성",   score: 71, count: 3 },  // 정밀분석 영상에서만 집계
+  ],
+  ageFit: { fit: 3, hard: 1, unknown: 1 },              // 합=5(totalWatched)
+  confidence: { high: 3, total: 5, ratio: 60 },         // ratio=round(3/5*100)
+  weeklyTrend: [                                          // 7일·history 요일/점수와 정합, 빈 날 avgScore=null
+    { date: "7/2", avgScore: null, count: 0 },
+    { date: "7/3", avgScore: 96,   count: 1 },
+    { date: "7/4", avgScore: null, count: 0 },
+    { date: "7/5", avgScore: 74,   count: 1 },
+    { date: "7/6", avgScore: 92,   count: 1 },
+    { date: "7/7", avgScore: 88,   count: 1 },
+    { date: "7/8", avgScore: 62,   count: 1 },
+  ],
+};
+
+// (3) AI 코치(서버 getReportCoach의 data.coach 형태). grade/tone은 enum(확정) — 나머지 '보이는 문장'은 전부 팀장 스탬프.
+export const TOUR_COACH = {
+  overall: {
+    grade: "양호",                          // enum(gradeStyle 인식: 좋음|양호|주의|관심필요) — 확정
+    headline: "대체로 안전하게, 잘 보고 있어요",
+    comment: "이번 주 라온이는 영상 다섯 편을 봤어요. 그중 세 편은 자막과 화면까지 꼼꼼히 살펴봤는데, 한글·색깔을 배우는 교육 영상이 많아 안심이었어요. 다만 자극적인 챌린지와 무서운 영상이 한두 편 섞여 있었어요.",
+  },
+  sections: [
+    { tone: "good", title: "잘 지켜지고 있어요", comment: "폭력성·선정성·언어는 걱정 없는 수준이에요. 라온이는 배우는 영상을 특히 좋아해요.", action: "좋아하는 교육 채널을 즐겨찾기에 담아두면 다음에 찾아 보여주기 좋아요." },
+    { tone: "warn", title: "조금만 함께 봐 주세요", comment: "공포와 모방위험 점수가 다른 항목보다 낮았어요. 따라 하기 쉬운 챌린지 영상의 영향으로 보여요.", action: "챌린지 영상은 곁에서 함께 보며 '이건 따라 하지 말자'고 짚어 주세요." },
+    { tone: "bad",  title: "이 영상은 관심이 필요해요", comment: "'한밤중 괴담' 한 편이 안전 기준(80점) 아래로 내려갔어요. 무서운 장면이 많은 영상이에요.", action: "무서운 영상은 되도록 함께 보고, 원하시면 그 채널을 걸러낼 수 있어요." },
+  ],
+  todos: [
+    "무서운 영상·자극적인 챌린지는 함께 보거나 걸러두기",
+    "라온이가 좋아하는 교육 채널로 즐겨찾기 만들기",
+    "주말에 이번 주 본 영상 함께 돌아보기",
+  ],
+};
