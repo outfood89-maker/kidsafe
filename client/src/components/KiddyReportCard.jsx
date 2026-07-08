@@ -171,6 +171,7 @@ export default function KiddyReportCard({ profileId, profileName, avatarId, watc
       {/* ── 키디 한마디 (정서적 절정) ── */}
       {/* 데모 클라이맥스: 편지를 '여는 순간' 살짝 떠오르며 나타남 (reduced-motion 존중은 CSS에서) */}
       <div
+        data-tour-id="tour-letter"
         className="relative overflow-hidden rounded-2xl p-5 md:p-6 animate-letter-rise"
         style={{
           background: "linear-gradient(135deg, rgba(24,196,154,0.16), rgba(20,184,196,0.10))",
@@ -334,6 +335,7 @@ export default function KiddyReportCard({ profileId, profileName, avatarId, watc
 
       {/* ── 대화의 씨앗 — 오늘 저녁 이렇게 말 걸어보세요 (C 기둥: 정보 → 대화의 시작점) ── */}
       <div
+        data-tour-id="tour-seed"
         className="rounded-2xl p-4 md:p-5"
         style={{
           background: "linear-gradient(135deg, rgba(24,196,154,0.14), rgba(20,184,196,0.08))",

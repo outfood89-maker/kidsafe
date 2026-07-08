@@ -40,7 +40,8 @@ const StampMark = ({ emoji, size = 64 }) => (
 );
 
 // AD-7 투어 주입(선택): entriesProp 있으면 diaryStore 무접촉(메모리 시드만) / onStamp 있으면 도장도 메모리·부모콜백만.
-export default function ParentDiaryShelf({ profileId, entries: entriesProp, onStamp }) {
+//   tourOpenEntryId: 있으면 그 일기를 자동으로 열어 도장 UI를 화면에 노출(③ 정거장 스포트라이트 대상).
+export default function ParentDiaryShelf({ profileId, entries: entriesProp, onStamp, tourOpenEntryId }) {
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [openMonth, setOpenMonth] = useState(null);
@@ -61,6 +62,11 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
     catch { setEntries([]); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId]);
+
+  // AD-7 투어: 특정 시드 일기 자동 열기(③ 도장 체험 — 도장 UI가 화면에 보이게). tourOpenEntryId 있을 때만.
+  useEffect(() => {
+    if (tourOpenEntryId) setOpenId(tourOpenEntryId);
+  }, [tourOpenEntryId]);
 
   const months = useMemo(() => {
     const byMonth = {};
@@ -174,8 +180,8 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
           )}
         </div>
 
-        {/* 도장·편지 쓰기(부모 전용) */}
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+        {/* 도장·편지 쓰기(부모 전용) — AD-7 투어 ③ 스포트라이트 대상 */}
+        <div data-tour-id="tour-stamp" className="rounded-2xl p-4 flex flex-col gap-3" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
           <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>도장 찍어주기</p>
           <div className="flex gap-2">
             {STAMP_EMOJIS.map((em) => (

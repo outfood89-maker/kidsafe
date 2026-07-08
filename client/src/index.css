@@ -26,6 +26,16 @@ html {
   .animate-lightbox-pop { animation: none; }
 }
 
+/* 부모 둘러보기 코치마크 — 대상 강조 링 은은한 펄스. */
+@keyframes tourPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(24,196,154,0.28); }
+  50%      { box-shadow: 0 0 0 6px rgba(24,196,154,0.16); }
+}
+.animate-tour-pulse { animation: tourPulse 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-tour-pulse { animation: none; }
+}
+
 body, #root {
   width: 100%;
   min-height: 100vh;

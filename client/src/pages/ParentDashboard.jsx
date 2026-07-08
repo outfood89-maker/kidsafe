@@ -114,14 +114,15 @@ const MAIN_NAV = [
   { id: "safety",   icon: "🔔", label: "안전 알림", short: "알림" },
 ];
 
-// AD-7 부모 '둘러보기' 정거장 — 순서 고정(①편지 ②씨앗=같은 kiddy뷰 ③책장 도장체험 ④자녀설정).
-//   tab=그 정거장에서 보여줄 mainTab. 안내 카피는 PARENT_TOUR.stations[step](TourCoachmark가 소비).
-//   ③(shelf)만 interactive → 코치마크 포인터 통과(도장 체험). 나머진 읽기전용 차단.
+// AD-7 부모 '둘러보기' 정거장 — 순서 고정(①편지 ②씨앗 ③책장 도장체험 ④자녀설정).
+//   tab=보여줄 mainTab · targetId=스포트라이트로 짚을 요소(data-tour-id, 문구↔화면 일치의 핵심) ·
+//   interactive=코치마크 포인터 통과(③ 도장 체험만) · openSeedEntry=그 정거장 진입 시 자동 열 시드 일기(③).
+//   ①②는 같은 kiddy 뷰지만 서로 다른 요소(편지/씨앗)를 짚어 스크롤·스포트라이트로 구분됨.
 const TOUR_STATIONS = [
-  { tab: "kiddy" },
-  { tab: "kiddy" },
-  { tab: "shelf" },
-  { tab: "children" },
+  { tab: "kiddy",    targetId: "tour-letter",   interactive: false },
+  { tab: "kiddy",    targetId: "tour-seed",     interactive: false },
+  { tab: "shelf",    targetId: "tour-stamp",    interactive: true,  openSeedEntry: "tour_e3" },
+  { tab: "children", targetId: "tour-settings", interactive: false },
 ];
 
 export default function ParentDashboard() {
@@ -179,6 +180,7 @@ export default function ParentDashboard() {
   const [tourMode, setTourMode] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [tourEntries, setTourEntries] = useState([]); // ③ 도장 체험용 시드 엔트리(메모리 복사본)
+  const [tourRect, setTourRect] = useState(null); // 현재 정거장 대상 요소의 화면 좌표(스포트라이트) — 측정으로 채움
   // 최초 진입 제안 게이트 — 유일하게 허용된 저장(플래그 1개). 없으면 제안 노출.
   const [showTourOffer, setShowTourOffer] = useState(
     () => typeof window !== "undefined" && !localStorage.getItem("kidsafe_parent_tour_seen")
@@ -234,6 +236,40 @@ export default function ParentDashboard() {
         : e
     ));
   };
+
+  // AD-7: 현재 정거장 대상(data-tour-id)을 측정해 코치마크 스포트라이트에 주입 — 문구가 '그 요소'를 실제로 짚게.
+  //   대상이 나타날 때까지(③ 일기 자동열림 등 비동기) rAF로 재시도 + 화면 안으로 스크롤. 리사이즈/스크롤 시 재측정.
+  //   못 찾으면 rect=null로 폴백(전체 딤+중앙 말풍선) — 투어가 절대 안 깨지게.
+  useEffect(() => {
+    if (!tourMode) { setTourRect(null); return; }
+    const targetId = TOUR_STATIONS[tourStep]?.targetId;
+    if (!targetId) { setTourRect(null); return; }
+    let raf = 0, tries = 0, found = false;
+    const readRect = () => {
+      const el = document.querySelector(`[data-tour-id="${targetId}"]`);
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 && r.height <= 0) return false; // 아직 레이아웃 전
+      setTourRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      return true;
+    };
+    // 새 대상이 아직 DOM에 없으면(③ 자동열기 등 비동기) 이전 정거장 rect 잔존으로 엉뚱한 위치를
+    //   짚지 않게 즉시 폐기 → 폴백 딤(중앙 말풍선). 같은 탭·동기 대상은 바로 측정돼 플래시 없음.(적대검증 LOW)
+    if (!readRect()) setTourRect(null);
+    const poll = () => {
+      const el = document.querySelector(`[data-tour-id="${targetId}"]`);
+      if (el) { try { el.scrollIntoView({ block: "center" }); } catch { /* jsdom 등 미구현 무시 */ } }
+      found = readRect();
+      if (found || tries++ > 30) return; // ~30프레임 후 포기(폴백 유지)
+      raf = requestAnimationFrame(poll);
+    };
+    poll();
+    const onMove = () => { if (found) readRect(); };
+    window.addEventListener("resize", onMove);
+    window.addEventListener("scroll", onMove, true);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onMove); window.removeEventListener("scroll", onMove, true); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourMode, tourStep]);
 
   useEffect(() => {
     if (tourMode) return; // AD-7: 투어 중엔 실데이터 조회/덮어쓰기 금지(시드만). 종료 시 tourMode=false로 재실행→복귀.
@@ -613,9 +649,11 @@ export default function ParentDashboard() {
       {/* AD-7 부모 둘러보기 코치마크 — tourMode 동안 오버레이(③만 인터랙션 허용) */}
       {tourMode && (
         <TourCoachmark
+          rect={tourRect}
+          text={PARENT_TOUR.stations[tourStep]}
           step={tourStep}
           total={TOUR_STATIONS.length}
-          interactive={TOUR_STATIONS[tourStep]?.tab === "shelf"}
+          interactive={TOUR_STATIONS[tourStep]?.interactive}
           onPrev={tourPrev}
           onNext={tourNext}
           onExit={() => exitTour(false)}
@@ -684,7 +722,7 @@ export default function ParentDashboard() {
       {/* AD-7 적대검증 LOW: 읽기전용 정거장(①②④)에서 배경 대시보드를 inert로 — 키보드 포커스/포인터가 배경 프로필 컨트롤(updateProfile('tour_raon') 등)에 닿아 서버호출·시드유출되는 것 차단. ③ 책장은 인터랙션 유지(도장 체험). */}
       <div
         data-testid="dash-main"
-        inert={tourMode && TOUR_STATIONS[tourStep]?.tab !== "shelf"}
+        inert={tourMode && !TOUR_STATIONS[tourStep]?.interactive}
         className={`transition-all duration-200 ${sidebarOpen ? "md:ml-60" : ""}`}
       >
         <div className={`mx-auto pt-6 md:py-8 pb-28 md:pb-8 ${mainTab === "schedule" ? "max-w-none px-1 md:px-3" : "max-w-6xl px-4 md:px-6"}`}>
@@ -993,7 +1031,7 @@ export default function ParentDashboard() {
               {profiles.length === 0 ? (
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
-                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} />
+                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} tourOpenEntryId={tourMode ? TOUR_STATIONS[tourStep]?.openSeedEntry : undefined} />
               )}
             </section>
           );
@@ -1041,6 +1079,7 @@ export default function ParentDashboard() {
 
         {mainTab === "children" && !loading && (
           <section
+            data-tour-id="tour-settings"
             className="p-4 md:p-6 mb-5"
             style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >

@@ -104,11 +104,11 @@ describe("AD-7 B — V3·V1 4정거장 배너 상시 + 서버호출 0", () => {
     expect(screen.getByText(PARENT_TOUR.banner)).toBeTruthy();
     expect(screen.getByText(PARENT_TOUR.stations[1])).toBeTruthy();
     expect(screen.getByText(TOUR_SEED.report.moodSummary.talkSeed)).toBeTruthy(); // 대화의 씨앗
-    // ③ 책장
+    // ③ 책장 — 진입 시 체험용 일기 자동 열림 → 도장 UI가 화면에(문구 '도장 찍어보세요'와 일치)
     fireEvent.click(screen.getByText(PARENT_TOUR.nav.next));
     expect(screen.getByText(PARENT_TOUR.banner)).toBeTruthy();
     expect(screen.getByText(PARENT_TOUR.stations[2])).toBeTruthy();
-    expect(screen.getByText(monthBookTitle("07"))).toBeTruthy(); // 시드 책장(7월 책)
+    expect(await screen.findByText("도장 찍어주기")).toBeTruthy(); // 도장 UI 노출(자동 열림)
     // ④ 자녀설정 (마지막 → '다음'이 종료 CTA)
     fireEvent.click(screen.getByText(PARENT_TOUR.nav.next));
     expect(screen.getByText(PARENT_TOUR.banner)).toBeTruthy();
@@ -118,16 +118,24 @@ describe("AD-7 B — V3·V1 4정거장 배너 상시 + 서버호출 0", () => {
     Object.values(H.api).forEach((fn) => expect(fn).not.toHaveBeenCalled());
   });
 
-  it("읽기전용(①②④)=backdrop 포인터차단 / ③(책장)=인터랙션 허용", async () => {
+  it("정거장별 data-interactive + 대상 앵커(data-tour-id)가 화면에 존재(문구↔화면 결속)", async () => {
     await enterTour();
-    // ① 읽기전용
+    // ① 편지 앵커 · 읽기전용
     expect(screen.getByTestId("tour-overlay").getAttribute("data-interactive")).toBe("0");
-    expect(screen.queryByTestId("tour-backdrop")).toBeTruthy();
-    // ③으로
-    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next)); // ②
-    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next)); // ③
+    expect(document.querySelector('[data-tour-id="tour-letter"]')).toBeTruthy();
+    // ② 씨앗 앵커 — 같은 kiddy 뷰지만 다른 대상(편지≠씨앗)을 짚음
+    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next));
+    expect(screen.getByTestId("tour-overlay").getAttribute("data-interactive")).toBe("0");
+    expect(document.querySelector('[data-tour-id="tour-seed"]')).toBeTruthy();
+    // ③ 책장 = 인터랙션 허용 + 도장 앵커(일기 자동 열림)
+    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next));
     expect(screen.getByTestId("tour-overlay").getAttribute("data-interactive")).toBe("1");
-    expect(screen.queryByTestId("tour-backdrop")).toBeNull(); // 책장 인터랙션 허용
+    expect(await screen.findByText("도장 찍어주기")).toBeTruthy();
+    expect(document.querySelector('[data-tour-id="tour-stamp"]')).toBeTruthy();
+    // ④ 자녀설정 앵커 · 읽기전용
+    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next));
+    expect(screen.getByTestId("tour-overlay").getAttribute("data-interactive")).toBe("0");
+    expect(document.querySelector('[data-tour-id="tour-settings"]')).toBeTruthy();
   });
 });
 
@@ -135,11 +143,10 @@ describe("AD-7 B — V2 ③ 도장 체험(흔적 0)", () => {
   it("도장 저장 → diaryStore·IDB 무기록 + 저장 피드백(메모리만)", async () => {
     await enterTour();
     fireEvent.click(screen.getByText(PARENT_TOUR.nav.next)); // ②
-    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next)); // ③
+    fireEvent.click(screen.getByText(PARENT_TOUR.nav.next)); // ③ — 체험용 일기(2026-07-03·도장없음) 자동 열림
+    await screen.findByText("도장 찍어주기"); // 자동 열림 정착 대기
     vi.clearAllMocks();
-    // 도장 없는 체험용 엔트리(2026-07-03)로 도장 찍기
-    fireEvent.click(screen.getByText(monthBookTitle("07")));
-    fireEvent.click(screen.getByText(shortDate("2026-07-03")));
+    // 자동 열린 체험용 엔트리에 바로 도장 찍기(수동 탐색 불필요)
     fireEvent.click(screen.getByLabelText(`도장 ${STAMP_EMOJIS[0]}`));
     fireEvent.click(screen.getByText("저장"));
     expect(H.diary.setStamp).not.toHaveBeenCalled();   // diaryStore 무기록
