@@ -127,8 +127,9 @@ const TOUR_STATIONS = [
   { tab: "shelf",    targetId: "tour-stamp",    interactive: true,  openSeedEntry: "tour_e3" },
   { tab: "schedule", targetId: "tour-schedule", interactive: false }, // ④ 스케줄러(시드 주입·읽기전용)
   { tab: "safety",   targetId: "tour-safety",   interactive: false }, // ⑤ 안전 알림(state 직접 주입·스코프우회·읽기전용)
-  { tab: "analysis", targetId: "tour-analysis", interactive: false }, // ⑥ 신규 — 시청 분석(history·insights·coach 시드·스코프우회·읽기전용)
-  { tab: "children", targetId: "tour-settings", interactive: false }, // ⑦ 자녀설정 — 항상 마지막(종료 CTA)
+  { tab: "analysis", targetId: "tour-analysis", interactive: false }, // ⑥ 시청 분석(history·insights·coach 시드·스코프우회·읽기전용)
+  { tab: "history",  targetId: "tour-history",  interactive: false }, // ⑦ 신규 — 시청 기록(시드 주입·스코프우회·읽기전용·전체삭제 실호출 차단)
+  { tab: "children", targetId: "tour-settings", interactive: false }, // ⑧ 자녀설정 — 항상 마지막(종료 CTA)
 ];
 
 export default function ParentDashboard() {
@@ -393,7 +394,7 @@ export default function ParentDashboard() {
   };
 
   const filteredHistory =
-    activeTab === "전체"
+    activeTab === "전체" || tourMode          // 투어(예시화면): 시드는 프로필 필터 우회(스코프 페이지 빈화면 방지 — AD-7 시청기록 §2-2)
       ? history
       : history.filter((item) => item.profileId === activeTab);
 
@@ -1586,6 +1587,7 @@ export default function ParentDashboard() {
                     return (
                       <div
                         key={`${item.videoId}-${index}`}
+                        data-tour-id={index === 0 ? "tour-history" : undefined}
                         className="flex flex-col gap-2 p-3 md:flex-row md:items-center md:justify-between"
                         style={{ borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", backgroundColor: "#163635" }}
                       >
