@@ -9,7 +9,7 @@ import { PARENT_TOUR } from "../utils/diaryCopy";
 //   ⚠️ rect 없으면(측정 전/대상 없음) 전체 어둡게 + 중앙 하단 말풍선(폴백 — 투어가 절대 안 깨지게).
 // props: rect({top,left,width,height}|null) · text · step · total · interactive · onPrev · onNext · onExit
 const DIM = "rgba(0,0,0,0.62)";
-const PAD = 8; // 대상 주위 여백(구멍이 요소에 딱 붙지 않게)
+const PAD = 12; // 대상 주위 여백(구멍이 요소에 딱 붙지 않게 — 예제가 여유 있게 보이도록)
 
 export default function TourCoachmark({ rect, text, step, total, interactive, onPrev, onNext, onExit }) {
   const isLast = step >= total - 1;
@@ -71,7 +71,7 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
 
       {/* ── 안내 말풍선 (대상 반대쪽 절반, 카드만 클릭 가능) ── */}
       <div
-        className={`fixed left-0 right-0 px-4 pointer-events-none ${cardAtBottom ? "bottom-0 pb-4" : "top-0 pt-24"}`}
+        className={`fixed left-0 right-0 px-4 pointer-events-none ${cardAtBottom ? "bottom-0 pb-4" : "top-0 pt-32"}`}
       >
         <div
           className="mx-auto max-w-lg rounded-2xl p-5 pointer-events-auto"

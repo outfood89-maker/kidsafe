@@ -122,10 +122,12 @@ const sortDay = (items) =>
     return 0;
   });
 
-export default function SchedulePlanner({ profileId, profileName }) {
-  const [month, setMonth] = useState(thisMonth());
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function SchedulePlanner({ profileId, profileName, tourSchedules, tourGreeting }) {
+  const isTour = tourSchedules != null; // AD-7 투어(예시 화면): fetch 스킵·시드 주입·읽기전용
+  // 투어면 시드 첫 일정의 월로 고정(실제 new Date() 월과 어긋나 빈 달이 열리는 것 방지·결정적)
+  const [month, setMonth] = useState(() => (isTour && tourSchedules.length ? tourSchedules[0].date.slice(0, 7) : thisMonth()));
+  const [schedules, setSchedules] = useState(isTour ? tourSchedules : []);
+  const [loading, setLoading] = useState(!isTour);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [selectedDate, setSelectedDate] = useState(() => todayStr()); // 'YYYY-MM-DD' (선택 날짜 — 기본 오늘)
@@ -143,17 +145,18 @@ export default function SchedulePlanner({ profileId, profileName }) {
   const [formError, setFormError] = useState("");
 
   // 키디 인사말
-  const [greeting, setGreeting] = useState(null);     // null=로딩중, ""=실패, string=완료
+  const [greeting, setGreeting] = useState(isTour ? tourGreeting : null); // null=로딩중, ""=실패, string=완료 (투어=고정 인사말)
   const [greetingKey, setGreetingKey] = useState(0);  // 새로고침용
 
   // 대화형 등록 (키디에게 말로 부탁)
-  const [agentOpen, setAgentOpen] = useState(false);  // 패널 열림 여부
+  const [agentOpen, setAgentOpen] = useState(isTour); // 패널 열림 여부 (투어=열어서 예시 칩까지 노출)
   const [agentInput, setAgentInput] = useState("");
   const [agentLog, setAgentLog] = useState([]);       // [{ role:'user'|'kiddy', text, created? }]
   const [agentBusy, setAgentBusy] = useState(false);
 
   // 일정 로드 (profileId/월/reloadKey 변화 시) — setState 는 중첩 async 안에서 (lint 회피)
   useEffect(() => {
+    if (isTour) return; // 투어: 서버 0 — 시드(tourSchedules)로 이미 렌더
     if (!profileId) return;
     let cancelled = false;
     const load = async () => {
@@ -173,6 +176,7 @@ export default function SchedulePlanner({ profileId, profileName }) {
 
   // 키디 인사말 로드 (profileId 바뀔 때 + greetingKey 새로고침 시)
   useEffect(() => {
+    if (isTour) return; // 투어: 서버 0 — greeting은 tourGreeting 고정
     if (!profileId) return;
     let cancelled = false;
     const load = async () => {
@@ -246,6 +250,7 @@ export default function SchedulePlanner({ profileId, profileName }) {
   const closeForm = () => { setFormOpen(false); resetForm(); };
 
   const handleSave = async () => {
+    if (isTour) return; // 투어: 쓰기 금지(inert 클릭차단 이중 방어)
     if (!fTitle.trim()) { setFormError("제목을 입력해주세요"); return; }
     setSaving(true); setFormError("");
     try {
@@ -268,6 +273,7 @@ export default function SchedulePlanner({ profileId, profileName }) {
 
   // 대화형 등록 전송 — 자연어를 키디가 파싱해 일정 등록 후 달력 갱신
   const sendAgent = async (raw) => {
+    if (isTour) return; // 투어: 서버 호출·쓰기 금지(예시 칩은 시연용 표시만)
     const message = (raw ?? agentInput).trim();
     if (!message || agentBusy) return;
     setAgentInput("");
@@ -295,6 +301,7 @@ export default function SchedulePlanner({ profileId, profileName }) {
   };
 
   const handleDelete = async (id) => {
+    if (isTour) return; // 투어: 삭제 금지(이중 방어)
     if (!window.confirm("이 일정을 삭제할까요?")) return;
     try {
       await deleteSchedule(id);
@@ -469,7 +476,7 @@ export default function SchedulePlanner({ profileId, profileName }) {
       </div>
 
       {/* ── 대화형 등록 (키디에게 말로 부탁) ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: C.card, border: "1px solid rgba(24,196,154,0.18)" }}>
+      <div className="rounded-2xl overflow-hidden" data-tour-id={isTour ? "tour-schedule" : undefined} style={{ backgroundColor: C.card, border: "1px solid rgba(24,196,154,0.18)" }}>
         {/* 헤더 토글 */}
         <button
           onClick={() => setAgentOpen((v) => !v)}

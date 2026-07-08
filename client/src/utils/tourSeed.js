@@ -61,3 +61,18 @@ export const TOUR_SEED = {
   report: TOUR_REPORT,
   diaryEntries: TOUR_DIARY_ENTRIES,
 };
+
+// ── AD-7 확장: 부모 '둘러보기' 탭 데모 — 스케줄러 ──
+//   ⚠️ 투어는 서버 호출 0(V1) → 이 탭들은 실데이터를 못 부른다. 시연용 정적 예시로 채운다.
+//   ⚠️ SchedulePlanner에 prop으로 직접 주입(profileId 필터 무관). 날짜는 고정 ISO(2026-07·결정적).
+//   ⚠️ 주혁 데모/라온 폴백과 무관한 '예시 화면' 공용(정직 배너 '예시 화면'과 일치).
+//   ⚠️ 문구는 팀장 §5 스탬프 verbatim(임의 생성 금지). 4종(일정/이벤트/음식/상태) + 기간 바 1건.
+export const TOUR_SCHEDULES = [
+  { id: "tour_s1", date: "2026-07-08", endDate: null,         type: "상태",   title: "콧물 조금",   time: null,    memo: "아침에 재채기 — 따뜻하게 입히기" },
+  { id: "tour_s2", date: "2026-07-10", endDate: null,         type: "일정",   title: "태권도",      time: "16:00", memo: "도복 챙기기" },
+  { id: "tour_s3", date: "2026-07-11", endDate: null,         type: "음식",   title: "저녁 카레",   time: null,    memo: null },
+  { id: "tour_s4", date: "2026-07-12", endDate: null,         type: "이벤트", title: "할머니 생신", time: "12:00", memo: null },
+  { id: "tour_s5", date: "2026-07-14", endDate: "2026-07-16", type: "이벤트", title: "가족 여행",   time: null,    memo: "속초 바다" },
+];
+// 키디 인사말(투어 고정 — 실제론 getKiddyGreeting(Haiku)가 일정 수를 읽고 만드는 자리). 팀장 §5 verbatim.
+export const TOUR_GREETING = "이번 주엔 태권도랑 가족 여행이 기다리고 있어요. 즐거운 한 주 되세요! 🌈";
