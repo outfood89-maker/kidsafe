@@ -19,3 +19,6 @@ client/public/videos/*.mp4
 
 # AD-5/AD-8 PoC 산출물·낙서 표본 (로컬 전용)
 scratch/
+
+# Claude Code 로컬 설정(머신별·비작업물)
+.claude/
