@@ -4,6 +4,7 @@ import KiddyImg from "../components/KiddyImg";
 import Typewriter from "../components/Typewriter";
 import DiaryFlow from "../components/DiaryFlow";
 import KiddyFab from "../components/KiddyFab";
+import DiaryLightbox from "../components/DiaryLightbox";
 import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
@@ -59,6 +60,7 @@ export default function FamilyShelf() {
   const [thumbs, setThumbs] = useState({}); // AD-9 §1: 열린 월 페이지 썸네일(entry.id → dataURL)
   const [detailImg, setDetailImg] = useState(null); // AD-5: 상세 페이지 그림(IDB 로드)
   const [detailDrawing, setDetailDrawing] = useState(null); // AD-8: 원본 낙서(이어그리기 채택본 병치)
+  const [lightbox, setLightbox] = useState(null); // 라이트박스 {src,alt} — 상세 그림 탭 시 확대
   const [detailBusy, setDetailBusy] = useState(false); // 그림 생성/재생성 중
   const [remaking, setRemaking] = useState(false); // AD-5 §3: 다시 만들기 확인 다이얼로그
   // AD-8b: 이어그리기 대기 중 이탈 → 완성본 복귀 노출
@@ -168,6 +170,7 @@ export default function FamilyShelf() {
     let alive = true;
     setDetailImg(null);
     setDetailDrawing(null);
+    setLightbox(null); // 페이지 전환 시 열린 라이트박스도 닫힘
     setLetterOpen(false); // AD-6 §3: 상세 전환 시 편지 접힘 초기화
     try { voice.stop(); } catch { /* 무시 */ } // AD-6 §3 유령TTS 차단(X-2 규율): 편지 낭독 중 상세 이탈·엔트리 전환 시 부모 편지 음성 중단(화면 단서 없는 유령 재생 방지)
     // AD-6 §3: 상세 열람 = 확인 → 도장 seen 처리(아이 홈 알림 자연 소멸). 표시는 seenAt 무관하게 항상.
@@ -441,16 +444,16 @@ export default function FamilyShelf() {
               {detailDrawing ? (
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
-                    <img src={detailDrawing} alt="내 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <img src={detailDrawing} alt="내 그림" onClick={() => setLightbox({ src: detailDrawing, alt: "내 그림" })} role="button" aria-label="크게 보기" className="cursor-zoom-in" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
                   <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
-                    {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
+                    {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" onClick={() => setLightbox({ src: detailImg, alt: "키디랑 같이 그린 그림" })} role="button" aria-label="크게 보기" className="cursor-zoom-in" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>
                 </div>
               ) : (
                 <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                   {detailImg
-                    ? <img src={detailImg} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    ? <img src={detailImg} alt="오늘의 그림일기 그림" onClick={() => setLightbox({ src: detailImg, alt: "오늘의 그림일기 그림" })} role="button" aria-label="크게 보기" className="cursor-zoom-in" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     : <span className="text-sm font-bold px-4">{IMAGE_PLACEHOLDER}</span>}
                 </div>
               )}
@@ -594,6 +597,7 @@ export default function FamilyShelf() {
           }}
         />
       )}
+      {lightbox && <DiaryLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
     </div>
   );
 }

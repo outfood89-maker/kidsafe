@@ -132,6 +132,12 @@ export const READ_INTRO = "다 됐다! 내가 읽어줄게, 들어봐~ 📖";
 // ⑤ 그림 플레이스홀더 (§1.6 verbatim — 팀장 수정본)
 export const IMAGE_PLACEHOLDER = "그림은 키디가 열심히 연습하고 있어! 조금만 기다려 줘 ✏️";
 
+// 라이트박스(그림 탭 → 확대) 카피 — 4~7세 쉬운 구어체. 부모 화면도 공용(중립).
+export const LIGHTBOX = {
+  close: "닫기",
+  hint: "아무 곳이나 누르면 닫혀요",
+};
+
 // ⑥ 마무리 (§7-⑥ / §1.6 v0 한정 대체 verbatim) — 자랑 분기는 v0 범위 밖
 export const KEEP = {
   ask: "이 이야기, 우리 책장에 간직해 둘까?", // 버튼: 간직하기 / 안 할래

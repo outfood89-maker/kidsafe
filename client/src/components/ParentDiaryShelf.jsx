@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import * as diary from "../utils/diaryStore";
 import { getImage } from "../utils/diaryImageStore";
+import DiaryLightbox from "./DiaryLightbox";
 import {
   SHELF_NAME, IMAGE_PLACEHOLDER, SHELF_FOOTER, monthBookTitle, monthBookMeta,
   STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT,
@@ -46,6 +47,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   const [thumbs, setThumbs] = useState({});
   const [detailImg, setDetailImg] = useState(null);
   const [detailDrawing, setDetailDrawing] = useState(null);
+  const [lightbox, setLightbox] = useState(null); // 라이트박스 {src,alt} — 상세 그림 탭 시 확대
   // 도장·편지 쓰기 로컬 상태(페이지 상세에서만) — openEntry.stamp로 초기화
   const [selEmoji, setSelEmoji] = useState("");
   const [letterText, setLetterText] = useState("");
@@ -79,7 +81,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   // 페이지 상세 열릴 때 IDB 그림 로드 + 도장/편지 입력값을 그 엔트리의 현재 stamp로 초기화
   useEffect(() => {
     let alive = true;
-    setDetailImg(null); setDetailDrawing(null);
+    setDetailImg(null); setDetailDrawing(null); setLightbox(null); // 페이지 전환 시 열린 라이트박스도 닫힘
     if (openEntry?.imageId) getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
     if (openEntry?.drawingId) getImage(openEntry.drawingId).then((url) => { if (alive) setDetailDrawing(url); }).catch(() => {});
     setSelEmoji(openEntry?.stamp?.emoji || "");
@@ -141,16 +143,16 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
           {detailDrawing ? (
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
-                <img src={detailDrawing} alt="아이 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <img src={detailDrawing} alt="아이 그림" onClick={() => setLightbox({ src: detailDrawing, alt: "아이 그림" })} role="button" aria-label="크게 보기" className="cursor-zoom-in" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
               </div>
               <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93" }}>
-                {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
+                {detailImg && <img src={detailImg} alt="키디랑 같이 그린 그림" onClick={() => setLightbox({ src: detailImg, alt: "키디랑 같이 그린 그림" })} role="button" aria-label="크게 보기" className="cursor-zoom-in" style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
               </div>
             </div>
           ) : (
             <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
               {detailImg
-                ? <img src={detailImg} alt="그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                ? <img src={detailImg} alt="그림일기 그림" onClick={() => setLightbox({ src: detailImg, alt: "그림일기 그림" })} role="button" aria-label="크게 보기" className="cursor-zoom-in" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                 : <span className="text-sm font-bold px-4">{IMAGE_PLACEHOLDER}</span>}
             </div>
           )}
@@ -210,6 +212,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
               : { backgroundColor: "#18C49A", color: "#08160F" }}
           >{saved ? "저장했어요 ✓" : "저장"}</button>
         </div>
+        {lightbox && <DiaryLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       </div>
     );
   }

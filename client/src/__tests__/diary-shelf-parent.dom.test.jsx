@@ -134,3 +134,28 @@ describe("AD-6 §2 V8 — 저장 버튼 피드백(눌림 확인)", () => {
     expect(screen.queryByText("저장했어요 ✓")).toBeNull();
   });
 });
+
+describe("라이트박스 — 상세 그림 탭 → 확대(부모 열람)", () => {
+  it("그림 탭 → 라이트박스 열림(같은 src) / 배경 탭 → 닫힘", async () => {
+    H.img.getImage.mockResolvedValue("data:image/png;base64,DRAW1"); // IDB 그림 로드
+    diaryStore.saveEntry(PID, { id: `${PID}_img`, date: "2026-06-11", sentences: ["그림 있는 날."], moodEmoji: "🙂", imageId: "img_1", keptAt: "2026-06-11" });
+    render(<ParentDiaryShelf profileId={PID} />);
+    fireEvent.click(screen.getByText(monthBookTitle("06")));
+    fireEvent.click(screen.getByText(shortDate("2026-06-11")));
+    const img = await screen.findByLabelText("크게 보기"); // 비동기 IDB 로드 후 클릭 대상 노출
+    expect(screen.queryByTestId("diary-lightbox")).toBeNull(); // 아직 안 열림
+    fireEvent.click(img);
+    const lb = screen.getByTestId("diary-lightbox");           // 확대 오버레이 열림
+    expect(lb.querySelector("img").getAttribute("src")).toBe("data:image/png;base64,DRAW1");
+    fireEvent.click(lb);                                        // 배경 탭 → 닫힘
+    expect(screen.queryByTestId("diary-lightbox")).toBeNull();
+  });
+
+  it("그림 없는 페이지(플레이스홀더)는 확대 대상 없음", () => {
+    H.img.getImage.mockResolvedValue(null); // 그림 없음
+    seed(); // imageId 없는 엔트리
+    openDetail();
+    expect(screen.queryByLabelText("크게 보기")).toBeNull(); // 클릭 가능한 그림 없음
+    expect(screen.getByText(/그림은 키디가/)).toBeTruthy();   // 플레이스홀더 텍스트만
+  });
+});
