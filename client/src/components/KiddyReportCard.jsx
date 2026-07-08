@@ -80,14 +80,16 @@ const buildSeedFallback = (name, counts, highlights) => {
   return `오늘 저녁 ${who}에게 “오늘 제일 재밌었던 게 뭐야?” 하고 물어봐 주세요.`;
 };
 
-export default function KiddyReportCard({ profileId, profileName, avatarId, watched, starCount = 0 }) {
-  const [loading, setLoading] = useState(true);
+export default function KiddyReportCard({ profileId, profileName, avatarId, watched, starCount = 0, report: reportProp }) {
+  const [loading, setLoading] = useState(!reportProp); // 투어 주입(AD-7): report prop 있으면 즉시 로딩 해제
   const [error, setError] = useState("");
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState(reportProp || null);
 
   // ⚠️ 부모(ParentDashboard)가 key={profileId} 로 remount 시키므로 profileId 는 생애 내 고정.
   //    초기 state(loading=true, report=null)에서 시작하면 되니 effect 안에서 동기 setState 불필요.
   useEffect(() => {
+    // 투어 주입(AD-7): reportProp 있으면 서버 fetch 스킵 — 메모리 시드만 렌더. (없으면 기존 경로 그대로)
+    if (reportProp) { setReport(reportProp); setLoading(false); return; }
     if (!profileId) return;
     let cancelled = false;
     getCheckinReport(profileId)
@@ -95,7 +97,7 @@ export default function KiddyReportCard({ profileId, profileName, avatarId, watc
       .catch(() => { if (!cancelled) setError("리포트를 불러오지 못했어요. 잠시 후 다시 시도해주세요."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [profileId]);
+  }, [profileId, reportProp]);
 
   // ── 로딩 ──
   if (loading) {

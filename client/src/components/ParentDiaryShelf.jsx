@@ -38,7 +38,8 @@ const StampMark = ({ emoji, size = 64 }) => (
   </div>
 );
 
-export default function ParentDiaryShelf({ profileId }) {
+// AD-7 투어 주입(선택): entriesProp 있으면 diaryStore 무접촉(메모리 시드만) / onStamp 있으면 도장도 메모리·부모콜백만.
+export default function ParentDiaryShelf({ profileId, entries: entriesProp, onStamp }) {
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [openMonth, setOpenMonth] = useState(null);
@@ -52,8 +53,11 @@ export default function ParentDiaryShelf({ profileId }) {
 
   useEffect(() => {
     setOpenId(null); setOpenMonth(null);
+    // 투어 주입(AD-7): entriesProp 있으면 diaryStore 무접촉 — 메모리 시드만 렌더(실경로는 기존대로 diary.getEntries).
+    if (entriesProp) { setEntries(entriesProp); return; }
     try { setEntries(profileId ? diary.getEntries(profileId) : []); }
     catch { setEntries([]); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId]);
 
   const months = useMemo(() => {
@@ -103,7 +107,19 @@ export default function ParentDiaryShelf({ profileId }) {
 
   // 도장·편지 저장(함께) → 재조회. 이모지 없으면 저장 불가(도장 = 이모지 1개 필수, 편지 선택).
   const saveStamp = () => {
-    if (!profileId || !openId || !selEmoji) return;
+    if (!openId || !selEmoji) return;
+    // 투어 주입(AD-7): onStamp 경유면 diaryStore·서버 무접촉 — 부모 콜백 + 로컬 메모리 도장 반영만.
+    if (onStamp) {
+      try { onStamp(openId, { emoji: selEmoji, letter: letterText }); } catch { /* 무시 */ }
+      setEntries((prev) => prev.map((e) =>
+        e.id === openId
+          ? { ...e, stamp: { emoji: selEmoji, letter: String(letterText || "").slice(0, 30), at: e.stamp?.at || "", seenAt: null } }
+          : e
+      ));
+      setSaved(true);
+      return;
+    }
+    if (!profileId) return;
     try {
       diary.setStamp(profileId, openId, { emoji: selEmoji, letter: letterText });
       setEntries(diary.getEntries(profileId));
