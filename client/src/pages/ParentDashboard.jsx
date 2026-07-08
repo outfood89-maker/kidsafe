@@ -121,15 +121,22 @@ const MAIN_NAV = [
 //   tab=보여줄 mainTab · targetId=스포트라이트로 짚을 요소(data-tour-id, 문구↔화면 일치의 핵심) ·
 //   interactive=코치마크 포인터 통과(③ 도장 체험만) · openSeedEntry=그 정거장 진입 시 자동 열 시드 일기(③).
 //   ①②는 같은 kiddy 뷰지만 서로 다른 요소(편지/씨앗)를 짚어 스크롤·스포트라이트로 구분됨.
+// AD-7 v2: 8→13 정거장 — 탭당 '소개→사용법' 분할, 각 스텝이 자기 영역만 스포트라이트(오너 실기기 피드백).
+//   PARENT_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭 필수(어긋나면 빈 말풍선). 자녀설정은 항상 마지막.
 const TOUR_STATIONS = [
-  { tab: "kiddy",    targetId: "tour-letter",   interactive: false },
-  { tab: "kiddy",    targetId: "tour-seed",     interactive: false },
-  { tab: "shelf",    targetId: "tour-stamp",    interactive: true,  openSeedEntry: "tour_e3" },
-  { tab: "schedule", targetId: "tour-schedule", interactive: false }, // ④ 스케줄러(시드 주입·읽기전용)
-  { tab: "safety",   targetId: "tour-safety",   interactive: false }, // ⑤ 안전 알림(state 직접 주입·스코프우회·읽기전용)
-  { tab: "analysis", targetId: "tour-analysis", interactive: false }, // ⑥ 시청 분석(history·insights·coach 시드·스코프우회·읽기전용)
-  { tab: "history",  targetId: "tour-history",  interactive: false }, // ⑦ 신규 — 시청 기록(시드 주입·스코프우회·읽기전용·전체삭제 실호출 차단)
-  { tab: "children", targetId: "tour-settings", interactive: false }, // ⑧ 자녀설정 — 항상 마지막(종료 CTA)
+  { tab: "kiddy",    targetId: "tour-letter",            interactive: false },                          // ① 편지
+  { tab: "kiddy",    targetId: "tour-seed",              interactive: false },                          // ② 씨앗
+  { tab: "shelf",    targetId: "tour-stamp",             interactive: true,  openSeedEntry: "tour_e3" }, // ③ 책장(도장체험)
+  { tab: "schedule", targetId: "tour-schedule",          interactive: false },                          // ④a 스케줄 — 말로 부탁
+  { tab: "schedule", targetId: "tour-schedule-calendar", interactive: false },                          // ④b 스케줄 — 달력 직접 작성
+  { tab: "safety",   targetId: "tour-care-signal",       interactive: false },                          // ⑤a 안전 — 위기 신호(💛)
+  { tab: "safety",   targetId: "tour-safety",            interactive: false },                          // ⑤b 안전 — 위험 영상 알림
+  { tab: "safety",   targetId: "tour-blocked-keywords",  interactive: false },                          // ⑤c 안전 — 걸러낼 키워드
+  { tab: "analysis", targetId: "tour-analysis",          interactive: false },                          // ⑥a 분석 — AI 키디 코치
+  { tab: "analysis", targetId: "tour-analysis-charts",   interactive: false, openSection: "precision" }, // ⑥b 분석 — 그래프(정밀검수 강제펼침)
+  { tab: "history",  targetId: "tour-history",           interactive: false },                          // ⑦ 시청 기록
+  { tab: "children", targetId: "tour-settings",          interactive: false },                          // ⑧a 자녀설정 — 소개
+  { tab: "children", targetId: "tour-settings-controls", interactive: false },                          // ⑧b 자녀설정 — 설정 3종(종료 CTA)
 ];
 
 export default function ParentDashboard() {
@@ -240,6 +247,7 @@ export default function ParentDashboard() {
     setTourMode(false);      // tourMode=false → fetchData effect 재실행 → 실데이터 복귀
     setTourEntries([]);      // 시드 폐기(메모리)
     setInsights(null); setCoach(null); // ⑥ 시청 분석 시드 폐기 — 종료 후 실뷰에 예시 코치/차트 잔존 금지(history는 fetchData 재실행이 실데이터로 복귀)
+    setOpenSec({ coach: true, precision: false, habit: false }); // AD-7 v2: ⑥b 강제펼침 원복(초기값=useState 기본값과 동일) — 투어가 실뷰 아코디언 상태 오염 방지
     // ⚠️ 시드 profiles를 능동 폐기 — 재조회 실패 시에도 가짜 아이(tour_raon)가 실뷰에 남아
     //    getCheckinReport("tour_raon") 등 실서버 호출을 유발하지 않게(AD-7 적대검증 MEDIUM).
     setProfiles([]); setProfileBadges({});
@@ -301,6 +309,14 @@ export default function ParentDashboard() {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourMode, tourStep]);
+
+  // AD-7 v2: openSection 있는 정거장(⑥b) 진입 시 해당 아코디언 강제 펼침 — 차트가 접힘 언마운트라 '그래프가 안 보이는' 문제 해결.
+  //   ⚠️ tourStep-keyed(측정 effect와 동일 패턴). gotoTourStep에 넣으면 step0(startTour 직접 진입)에서 누락됨.
+  useEffect(() => {
+    if (!tourMode) return;
+    const sec = TOUR_STATIONS[tourStep]?.openSection;
+    if (sec) setOpenSec((p) => (p[sec] ? p : { ...p, [sec]: true })); // 이미 열려있으면 no-op(무한 setState 방지)
   }, [tourMode, tourStep]);
 
   useEffect(() => {
@@ -1326,9 +1342,10 @@ export default function ParentDashboard() {
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
               <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                {visibleProfiles.map((profile) => (
+                {visibleProfiles.map((profile, index) => (
                   <div
                     key={profile.id}
+                    data-tour-id={index === 0 ? "tour-settings-controls" : undefined}
                     className="relative flex flex-col items-center p-4"
                     style={{ borderRadius: "14px", backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
@@ -1800,8 +1817,8 @@ export default function ParentDashboard() {
                   )}
                 </div>
 
-                {/* 🔬 정밀 검수 분석 (아코디언) */}
-                <div className="mb-4 rounded-2xl overflow-hidden" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {/* 🔬 정밀 검수 분석 (아코디언) — 바깥 컨테이너는 openSec 무관 항상 마운트라 tour-analysis-charts 앵커 안전(⑥b 강제펼침 시 차트가 안에서 펼쳐짐) */}
+                <div className="mb-4 rounded-2xl overflow-hidden" data-tour-id="tour-analysis-charts" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <button type="button" onClick={() => toggleSec("precision")}
                     className="w-full flex items-center justify-between gap-3 p-5 text-left transition hover:opacity-90">
                     <div className="flex items-center gap-2">
@@ -2062,7 +2079,7 @@ export default function ParentDashboard() {
         {mainTab === "safety" && (<>
         {/* 🚨 위기 신호(P §4) — 부모에게 '존재만' 알림. 무슨 말이었는지는 어디에도 없음. 카피는 팀장 검수 verbatim. */}
         {visibleCareSignals.length > 0 && (
-          <section className="mb-6">
+          <section className="mb-6" data-tour-id="tour-care-signal">
             <div className="flex flex-col gap-3">
               {visibleCareSignals.map((sig) => (
                 <div
@@ -2251,6 +2268,7 @@ export default function ParentDashboard() {
 
         {/* 차단 키워드 관리 */}
         <section
+          data-tour-id="tour-blocked-keywords"
           className="p-4 md:p-6 mb-5"
           style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
         >

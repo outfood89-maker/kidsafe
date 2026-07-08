@@ -574,7 +574,7 @@ export default function SchedulePlanner({ profileId, profileName, tourSchedules,
       </div>
 
       {/* ── 월간 달력 ── */}
-      <div ref={calRef} className="relative rounded-2xl p-2 md:p-3" style={{ backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div ref={calRef} data-tour-id={isTour ? "tour-schedule-calendar" : undefined} className="relative rounded-2xl p-2 md:p-3" style={{ backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)" }}>
         {/* 월 네비 */}
         <div className="flex items-center justify-between mb-3">
           <button onClick={() => setMonth(shiftMonth(month, -1))} className="rounded-lg p-2 transition hover:opacity-80" style={{ color: C.sub, backgroundColor: C.inner }}>
