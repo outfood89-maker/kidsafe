@@ -121,7 +121,6 @@ async def _to_image_prompt(req: "GenerateRequest") -> str:
         resp = await client.messages.create(
             model=IMAGE_PROMPT_MODEL,
             max_tokens=500,
-            temperature=0.4,
             system=_build_system_prompt(req.profileGender or ""),
             messages=[{"role": "user", "content": user}],
         )
@@ -188,7 +187,9 @@ CONTINUE_PRESERVE = (
     "Continue and complete this child's own drawing. "
     "Carefully preserve its original composition, shapes, and every element the child drew — "
     "keep the child's lines and forms clearly recognizable; do not remove, replace, or redraw what they made. "
-    "Only add gentle finishing touches: fill with soft crayon color, add a simple matching background and sky, "
+    "Add gentle finishing touches: fill with soft crayon color, and add a simple background and sky that gently "
+    "reflect the diary's place/setting when there is one (e.g., playground, sea, home) — keep it strictly BEHIND "
+    "the child's drawing, in the margins and background only, never covering or altering the shapes the child drew, "
     "in the same hand-drawn style."
 )
 
@@ -202,26 +203,42 @@ class ContinueRequest(BaseModel):
     profileGender: Optional[str] = ""
 
 
+def _continue_character_block(gender: str) -> str:
+    """이어그리기 전용 인물 규정 — 공용 _character_block의 'mother, father, friends' 나열이 '없는 사람'까지
+    그려 넣게 유도하는 누수를 막는다(실측: 일기에 동반자 없음에도 엄마·아빠가 추가됨). 주인공 1명만이 기본."""
+    main = _main_char(gender)
+    return (
+        f"The main character is {main} with black hair — and is the ONLY person in the picture "
+        "unless the diary explicitly names companions. Everyone shown is Korean with black hair. "
+        "Do NOT add any other people — no extra children, friends, mother, or father — unless the diary mentions them."
+    )
+
+
 def _continue_system_prompt(gender: str) -> str:
     """보존 우선 편집 프롬프트 조립 — 아이 그림 절대 보존, 일기는 색감·분위기·배경만 참고(장면 미주입)."""
     return (
         "너는 아이가 직접 그린 그림(낙서)을 '이어 그리기'로 완성하는 이미지 편집 프롬프트를 만드는 변환기야.\n"
         "★ 최우선 규칙: 아이가 그린 것을 절대 지우거나 바꾸지 말고 그대로 보존해. 완성본에서 아이 그림이 또렷이 알아보여야 해(구도·형태 보존). "
-        "일기 내용으로 새 장면·인물·사물을 아이 그림 위에 강제로 그려 넣지 말 것.\n\n"
+        "새 인물·사물을 아이가 그린 전경(주인공·주요 형태) 위에 덮어 그리지 말 것 — 단, 아래 참고 범위대로 '배경'에는 일기 장소를 은은히 반영해도 좋아.\n"
+        "★ 인물 수 규칙: 등장인물은 일기 주인공(이 일기를 쓴 아이) 한 명이 기본이야. 일기 문장에 함께한 사람이 명시된 경우(예: '엄마랑', '친구랑')에만 그 인원만 추가하고, 명시가 없으면 친구·가족·다른 아이를 절대 새로 그려 넣지 마. 출력 이미지 프롬프트에도 일기에 실제 나오지 않는 사람(엄마·아빠·친구 등)은 나열하지 말 것 — 실제 등장하는 사람만 묘사해.\n\n"
         "[고정 스타일 블록 — 맨 앞 포함]\n" + STYLE_BLOCK + "\n\n"
         "[보존 지시 — 반드시 그대로 포함]\n" + CONTINUE_PRESERVE + "\n\n"
-        "[인물 규정 — 새로 더해지는 사람이 있으면 이 규정 따름]\n" + _character_block(gender) + "\n\n"
-        "일기 맥락(문장·기분·날씨)은 오직 색감·분위기·배경 톤 결정에만 참고해.\n\n"
+        "[인물 규정 — 이어그리기 전용: 주인공 1명 기본, 일기에 명시된 동반자만]\n" + _continue_character_block(gender) + "\n\n"
+        "일기 맥락 참고 범위: 색감·분위기는 기분/날씨로, '배경'은 일기 속 장소를 은은하게 반영하는 데까지만 참고해(전경엔 손대지 말 것). "
+        "아이가 그림에 넣고 싶어 고른 것(child_pick)이 있으면 배경이나 여백에 작게 더해도 좋아 — 단 아이가 그린 선을 덮지 말 것.\n"
+        "키디(작은 초록 아기공룡)를 배경이나 여백에 작지만 또렷이 알아볼 수 있게(a small but clearly recognizable little green dinosaur) 함께 그려 넣어(브랜드 각인 — 안 보이면 의미 없음) — 단 아이가 그린 선·형태 위에는 덮지 말 것.\n\n"
         "[안전 제약 — 맨 뒤 포함]\n" + SAFETY_BLOCK + "\n\n"
         "출력은 오직 JSON 하나: {\"prompt\": \"...\"} (영어 한 문단, 설명·코드펜스 금지)."
     )
 
 
-def _fallback_continue_prompt(mood: str, gender: str) -> str:
-    """Sonnet 실패 시 코드 조립 폴백 — 보존 지시·안전블록 보장(관문 통과 프롬프트 계보)."""
+def _fallback_continue_prompt(mood: str, gender: str, child_pick: str = "") -> str:
+    """Sonnet 실패 시 코드 조립 폴백 — 보존 지시·안전블록 보장(관문 통과 프롬프트 계보). child_pick은 배경/여백에만(전경 보존)."""
     tone = "in calm, gentle pastel colors" if mood in ("😢", "😡") else "in bright cheerful pastel colors"
+    pick = (child_pick or "").strip()
+    extra = f" You may add {pick} softly in the background or margins, never over the child's own lines." if pick else ""
     return (
-        f"{STYLE_BLOCK} {CONTINUE_PRESERVE} Color it {tone}. {_character_block(gender)} "
+        f"{STYLE_BLOCK} {CONTINUE_PRESERVE} Color it {tone}.{extra} {_character_block(gender)} "
         f"Optionally include a small green baby dinosaur friend if it fits naturally. {SAFETY_BLOCK}"
     )
 
@@ -234,12 +251,11 @@ async def _to_continue_prompt(req: ContinueRequest) -> str:
             f"일기 문장: {' '.join(req.sentences)}\n"
             f"오늘 기분: {req.moodEmoji or '(미상)'}\n"
             f"날씨: {req.weatherKey or '(미상)'}\n"
-            f"(참고만: 아이가 고른 것 {req.childPick or '(없음)'})"
+            f"아이가 그림에 넣고 싶어 고른 것(child_pick): {req.childPick or '(없음)'} — 배경/여백에 작게 더해도 좋음(전경 위에 덮지 말 것)"
         )
         resp = await client.messages.create(
             model=IMAGE_PROMPT_MODEL,
-            max_tokens=500,
-            temperature=0.4,
+            max_tokens=900,  # 한 문단 영어 프롬프트 + JSON 래퍼가 500에서 잘려 JSON 미완성→폴백되는 사고 방지(실측). 한글 아닌 영어라 900이면 충분.
             system=_continue_system_prompt(req.profileGender or ""),
             messages=[{"role": "user", "content": user}],
         )
@@ -254,7 +270,7 @@ async def _to_continue_prompt(req: ContinueRequest) -> str:
             return prompt
     except Exception as e:
         print("[diary_image] 이어그리기 Sonnet 변환 실패 → 폴백:", type(e).__name__, "-", str(e)[:200])  # Anthropic 오류 메시지엔 키 없음(헤더에만) — 안전
-    return _fallback_continue_prompt(req.moodEmoji or "", req.profileGender or "")
+    return _fallback_continue_prompt(req.moodEmoji or "", req.profileGender or "", req.childPick or "")
 
 
 def _decode_drawing(b64: str):

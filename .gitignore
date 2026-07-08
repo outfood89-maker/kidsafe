@@ -20,5 +20,8 @@ client/public/videos/*.mp4
 # AD-5/AD-8 PoC 산출물·낙서 표본 (로컬 전용)
 scratch/
 
+# 테스트 산출물(이미지 생성 등 로컬 실측 결과·낙서 표본 — 버전 관리 제외)
+_test_out/
+
 # Claude Code 로컬 설정(머신별·비작업물)
 .claude/
