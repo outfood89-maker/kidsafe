@@ -102,7 +102,7 @@ export default function KiddyReportCard({ profileId, profileName, avatarId, watc
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <KiddyImg pose="hello" size={120} float />
-        <p className="mt-4 text-sm" style={{ color: C.sub }}>키디가 {profileName || "아이"}의 한 주를 정리하고 있어요…</p>
+        <p className="mt-4 text-sm" style={{ color: C.sub }}>키디가 {childStem(profileName || "아이")}의 한 주를 정리하고 있어요…</p>
       </div>
     );
   }
@@ -160,7 +160,7 @@ export default function KiddyReportCard({ profileId, profileName, avatarId, watc
         </div>
         <div className="min-w-0">
           <h2 className="text-lg font-extrabold leading-tight" style={{ color: C.ink }}>
-            {profileName || "아이"}의 이번 주
+            {childStem(profileName || "아이")}의 이번 주
           </h2>
           {range && <p className="mt-0.5 text-xs" style={{ color: C.sub }}>{range}</p>}
         </div>
@@ -181,7 +181,7 @@ export default function KiddyReportCard({ profileId, profileName, avatarId, watc
             <KiddyImg pose="hello" size={56} float />
           </div>
           <p className="text-sm font-extrabold" style={{ color: C.accent }}>
-            키디가 전하는 {profileName || "아이"}의 한 주
+            키디가 전하는 {childStem(profileName || "아이")}의 한 주
           </p>
         </div>
         <Typewriter

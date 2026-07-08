@@ -43,6 +43,7 @@ import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 import ParentDiaryShelf from "../components/ParentDiaryShelf"; // AD-6 §2: 부모 가족 책장(열람+도장·편지)
 import { DIARY_V0 } from "../utils/diaryStore"; // AD-6: feature/diary-v0 게이트
+import { childStem } from "../utils/josa"; // 아이 이름 애칭형 어간(받침 있으면 '이' 붙임: 주혁→주혁이) — 앱 전역 공용
 
 const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 
@@ -597,7 +598,7 @@ export default function ParentDashboard() {
             <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
             <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
               {scopedProfile
-                ? `${scopedProfile.name} · ${scopedProfile.age}세 전용 부모 페이지`
+                ? `${childStem(scopedProfile.name)} · ${scopedProfile.age}세 전용 부모 페이지`
                 : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
             </p>
           </section>
@@ -1817,7 +1818,7 @@ export default function ParentDashboard() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xl">💛</span>
                     <h3 className="text-base md:text-lg font-extrabold" style={{ color: "#F5D97A" }}>
-                      {sig.profileName ? `${sig.profileName} — 오늘의 관심 신호` : "오늘의 관심 신호"}
+                      {sig.profileName ? `${childStem(sig.profileName)} — 오늘의 관심 신호` : "오늘의 관심 신호"}
                     </h3>
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "#EAE3C8", whiteSpace: "pre-line" }}>
