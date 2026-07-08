@@ -864,7 +864,7 @@ export default function Landing() {
           {/* 제목·리드 (verbatim) */}
           <div className={`text-center mb-16 ${fade(previewInView)}`}>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight" style={{ color: "#EAF5F1", wordBreak: "keep-all" }}>그리고 저녁, 부모님이 돌아왔을 때</h2>
-            <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>&quot;오늘 어땠어?&quot;라는 대답 없는 질문 대신 — &quot;오늘 이런 기분이었다며?&quot;라고 물을 수 있게. 키디가 아이의 하루를 편지로 전해드려요.</p>
+            <p className="mt-4 text-base font-medium max-w-2xl mx-auto leading-relaxed" style={{ color: "#90A9A8", wordBreak: "keep-all" }}>&quot;오늘 어땠어?&quot;라는 대답 없는 질문 대신 — &quot;오늘 이런 게 즐거웠구나?&quot; 하고 아이 마음에 먼저 닿을 수 있게. 키디가 아이의 하루를 편지로 전해드려요.</p>
           </div>
 
           {/* 리포트 컷 — week_letter.png + 기존 체크리스트(구 리포트 컷에서 유지) */}
