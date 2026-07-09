@@ -87,7 +87,7 @@ describe("AD-6 §2 V5 — 읽기전용(아이 쓰기 버튼 부재)", () => {
   it("지우기·수정·다시그리기·찢기 버튼 없음", () => {
     seed();
     openDetail();
-    expect(screen.queryByText(/다시 그리기|다시 그려|다시 만들래|찢|지우기|✏️ 수정/)).toBeNull();
+    expect(screen.queryByText(/다시 그리기|다시 그릴래|처음부터 다시 할래|찢|지우기|✏️ 수정/)).toBeNull(); // 라벨 명확화(7/9): REGEN "그림을 다시 그릴래!" / REMAKE "처음부터 다시 할래!"
   });
 });
 

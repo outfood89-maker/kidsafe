@@ -275,7 +275,19 @@ export default function FamilyShelf() {
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <button onClick={() => navigate("/kids")} className="text-sm font-bold" style={{ color: "#90A9A8" }}>‹ 홈으로</button>
         <p className="text-sm font-extrabold" style={{ color: "#5FE0BC" }}>📚 {SHELF_NAME}</p>
-        <span className="w-12" />
+        {/* B04: 부모 소개 런처 — 오너 지시(7/9) 오른쪽 상단으로 이동(더 잘 보이게). 브라우징 뷰에서만 노출, 그 외엔 스페이서로 제목 중앙 유지. */}
+        {diary.DIARY_V0 && !torn && !openEntry && !writing && !bridge && !openMonth && profile ? (
+          <button
+            data-testid="diary-tour-btn"
+            onClick={() => setDiaryTourOpen(true)}
+            className="whitespace-nowrap text-[11px] font-bold rounded-full px-2.5 py-1 transition hover:opacity-80"
+            style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}
+          >
+            ✨ 일기 만드는 과정 보기
+          </button>
+        ) : (
+          <span className="w-12" />
+        )}
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
@@ -337,20 +349,6 @@ export default function FamilyShelf() {
                 <span className="shrink-0 text-xl font-black" style={{ color: "#3A1A0E" }}>›</span>
               </button>
             )}
-          </div>
-        )}
-
-        {/* B04: 부모 소개 — 일기 만드는 과정 보기(tourMode DiaryFlow). 책장 "?"(B05)와 구분: 이건 '만드는 과정'. 위치·문구는 스샷으로 확정. */}
-        {diary.DIARY_V0 && !torn && !openEntry && !writing && !bridge && !openMonth && profile && (
-          <div className="mb-6 -mt-3 flex justify-center">
-            <button
-              data-testid="diary-tour-btn"
-              onClick={() => setDiaryTourOpen(true)}
-              className="text-xs font-bold rounded-full px-3 py-1.5 transition hover:opacity-80"
-              style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}
-            >
-              ✨ 일기 만드는 과정 보기
-            </button>
           </div>
         )}
 
