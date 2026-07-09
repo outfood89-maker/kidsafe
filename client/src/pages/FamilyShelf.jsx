@@ -9,7 +9,9 @@ import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy";
+import useTour from "../hooks/useTour"; // 항목2-⑤: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
+import TourCoachmark from "../components/TourCoachmark";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -41,6 +43,29 @@ const topMood = (entries) => {
   return sorted[0]?.[0] || "📔";
 };
 
+// ── 항목2-⑤: 가족 책장 부모 소개 튜토리얼(방식: 데모 시드 + 스텝별 뷰 구동) ──
+//   FAMILYSHELF_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭. 뷰 상호배타라 데모 일기 1편을 state에 시드하고 스텝마다 뷰를 연다.
+export const FAMILYSHELF_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용
+  { targetId: "shelf-write", interactive: false }, // ① 오늘 쓰기 카드(기본 뷰)
+  { targetId: "shelf-book",  interactive: false }, // ② 월별 책 표지(기본 뷰)
+  { targetId: "shelf-entry", interactive: false }, // ③ 상세 글+그림(openId 구동)
+  { targetId: "shelf-stamp", interactive: false }, // ④ 도장/편지(openId 유지)
+];
+// 튜토리얼용 데모 일기 1편 — 도장·편지 포함, 이번 달(7월)로. state만(localStorage·IDB 무접촉).
+//   ⚠️ sentences·stamp.letter는 팀장 스탬프(예시 데이터, 아이 목소리 톤 아님). 변경 금지.
+//   항목2-⑤b: 완성 그림은 로컬 자산 URL 폴백(_demoImageUrl) — IDB(getImage) 안 거침 → 어느 환경에서도 불변.
+const SHELF_TOUR_ENTRY = {
+  id: "shelf-tour-demo",
+  date: "2026-07-05",
+  sentences: ["오늘은 날씨가 맑았어.", "친구랑 놀이터에서 그네를 탔어.", "정말 신나는 하루였어!"],
+  moodEmoji: "😄",
+  childPick: "그네",
+  keptAt: "2026-07-05",
+  imgSource: "ai",  // 단일 완성 그림 경로(2단 병치 아님). 데모는 오늘 엔트리 아님 → 그림 액션 버튼 미노출
+  _demoImageUrl: "/images/demo/diary_scribble_out.jpg", // ★③ 로컬 자산 URL 폴백 — 상세 effect가 detailImg로 직접 주입(IDB 무접촉)
+  stamp: { emoji: "❤️", letter: "네 이야기 잘 읽었어. 오늘도 고마워!", at: "2026-07-05", seenAt: null },
+};
+
 export default function FamilyShelf() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,6 +95,29 @@ export default function FamilyShelf() {
   const [returnDrawing, setReturnDrawing] = useState(null); // pending 원본 낙서 dataURL(IDB 로드)
   const [returnCompleted, setReturnCompleted] = useState(null); // pending 완성본 dataURL(IDB 로드)
   const [letterOpen, setLetterOpen] = useState(false); // AD-6 §3: 편지 ✉️ 열림(탭 시 LETTER_READ 안내+본문 낭독)
+
+  // 항목2-⑤: 부모 소개 튜토리얼 — 데모 일기 1편 시드 + 스텝별 뷰 구동. 시작 전 상태 스냅샷 → 종료 시 원복.
+  const tour = useTour(FAMILYSHELF_TOUR_STATIONS);
+  const shelfSnapshotRef = useRef(null);
+  const startShelfTour = () => {
+    shelfSnapshotRef.current = { entries, openMonth, openId };
+    setEntries([SHELF_TOUR_ENTRY]); // 데모 일기 1편(state만 — localStorage 무접촉)
+    setOpenMonth(null); setOpenId(null); // 기본 뷰에서 시작
+    tour.start();
+  };
+  const exitShelfTour = () => {
+    tour.exit();
+    const s = shelfSnapshotRef.current;
+    if (s) { setEntries(s.entries); setOpenMonth(s.openMonth); setOpenId(s.openId); shelfSnapshotRef.current = null; }
+  };
+  // 정거장마다 필요한 뷰로 전환 — shelf-entry/shelf-stamp는 상세 열기(setOpenId), 나머지는 기본 뷰.
+  useEffect(() => {
+    if (!tour.isActive) return;
+    const id = tour.station?.targetId;
+    if (id === "shelf-write" || id === "shelf-book") setOpenId(null); // 기본 뷰(카드·월표지)
+    else if (id === "shelf-entry" || id === "shelf-stamp") setOpenId(SHELF_TOUR_ENTRY.id); // 상세 뷰
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.isActive, tour.step]);
 
   useEffect(() => {
     try {
@@ -175,8 +223,13 @@ export default function FamilyShelf() {
     setLetterOpen(false); // AD-6 §3: 상세 전환 시 편지 접힘 초기화
     try { voice.stop(); } catch { /* 무시 */ } // AD-6 §3 유령TTS 차단(X-2 규율): 편지 낭독 중 상세 이탈·엔트리 전환 시 부모 편지 음성 중단(화면 단서 없는 유령 재생 방지)
     // AD-6 §3: 상세 열람 = 확인 → 도장 seen 처리(아이 홈 알림 자연 소멸). 표시는 seenAt 무관하게 항상.
-    if (openEntry?.stamp && profile?.id) { try { diary.markStampSeen(profile.id, openEntry.id); } catch { /* 무시 */ } }
-    if (openEntry?.imageId) getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
+    //   ⚠️ 항목2-⑤: 튜토리얼 중엔 건너뜀 — 데모 상세 열람이 실제 seenAt(localStorage)을 오염시키지 않게(서버·저장 무접촉).
+    if (openEntry?.stamp && profile?.id && !tour.isActive) { try { diary.markStampSeen(profile.id, openEntry.id); } catch { /* 무시 */ } }
+    if (openEntry?._demoImageUrl) {
+      if (alive) setDetailImg(openEntry._demoImageUrl); // ★항목2-⑤b: 투어 데모 — 완성 그림 URL 직접 주입(IDB 무접촉·불변). 실 엔트리엔 이 필드 없음 → 아래 기존 경로.
+    } else if (openEntry?.imageId) {
+      getImage(openEntry.imageId).then((url) => { if (alive) setDetailImg(url); }).catch(() => {});
+    }
     if (openEntry?.drawingId) getImage(openEntry.drawingId).then((url) => { if (alive) setDetailDrawing(url); }).catch(() => {}); // AD-8: 원본 낙서(병치)
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,22 +328,36 @@ export default function FamilyShelf() {
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <button onClick={() => navigate("/kids")} className="text-sm font-bold" style={{ color: "#90A9A8" }}>‹ 홈으로</button>
         <p className="text-sm font-extrabold" style={{ color: "#5FE0BC" }}>📚 {SHELF_NAME}</p>
-        {/* B04: 부모 소개 런처 — 오너 지시(7/9) 오른쪽 상단으로 이동(더 잘 보이게). 브라우징 뷰에서만 노출, 그 외엔 스페이서로 제목 중앙 유지. */}
-        {diary.DIARY_V0 && !torn && !openEntry && !writing && !bridge && !openMonth && profile ? (
-          <button
-            data-testid="diary-tour-btn"
-            onClick={() => setDiaryTourOpen(true)}
-            className="whitespace-nowrap text-[11px] font-bold rounded-full px-2.5 py-1 transition hover:opacity-80"
-            style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}
-          >
-            ✨ 일기 만드는 과정 보기
-          </button>
+        {/* 헤더 우측 그룹 — B05 '책장 소개 "?"' + B04 '만드는 과정 보기' 런처(B06 "?"+스트릭 선례). 브라우징 뷰 & 투어 비활성일 때만; 그 외엔 스페이서로 제목 중앙 유지. */}
+        {diary.DIARY_V0 && !tour.isActive && !torn && !openEntry && !writing && !bridge && !openMonth && profile ? (
+          <div className="flex items-center gap-1.5">
+            {/* B05: 책장 소개 튜토리얼 진입(런처와 별개 — 이건 '책장 둘러보기') */}
+            <button
+              data-testid="shelf-tour-btn"
+              onClick={startShelfTour}
+              title="이 화면 둘러보기"
+              className="flex items-center justify-center rounded-full text-sm font-black transition hover:opacity-80"
+              style={{ width: "32px", height: "32px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+            >
+              ?
+            </button>
+            {/* B04: 부모 소개 런처 — 일기 만드는 과정(tourMode DiaryFlow) */}
+            <button
+              data-testid="diary-tour-btn"
+              onClick={() => setDiaryTourOpen(true)}
+              className="whitespace-nowrap text-[11px] font-bold rounded-full px-2.5 py-1 transition hover:opacity-80"
+              style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}
+            >
+              ✨ 일기 만드는 과정 보기
+            </button>
+          </div>
         ) : (
           <span className="w-12" />
         )}
       </div>
 
-      <div className="mx-auto max-w-2xl px-4 py-6">
+      {/* 콘텐츠 래퍼 — 투어 중 inert(데모 뷰 클릭·서버호출 차단). 뷰 구동은 우리 setState라 inert와 무관하게 동작. */}
+      <div className="mx-auto max-w-2xl px-4 py-6" inert={tour.isActive}>
         {/* AD-8b: 이어그리기 완성본 복귀 배너 — 대기 중 이탈해도 '나중에 받기'. 브라우징 뷰에서만 노출 */}
         {pendingReturn && returnMode === "banner" && !openEntry && !bridge && !writing && !torn && (
           <button onClick={openReturnPick} className="w-full mb-4 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>
@@ -324,7 +391,7 @@ export default function FamilyShelf() {
 
         {/* AD-2 §3 + AD-3 §3: 상단 '오늘 일기 쓰기' 카드 — 키디 제거(화면당 1회 원칙: 키디는 빈 책장 안내 1회만), 📖 이모지+텍스트만 */}
         {!torn && !openEntry && !writing && !bridge && !openMonth && (
-          <div className="mb-6">
+          <div className="mb-6" data-tour-id="shelf-write">
             {todayEntry ? (
               <button
                 onClick={() => setOpenId(todayEntry.id)}
@@ -370,6 +437,7 @@ export default function FamilyShelf() {
                 return (
                   <button
                     key={mo.ym}
+                    data-tour-id={i === 0 ? "shelf-book" : undefined}
                     onClick={() => setOpenMonth(mo.ym)}
                     className="relative overflow-hidden rounded-2xl p-4 pl-5 text-left active:scale-[0.99] transition"
                     style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}
@@ -448,7 +516,7 @@ export default function FamilyShelf() {
           <div className="flex flex-col gap-4">
             <button onClick={() => { setOpenId(null); setTorn(false); }} className="self-start text-sm font-bold" style={{ color: "#90A9A8" }}>‹ 책장으로</button>
             {/* 크림 톤 '종이' 카드 — 작품 지면 예외 (목업 ③: 날짜|기분 라인 + 밑줄 문장) */}
-            <div className="rounded-2xl p-5" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+            <div className="rounded-2xl p-5" data-tour-id="shelf-entry" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
               <div className="flex items-center justify-between pb-2 mb-3" style={{ borderBottom: "1px dashed #C9BC93" }}>
                 <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(openEntry.date)}</span>
                 {openEntry.moodEmoji ? <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>기분 {openEntry.moodEmoji}</span> : null}
@@ -478,7 +546,7 @@ export default function FamilyShelf() {
               {/* AD-6 §3: 부모 도장(우하단, 목업③ 문법) + 편지 있으면 ✉️. 편지 본문은 기본 숨김 → ✉️ 탭 시 낭독+표시 */}
               {openEntry.stamp?.emoji && (
                 <>
-                  <div className="flex items-end justify-end gap-2 mt-4">
+                  <div className="flex items-end justify-end gap-2 mt-4" data-tour-id="shelf-stamp">
                     {openEntry.stamp.letter?.trim() && (
                       <button onClick={onLetterTap} aria-label="편지 보기" className="text-2xl active:scale-95 transition">✉️</button>
                     )}
@@ -622,6 +690,23 @@ export default function FamilyShelf() {
         />
       )}
       {lightbox && <DiaryLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
+
+      {/* 항목2-⑤: 부모 소개 튜토리얼 코치마크 — 4정거장 읽기전용. inert 컨테이너 밖(루트 직속). 종료(그만보기/마지막 다음)는 exitShelfTour로 상태 원복. */}
+      {tour.isActive && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={FAMILYSHELF_TOUR.stations[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={tour.station?.interactive}
+          banner={FAMILYSHELF_TOUR.banner}
+          nav={FAMILYSHELF_TOUR.nav}
+          exitCta={FAMILYSHELF_TOUR.exitCta}
+          onPrev={tour.prev}
+          onNext={() => (tour.isLast ? exitShelfTour() : tour.next())}
+          onExit={exitShelfTour}
+        />
+      )}
     </div>
   );
 }
