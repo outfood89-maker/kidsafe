@@ -9,7 +9,7 @@ import useKiddyVoice from "../hooks/useKiddyVoice";
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED } from "../utils/diaryCopy";
 
 // ── 가족 책장 = 그림일기 홈 (AD §6 + AD-2 §3) — 상단 '오늘 일기 쓰기' + 월별 '한 권' + 페이지 상세 + 찢어버리기 ──
 // v0 저장 = localStorage(diaryStore). 서버·DB 무접촉(읽기 전용 getTodayCheckin만 허용). ⚠️ feature/diary-v0 브랜치 전용.
@@ -52,6 +52,7 @@ export default function FamilyShelf() {
   const [tearing, setTearing] = useState(false); // 찢기 확인 다이얼로그
   const [torn, setTorn] = useState(false); // 찢은 직후 안내
   const [writing, setWriting] = useState(false); // AD-2 §3: 자발 진입 DiaryFlow 오버레이
+  const [diaryTourOpen, setDiaryTourOpen] = useState(false); // B04: 부모 소개 튜토리얼(방식 S — result 시드 DiaryFlow)
   const [checkinForDiary, setCheckinForDiary] = useState(null); // 쓰기 시작 시 조회한 오늘 체크인
   const [bridge, setBridge] = useState(false); // 미체크인 브릿지 뷰
   const [openMonth, setOpenMonth] = useState(null); // AD-3 §5: 월 '한 권' 열람(그 달 페이지 목록 하위화면)
@@ -339,6 +340,20 @@ export default function FamilyShelf() {
           </div>
         )}
 
+        {/* B04: 부모 소개 — 일기 만드는 과정 보기(tourMode DiaryFlow). 책장 "?"(B05)와 구분: 이건 '만드는 과정'. 위치·문구는 스샷으로 확정. */}
+        {diary.DIARY_V0 && !torn && !openEntry && !writing && !bridge && !openMonth && profile && (
+          <div className="mb-6 -mt-3 flex justify-center">
+            <button
+              data-testid="diary-tour-btn"
+              onClick={() => setDiaryTourOpen(true)}
+              className="text-xs font-bold rounded-full px-3 py-1.5 transition hover:opacity-80"
+              style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}
+            >
+              ✨ 일기 만드는 과정 보기
+            </button>
+          </div>
+        )}
+
         {/* 빈 책장 (키디 1회 — §3) */}
         {!torn && !openEntry && !bridge && !openMonth && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
@@ -595,6 +610,17 @@ export default function FamilyShelf() {
             const pc = diary.getPendingContinue(profile.id);
             setPendingReturn(pc && pc.date === diary.todayKST() ? pc : null);
           }}
+        />
+      )}
+      {/* B04: 부모 소개 튜토리얼 — result에 시드된 읽기전용 DiaryFlow(TTS끔·서버호출0·간직 비활성). */}
+      {diary.DIARY_V0 && diaryTourOpen && profile && (
+        <DiaryFlow
+          tourMode
+          tourSeed={DIARYFLOW_TOUR_SEED}
+          profile={profile}
+          today={diary.todayKST()}
+          checkinMood={DIARYFLOW_TOUR_SEED.moodEmoji}
+          onClose={() => setDiaryTourOpen(false)}
         />
       )}
       {lightbox && <DiaryLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}

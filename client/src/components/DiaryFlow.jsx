@@ -10,12 +10,15 @@ import { assembleDiary, pickClosing } from "../utils/diaryAssembler";
 import * as diary from "../utils/diaryStore";
 import { putImage } from "../utils/diaryImageStore";
 import DoodleCanvas from "./DoodleCanvas";
+import useTour from "../hooks/useTour"; // 항목2-④: 부모 소개 튜토리얼(방식 S — result 시드·TTS끔)
+import TourCoachmark from "./TourCoachmark";
 import {
   ENTRY, WEATHER_ASK, WEATHER_CHIPS, ROTATING_QUESTIONS, resolveChips, NO_ANSWER_CHIP, NO_ANSWER_REACTION,
   PICK_ASK, READ_INTRO, IMAGE_PLACEHOLDER, KEEP, SAD_MOODS, CRISIS_RETURN_HINT, SHELF_NAME,
   DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI, REASK,
   WAIT_SEQ, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
   CONTINUE_CHIP, CONTINUE_DONE, CONTINUE_PICK, CONTINUE_FAIL, CONTINUE_WAIT_SEQ,
+  DIARYFLOW_TOUR,
 } from "../utils/diaryCopy";
 
 // ── 우리 그림일기 v0 — 플로우 오버레이 (AD §2·§3·§4·§5) ──
@@ -68,10 +71,25 @@ const matchChip = (text, chips) => {
   return null;
 };
 
-export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, startAt = "entry", onClose }) {
+// tourMode(부모 소개 튜토리얼) 전용 무음 voice — TTS 서버호출(synthesizeKiddyVoice) 완전 차단.
+//   speak/enqueue=음성 합성(서버)→no-op, stop=재생중단(서버無)→no-op. 모듈 상수라 안정적(tourMode=false면 미사용).
+const TOUR_SILENT_VOICE = { speak: () => {}, enqueue: () => {}, stop: () => {} };
+
+// 방식 S — 일기 쓰기 부모 소개 4정거장. targetId는 result 화면 앵커(data-tour-id)와 일치. 전부 읽기전용(interactive:false).
+//   ⚠️ DIARYFLOW_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭.
+export const DIARYFLOW_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용
+  { targetId: "flow-steps", interactive: false }, // ① 진행점(5단계 설명)
+  { targetId: "flow-card",  interactive: false }, // ② 완성된 글
+  { targetId: "flow-image", interactive: false }, // ③ 그림 자리
+  { targetId: "flow-keep",  interactive: false }, // ④ 간직 버튼
+];
+
+export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, startAt = "entry", onClose, tourMode = false, tourSeed = null }) {
   const navigate = useNavigate();
-  const voice = useKiddyVoice();
+  const rawVoice = useKiddyVoice();
+  const voice = tourMode ? TOUR_SILENT_VOICE : rawVoice; // ★TTS 게이트(방식 S): 튜토리얼에선 무음(서버호출 0). 실사용은 rawVoice 그대로(무회귀).
   const speech = useKiddySpeech();
+  const tour = useTour(DIARYFLOW_TOUR_STATIONS); // 부모 소개 튜토리얼 엔진 — tourMode에서만 자동 시작/렌더
 
   const age = profile?.age ?? 7;
   const canSpeak = age >= 4 && speech.supported; // AD-10 §2: 연령 사다리 완화 → 4세 미만 칩만 / 4세+ 칩+말하기 (미지원 브라우저는 연령 무관 칩만)
@@ -80,12 +98,12 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
   // step: (entry 비활성) → weather → rotating → pick → result → done
   const initLine = startAt === "weather" ? WEATHER_ASK : (isSad ? ENTRY.sad : ENTRY.base);
-  const [step, setStep] = useState(startAt);
-  const [weather, setWeather] = useState(null);
+  const [step, setStep] = useState(tourMode ? "result" : startAt); // 방식 S: 튜토리얼은 완성(result) 화면에 시드
+  const [weather, setWeather] = useState(tourMode ? (tourSeed?.weatherKey ?? null) : null);
   const [rotating, setRotating] = useState(null); // { qid, answer, isSpeech, noAnswer }
   const [childPick, setChildPick] = useState("");
-  const [sentences, setSentences] = useState([]);
-  const [kiddyLine, setKiddyLine] = useState(initLine);
+  const [sentences, setSentences] = useState(tourMode ? (tourSeed?.sentences ?? []) : []);
+  const [kiddyLine, setKiddyLine] = useState(tourMode ? READ_INTRO : initLine);
   const [safetyMsg, setSafetyMsg] = useState(null); // 위기 스크리닝 고정 응답(표시용)
   const [reaction, setReaction] = useState(null); // "그런 날도 있지!" 등 짧은 반응
   // AD-10 §3: 음성 되묻기 리추얼 — 매칭된 칩을 즉시 확정하지 않고 되물어 확정
@@ -93,11 +111,11 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const [retryCount, setRetryCount] = useState(0);            // 현재 슬롯 음성 실패 횟수
   const [voiceLocked, setVoiceLocked] = useState(false);      // 2회 실패 후 말하기 잠금(칩 폴백)
   // AD-5: 그림 상태 — idle(그림 전) | wait(생성 중) | done(성공) | fail(실패=플레이스홀더)
-  const [imgState, setImgState] = useState("idle");
-  const [imgUrl, setImgUrl] = useState(null);
+  const [imgState, setImgState] = useState(tourMode ? "done" : "idle"); // 시드: 간직 버튼 노출(wait 아님)
+  const [imgUrl, setImgUrl] = useState(tourMode ? (tourSeed?.cardImageUrl ?? null) : null);
   const [waitStage, setWaitStage] = useState(0); // 대기연출 단계(0..seq.length-1)
   // AD-8 이어 그리기: genMode null(생성 방식 미선택) | "ai"(키디 단독) | "me"(내 낙서+이어그리기)
-  const [genMode, setGenMode] = useState(null);
+  const [genMode, setGenMode] = useState(tourMode ? "ai" : null); // 시드: cardImageUrl=imgUrl & 간직 노출(continuePicking=false)
   const [canvasOpen, setCanvasOpen] = useState(false);       // 낙서 캔버스 오버레이
   const [drawingUrl, setDrawingUrl] = useState(null);        // 아이 원본 낙서(data URL)
   const [completedUrl, setCompletedUrl] = useState(null);    // 이어 그린 완성본(data URL)
@@ -123,11 +141,14 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   // 마운트: 제안 표시 기록 + 인사 TTS
   useEffect(() => {
     mountedRef.current = true;
-    if (!selfInitiated && pid && today) diary.markProposed(pid, today); // 자발 진입은 당일 제안 쿼터 미소비(§5)
-    voice.speak(initLine, "bright"); // 시작 스텝의 첫 대사(weather부터면 WEATHER_ASK)
+    if (!tourMode && !selfInitiated && pid && today) diary.markProposed(pid, today); // 자발 진입은 당일 제안 쿼터 미소비(§5). tourMode는 상태 미오염(읽기전용).
+    voice.speak(initLine, "bright"); // 시작 스텝의 첫 대사(weather부터면 WEATHER_ASK). ★tourMode면 voice=무음이라 no-op(서버호출 0).
     return () => { mountedRef.current = false; voice.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 방식 S: tourMode면 마운트 시 투어 자동 시작(result 시드 화면 위에 코치마크).
+  useEffect(() => { if (tourMode) tour.start(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tourMode]);
 
   // ── 말하기(STT) 종료 감지 → 안전 스크리닝 → 답 사용/거부 ──
   const prevListeningRef = useRef(false);
@@ -268,6 +289,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
   // AD-5 §2·§3: 그림 생성/재생성. regen=true면 하루 2회 한도 소비. 실패는 플레이스홀더 폴백.
   const runImage = async (s, { regen = false } = {}) => {
+    if (tourMode) return; // 방식 S: 읽기전용 — 그림 생성(generateDiaryImage 서버) 차단(inert로 미트리거지만 방어)
     if (regen) {
       if (!pid || diary.getRegenLeft(pid, today) <= 0) return; // 소진 — 버튼이 이미 숨겨졌지만 이중 방어
       diary.recordRegen(pid, today);
@@ -300,6 +322,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
   // AD-8 §2: 생성 방식 선택 — "ai"=키디 단독(AD-5 runImage) / "me"=낙서 캔버스 → 이어 그리기.
   const chooseGen = (mode) => {
+    if (tourMode) return; // 방식 S: 읽기전용 — 생성 방식 선택 차단
     setGenMode(mode);
     if (mode === "ai") runImage(sentences);
     else { voice.stop(); setCanvasOpen(true); } // 캔버스 진입
@@ -374,6 +397,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   }, [imgState]);
 
   const keep = async () => {
+    if (tourMode) return; // 방식 S: 읽기전용 — 간직(저장) 차단(inert로 미트리거지만 방어)
     if (savingRef.current) return; // AD-8b-FIX(MED): 더블탭 진입가드 — keep은 terminal(step→done)이라 리셋 불필요. setState는 async라 같은 tick 연타를 못 막음 → ref로 차단
     savingRef.current = true;
     const id = uid(today);
@@ -461,7 +485,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   );
 
   const ProgressDots = () => (
-    <div className="flex items-center justify-center gap-1.5 pt-6" style={{ flexWrap: "nowrap" }}>
+    <div className="flex items-center justify-center gap-1.5 pt-6" data-tour-id="flow-steps" style={{ flexWrap: "nowrap" }}>
       {STEP_ORDER.map((name, i) => (
         <span key={name} data-testid={`dot-${name}`} data-active={i === stepIdx}
           style={{ height: 6, borderRadius: 999, flexShrink: 0, transition: "all .2s",
@@ -473,6 +497,22 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   return (
     <>
     <div className="fixed inset-0 z-50 overflow-y-auto" style={screenBg}>
+      {/* 부모 소개 튜토리얼 코치마크(방식 S) — inert 밖(루트 직속). 종료=투어 닫고 onClose로 오버레이도 닫음(호스트 복귀). */}
+      {tourMode && tour.isActive && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={DIARYFLOW_TOUR.stations[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={false}
+          banner={DIARYFLOW_TOUR.banner}
+          nav={DIARYFLOW_TOUR.nav}
+          exitCta={DIARYFLOW_TOUR.exitCta}
+          onPrev={tour.prev}
+          onNext={() => (tour.isLast ? (tour.exit(), onClose?.()) : tour.next())}
+          onExit={() => { tour.exit(); onClose?.(); }}
+        />
+      )}
       {/* 헤더: ‹ 그만하기 / 문패 / 여백 (§1) */}
       <div className="flex items-center justify-between px-4 py-3">
         <button onClick={() => onClose?.()} className="text-sm font-bold" style={{ color: "#90A9A8" }}>{FLOW_STOP}</button>
@@ -480,7 +520,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
         <span className="w-14" />
       </div>
 
-      <div className="mx-auto flex max-w-md flex-col items-center px-5 pb-8 text-center" style={{ minHeight: "calc(100vh - 56px)" }}>
+      <div className="mx-auto flex max-w-md flex-col items-center px-5 pb-8 text-center" style={{ minHeight: "calc(100vh - 56px)" }} inert={tourMode}>
         {/* 키디 1회(크게·상단 중앙, §3) + 말풍선. 대기 중엔 '그리는 느낌' 살짝 흔들(전용 자산 없어 wrapper 회전 — (a) 연출) */}
         {imgState === "wait" && <style>{`@keyframes kiddyDraw{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}`}</style>}
         <div style={imgState === "wait" ? { animation: "kiddyDraw 0.85s ease-in-out infinite" } : undefined}>
@@ -582,13 +622,13 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="rounded-2xl p-5 text-left" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+              <div className="rounded-2xl p-5 text-left" data-tour-id="flow-card" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
                 <div className="flex items-center justify-between pb-2 mb-3" style={{ borderBottom: "1px dashed #C9BC93" }}>
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{dateLabel(today)}</span>
                   <span className="text-sm font-bold" style={{ color: "#9A8B63" }}>{weatherEmoji ? `날씨 ${weatherEmoji} · ` : ""}기분 {checkinMood}</span>
                 </div>
                 {/* 그림 자리 — 채택 이미지 있으면 렌더, 그 외(대기·실패·선택전) 플레이스홀더/대기문구 (§2) */}
-                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
+                <div className="rounded-xl mb-3 flex items-center justify-center text-center overflow-hidden" data-tour-id="flow-image" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2", border: "1px dashed #C9BC93", color: "#9A8B63" }}>
                   {cardImageUrl
                     ? <img src={cardImageUrl} alt="오늘의 그림일기 그림" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     : <span className="text-sm font-bold px-4">{imgState === "wait" ? activeWaitSeq[waitStage] : IMAGE_PLACEHOLDER}</span>}
@@ -615,7 +655,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                     ? <button onClick={() => runImage(sentences, { regen: true })} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                     : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>)}
                   <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{KEEP.ask}</p>
-                  <button onClick={keep} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{KEEP.yes}</button>
+                  <button onClick={keep} data-tour-id="flow-keep" className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{KEEP.yes}</button>
                   <button onClick={() => onClose?.()} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{KEEP.no}</button>
                 </div>
               )}
