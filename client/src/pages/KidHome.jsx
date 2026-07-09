@@ -26,9 +26,11 @@ import DailyCheckin from "../components/DailyCheckin";
 // AD-2/AD-4: 그림일기 홈 진입 + 키디 플로팅/티저 (feature/diary-v0 브랜치 전용 — main 무접촉, DIARY_V0 게이트 뒤)
 import * as diaryStore from "../utils/diaryStore";
 import { DIARY_V0, todayKST } from "../utils/diaryStore";
-import { TILE } from "../utils/diaryCopy";
+import { TILE, KIDHOME_TOUR } from "../utils/diaryCopy";
 import StampNoticeCard from "../components/StampNoticeCard"; // AD-6 §4: 부모 도장 미확인 알림 카드
 import KiddyFab from "../components/KiddyFab";
+import useTour from "../hooks/useTour"; // 항목2-①: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
+import TourCoachmark from "../components/TourCoachmark";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
 //    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "") — 배포 청소로 리셋됨.
@@ -107,6 +109,30 @@ const formatDuration = (sec) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
+// 아이 홈 부모 소개 튜토리얼 — 6정거장. targetId는 아래 앵커(data-tour-id)와 일치. 전부 읽기전용(interactive:false).
+//   ⚠️ KIDHOME_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭. ⑤⑥은 같은 그림일기 타일을 두 번 짚음(물어봄→완성).
+export const KIDHOME_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용 — 브리프 §7 허용(테스트 전용 named export)
+  { targetId: "kid-home",   interactive: false }, // ① 히어로
+  { targetId: "kid-search", interactive: false }, // ② 검색바
+  { targetId: "kid-safety", interactive: false }, // ③ 안전 점수 배지(시드 영상 카드)
+  { targetId: "kid-room",   interactive: false }, // ④ 키디의 방 진입
+  { targetId: "kid-diary",  interactive: false }, // ⑤ 그림일기 타일(물어봄)
+  { targetId: "kid-diary",  interactive: false }, // ⑥ 그림일기 타일(완성)
+];
+
+// 투어 ③(안전 배지)용 데모 영상 — 서버호출 0, 로컬 자산 썸네일(외부 GET 0). totalScore 96 → 초록('안전').
+const KID_TOUR_VIDEO = {
+  videoId: "kid-tour-demo",
+  title: "예시 영상 — 키디가 고른 안전한 영상",
+  channelTitle: "키디 채널",
+  thumbnail: "/images/logo/symbol_256.png", // 로컬(헤더 로고와 동일 자산). 외부 GET 없음.
+  totalScore: 96,
+  duration: "",        // 길이 배지 생략(formatDuration("")→null이라 배지 미렌더).
+  madeForKids: true,
+  educational: 88,
+  summary: "안전도 점수와 등급이 이렇게 함께 표시돼요.",
+};
+
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [videos, setVideos] = useState([]);
@@ -152,6 +178,32 @@ export default function KidHome() {
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  // 항목2-①: 부모 소개 튜토리얼(6정거장) — 헤더 "?" 트리거. 시드는 클라이언트 setState만(서버호출 0), 이탈 시 원복.
+  const tour = useTour(KIDHOME_TOUR_STATIONS);
+  const tourSnapshotRef = useRef(null); // 투어 진입 전 검색/추천 상태 스냅샷(이탈 시 원복)
+
+  // 투어 시작 — 홈 레이아웃을 드러내고(검색 비우기) ③ 배지용 시드 영상 1개 주입. 서버호출 0.
+  const startKidTour = () => {
+    tourSnapshotRef.current = {
+      videos, playlists, searchKeyword, loading,
+      historyVideos, historyLoading, historyKeyword,
+    };
+    setVideos([]); setPlaylists([]); setSearchKeyword(""); setLoading(false); // 홈(추천) 레이아웃 노출 = 정거장 ③④⑤⑥ 표시 조건
+    setHistoryVideos([KID_TOUR_VIDEO]); setHistoryLoading(false); setHistoryKeyword(""); // ③ '내가 좋아할 것 같아요' 카드+배지
+    tour.start();
+  };
+
+  // 투어 종료 — 시드 폐기 + 진입 전 상태 원복.
+  const exitKidTour = () => {
+    tour.exit();
+    const s = tourSnapshotRef.current;
+    if (s) {
+      setVideos(s.videos); setPlaylists(s.playlists); setSearchKeyword(s.searchKeyword); setLoading(s.loading);
+      setHistoryVideos(s.historyVideos); setHistoryLoading(s.historyLoading); setHistoryKeyword(s.historyKeyword);
+      tourSnapshotRef.current = null;
+    }
+  };
   // AD-2 §4: 그림일기 홈 브릿지에서 넘어온 의도(체크인 완료 후 일기 연속 진행), 1회성. AD-10 재개정: ⓑ 명시적 의도 연속 복구
   const diaryAfterRef = useRef(false);
   const navigate = useNavigate();
@@ -845,7 +897,22 @@ export default function KidHome() {
   return (
     <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#0A1E1E" }}>
 
-
+      {/* 아이 홈 부모 소개 튜토리얼 코치마크 — 전 정거장 읽기전용. inert 컨테이너 밖(루트 직속)이라 오버레이 버튼 정상. */}
+      {tour.isActive && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={KIDHOME_TOUR.stations[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={tour.station?.interactive}
+          banner={KIDHOME_TOUR.banner}
+          nav={KIDHOME_TOUR.nav}
+          exitCta={KIDHOME_TOUR.exitCta}
+          onPrev={tour.prev}
+          onNext={() => (tour.isLast ? exitKidTour() : tour.next())}
+          onExit={exitKidTour}
+        />
+      )}
 
       {/* 커스텀 NavBar */}
       <header
@@ -875,6 +942,18 @@ export default function KidHome() {
           </div>
           {/* 오른쪽: 시간 pill + 배지 pill + 아바타 */}
           <div className="flex items-center gap-2">
+            {/* 이 화면 둘러보기(부모 소개) — 프로필 있고 투어 중 아닐 때만. 부모가 아이 홈을 이해하는 용도. */}
+            {DIARY_V0 && selectedProfile && !tour.isActive && (
+              <button
+                data-testid="kid-tour-btn"
+                onClick={startKidTour}
+                title="이 화면 둘러보기"
+                className="flex items-center justify-center rounded-full text-sm font-black transition hover:opacity-80"
+                style={{ width: "32px", height: "32px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+              >
+                ?
+              </button>
+            )}
             {/* 남은 시간 — timeLimit 설정된 프로필만 표시 */}
             {earnedBadges.length > 0 && (
               <button
@@ -917,7 +996,7 @@ export default function KidHome() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-7xl px-4 py-6" inert={tour.isActive && !tour.station?.interactive}>
 
         {/* 모달 */}
         {selectedVideo && (
@@ -1104,7 +1183,7 @@ export default function KidHome() {
                 ? "영상을 찾았어! 아래로 내려서 확인해봐! 👇"
                 : GREETING_DIALOGUES[greetingIndex].text.replace("{name}야", withVocative(selectedProfile?.name ?? "친구"));
               return (
-                <div className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
+                <div data-tour-id="kid-home" className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
                   style={{ background: "linear-gradient(135deg, #0E2A23 0%, #14463C 50%, #1A9180 100%)", borderRadius: "24px", minHeight: "220px" }}>
                   {/* 배경 글로우 */}
                   <div className="absolute -top-10 -right-10 h-56 w-56 rounded-full opacity-25 pointer-events-none" style={{ backgroundColor: "#18C49A", filter: "blur(80px)" }} />
@@ -1115,7 +1194,7 @@ export default function KidHome() {
                       {selectedProfile ? `${withVocative(selectedProfile.name)}, 안녕! 👋` : "안녕 친구야~ 👋"}
                     </p>
                     <p className="text-2xl font-black mb-5 tracking-tight" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
-                    <div ref={searchBoxRef} className="relative">
+                    <div ref={searchBoxRef} data-tour-id="kid-search" className="relative">
                       <div className="flex items-center gap-2"
                         style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
                         <FaSearch style={{ color: "#B8D8B2", flexShrink: 0 }} />
@@ -1342,6 +1421,7 @@ export default function KidHome() {
               <>
                 {/* 키디의 방 진입 — '말하기 연습' (X). 추천 게이트 안(기본 화면 전용) + lg:hidden 아님 → 모바일·데스크톱 공통. 순수 ADD. */}
                 <button
+                  data-tour-id="kid-room"
                   onClick={() => navigate("/kiddy-room")}
                   className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
                   style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
@@ -1357,6 +1437,7 @@ export default function KidHome() {
                 {/* AD-2 §2: 그림일기 타일 — 주 진입 (feature/diary-v0 브랜치 전용, 순수 ADD). 웜톤으로 말하기연습(청록)과 구분. */}
                 {DIARY_V0 && selectedProfile && (
                   <button
+                    data-tour-id="kid-diary"
                     onClick={() => navigate("/family-shelf")}
                     className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
                     style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
@@ -1400,7 +1481,7 @@ export default function KidHome() {
 
                 {/* 내가 좋아할 것 같아요 — 가로 스크롤 캐러셀 */}
                 {(historyLoading || historyVideos.length > 0) && (
-                  <section className="mb-6">
+                  <section className="mb-6" data-tour-id="kid-safety">
                     <div className="mb-3 flex items-center gap-2">
                       <FaHeart style={{ color: "#F2655C", fontSize: "14px" }} />
                       <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>내가 좋아할 것 같아요</h2>

@@ -11,7 +11,8 @@ import { PARENT_TOUR } from "../utils/diaryCopy";
 const DIM = "rgba(0,0,0,0.62)";
 const PAD = 12; // 대상 주위 여백(구멍이 요소에 딱 붙지 않게 — 예제가 여유 있게 보이도록)
 
-export default function TourCoachmark({ rect, text, step, total, interactive, onPrev, onNext, onExit }) {
+export default function TourCoachmark({ rect, text, step, total, interactive, onPrev, onNext, onExit,
+  banner = PARENT_TOUR.banner, nav = PARENT_TOUR.nav, exitCta = PARENT_TOUR.exitCta }) {
   const isLast = step >= total - 1;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 
@@ -65,7 +66,7 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
           className="mx-auto max-w-lg rounded-full px-4 py-2.5 text-center text-sm font-bold"
           style={{ backgroundColor: "rgba(14,42,42,0.94)", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.45)" }}
         >
-          {PARENT_TOUR.banner}
+          {banner}
         </div>
       </div>
 
@@ -88,7 +89,7 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
               className="rounded-xl px-3 py-2 text-xs font-bold transition active:scale-95"
               style={{ color: "#8FA89F" }}
             >
-              {PARENT_TOUR.nav.exit}
+              {nav.exit}
             </button>
             {step > 0 && (
               <button
@@ -96,7 +97,7 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
                 className="rounded-xl px-4 py-2 text-sm font-bold transition active:scale-95"
                 style={{ backgroundColor: "#163635", color: "#EAF5F1" }}
               >
-                {PARENT_TOUR.nav.prev}
+                {nav.prev}
               </button>
             )}
             <button
@@ -104,7 +105,7 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
               className="rounded-xl px-4 py-2 text-sm font-bold transition active:scale-95"
               style={{ backgroundColor: "#18C49A", color: "#08160F" }}
             >
-              {isLast ? PARENT_TOUR.exitCta : PARENT_TOUR.nav.next}
+              {isLast ? exitCta : nav.next}
             </button>
           </div>
         </div>
