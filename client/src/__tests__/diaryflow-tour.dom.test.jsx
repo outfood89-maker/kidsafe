@@ -42,7 +42,7 @@ vi.mock("../components/DoodleCanvas", () => ({ default: () => null }));
 vi.mock("../components/Typewriter", () => ({ default: ({ text }) => text }));
 
 import DiaryFlow, { DIARYFLOW_TOUR_STATIONS } from "../components/DiaryFlow";
-import { DIARYFLOW_TOUR, DIARYFLOW_TOUR_SEED } from "../utils/diaryCopy";
+import { DIARYFLOW_TOUR, DIARYFLOW_TOUR_SEED, CONTINUE_PICK } from "../utils/diaryCopy";
 
 const PROFILE = { id: "p1", name: "테스트아이", age: 7, gender: "여자" };
 
@@ -98,5 +98,23 @@ describe("DiaryFlow 부모 소개 튜토리얼 스모크 (T3)", () => {
     fireEvent.click(within(last).getByText(DIARYFLOW_TOUR.exitCta));
     await waitFor(() => expect(screen.queryByTestId("tour-overlay")).toBeNull());
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("★ 이어그리기 before→after 정거장 (T4 — v2)", () => {
+  it("②정거장(flow-continue): 원본↔완성 병치(mine/both) + 각 이미지 src, ③에서 카드 복귀", async () => {
+    renderTour();
+    const overlay = await screen.findByTestId("tour-overlay");
+    // ① → ② 이동
+    fireEvent.click(within(overlay).getByText(DIARYFLOW_TOUR.nav.next));
+    // ② 이어그리기 선택 화면(병치) — 뷰 구동 effect 반영 대기
+    await waitFor(() => expect(screen.getByText(CONTINUE_PICK.ask)).toBeTruthy());
+    const mine = screen.getByAltText(CONTINUE_PICK.mine); // 내 그림(원본)
+    const both = screen.getByAltText(CONTINUE_PICK.both); // 키디랑 같이 그린 그림(완성)
+    expect(mine.getAttribute("src")).toBe(DIARYFLOW_TOUR_SEED.drawingUrl);
+    expect(both.getAttribute("src")).toBe(DIARYFLOW_TOUR_SEED.completedUrl);
+    // ② → ③ 이동 → 완성 카드(글) 복귀
+    fireEvent.click(within(screen.getByTestId("tour-overlay")).getByText(DIARYFLOW_TOUR.nav.next));
+    await waitFor(() => expect(screen.getByText(DIARYFLOW_TOUR_SEED.sentences[0])).toBeTruthy());
   });
 });

@@ -78,10 +78,10 @@ const TOUR_SILENT_VOICE = { speak: () => {}, enqueue: () => {}, stop: () => {} }
 // 방식 S — 일기 쓰기 부모 소개 4정거장. targetId는 result 화면 앵커(data-tour-id)와 일치. 전부 읽기전용(interactive:false).
 //   ⚠️ DIARYFLOW_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭.
 export const DIARYFLOW_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용
-  { targetId: "flow-steps", interactive: false }, // ① 진행점(5단계 설명)
-  { targetId: "flow-card",  interactive: false }, // ② 완성된 글
-  { targetId: "flow-image", interactive: false }, // ③ 그림 자리
-  { targetId: "flow-keep",  interactive: false }, // ④ 간직 버튼
+  { targetId: "flow-steps",    interactive: false }, // ① 진행점(5단계 설명)
+  { targetId: "flow-continue", interactive: false }, // ② 이어그리기 before→after(원본↔완성 병치)  ★v2 신규
+  { targetId: "flow-card",     interactive: false }, // ③ 완성된 글+그림
+  { targetId: "flow-keep",     interactive: false }, // ④ 간직 버튼
 ];
 
 export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday, selfInitiated = false, startAt = "entry", onClose, tourMode = false, tourSeed = null }) {
@@ -112,14 +112,14 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const [voiceLocked, setVoiceLocked] = useState(false);      // 2회 실패 후 말하기 잠금(칩 폴백)
   // AD-5: 그림 상태 — idle(그림 전) | wait(생성 중) | done(성공) | fail(실패=플레이스홀더)
   const [imgState, setImgState] = useState(tourMode ? "done" : "idle"); // 시드: 간직 버튼 노출(wait 아님)
-  const [imgUrl, setImgUrl] = useState(tourMode ? (tourSeed?.cardImageUrl ?? null) : null);
+  const [imgUrl, setImgUrl] = useState(tourMode ? (tourSeed?.completedUrl ?? null) : null); // v2: me모드는 imgUrl 미사용이나 방어적으로 완성본 시드
   const [waitStage, setWaitStage] = useState(0); // 대기연출 단계(0..seq.length-1)
   // AD-8 이어 그리기: genMode null(생성 방식 미선택) | "ai"(키디 단독) | "me"(내 낙서+이어그리기)
-  const [genMode, setGenMode] = useState(tourMode ? "ai" : null); // 시드: cardImageUrl=imgUrl & 간직 노출(continuePicking=false)
+  const [genMode, setGenMode] = useState(tourMode ? "me" : null); // v2 시드: "me"(이어그리기 경로) — ②정거장에서 원본↔완성 병치(continuePicking) 재사용
   const [canvasOpen, setCanvasOpen] = useState(false);       // 낙서 캔버스 오버레이
-  const [drawingUrl, setDrawingUrl] = useState(null);        // 아이 원본 낙서(data URL)
-  const [completedUrl, setCompletedUrl] = useState(null);    // 이어 그린 완성본(data URL)
-  const [continueChoice, setContinueChoice] = useState(null); // null(선택 대기) | "mine" | "both" | "failadopt"
+  const [drawingUrl, setDrawingUrl] = useState(tourMode ? (tourSeed?.drawingUrl ?? null) : null);        // v2: 아이 원본 낙서 시드(before)
+  const [completedUrl, setCompletedUrl] = useState(tourMode ? (tourSeed?.completedUrl ?? null) : null);    // v2: 키디 완성본 시드(after)
+  const [continueChoice, setContinueChoice] = useState(tourMode ? "both" : null); // v2: 시작(①진행점)은 카드뷰 — 첫 렌더 mine/both 플래시 방지
   const imgIdRef = useRef(null);
   const mountedRef = useRef(true);
   const savedEntryRef = useRef(null);
@@ -149,6 +149,15 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
   // 방식 S: tourMode면 마운트 시 투어 자동 시작(result 시드 화면 위에 코치마크).
   useEffect(() => { if (tourMode) tour.start(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tourMode]);
+
+  // 방식 S(v2): 정거장별 뷰 구동 — ②'이어그리기'(flow-continue)만 원본↔완성 병치(continuePicking), 그 외는 완성 카드.
+  //   continueChoice=null → continuePicking=true(병치) / "both" → 카드(cardImageUrl=완성본).
+  //   ★tourMode 전용 게이트 → 실사용 continueChoice(아이 클릭 선택)에 절대 간섭 안 함(무회귀).
+  useEffect(() => {
+    if (!tourMode || !tour.isActive) return;
+    setContinueChoice(tour.station?.targetId === "flow-continue" ? null : "both");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourMode, tour.isActive, tour.step]);
 
   // ── 말하기(STT) 종료 감지 → 안전 스크리닝 → 답 사용/거부 ──
   const prevListeningRef = useRef(false);
@@ -602,8 +611,8 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
 
           {/* RESULT (크림 종이 카드 + 날짜·날씨·기분 라인 §1 ③ + 생성방식 선택 + 간직) */}
           {step === "result" && (continuePicking ? (
-            /* AD-8: 이어 그리기 완성 → mine/both 선택(아이 최종 선택권, 원본·완성본 병치) */
-            <div className="flex flex-col gap-4">
+            /* AD-8: 이어 그리기 완성 → mine/both 선택(아이 최종 선택권, 원본·완성본 병치). v2: ②정거장 앵커(flow-continue). */
+            <div className="flex flex-col gap-4" data-tour-id="flow-continue">
               <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{CONTINUE_PICK.ask}</p>
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setContinueChoice("mine")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
