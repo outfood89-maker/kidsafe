@@ -187,10 +187,11 @@ export default function KidHome() {
   const startKidTour = () => {
     tourSnapshotRef.current = {
       videos, playlists, searchKeyword, loading,
-      historyVideos, historyLoading, historyKeyword,
+      historyVideos, historyLoading, historyKeyword, favorites,
     };
     setVideos([]); setPlaylists([]); setSearchKeyword(""); setLoading(false); // 홈(추천) 레이아웃 노출 = 정거장 ③④⑤⑥ 표시 조건
     setHistoryVideos([KID_TOUR_VIDEO]); setHistoryLoading(false); setHistoryKeyword(""); // ③ '내가 좋아할 것 같아요' 카드+배지
+    setFavorites([]); // '내 찜 목록'(실데이터)을 예시 배경에서 숨김 — 종료 시 원복(오너 결정 B, 2026-07-09)
     tour.start();
   };
 
@@ -201,6 +202,7 @@ export default function KidHome() {
     if (s) {
       setVideos(s.videos); setPlaylists(s.playlists); setSearchKeyword(s.searchKeyword); setLoading(s.loading);
       setHistoryVideos(s.historyVideos); setHistoryLoading(s.historyLoading); setHistoryKeyword(s.historyKeyword);
+      setFavorites(s.favorites); // 찜 목록 원복
       tourSnapshotRef.current = null;
     }
   };
