@@ -48,7 +48,9 @@ export default function ProfileFormModal({ onClose, onCreated, profile = null, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+      {/* 모바일: 폼이 뷰포트보다 길면 오버레이가 스크롤되도록 — '저장' 버튼이 화면 밖으로 나가 클릭 불가하던 문제 해결(디자인 불변) */}
+      <div className="flex min-h-full items-center justify-center px-4 py-6">
       <div className="w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>{isEdit ? "프로필 수정" : "새 프로필 만들기"}</h3>
@@ -161,6 +163,7 @@ export default function ProfileFormModal({ onClose, onCreated, profile = null, o
             취소
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
