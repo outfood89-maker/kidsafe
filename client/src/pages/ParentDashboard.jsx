@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   FaClock,
   FaShieldAlt,
@@ -143,6 +143,7 @@ export default function ParentDashboard() {
   const { isPremium, isAdmin } = useAuth();
   // 프로필별 부모페이지 — :profileId 가 있으면 그 아이로 스코프 잠금 (프로필 전환 탭 숨김)
   const { profileId: scopedId } = useParams();
+  const navigate = useNavigate(); // 항목2-②: '아이 화면 미리보기' 런처 → /kids?tour=1
   const [mainTab, setMainTab] = useState("kiddy"); // 좌측 사이드바 활성 탭 (AA A7: 기본 탭 = '키디의 한 주', 오너 결정)
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768); // 접이식 사이드바 (데스크톱 기본 열림)
   const [history, setHistory] = useState([]);
@@ -805,16 +806,26 @@ export default function ParentDashboard() {
                     : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
                 </p>
               </div>
-              {/* AD-7: 예시 가족 '둘러보기' — 헤더 우측 상시 버튼(가장 잘 보이는 자리, 오너 지시 7/8). DIARY_V0 게이트·투어 중 숨김. */}
+              {/* AD-7 + 항목2-②: 헤더 우측 버튼 그룹 — '아이 화면 미리보기'(C 트리거 → /kids?tour=1) + '예시 가족 둘러보기'. DIARY_V0 게이트·투어 중 숨김. */}
               {DIARY_V0 && !tourMode && (
-                <button
-                  data-testid="tour-header-btn"
-                  onClick={startTour}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
-                  style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
-                >
-                  🦕 {PARENT_TOUR.offer.start}
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    data-testid="kid-preview-btn"
+                    onClick={() => navigate("/kids?tour=1")}
+                    className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
+                    style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.35)" }}
+                  >
+                    👀 아이 화면 미리보기
+                  </button>
+                  <button
+                    data-testid="tour-header-btn"
+                    onClick={startTour}
+                    className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
+                    style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+                  >
+                    🦕 {PARENT_TOUR.offer.start}
+                  </button>
+                </div>
               )}
             </div>
           </section>

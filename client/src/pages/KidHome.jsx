@@ -125,7 +125,7 @@ const KID_TOUR_VIDEO = {
   videoId: "kid-tour-demo",
   title: "예시 영상 — 키디가 고른 안전한 영상",
   channelTitle: "키디 채널",
-  thumbnail: "/images/logo/symbol_256.png", // 로컬(헤더 로고와 동일 자산). 외부 GET 없음.
+  thumbnail: "/images/logo/icon_light_256.png", // 앱 아이콘(로컬·외부 GET 없음). 오너 지시 교체(symbol→app icon).
   totalScore: 96,
   duration: "",        // 길이 배지 생략(formatDuration("")→null이라 배지 미렌더).
   madeForKids: true,
@@ -182,20 +182,28 @@ export default function KidHome() {
   // 항목2-①: 부모 소개 튜토리얼(6정거장) — 헤더 "?" 트리거. 시드는 클라이언트 setState만(서버호출 0), 이탈 시 원복.
   const tour = useTour(KIDHOME_TOUR_STATIONS);
   const tourSnapshotRef = useRef(null); // 투어 진입 전 검색/추천 상태 스냅샷(이탈 시 원복)
+  const fromTourLinkRef = useRef(false); // 항목2-②: C 진입(부모 대시 '미리보기' 링크 ?tour=1)에서 왔는지 — 종료 시 navigate(-1) 복귀 판정
 
   // 투어 시작 — 홈 레이아웃을 드러내고(검색 비우기) ③ 배지용 시드 영상 1개 주입. 서버호출 0.
-  const startKidTour = () => {
+  //   opts.fromLink: C 진입(부모 미리보기) — 종료 시 대시보드로 복귀. 실프로필 없으면 데모 프로필을 state에만 주입(localStorage 무접촉).
+  const startKidTour = (opts = {}) => {
+    fromTourLinkRef.current = !!opts.fromLink;
     tourSnapshotRef.current = {
       videos, playlists, searchKeyword, loading,
       historyVideos, historyLoading, historyKeyword, favorites,
+      selectedProfile, // C 진입 시 데모로 덮으므로 함께 스냅샷 → 종료 시 원복
     };
+    // C 진입: 실프로필 없으면 데모 프로필 주입(히어로 인사·그림일기 타일 게이트 통과용). state만 — 실제 selectedProfile 오염 0.
+    if (!selectedProfile) {
+      setSelectedProfile({ id: "kid-tour-demo-profile", name: "라온", age: 6, avatarId: 1 });
+    }
     setVideos([]); setPlaylists([]); setSearchKeyword(""); setLoading(false); // 홈(추천) 레이아웃 노출 = 정거장 ③④⑤⑥ 표시 조건
     setHistoryVideos([KID_TOUR_VIDEO]); setHistoryLoading(false); setHistoryKeyword(""); // ③ '내가 좋아할 것 같아요' 카드+배지
     setFavorites([]); // '내 찜 목록'(실데이터)을 예시 배경에서 숨김 — 종료 시 원복(오너 결정 B, 2026-07-09)
     tour.start();
   };
 
-  // 투어 종료 — 시드 폐기 + 진입 전 상태 원복.
+  // 투어 종료 — 시드 폐기 + 진입 전 상태 원복. C 진입이면 대시보드로 복귀.
   const exitKidTour = () => {
     tour.exit();
     const s = tourSnapshotRef.current;
@@ -203,7 +211,12 @@ export default function KidHome() {
       setVideos(s.videos); setPlaylists(s.playlists); setSearchKeyword(s.searchKeyword); setLoading(s.loading);
       setHistoryVideos(s.historyVideos); setHistoryLoading(s.historyLoading); setHistoryKeyword(s.historyKeyword);
       setFavorites(s.favorites); // 찜 목록 원복
+      setSelectedProfile(s.selectedProfile); // C 진입 데모 프로필 원복(실프로필 없었으면 null로)
       tourSnapshotRef.current = null;
+    }
+    if (fromTourLinkRef.current) {
+      fromTourLinkRef.current = false;
+      navigate(-1); // C 진입 종료 → 온 곳(대시보드)으로 복귀
     }
   };
   // AD-2 §4: 그림일기 홈 브릿지에서 넘어온 의도(체크인 완료 후 일기 연속 진행), 1회성. AD-10 재개정: ⓑ 명시적 의도 연속 복구
@@ -213,6 +226,7 @@ export default function KidHome() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    if (searchParams.get("tour") === "1") return; // 항목2-②: C 진입(부모 미리보기) — 실프로필/검색 복원·서버호출 생략(데모 화면 순수 유지, 자동시작 effect가 처리)
     const demoKeyword = searchParams.get("q");
     if (demoKeyword) {
       setSearchKeyword(demoKeyword);
@@ -260,10 +274,18 @@ export default function KidHome() {
     // else { fetchRecommendedVideos(7, []); }
   }, []);
 
+  // 항목2-②(C 트리거): 부모 대시 '아이 화면 미리보기'에서 /kids?tour=1로 진입 시 튜토리얼 자동 시작. 1회성(마운트). 데모 프로필 시드는 startKidTour가 처리.
+  useEffect(() => {
+    if (searchParams.get("tour") !== "1") return;
+    startKidTour({ fromLink: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // F1 — 프로필 진입 시 오늘 체크인 안 했으면 체크인 오버레이 (데모 q검색 진입은 제외)
   useEffect(() => {
     if (!selectedProfile?.id) return;
     if (searchParams.get("q")) return; // 데모 딥링크 진입은 체크인 생략
+    if (searchParams.get("tour") === "1") return; // 항목2-②: 미리보기(데모 프로필)는 체크인 서버조회·오버레이 생략(서버호출 0)
     let cancelled = false;
     // 테스트 프로필은 하루 1번 제한 무시 → 매 진입마다 체크인
     const testAlways = CHECKIN_TEST_PROFILE && selectedProfile.name === CHECKIN_TEST_PROFILE;
@@ -366,6 +388,7 @@ export default function KidHome() {
   useEffect(() => {
     if (teaserTriedRef.current) return;
     if (!DIARY_V0 || !selectedProfile?.id) return;
+    if (searchParams.get("tour") === "1") return; // 항목2-②: 미리보기(데모 프로필)는 티저 localStorage 기록·표시 생략(무오염)
     if (checkinOpen) return; // 몰입 중 보류(체크인 닫히면 checkinOpen 변화로 재실행)
     try {
       const today = todayKST();
