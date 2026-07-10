@@ -9,6 +9,9 @@ import { createCareSignal, generateDiaryImage, continueDiaryImage } from "../uti
 import { assembleDiary, pickClosing } from "../utils/diaryAssembler";
 import * as diary from "../utils/diaryStore";
 import { putImage } from "../utils/diaryImageStore";
+import { putAudio } from "../utils/diaryAudioStore"; // B08b: 아이 음성 메모 저장(IDB)
+import { startVoiceRecording, isVoiceRecordingSupported, VOICE_MAX_MS } from "../utils/voiceRecorder"; // B08b: 음성 녹음 공용 유틸(10초)
+import VoiceBar from "./VoiceBar"; // B08b: 녹음/미리듣기 진행 바(공용)
 import DoodleCanvas from "./DoodleCanvas";
 import useTour from "../hooks/useTour"; // 항목2-④: 부모 소개 튜토리얼(방식 S — result 시드·TTS끔)
 import TourCoachmark from "./TourCoachmark";
@@ -18,7 +21,7 @@ import {
   DIARY_TITLE, FLOW_STOP, REPLAY_HINT, CHIP_EMOJI, REASK,
   WAIT_SEQ, IMG_DONE, IMG_FAIL, REGEN, REGEN_OUT,
   CONTINUE_CHIP, CONTINUE_DONE, CONTINUE_PICK, CONTINUE_FAIL, CONTINUE_WAIT_SEQ,
-  DIARYFLOW_TOUR,
+  DIARYFLOW_TOUR, VOICE_MEMO,
 } from "../utils/diaryCopy";
 
 // ── 우리 그림일기 v0 — 플로우 오버레이 (AD §2·§3·§4·§5) ──
@@ -125,6 +128,18 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const savedEntryRef = useRef(null);
   const savingRef = useRef(false); // AD-8b-FIX(MED): keep 더블탭 재진입 차단(4~7세 연타 → 중복 엔트리·쿼터 이중 방지)
 
+  // ── B08b: 아이 음성 메모(간직 직전, 원함 시만·강요 0) — 참조 구현=ParentDiaryShelf startRec/stopRec/playPreview 패턴 이식 ──
+  //   memoState: "idle"(제안·🎤) | "rec"(녹음 중·바) | "done"(정지·미리듣기) | "skip"(접힘 — 안 할래/시작 실패 시 조용히).
+  //   ⚠️ tourMode·미지원 시 UI 통째 미노출(렌더 게이트). memoRec={blob,ms}(정지 후) — keep 시 IDB 저장.
+  const [memoState, setMemoState] = useState("idle");
+  const [memoRec, setMemoRec] = useState(null);      // { blob, ms }(정지 후 — 저장·미리듣기 대상). ms=실측 길이
+  const [memoElapsed, setMemoElapsed] = useState(0); // 녹음 경과 ms(진행 바 — 100ms 갱신)
+  const [memoPreviewProgress, setMemoPreviewProgress] = useState(0); // 미리듣기 진행 0~1
+  const memoHandleRef = useRef(null);                // 녹음 핸들(언마운트/정리용 — 최신값·startedAt 보유)
+  const memoStartingRef = useRef(false);             // 팀장 FIX(MED): 🎤 연타 가드(권한 대기 중 이중 시작 방지)
+  const memoTimerRef = useRef(null);                 // 녹음 경과 interval
+  const memoPreviewRef = useRef(null);               // 미리듣기 Audio(유령 오디오 차단용)
+
   // AD-4 §4: 오늘의 회전 질문 = 하루 고정(diaryStore 승격) — 티저↔재진입↔플로우 일치. 기존 랜덤 선정은 아래 주석 보존.
   // const question = useMemo(() => {
   //   const recent = diary.getRecentQids(pid);
@@ -143,7 +158,12 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     mountedRef.current = true;
     if (!tourMode && !selfInitiated && pid && today) diary.markProposed(pid, today); // 자발 진입은 당일 제안 쿼터 미소비(§5). tourMode는 상태 미오염(읽기전용).
     voice.speak(initLine, "bright"); // 시작 스텝의 첫 대사(weather부터면 WEATHER_ASK). ★tourMode면 voice=무음이라 no-op(서버호출 0).
-    return () => { mountedRef.current = false; voice.stop(); };
+    return () => {
+      mountedRef.current = false; voice.stop();
+      // B08b: 언마운트('그만하기'·닫기 포함) 시 녹음 마이크·타이머·미리듣기 정리(마이크 표시등 잔류·유령 오디오 차단)
+      try { memoHandleRef.current?.cancel(); } catch { /* 무시 */ }
+      memoHandleRef.current = null; clearMemoTimer(); stopMemoPreview();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -405,12 +425,59 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgState]);
 
+  // ── B08b: 음성 메모 핸들러(ParentDiaryShelf 이식) — 마이크 정리·유령 오디오 차단 규율 동일 ──
+  const clearMemoTimer = () => { if (memoTimerRef.current) { clearInterval(memoTimerRef.current); memoTimerRef.current = null; } };
+  const stopMemoPreview = () => {
+    try { const a = memoPreviewRef.current; if (a) { a.pause(); if (a.src) URL.revokeObjectURL(a.src); } } catch { /* 무시 */ }
+    memoPreviewRef.current = null; setMemoPreviewProgress(0);
+  };
+  const startMemo = async () => {
+    if (memoStartingRef.current || memoHandleRef.current) return; // 팀장 FIX(MED): 🎤 연타 가드 — 권한 대기 중 이중 시작 시 첫 녹음기 마이크가 영영 안 꺼짐(누수)
+    memoStartingRef.current = true;
+    const h = await startVoiceRecording({
+      onStop: ({ blob, ms }) => { // 수동 정지·10초 자동정지 공통 경로
+        clearMemoTimer(); setMemoElapsed(0);
+        setMemoRec(blob ? { blob, ms } : null); memoHandleRef.current = null;
+        setMemoState(blob ? "done" : "idle"); // Blob 없으면(취소류) 조용히 idle 복귀
+      },
+    });
+    memoStartingRef.current = false;
+    if (!h) { setMemoState("skip"); return; } // 미지원·권한 거부 → 조용히 접힘(아이에게 실패 화면 금지)
+    setMemoRec(null); memoHandleRef.current = h; setMemoState("rec"); setMemoElapsed(0);
+    clearMemoTimer();
+    memoTimerRef.current = setInterval(() => { // 진행 바 경과(분모=VOICE_MAX_MS). 10초 자동정지 시 onStop이 정리.
+      const st = memoHandleRef.current?.startedAt || 0;
+      setMemoElapsed(st ? Math.min(VOICE_MAX_MS, Date.now() - st) : 0);
+    }, 100);
+  };
+  const stopMemo = () => { try { memoHandleRef.current?.stop(); } catch { /* 무시 */ } }; // onStop 콜백이 memoRec·done 세팅
+  const redoMemo = () => { stopMemoPreview(); setMemoRec(null); startMemo(); }; // 옛 Blob 폐기 후 재녹음(권한 이미 허용)
+  const skipMemo = () => { stopMemoPreview(); setMemoRec(null); setMemoState("skip"); }; // 언제나 가능 — 흔적 없음(강요 0)
+  const playMemoPreview = () => {
+    if (!memoRec?.blob) return;
+    stopMemoPreview();
+    try {
+      const url = URL.createObjectURL(memoRec.blob);
+      const a = new Audio(url);
+      memoPreviewRef.current = a;
+      a.ontimeupdate = () => { const d = memoRec.ms; if (d) setMemoPreviewProgress(Math.min(1, (a.currentTime * 1000) / d)); };
+      a.onended = () => { setMemoPreviewProgress(0); try { URL.revokeObjectURL(url); } catch { /* 무시 */ } };
+      a.play().catch(() => {});
+    } catch { /* 무시 */ }
+  };
+
   const keep = async () => {
     if (tourMode) return; // 방식 S: 읽기전용 — 간직(저장) 차단(inert로 미트리거지만 방어)
     if (savingRef.current) return; // AD-8b-FIX(MED): 더블탭 진입가드 — keep은 terminal(step→done)이라 리셋 불필요. setState는 async라 같은 tick 연타를 못 막음 → ref로 차단
     savingRef.current = true;
     const id = uid(today);
     const entry = { id, date: today, sentences, moodEmoji: checkinMood, childPick, keptAt: today };
+    // B08b: 아이 음성 메모 있으면 IDB 저장 후 entry에 voiceId·voiceMs. 실패 시 조용히 음성 없이 간직(글+그림 무회귀).
+    if (memoRec?.blob) {
+      const vId = `vm_${id}`;
+      const ok = await putAudio(vId, memoRec.blob);
+      if (ok) { entry.voiceId = vId; entry.voiceMs = memoRec.ms; }
+    }
     if (genMode === "me") {
       // AD-8: 이어 그리기 채택 — 채택 이미지(+원본)를 이 시점에 IDB 저장(간직분만 → orphan 없음). 쿼터도 여기서 소비(①).
       const imgId = `img_${id}`;
@@ -663,6 +730,36 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
                   {genMode !== "me" && pid && (diary.getRegenLeft(pid, today) > 0
                     ? <button onClick={() => runImage(sentences, { regen: true })} className="rounded-2xl px-4 py-2.5 text-sm font-bold w-full" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.3)" }}>{REGEN.btn}</button>
                     : <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{REGEN_OUT}</p>)}
+                  {/* B08b: 아이 음성 메모(선택, 최대 10초) — 간직 직전 제안. ⚠️ tourMode·미지원 시 미노출(데모 단순성+마이크 요청 차단). skip=흔적 없이 접힘(강요 0). */}
+                  {!tourMode && isVoiceRecordingSupported() && memoState !== "skip" && (
+                    <div className="rounded-2xl p-3 flex flex-col gap-2.5" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(95,224,188,0.25)" }}>
+                      {memoState === "rec" ? (
+                        <>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="inline-block rounded-full animate-pulse" style={{ width: 10, height: 10, backgroundColor: "#F2655C" }} />
+                            <span className="text-base font-bold" style={{ color: "#EAF5F1" }}>{VOICE_MEMO.rec}</span>
+                          </div>
+                          <VoiceBar progress={memoElapsed / VOICE_MAX_MS} />
+                          <button onClick={stopMemo} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={{ backgroundColor: "#3A1A1A", color: "#F2655C", border: "1px solid rgba(242,101,92,0.5)" }}>{VOICE_MEMO.stopBtn}</button>
+                        </>
+                      ) : memoState === "done" ? (
+                        <>
+                          <p className="text-base font-bold text-center" style={{ color: "#5FE0BC" }}>{VOICE_MEMO.done}</p>
+                          <div className="flex items-center gap-2">
+                            <button onClick={playMemoPreview} className="rounded-2xl px-4 py-2.5 text-sm font-bold shrink-0 active:scale-95 transition" style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.35)" }}>{VOICE_MEMO.play}</button>
+                            <div className="flex-1"><VoiceBar progress={memoPreviewProgress} /></div>
+                            <button onClick={redoMemo} className="rounded-2xl px-3 py-2.5 text-sm font-bold shrink-0" style={{ color: "#90A9A8" }}>{VOICE_MEMO.redo}</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-base font-bold text-center" style={{ color: "#EAF5F1" }}>{VOICE_MEMO.ask}</p>
+                          <button onClick={startMemo} className="rounded-2xl px-4 py-3.5 text-lg font-bold w-full active:scale-95 transition" style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.4)" }}>🎤</button>
+                          <button onClick={skipMemo} className="self-center text-sm font-bold" style={{ color: "#90A9A8" }}>{VOICE_MEMO.skip}</button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{KEEP.ask}</p>
                   <button onClick={keep} data-tour-id="flow-keep" className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={primaryStyle}>{KEEP.yes}</button>
                   <button onClick={() => onClose?.()} className="rounded-2xl px-4 py-3 text-base font-bold w-full" style={chipStyle}>{KEEP.no}</button>

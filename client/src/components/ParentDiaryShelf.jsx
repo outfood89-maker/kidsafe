@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import * as diary from "../utils/diaryStore";
 import { getImage } from "../utils/diaryImageStore";
-import { putAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 저장(IDB)
+import { putAudio, getAudio } from "../utils/diaryAudioStore"; // B08a 저장 · B08b 아이 메모 재생(IDB)
 import { startVoiceRecording, isVoiceRecordingSupported, VOICE_MAX_MS } from "../utils/voiceRecorder"; // B08a: 음성 녹음 공용 유틸(10초)
 import DiaryLightbox from "./DiaryLightbox";
 import VoiceBar from "./VoiceBar"; // B08a: 녹음/재생 진행 바(공용)
 import {
   SHELF_NAME, IMAGE_PLACEHOLDER, SHELF_FOOTER, monthBookTitle, monthBookMeta,
-  STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT, VOICE_LETTER,
+  STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT, VOICE_LETTER, VOICE_MEMO,
 } from "../utils/diaryCopy";
 
 // ── AD-6 §2: 부모 '가족 책장' — 읽기전용 열람 + 도장·짧은 편지 쓰기 ──
@@ -65,6 +65,11 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   const recHandleRef = useRef(null);                  // 녹음 핸들(언마운트/전환 정리용 — 최신값·startedAt 보유)
   const recTimerRef = useRef(null);                   // 녹음 경과 interval
   const previewAudioRef = useRef(null);               // 미리듣기 Audio(유령 오디오 차단용)
+  // B08b: 아이가 남긴 음성 메모 재생(부모도 들음 — 아이→부모 히어로). 녹음 미리듣기와 별개 오디오.
+  const [memoPlaying, setMemoPlaying] = useState(false);
+  const [memoProgress, setMemoProgress] = useState(0); // 0~1 (분모=entry.voiceMs)
+  const memoAudioRef = useRef(null);                   // 아이 메모 재생 Audio(유령 오디오 차단)
+  const memoReqRef = useRef(0);                        // 상세 전환 토큰(getAudio 비동기 레이스 가드)
 
   useEffect(() => {
     setOpenId(null); setOpenMonth(null);
@@ -109,6 +114,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
     try { recHandleRef.current?.cancel(); } catch { /* 무시 */ }
     recHandleRef.current = null; clearRecTimer(); setRecording(false); setRecElapsed(0); setVoiceRec(null); setRecDenied(false);
     stopPreview();
+    memoReqRef.current += 1; stopMemoPlay(); // B08b: 상세 전환 시 아이 메모 재생 중단 + 진행 중 getAudio 취소(유령 오디오 차단)
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
@@ -116,7 +122,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   // B08a: 언마운트 시 녹음·미리듣기·타이머 강제 정리(마이크 잔류·유령 오디오 차단) — 최신 핸들은 ref로.
   useEffect(() => () => {
     try { recHandleRef.current?.cancel(); } catch { /* 무시 */ }
-    clearRecTimer(); stopPreview();
+    clearRecTimer(); stopPreview(); stopMemoPlay(); // B08b: 아이 메모 재생도 정리
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -169,6 +175,30 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
       previewAudioRef.current = a;
       a.ontimeupdate = () => { const d = voiceRec.ms; if (d) setPreviewProgress(Math.min(1, (a.currentTime * 1000) / d)); };
       a.onended = () => { setPreviewProgress(0); try { URL.revokeObjectURL(url); } catch { /* 무시 */ } };
+      a.play().catch(() => {});
+    } catch { /* 무시 */ }
+  };
+
+  // ── B08b: 아이 음성 메모 재생(부모 열람) — getAudio→Audio + 진행 바. 상세 전환/언마운트 시 정리(유령 오디오 차단) ──
+  const stopMemoPlay = () => {
+    try { const a = memoAudioRef.current; if (a) { a.pause(); if (a.src) URL.revokeObjectURL(a.src); } } catch { /* 무시 */ }
+    memoAudioRef.current = null; setMemoPlaying(false); setMemoProgress(0);
+  };
+  const playChildMemo = async () => {
+    const vid = openEntry?.voiceId;
+    if (!vid) return;
+    const myReq = memoReqRef.current; // 상세 전환 토큰(비동기 레이스 가드)
+    try {
+      const blob = await getAudio(vid);
+      if (!blob || myReq !== memoReqRef.current) return; // 없음·그새 전환 → 유령 재생 방지
+      stopMemoPlay();
+      const url = URL.createObjectURL(blob);
+      const a = new Audio(url);
+      memoAudioRef.current = a;
+      setMemoPlaying(true); setMemoProgress(0);
+      const ms = openEntry?.voiceMs; // 진행 바 분모(구데이터=없음 → 바 숨김·재생 정상)
+      a.ontimeupdate = () => { if (ms) setMemoProgress(Math.min(1, (a.currentTime * 1000) / ms)); };
+      a.onended = () => { setMemoPlaying(false); setMemoProgress(0); try { URL.revokeObjectURL(url); } catch { /* 무시 */ } };
       a.play().catch(() => {});
     } catch { /* 무시 */ }
   };
@@ -237,6 +267,15 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
               <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
             ))}
           </div>
+          {/* B08b: 아이가 남긴 음성 메모(자기 목소리) — 부모도 들음(아이→부모 히어로). 투어 시드 엔트리는 voiceId 없음 → 미노출. */}
+          {openEntry.voiceId && (
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <button onClick={playChildMemo} className="rounded-full px-3 py-1.5 text-sm font-bold active:scale-95 transition" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.4)" }}>{VOICE_MEMO.parentPlay}</button>
+              {memoPlaying && openEntry.voiceMs && (
+                <div style={{ width: 200 }}><VoiceBar progress={memoProgress} /></div>
+              )}
+            </div>
+          )}
           {/* 도장 미리보기(우하단, 목업③ 문법) — 선택/기존 도장 있으면 */}
           {selEmoji && (
             <div className="flex mt-4">

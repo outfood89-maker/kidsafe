@@ -265,6 +265,19 @@ export const VOICE_LETTER = {
   play: "🔊 목소리 편지",            // 아이: 재생 버튼 라벨
 };
 export const LETTER_READ_VOICE = "엄마아빠가 목소리로 편지를 남겼어! 키디가 틀어줄게, 들어봐~ 🔊"; // 아이: 재생 안내(키디)
+
+// ── B08b: 아이 음성 메모 (팀장 스탬프 verbatim 2026-07-10) — 아이가 직접 남긴 음성만 저장(오너 확정 예외) ──
+//   ⚠️ 강요 금지 톤: 제안 1회, 거절 시 흔적 없음. 재촉·아쉬움 카피 없음(이어그리기 쿼터 소진과 동일 원칙).
+export const VOICE_MEMO = {
+  ask: "오늘 이야기, 목소리로도 남겨볼래?",  // 간직 직전 제안(키디)
+  rec: "듣고 있어…",                        // 녹음 중(빨간 점과 함께)
+  stopBtn: "다 말했어!",                    // 녹음 종료 버튼(아이 톤)
+  done: "잘 담았어! 🎙",                    // 정지 후 확인
+  redo: "다시 할래",                        // 재녹음
+  skip: "안 할래",                          // 건너뛰기(언제나 가능)
+  play: "🔊 내 목소리",                     // 아이 책장 재생 라벨
+  parentPlay: "🔊 아이가 남긴 한마디",       // 부모 책장 재생 라벨
+};
 export const LETTER_PLACEHOLDER = "아이에게 전할 한마디 (30자)"; // 부모 편지 입력 placeholder — 팀장 verbatim
 export const LETTER_NUDGE = "칭찬보다, 마음을 전해보세요 — \"네 이야기 잘 읽었어\" 처럼요."; // 입력 아래 서브 넛지 — 팀장 verbatim
 export const BLANK_SHELF_PARENT = "아직 아이가 간직한 이야기가 없어요."; // 부모 책장 빈 상태 — 겸임 팀장 스탬프 2026-07-07

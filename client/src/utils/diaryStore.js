@@ -56,6 +56,10 @@ export function saveEntry(pid, entry) {
   if (entry.imageId) clean.imageId = entry.imageId; // AD-5: 그림 있을 때만(선택 필드)
   if (entry.drawingId) clean.drawingId = entry.drawingId; // AD-8: 이어 그린 그림 채택 시 원본 낙서도 함께 보관(원칙③ 병치)
   if (entry.imgSource) clean.imgSource = entry.imgSource; // AD-8b §3b: "ai"|"continue"|"mine" — regen 게이트 판정(mine/failadopt는 AI 덮어쓰기 미제안)
+  // B08b: 아이가 직접 남긴 음성 메모(선택 필드). entry.voiceId=diaryAudioStore key, voiceMs=재생 바 분모(webm duration=Infinity 회피).
+  //   ⚠️ stamp.voiceId(부모 음성 편지)와 별개 축 — 한 엔트리에 아이 메모 + 부모 편지가 공존 가능. STT 없음(음성 그대로) → 위기 텍스트 스크리닝 비적용(아이 '작품 일부', 대화 아님).
+  if (entry.voiceId) clean.voiceId = entry.voiceId;
+  if (entry.voiceMs) clean.voiceMs = entry.voiceMs;
   entries.push(clean);
   writeJson(ENTRIES_KEY(pid), entries);
   return clean;
@@ -69,6 +73,7 @@ export function tearEntry(pid, entryId) {
   if (torn?.imageId) { try { deleteImage(torn.imageId); } catch { /* 무시 */ } } // 채택본 완전삭제
   if (torn?.drawingId) { try { deleteImage(torn.drawingId); } catch { /* 무시 */ } } // AD-8: 원본 낙서도 완전삭제
   if (torn?.stamp?.voiceId) { try { deleteAudio(torn.stamp.voiceId); } catch { /* 무시 */ } } // B08a: 부모 음성 편지도 완전삭제(모든 삭제 경로=tearEntry로 수렴: doTear·doShelfDelete·doRemake)
+  if (torn?.voiceId) { try { deleteAudio(torn.voiceId); } catch { /* 무시 */ } } // B08b: 아이 음성 메모도 완전삭제(orphan 0 — 부모 편지와 별개 축)
 }
 
 // ── 회전 질문 dedup (최근 3일 사용 qid 회피) ──

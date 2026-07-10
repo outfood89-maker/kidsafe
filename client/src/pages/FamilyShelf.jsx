@@ -11,7 +11,7 @@ import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
 import { getAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 재생(IDB)
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, LETTER_READ_VOICE, VOICE_LETTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, LETTER_READ_VOICE, VOICE_LETTER, VOICE_MEMO, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy";
 import useTour from "../hooks/useTour"; // 항목2-⑤: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
 import TourCoachmark from "../components/TourCoachmark";
 
@@ -99,8 +99,9 @@ export default function FamilyShelf() {
   const [letterOpen, setLetterOpen] = useState(false); // 편지 본문 표시 — 상세 진입 시 자동 펼침(오너 7/10), ✉️ 탭=키디 낭독(LETTER_READ)
   const voiceAudioRef = useRef(null); // B08a: 재생 중 부모 음성 편지 Audio(유령 오디오 차단)
   const voiceReqRef = useRef(0);      // B08a: 상세 전환 토큰 — getAudio 비동기 레이스 시 스테일 재생 취소
-  const [voicePlaying, setVoicePlaying] = useState(false);   // B08a: 음성 편지 재생 중(진행 바 표시)
-  const [voicePlayProgress, setVoicePlayProgress] = useState(0); // 0~1 (분모=stamp.voiceMs)
+  const [voicePlaying, setVoicePlaying] = useState(false);   // B08a: 음성 재생 중(진행 바 표시 — 편지/메모 공용)
+  const [voicePlayProgress, setVoicePlayProgress] = useState(0); // 0~1 (분모=stamp.voiceMs 또는 entry.voiceMs)
+  const [voiceKind, setVoiceKind] = useState(null);          // B08b: 재생 중 종류 "letter"(부모 편지) | "memo"(아이 메모) — 진행 바 분기(한 오디오만 재생)
 
   // 항목2-⑤: 부모 소개 튜토리얼 — 데모 일기 1편 시드 + 스텝별 뷰 구동. 시작 전 상태 스냅샷 → 종료 시 원복.
   const tour = useTour(FAMILYSHELF_TOUR_STATIONS);
@@ -329,17 +330,16 @@ export default function FamilyShelf() {
     } catch { /* 무시 */ }
   };
 
-  // B08a: 재생 중 음성 편지 정리(유령 오디오 차단 — 상세 이탈·엔트리 전환·언마운트)
+  // B08a: 재생 중 음성 정리(유령 오디오 차단 — 상세 이탈·엔트리 전환·언마운트). 편지·메모 공용.
   const stopVoiceAudio = () => {
     try { const a = voiceAudioRef.current; if (a) { a.pause(); if (a.src) URL.revokeObjectURL(a.src); } } catch { /* 무시 */ }
-    voiceAudioRef.current = null; setVoicePlaying(false); setVoicePlayProgress(0);
+    voiceAudioRef.current = null; setVoicePlaying(false); setVoicePlayProgress(0); setVoiceKind(null);
   };
-  // B08a: 🔊 탭 → 키디 안내(LETTER_READ_VOICE) → 부모 음성 편지 재생(getAudio→Audio) + 진행 바. 실패·이탈 시 조용히(글 편지 흐름 불변).
-  const onVoiceTap = async () => {
-    const vid = openEntry?.stamp?.voiceId;
+  // B08a/B08b 공용: voiceId 오디오 재생(getAudio→Audio) + 진행 바. kind="letter"(안내 TTS 후)·"memo"(아이 제 목소리, TTS 없음).
+  //   ms=진행 바 분모(구데이터=없음 → 바 숨김, 재생은 정상). 실패·이탈 시 조용히(글 편지·그림 흐름 불변).
+  const playVoice = async (vid, ms, kind) => {
     if (!vid) return;
     const myReq = voiceReqRef.current; // 상세 전환 토큰(비동기 레이스 가드)
-    try { voice.speak(LETTER_READ_VOICE, "bright"); } catch { /* 무시 */ }
     try {
       const blob = await getAudio(vid);
       if (!blob || myReq !== voiceReqRef.current) return; // 없음·그새 엔트리 전환 → 유령 재생 방지
@@ -347,13 +347,21 @@ export default function FamilyShelf() {
       const url = URL.createObjectURL(blob);
       const a = new Audio(url);
       voiceAudioRef.current = a;
-      setVoicePlaying(true); setVoicePlayProgress(0);
-      const ms = openEntry?.stamp?.voiceMs; // 진행 바 분모(구데이터=없음 → 바 숨김, 재생은 정상)
+      setVoicePlaying(true); setVoicePlayProgress(0); setVoiceKind(kind);
       a.ontimeupdate = () => { if (ms) setVoicePlayProgress(Math.min(1, (a.currentTime * 1000) / ms)); };
-      a.onended = () => { setVoicePlaying(false); setVoicePlayProgress(0); try { URL.revokeObjectURL(url); } catch { /* 무시 */ } };
+      a.onended = () => { setVoicePlaying(false); setVoicePlayProgress(0); setVoiceKind(null); try { URL.revokeObjectURL(url); } catch { /* 무시 */ } };
       a.play().catch(() => {});
     } catch { /* 무시 */ }
   };
+  // B08a: 🔊 탭 → 키디 안내(LETTER_READ_VOICE) → 부모 음성 편지 재생.
+  const onVoiceTap = () => {
+    const vid = openEntry?.stamp?.voiceId;
+    if (!vid) return;
+    try { voice.speak(LETTER_READ_VOICE, "bright"); } catch { /* 무시 */ }
+    playVoice(vid, openEntry?.stamp?.voiceMs, "letter");
+  };
+  // B08b: 🔊 내 목소리 → 아이가 남긴 음성 메모 재생(제 목소리라 안내 TTS 없음).
+  const onMemoTap = () => { playVoice(openEntry?.voiceId, openEntry?.voiceMs, "memo"); };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0A1E1E" }}>
@@ -576,6 +584,15 @@ export default function FamilyShelf() {
                   <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
                 ))}
               </div>
+              {/* B08b: 아이가 남긴 음성 메모(자기 목소리) — 글 아래. 부모 도장/편지와 별개 축. 재생 중 진행 바(voiceMs 있을 때). */}
+              {openEntry.voiceId && (
+                <div className="mt-4 flex flex-col items-start gap-2">
+                  <button onClick={onMemoTap} aria-label="내 목소리 듣기" className="rounded-full px-3 py-1.5 text-sm font-bold active:scale-95 transition" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.4)" }}>{VOICE_MEMO.play}</button>
+                  {voicePlaying && voiceKind === "memo" && openEntry.voiceMs && (
+                    <div style={{ width: 160 }}><VoiceBar progress={voicePlayProgress} /></div>
+                  )}
+                </div>
+              )}
               {/* AD-6 §3 + 오너 7/10: 부모 도장(우하단) + 편지 본문 자동 펼침. 낭독 버튼은 라벨 알약+갸웃 애니로 '누르고 싶게'(아이는 눌러야 하는 걸 모름) */}
               {openEntry.stamp?.emoji && (
                 <>
@@ -589,8 +606,8 @@ export default function FamilyShelf() {
                     )}
                     <StampMark emoji={openEntry.stamp.emoji} />
                   </div>
-                  {/* B08a: 음성 편지 재생 진행 바 — 재생 중 + voiceMs 있을 때만(구데이터는 바 숨김·재생 정상) */}
-                  {voicePlaying && openEntry.stamp.voiceMs && (
+                  {/* B08a: 음성 편지 재생 진행 바 — 편지 재생 중 + voiceMs 있을 때만(구데이터는 바 숨김·재생 정상). B08b: voiceKind로 메모 재생과 분리 */}
+                  {voicePlaying && voiceKind === "letter" && openEntry.stamp.voiceMs && (
                     <div className="mt-2 flex justify-end">
                       <div style={{ width: 160 }}><VoiceBar progress={voicePlayProgress} /></div>
                     </div>
