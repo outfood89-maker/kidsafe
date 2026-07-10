@@ -42,10 +42,21 @@ export default function useKiddySpeech() {
   const recognitionRef = useRef(null);
   const finalRef = useRef("");   // 세션 동안 누적된 최종 인식 텍스트
   const retryTimerRef = useRef(null); // iOS aborted 자동 재시작 대기 타이머(7/10)
+  const micStreamRef = useRef(null);  // iOS 세션 전환용 프라이밍 마이크 스트림(7/10 3라운드)
+
+  // 프라이밍 스트림 해제(마이크 표시등 끔) — 인식 종료/중단/언마운트 공통.
+  const releaseMicStream = useCallback(() => {
+    const s = micStreamRef.current;
+    if (s) {
+      try { s.getTracks().forEach((t) => t.stop()); } catch { /* noop */ }
+      micStreamRef.current = null;
+    }
+  }, []);
 
   // 진행 중인 인식 정리 (핸들러 해제 후 중단) — 언마운트/재시작 공통.
   const teardown = useCallback(() => {
     if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+    releaseMicStream();
     const rec = recognitionRef.current;
     if (rec) {
       try {
@@ -57,7 +68,7 @@ export default function useKiddySpeech() {
       } catch { /* noop */ }
       recognitionRef.current = null;
     }
-  }, []);
+  }, [releaseMicStream]);
 
   const reset = useCallback(() => {
     finalRef.current = "";
@@ -134,6 +145,7 @@ export default function useKiddySpeech() {
           return;
         }
         dbg(`인식 종료 (확정 ${finalRef.current.trim().length}자)`);
+        releaseMicStream(); // 프라이밍 스트림 해제(마이크 표시등 끔)
         setListening(false);
         setInterim("");
         setTranscript(finalRef.current.trim());   // 최종 확정
@@ -148,14 +160,31 @@ export default function useKiddySpeech() {
         setListening(false);
       }
     };
-    begin(false);
-  }, [teardown]);
+
+    // ── iOS 오디오 세션 강제 전환(7/10 3라운드, 실측+웹 리서치 근거) ──
+    //   TTS가 한 번 재생되면 세션이 '재생' 카테고리에 갇혀 인식이 시작 직후 aborted로 죽고,
+    //   0.3~0.6초 재시도로도 복구 안 됨(자연 복구는 3.5~5초 — 아이 대화 UX에 못 씀).
+    //   getUserMedia로 마이크를 실제로 열면 세션이 그 즉시 '재생+녹음'으로 전환됨
+    //   (우리 음성편지 '녹음'이 TTS 후에도 잘 되는 것과 같은 원리). 인식하는 동안 스트림을
+    //   쥐고 있다가 종료 시 해제(마이크 표시등 정리). 실패(거부 등)해도 인식은 그대로 시도.
+    const primeThenBegin = async () => {
+      try {
+        if (navigator.mediaDevices?.getUserMedia) {
+          micStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+          dbg("마이크 프라이밍 ok");
+        }
+      } catch (e) { dbg(`프라이밍 fail ${e?.name}`); }
+      begin(false);
+    };
+    primeThenBegin();
+  }, [teardown, releaseMicStream]);
 
   const stop = useCallback(() => {
     if (retryTimerRef.current) {
       // 재시작 대기 중 사용자가 [다 말했어요] — 대기 취소하고 지금까지 결과로 조용히 마무리.
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
+      releaseMicStream();
       setListening(false);
       setInterim("");
       setTranscript(finalRef.current.trim());
@@ -165,7 +194,7 @@ export default function useKiddySpeech() {
     if (rec) {
       try { rec.stop(); } catch { /* noop */ }   // onend 에서 최종 transcript 확정
     }
-  }, []);
+  }, [releaseMicStream]);
 
   // 언마운트 시 인식 중단(마이크 해제) — 위젯 닫힘/화면 이동 시 남지 않게.
   useEffect(() => () => teardown(), [teardown]);
