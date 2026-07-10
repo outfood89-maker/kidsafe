@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import useKiddyVoice, { playKiddySfx } from "../hooks/useKiddyVoice"; // P5: 효과음(신디 차임 — 선택·간직·공개)
+import useKiddyVoice, { playKiddySfx, startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // P5: 효과음(신디 차임 — 선택·간직·공개) / P4: 생성 대기 배경음악
 
 // P5: 효과음 안전 래퍼 — 효과음은 장식이라 목(mock)·미지원 환경에서 함수가 없어도 조용히 무시
 const sfx = (kind) => { try { playKiddySfx(kind); } catch { /* 무시 */ } };
@@ -412,6 +412,16 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       await persistPendingContinue(dataUrl, res.b64); // AD-8b: 이탈 후 완성 도착 → 보존(실패는 미기록)
     }
   };
+
+  // P4(오너 확장 7/10): 그림일기 '전체' 배경음악 — 진입 시 시작·곡 끝나면 루프, 나가면 페이드아웃.
+  //   TTS 발화 중 자동 덕킹, 말하기(마이크) 중엔 모듈이 자동 일시정지→키디 답과 함께 복귀.
+  //   투어 모드는 제외(부모 소개 화면 — 음악 불필요). 트랙 미배치·목 환경은 조용히 무음(BGM은 장식).
+  useEffect(() => {
+    if (tourMode) return;
+    try { startKiddyBgm(); } catch { /* 무시 */ }
+    return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 대기연출 순차 — imgState==="wait" 동안 다음 멘트(마지막 단 고정). ai=3단·5s / me(이어그리기)=4단·~11s. done/fail/언마운트 시 타이머 정리(X-2 유령 TTS 교훈).
   useEffect(() => {
