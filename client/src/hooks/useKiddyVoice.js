@@ -110,7 +110,31 @@ function acquireAudio() {
 //         (일시정지 상태여도) 세션이 '재생 모드'에 고착 → 인식 마이크에 소리가 안 들어옴.
 //   해법: src까지 떼고 load()로 자원을 완전히 비워 세션을 반납. 언락(_kiddyBlessed)은 엘리먼트에
 //         남으므로(제스처 이력 기반) 다음 TTS 재생은 그대로 됨. useKiddySpeech.start()가 호출.
+// ── 무음 스위치 우회 — 마이크 '없는' 화면 전용 (오너 결정 7/10: 가족 책장 편지 낭독) ──
+//   무음 루프 <audio>를 같이 틀어 오디오를 벨소리 채널 → '미디어 채널'로 옮기면
+//   WebAudio TTS가 무음 스위치가 켜져 있어도 들림(unmute-ios-audio 기법).
+//   ⚠️ 미디어 엘리먼트 재생은 직후 음성인식을 죽임(7/10 실측 확정) — 말하기 연습·체크인·음성검색 등
+//   마이크 있는 화면에서는 절대 호출 금지. 반드시 사용자 제스처 안에서 hold 호출.
+let mediaHoldEl = null;
+export function holdMediaChannelForTTS() {
+  try {
+    if (typeof Audio === "undefined") return;
+    if (!unlockUrl) unlockUrl = makeSilentWavUrl();
+    if (!mediaHoldEl) { mediaHoldEl = new Audio(); mediaHoldEl.loop = true; }
+    if (!mediaHoldEl.getAttribute("src")) mediaHoldEl.src = unlockUrl;
+    const p = mediaHoldEl.play();
+    if (p?.catch) p.catch(() => { /* 재생 거부 시 그냥 표준 동작(무음 스위치=음소거)으로 남음 */ });
+    dbgV("미디어채널 hold(무음 우회)");
+  } catch { /* noop */ }
+}
+export function releaseMediaChannelHold() {
+  try {
+    if (mediaHoldEl) { mediaHoldEl.pause(); mediaHoldEl.removeAttribute("src"); mediaHoldEl.load(); dbgV("미디어채널 release"); }
+  } catch { /* noop */ }
+}
+
 export function releaseKiddyAudioForMic() {
+  releaseMediaChannelHold(); // 무음 우회 루프가 남아있으면 인식이 죽음 — 마이크 직전 반드시 해제
   suspendCtxForMic(); // WebAudio 경로 세션 반납(재생 중 마이크 탭 등)
   allAudioEls.forEach((a) => {
     try {
@@ -184,14 +208,29 @@ export default function useKiddyVoice() {
     const ctx = clip.buffer ? getCtx() : null;
     if (ctx && clip.buffer) {
       try {
-        if (ctx.state === "suspended") {
-          try { ctx.resume(); } catch { /* noop */ }
+        if (ctx.state !== "running") {
+          // ⚠️ 'suspended'만이 아님 — iOS는 음성인식 서비스가 재생을 끊으면 'interrupted' 상태로 남긴다
+          //   (7/10 실사고: 체크인 후 대화 화면에서 TTS가 영영 시작 안 됨). running이 아니면 전부 resume.
           if (!ctx._kiddyUnlocked) {
-            // 아직 제스처 언락 전(첫 인사 등 무제스처 진입) — 대사를 버리지 않고 다음 탭에서 재시도(엘리먼트 경로 2차 안전망과 동일)
+            // 아직 제스처 언락 전(첫 인사 등 무제스처 진입) — 대사를 버리지 않고 다음 탭에서 재시도
+            try { ctx.resume(); } catch { /* noop */ }
             if (typeof document !== "undefined") document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
             return;
           }
-          // 언락 후엔 프로그램적 resume 허용 — start()는 resume 완료에 맞춰 큐잉됨
+          // 언락 후: resume이 '완료된 뒤' 재생 시작(실패 시 노드를 만들지 않아 pump가 영구 잠기지 않음 + 다음 탭 재시도)
+          dbgV(`ctx ${ctx.state} → resume`);
+          try {
+            const rp = ctx.resume();
+            if (rp?.then) {
+              rp.then(() => pump()).catch(() => {
+                dbgV("resume fail → 탭 재시도");
+                if (typeof document !== "undefined") document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
+              });
+            } else if (ctx.state === "running") { pump(); } // 비프로미스 구형 경로 — 상태 확인 후에만 재진입(무한루프 방지)
+          } catch {
+            if (typeof document !== "undefined") document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
+          }
+          return;
         }
         const node = ctx.createBufferSource();
         node.buffer = clip.buffer;

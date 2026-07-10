@@ -30,7 +30,13 @@ function dbg(msg) {
 //
 // ⚠️ 저장 안 함(정책): 오디오 저장 0, transcript 는 메모리 state 만. localStorage/sessionStorage 금지.
 //    (Web Speech 는 브라우저→구글 인식이지만 우리 쪽 저장·전송·보관은 없음.)
-export default function useKiddySpeech() {
+//
+// 옵션 keepMicWarm (7/10 오너 결정 — 대화 화면 전용):
+//   true면 프라이밍 마이크 스트림을 인식이 끝나도 쥐고 있는다(언마운트 시에만 해제).
+//   iOS는 마이크가 열려 있는 동안 세션이 '재생+녹음'이 되어 무음(매너) 스위치를 무시 →
+//   대화 중 키디 TTS가 무음 모드에서도 들림(체크인에서 오너가 실측 발견한 현상의 의도적 활용).
+//   마이크 표시등이 화면 내내 켜지므로 '대화가 주 목적인 화면'(키디의 방)에서만 켤 것.
+export default function useKiddySpeech({ keepMicWarm = false } = {}) {
   const [supported] = useState(
     () => typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   );
@@ -145,7 +151,7 @@ export default function useKiddySpeech() {
           return;
         }
         dbg(`인식 종료 (확정 ${finalRef.current.trim().length}자)`);
-        releaseMicStream(); // 프라이밍 스트림 해제(마이크 표시등 끔)
+        if (!keepMicWarm) releaseMicStream(); // 프라이밍 스트림 해제(warm 모드는 언마운트까지 유지 — 무음 스위치 우회)
         setListening(false);
         setInterim("");
         setTranscript(finalRef.current.trim());   // 최종 확정
@@ -169,7 +175,9 @@ export default function useKiddySpeech() {
     //   쥐고 있다가 종료 시 해제(마이크 표시등 정리). 실패(거부 등)해도 인식은 그대로 시도.
     const primeThenBegin = async () => {
       try {
-        if (navigator.mediaDevices?.getUserMedia) {
+        if (micStreamRef.current?.getTracks?.().some((t) => t.readyState === "live")) {
+          dbg("프라이밍 재사용(warm)"); // keepMicWarm: 이전 턴 스트림이 살아있으면 그대로 사용
+        } else if (navigator.mediaDevices?.getUserMedia) {
           micStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
           dbg("마이크 프라이밍 ok");
         }
@@ -177,14 +185,14 @@ export default function useKiddySpeech() {
       begin(false);
     };
     primeThenBegin();
-  }, [teardown, releaseMicStream]);
+  }, [teardown, releaseMicStream, keepMicWarm]);
 
   const stop = useCallback(() => {
     if (retryTimerRef.current) {
       // 재시작 대기 중 사용자가 [다 말했어요] — 대기 취소하고 지금까지 결과로 조용히 마무리.
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
-      releaseMicStream();
+      if (!keepMicWarm) releaseMicStream();
       setListening(false);
       setInterim("");
       setTranscript(finalRef.current.trim());
@@ -194,7 +202,7 @@ export default function useKiddySpeech() {
     if (rec) {
       try { rec.stop(); } catch { /* noop */ }   // onend 에서 최종 transcript 확정
     }
-  }, [releaseMicStream]);
+  }, [releaseMicStream, keepMicWarm]);
 
   // 언마운트 시 인식 중단(마이크 해제) — 위젯 닫힘/화면 이동 시 남지 않게.
   useEffect(() => () => teardown(), [teardown]);
