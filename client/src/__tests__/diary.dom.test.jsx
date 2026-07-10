@@ -12,7 +12,7 @@ const H = vi.hoisted(() => ({
   sendChatMessage: vi.fn(() => Promise.resolve({})),
   speechCtl: { setListening: null, setTranscript: null },
 }));
-vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice }));
+vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice, holdMediaChannelForTTS: () => {}, releaseMediaChannelHold: () => {} })); // B08c: FamilyShelf가 named export 호출(무음 우회)
 vi.mock("../utils/api", () => ({ createCareSignal: H.createCareSignal, sendChatMessage: H.sendChatMessage, generateDiaryImage: () => Promise.resolve({ ok: false }), continueDiaryImage: () => Promise.resolve({ ok: false }) }));
 // AD-9 §1: 앨범 썸네일 로드는 IDB(getImage) — jsdom엔 IDB 없음 → 결정적 모킹(img_seed_pic만 dataURL, 그 외 null=플레이스홀더)
 vi.mock("../utils/diaryImageStore", () => ({

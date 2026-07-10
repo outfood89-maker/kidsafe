@@ -6,12 +6,12 @@ import DiaryFlow from "../components/DiaryFlow";
 import KiddyFab from "../components/KiddyFab";
 import DiaryLightbox from "../components/DiaryLightbox";
 import VoiceBar from "../components/VoiceBar"; // B08a: 음성 편지 재생 진행 바(공용)
-import useKiddyVoice from "../hooks/useKiddyVoice";
+import useKiddyVoice, { holdMediaChannelForTTS, releaseMediaChannelHold } from "../hooks/useKiddyVoice"; // B08c §2: 무음 스위치 우회(편지 낭독 — 마이크 없는 화면 전용)
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
 import { getAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 재생(IDB)
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, LETTER_READ_VOICE, VOICE_LETTER, VOICE_MEMO, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, VOICE_LETTER, VOICE_MEMO, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy"; // B08c: LETTER_READ_VOICE 사용처 제거(안내 TTS 폐지) → import 정리. 카피는 diaryCopy 보존.
 import useTour from "../hooks/useTour"; // 항목2-⑤: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
 import TourCoachmark from "../components/TourCoachmark";
 
@@ -148,7 +148,7 @@ export default function FamilyShelf() {
     if (bridge) { try { voice.speak(BRIDGE.line, "bright"); } catch { /* 무시 */ } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bridge]);
-  useEffect(() => () => { try { voice.stop(); } catch { /* 무시 */ } stopVoiceAudio(); }, []); // eslint-disable-line react-hooks/exhaustive-deps  // B08a: 언마운트 시 음성 편지도 정지(유령 오디오 차단)
+  useEffect(() => () => { try { voice.stop(); } catch { /* 무시 */ } stopVoiceAudio(); releaseMediaChannelHold(); }, []); // eslint-disable-line react-hooks/exhaustive-deps  // B08a: 언마운트 시 음성 정지(유령 오디오 차단) / B08c §2: 무음 우회 hold 해제
 
   // AD-4 §5: 방 초대 '좋아!'에서 navigate(state:{startWrite:true})로 오면 자동 쓰기 시작. state 즉시 소거(Z 패턴).
   useEffect(() => {
@@ -229,7 +229,7 @@ export default function FamilyShelf() {
     setLightbox(null); // 페이지 전환 시 열린 라이트박스도 닫힘
     setLetterOpen(!!openEntry?.stamp?.letter?.trim()); // 오너 7/10: 편지 본문은 자동으로 펼침(탭 불필요). 키디 낭독(TTS)은 여전히 ✉️ 탭 시(상세 열자마자 소리 안 남)
     try { voice.stop(); } catch { /* 무시 */ } // AD-6 §3 유령TTS 차단(X-2 규율): 편지 낭독 중 상세 이탈·엔트리 전환 시 부모 편지 음성 중단(화면 단서 없는 유령 재생 방지)
-    voiceReqRef.current += 1; stopVoiceAudio(); // B08a: 상세 전환 시 재생 중 음성 편지 중단 + 진행 중 getAudio 재생 취소(유령 오디오 차단)
+    voiceReqRef.current += 1; stopVoiceAudio(); releaseMediaChannelHold(); // B08a: 상세 전환 시 재생 중 음성 중단 + getAudio 취소(유령 오디오 차단) / B08c §2: 무음 우회 hold 해제
     // AD-6 §3: 상세 열람 = 확인 → 도장 seen 처리(아이 홈 알림 자연 소멸). 표시는 seenAt 무관하게 항상.
     //   ⚠️ 항목2-⑤: 튜토리얼 중엔 건너뜀 — 데모 상세 열람이 실제 seenAt(localStorage)을 오염시키지 않게(서버·저장 무접촉).
     if (openEntry?.stamp && profile?.id && !tour.isActive) { try { diary.markStampSeen(profile.id, openEntry.id); } catch { /* 무시 */ } }
@@ -322,6 +322,8 @@ export default function FamilyShelf() {
 
   // AD-6 §3: ✉️ 탭 → LETTER_READ 안내(TTS) → 이어서 편지 본문 낭독 + 화면 표시. 편지 본문=부모 작성(카피게이트 아님).
   const onLetterTap = () => {
+    holdMediaChannelForTTS(); // B08c §2: 탭 제스처 안에서 무음 스위치 우회(마이크 없는 화면 전용) — 무음 스위치 ON이어도 낭독이 들림. 해제는 상세 이탈/전환/언마운트.
+    stopVoiceAudio();         // B08c §1: 재생 중 녹음(🔊 목소리 편지/내 목소리) 즉시 중단 → 낭독만(상호배타)
     setLetterOpen(true);
     try {
       voice.speak(LETTER_READ, "bright");
@@ -353,15 +355,16 @@ export default function FamilyShelf() {
       a.play().catch(() => {});
     } catch { /* 무시 */ }
   };
-  // B08a: 🔊 탭 → 키디 안내(LETTER_READ_VOICE) → 부모 음성 편지 재생.
+  // 🔊 탭 → 부모 음성 편지 재생. B08c §1: 키디 TTS 즉시 중단(✉️ 낭독과 상호배타).
+  //   ⚠️ 안내 TTS(voice.speak(LETTER_READ_VOICE))는 녹음 재생과 겹쳐 동시재생 원인 → 제거(오너 리포트). 카피 LETTER_READ_VOICE는 diaryCopy 보존(삭제 금지).
   const onVoiceTap = () => {
     const vid = openEntry?.stamp?.voiceId;
     if (!vid) return;
-    try { voice.speak(LETTER_READ_VOICE, "bright"); } catch { /* 무시 */ }
+    try { voice.stop(); } catch { /* 무시 */ }
     playVoice(vid, openEntry?.stamp?.voiceMs, "letter");
   };
-  // B08b: 🔊 내 목소리 → 아이가 남긴 음성 메모 재생(제 목소리라 안내 TTS 없음).
-  const onMemoTap = () => { playVoice(openEntry?.voiceId, openEntry?.voiceMs, "memo"); };
+  // B08b: 🔊 내 목소리 → 아이가 남긴 음성 메모 재생(제 목소리라 안내 TTS 없음). B08c §1: 키디 TTS 즉시 중단(상호배타).
+  const onMemoTap = () => { try { voice.stop(); } catch { /* 무시 */ } playVoice(openEntry?.voiceId, openEntry?.voiceMs, "memo"); };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0A1E1E" }}>

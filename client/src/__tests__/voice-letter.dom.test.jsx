@@ -29,7 +29,7 @@ vi.mock("../utils/voiceRecorder", () => ({
   startVoiceRecording: (opts) => { H.lastOnStop = opts?.onStop; return Promise.resolve(H.recResult); },
 }));
 vi.mock("../utils/diaryImageStore", () => ({ getImage: vi.fn(() => Promise.resolve(null)), putImage: vi.fn(() => Promise.resolve(true)), deleteImage: vi.fn() }));
-vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice }));
+vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice, holdMediaChannelForTTS: () => {}, releaseMediaChannelHold: () => {} })); // B08c: FamilyShelf가 named export 호출(무음 우회)
 vi.mock("../utils/api", () => H.api);
 vi.mock("../components/Typewriter", () => ({ default: ({ text }) => text }));
 
@@ -110,15 +110,18 @@ describe("항목3-a T4 — 아이 음성 편지 재생", () => {
     fireEvent.click(card);
   };
 
-  it("voiceId 있으면 🔊 노출(음성만 → ✉️ 없음), 탭 → LETTER_READ_VOICE speak + getAudio(voiceId)", async () => {
+  it("voiceId 있으면 🔊 노출(음성만 → ✉️ 없음), 탭 → voice.stop + getAudio(voiceId) (B08c: 안내 TTS 제거)", async () => {
     seedChildEntry({ voiceId: "vX" }); // 글 편지 없음(음성만)
     await openTodayDetail();
     const play = await screen.findByText(VOICE_LETTER.play);
     expect(play).toBeTruthy();
     expect(screen.queryByLabelText("편지 보기")).toBeNull(); // 글 없음 → ✉️ 미노출
 
+    H.voice.stop.mockClear();
     await act(async () => { fireEvent.click(play); });
-    expect(H.voice.speak).toHaveBeenCalledWith(LETTER_READ_VOICE, "bright");
+    // B08c §1: 🔊 탭 = 키디 TTS 즉시 중단(상호배타) + 녹음 재생. 안내 TTS(LETTER_READ_VOICE) speak는 겹침 원인이라 제거됨.
+    expect(H.voice.stop).toHaveBeenCalled();
+    expect(H.voice.speak).not.toHaveBeenCalledWith(LETTER_READ_VOICE, "bright");
     expect(H.getAudio).toHaveBeenCalledWith("vX");
   });
 

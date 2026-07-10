@@ -15,7 +15,7 @@ const H = vi.hoisted(() => ({
   },
   img: { putImage: vi.fn(() => Promise.resolve(true)), getImage: vi.fn(() => Promise.resolve(null)), deleteImage: vi.fn() },
 }));
-vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice }));
+vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice, holdMediaChannelForTTS: () => {}, releaseMediaChannelHold: () => {} })); // B08c: FamilyShelf가 named export 호출(무음 우회)
 vi.mock("../hooks/useKiddySpeech", async () => {
   const React = await import("react");
   return { default: () => {
