@@ -55,8 +55,8 @@ describe("AD-6 §3 — 아이 상세 도장 + ✉️ 편지 낭독 + seen", () =
     await openChildDetail();
     expect(screen.getByText("❤️")).toBeTruthy();                 // 도장 표시(목업③)
     expect(diaryStore.getUnseenStamps("c1").length).toBe(0);      // 상세 열람 → markStampSeen
-    expect(screen.queryByText("아빠가 사랑해")).toBeNull();        // 편지 본문 기본 숨김
-    fireEvent.click(screen.getByLabelText("편지 보기"));           // ✉️
+    expect(screen.getByText("아빠가 사랑해")).toBeTruthy();        // 오너 7/10: 편지 본문 자동 펼침(탭 불필요 — 기본 숨김 스펙 개정)
+    fireEvent.click(screen.getByLabelText("편지 보기"));           // ✉️ = 키디 낭독 트리거(자동 소리는 안 남)
     expect(H.voice.speak).toHaveBeenCalledWith(LETTER_READ, "bright");   // 안내 TTS
     expect(H.voice.enqueue).toHaveBeenCalledWith("아빠가 사랑해", "bright"); // 본문 이어 낭독
     expect(screen.getByText(LETTER_READ)).toBeTruthy();

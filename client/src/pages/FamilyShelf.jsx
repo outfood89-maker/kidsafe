@@ -96,7 +96,7 @@ export default function FamilyShelf() {
   const [returnMode, setReturnMode] = useState("banner");   // "banner" | "pick"
   const [returnDrawing, setReturnDrawing] = useState(null); // pending 원본 낙서 dataURL(IDB 로드)
   const [returnCompleted, setReturnCompleted] = useState(null); // pending 완성본 dataURL(IDB 로드)
-  const [letterOpen, setLetterOpen] = useState(false); // AD-6 §3: 편지 ✉️ 열림(탭 시 LETTER_READ 안내+본문 낭독)
+  const [letterOpen, setLetterOpen] = useState(false); // 편지 본문 표시 — 상세 진입 시 자동 펼침(오너 7/10), ✉️ 탭=키디 낭독(LETTER_READ)
   const voiceAudioRef = useRef(null); // B08a: 재생 중 부모 음성 편지 Audio(유령 오디오 차단)
   const voiceReqRef = useRef(0);      // B08a: 상세 전환 토큰 — getAudio 비동기 레이스 시 스테일 재생 취소
   const [voicePlaying, setVoicePlaying] = useState(false);   // B08a: 음성 편지 재생 중(진행 바 표시)
@@ -226,7 +226,7 @@ export default function FamilyShelf() {
     setDetailImg(null);
     setDetailDrawing(null);
     setLightbox(null); // 페이지 전환 시 열린 라이트박스도 닫힘
-    setLetterOpen(false); // AD-6 §3: 상세 전환 시 편지 접힘 초기화
+    setLetterOpen(!!openEntry?.stamp?.letter?.trim()); // 오너 7/10: 편지 본문은 자동으로 펼침(탭 불필요). 키디 낭독(TTS)은 여전히 ✉️ 탭 시(상세 열자마자 소리 안 남)
     try { voice.stop(); } catch { /* 무시 */ } // AD-6 §3 유령TTS 차단(X-2 규율): 편지 낭독 중 상세 이탈·엔트리 전환 시 부모 편지 음성 중단(화면 단서 없는 유령 재생 방지)
     voiceReqRef.current += 1; stopVoiceAudio(); // B08a: 상세 전환 시 재생 중 음성 편지 중단 + 진행 중 getAudio 재생 취소(유령 오디오 차단)
     // AD-6 §3: 상세 열람 = 확인 → 도장 seen 처리(아이 홈 알림 자연 소멸). 표시는 seenAt 무관하게 항상.
