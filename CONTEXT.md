@@ -476,6 +476,21 @@ kidsafe/
 - ✅ **로그인 후 랜딩 임의 이동 차단** + ProfileSelect 계정/로그아웃 버튼 (멀티테넌시 대비)
 - ✅ **가족 스케줄러 + 대화형 AI 에이전트** — 월간 달력 CRUD + 자연어 한 문장으로 등록/조회/수정/삭제(복합명령 operations 분해). 사실은 코드·LLM은 분류만(환각/오삭제 방지), 보고 있는 달 기준 날짜 해석
 - ✅ **랜딩페이지 대개편** — weenote식 질문-답변 사다리 구조 + 실제 앱 캡쳐 쇼케이스 + YouTube 비교표(조력 프레이밍) + 교육 미니게임 6종 소개 + Kiddy 리브랜딩
+- ✅ **키디 음성 스택(CLOVA TTS + 음성인식) — iOS 사파리 공존 기술 확립 (2026-07-10)**
+
+### iOS 음성 기술 자산 (useKiddyVoice.js / useKiddySpeech.js)
+> iOS 사파리에서 "TTS 재생 ↔ 음성인식(webkitSpeechRecognition)"을 한 화면에서 다턴으로 공존시키는 조합.
+> 실기기 온디바이스 진단으로 5라운드에 걸쳐 원인을 실측 확정한 결과물 (커뮤니티에도 정리된 해법이 없던 문제).
+
+- **문제**: `<audio>` 엘리먼트로 TTS(mp3)를 한 번이라도 재생하면 iOS 'Now Playing' 미디어 세션에 등록돼, 직후 음성인식이 시작 즉시 `aborted`로 죽음(자연 복구 3.5~5초 — 대화 UX 불가). getUserMedia 프라이밍으로도 못 풂.
+- **해법 = WebAudio 재생 경로**: TTS mp3를 `decodeAudioData` → `AudioBufferSource`로 재생(Now Playing 미등록), 대사 그룹이 끝나면 `ctx.suspend()`로 오디오 세션 즉시 반납 → 다음 마이크가 1턴처럼 깨끗하게 시작. AudioContext 미지원/디코드 실패는 언락 풀 엘리먼트로 폴백.
+- **제스처 언락**: 첫 사용자 탭에서 무음 WAV(런타임 생성 Blob)로 엘리먼트 풀 + AudioContext를 1회 언락(resume→suspend). 매 제스처 resume 금지 — 마이크 화면에서 ctx가 깨어나면 인식이 다시 죽음.
+- **`interrupted` 상태 방어**: iOS는 인식이 재생을 끊으면 ctx를 `suspended`가 아닌 `interrupted`로 남김 → `state !== "running"` 검사 + resume 완료 후에만 재생(실패 시 다음 탭 재시도).
+- **무음(매너) 스위치 우회 2종 — 혼용 절대 금지**:
+  - 마이크 있는 화면(키디의 방) = `keepMicWarm` 옵션: 프라이밍 마이크 스트림을 언마운트까지 유지 → 세션이 '재생+녹음'이 되어 무음 스위치에서도 TTS 가청.
+  - 마이크 없는 화면(가족 책장 편지 낭독) = `holdMediaChannelForTTS()`: 무음 루프 엘리먼트로 오디오를 미디어 채널로 이동. **마이크 화면에서 쓰면 인식이 죽으므로 금지**, `releaseKiddyAudioForMic()`가 마이크 직전 해제.
+- **aborted 자동 재시작**: TTS 직후 턴의 인식이 죽으면 0.3초 뒤 같은 듣기 세션으로 재시작(최대 2회, `_kiddyRetried` 플래그로 잔여 onend 무시) — 화면 '듣는 중' 표시 흔들림 없음.
+- 진단 도구였던 `?voicedebug` 온디바이스 패널은 안정 확인 후 제거(git 히스토리에 보존).
 
 ### UI 대개편 (다크 OTT, 완료)
 > 넷플릭스/웨이브 스타일 다크 카탈로그 UI로 전면 개편. 키디 캐릭터 컬러(에메랄드/청록) 기반.

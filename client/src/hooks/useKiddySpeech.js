@@ -1,21 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { releaseKiddyAudioForMic } from "./useKiddyVoice";
 
-// ── 임시 실기기 진단 (7/10 iOS 마이크 고착 추적) — URL에 ?voicedebug 붙이면 인식 이벤트를 폰 화면에 표시. 원인 확정 후 제거 예정. ──
-const MIC_DEBUG = typeof location !== "undefined" && /voicedebug/.test(location.search);
-function dbg(msg) {
-  if (!MIC_DEBUG || typeof document === "undefined") return;
-  let el = document.getElementById("kiddy-voice-debug");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "kiddy-voice-debug";
-    el.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;max-width:92vw;max-height:38vh;overflow:auto;background:rgba(0,0,0,.88);color:#5FE0BC;font:10px/1.5 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap;";
-    document.body.appendChild(el);
-  }
-  el.textContent += msg + "\n";
-  el.scrollTop = el.scrollHeight;
-}
-
 // 키디 음성 입력 훅 (재사용 자산) — K 브리프 §1. useKiddyVoice(TTS)의 '입력' 버전.
 // 브라우저 Web Speech API(webkitSpeechRecognition)를 얇게 감싼다. 이미 KidHome 음성 검색이
 // 쓰는 엔진과 동일하되, 이번 UX는 '수동 종료'([다 말했어요])라 continuous=true 로 뽑는다.
@@ -92,7 +77,7 @@ export default function useKiddySpeech({ keepMicWarm = false } = {}) {
     teardown();            // 혹시 남은 세션 정리 후 새로 시작
     // iOS 오디오 세션 고착 방지(7/10): TTS 엘리먼트가 미디어 자원을 물고 있으면 인식이 무음만 잡음 →
     // 마이크 켜기 직전에 전부 반납. (데스크톱 무영향 — 어차피 아이가 말하기 전 키디는 멈추는 UX)
-    try { releaseKiddyAudioForMic(); dbg("오디오 세션 반납"); } catch { /* noop */ }
+    try { releaseKiddyAudioForMic(); } catch { /* noop */ }
     finalRef.current = "";
     setTranscript("");
     setInterim("");
@@ -112,7 +97,6 @@ export default function useKiddySpeech({ keepMicWarm = false } = {}) {
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
-        dbg(isRetry ? `인식 재시작(${retries}차)` : "인식 시작");
         setError(null);
         setListening(true);
       };
@@ -120,11 +104,9 @@ export default function useKiddySpeech({ keepMicWarm = false } = {}) {
         if (e.error === "aborted" && !finalRef.current.trim() && retries < 2 && recognitionRef.current === recognition) {
           retries += 1;
           recognition._kiddyRetried = true; // 이 세션의 잔여 onend는 마무리 처리 건너뜀
-          dbg(`aborted → ${retries}차 재시도 예약`);
           retryTimerRef.current = setTimeout(() => begin(true), 300);
           return; // listening 유지
         }
-        dbg(`인식 에러 ${e.error}`);
         setListening(false);
         // 'aborted'(정상 stop 과정에서 흔히 발생)는 에러로 취급하지 않음 — 조용히 넘어감.
         // 재시도 세션의 'not-allowed'는 제스처 밖 시작 거부일 수 있음 → 마이크 차단으로 오인 금지(m6 래치 방지).
@@ -140,7 +122,6 @@ export default function useKiddySpeech({ keepMicWarm = false } = {}) {
           else interimText += t;
         }
         finalRef.current = finalText;
-        dbg(`인식 결과 확정${finalText.trim().length}자/중간${interimText.trim().length}자`);
         setTranscript(finalText.trim());
         setInterim(interimText.trim());
       };
@@ -150,7 +131,6 @@ export default function useKiddySpeech({ keepMicWarm = false } = {}) {
           if (recognitionRef.current === recognition) recognitionRef.current = null;
           return;
         }
-        dbg(`인식 종료 (확정 ${finalRef.current.trim().length}자)`);
         if (!keepMicWarm) releaseMicStream(); // 프라이밍 스트림 해제(warm 모드는 언마운트까지 유지 — 무음 스위치 우회)
         setListening(false);
         setInterim("");
@@ -175,13 +155,12 @@ export default function useKiddySpeech({ keepMicWarm = false } = {}) {
     //   쥐고 있다가 종료 시 해제(마이크 표시등 정리). 실패(거부 등)해도 인식은 그대로 시도.
     const primeThenBegin = async () => {
       try {
-        if (micStreamRef.current?.getTracks?.().some((t) => t.readyState === "live")) {
-          dbg("프라이밍 재사용(warm)"); // keepMicWarm: 이전 턴 스트림이 살아있으면 그대로 사용
-        } else if (navigator.mediaDevices?.getUserMedia) {
+        // keepMicWarm: 이전 턴 스트림이 살아있으면 그대로 재사용(무음 스위치 우회 유지)
+        const warm = micStreamRef.current?.getTracks?.().some((t) => t.readyState === "live");
+        if (!warm && navigator.mediaDevices?.getUserMedia) {
           micStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-          dbg("마이크 프라이밍 ok");
         }
-      } catch (e) { dbg(`프라이밍 fail ${e?.name}`); }
+      } catch { /* 실패(거부 등)해도 인식은 그대로 시도 */ }
       begin(false);
     };
     primeThenBegin();
