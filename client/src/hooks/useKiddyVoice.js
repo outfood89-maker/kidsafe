@@ -11,21 +11,6 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //   ⚠️ v2(7/10 2차): muted 언락은 iOS가 '사용자 승인 재생'으로 인정 안 함 + data URI wav는 사파리가
 //      거부할 수 있음 + once 리스너·선플래그 = 한 번 실패하면 영구 잠금 → 셋 다 교체:
 //      런타임 생성 진짜 WAV(Blob URL) · 비뮤트 재생(0진폭이라 무음) · 성공할 때까지 매 제스처 재시도.
-// ── 임시 실기기 진단 (7/10 iOS 마이크 추적) — ?voicedebug 시 재생 경로/세션 상태 표시. 원인 확정 후 제거 예정. ──
-const VOICE_DBG = typeof location !== "undefined" && /voicedebug/.test(location.search);
-function dbgV(msg) {
-  if (!VOICE_DBG || typeof document === "undefined") return;
-  let el = document.getElementById("kiddy-voice-debug");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "kiddy-voice-debug";
-    el.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;max-width:92vw;max-height:38vh;overflow:auto;background:rgba(0,0,0,.88);color:#5FE0BC;font:10px/1.5 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap;";
-    document.body.appendChild(el);
-  }
-  el.textContent += msg + "\n";
-  el.scrollTop = el.scrollHeight;
-}
-
 // ── WebAudio 재생 경로 (7/10 4라운드 — iOS 마이크 고착의 근본 대응) ──
 //   실측: <audio>(미디어 엘리먼트)로 mp3를 튼 '다음' 턴의 음성인식만 시작 직후 aborted로 죽음.
 //   재생이 없던 턴(첫 턴·빈 턴 뒤)은 항상 성공, getUserMedia 프라이밍으로도 못 풂(스트림 ok인데 abort),
@@ -45,7 +30,7 @@ function getCtx() {
 }
 // 재생이 끝나는 즉시 세션 반납 — 다음 마이크(음성인식)가 깨끗하게 시작하게.
 function suspendCtxForMic() {
-  try { if (sharedCtx && sharedCtx.state === "running") { sharedCtx.suspend(); dbgV("ctx suspend(세션 반납)"); } } catch { /* noop */ }
+  try { if (sharedCtx && sharedCtx.state === "running") sharedCtx.suspend(); } catch { /* noop */ }
 }
 
 const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
@@ -76,7 +61,7 @@ function blessPool() {
   const ctx = getCtx();
   if (ctx && ctx.state === "suspended" && !ctx._kiddyUnlocked) {
     try {
-      ctx.resume().then(() => { ctx._kiddyUnlocked = true; dbgV("ctx 언락 ok"); suspendCtxForMic(); }).catch(() => { /* 다음 제스처 재시도 */ });
+      ctx.resume().then(() => { ctx._kiddyUnlocked = true; suspendCtxForMic(); }).catch(() => { /* 다음 제스처 재시도 */ });
     } catch { /* noop */ }
   }
   ensurePool();
@@ -124,12 +109,11 @@ export function holdMediaChannelForTTS() {
     if (!mediaHoldEl.getAttribute("src")) mediaHoldEl.src = unlockUrl;
     const p = mediaHoldEl.play();
     if (p?.catch) p.catch(() => { /* 재생 거부 시 그냥 표준 동작(무음 스위치=음소거)으로 남음 */ });
-    dbgV("미디어채널 hold(무음 우회)");
   } catch { /* noop */ }
 }
 export function releaseMediaChannelHold() {
   try {
-    if (mediaHoldEl) { mediaHoldEl.pause(); mediaHoldEl.removeAttribute("src"); mediaHoldEl.load(); dbgV("미디어채널 release"); }
+    if (mediaHoldEl) { mediaHoldEl.pause(); mediaHoldEl.removeAttribute("src"); mediaHoldEl.load(); }
   } catch { /* noop */ }
 }
 
@@ -218,12 +202,10 @@ export default function useKiddyVoice() {
             return;
           }
           // 언락 후: resume이 '완료된 뒤' 재생 시작(실패 시 노드를 만들지 않아 pump가 영구 잠기지 않음 + 다음 탭 재시도)
-          dbgV(`ctx ${ctx.state} → resume`);
           try {
             const rp = ctx.resume();
             if (rp?.then) {
               rp.then(() => pump()).catch(() => {
-                dbgV("resume fail → 탭 재시도");
                 if (typeof document !== "undefined") document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
               });
             } else if (ctx.state === "running") { pump(); } // 비프로미스 구형 경로 — 상태 확인 후에만 재진입(무한루프 방지)
@@ -245,7 +227,6 @@ export default function useKiddyVoice() {
         };
         srcNodeRef.current = node;
         node.start(0);
-        dbgV("재생(WebAudio)");
         return;
       } catch {
         // 생성/시작 실패 — 이 클립은 건너뜀(버퍼 경로엔 엘리먼트 폴백용 url이 없음)
@@ -337,7 +318,7 @@ export default function useKiddyVoice() {
       clip.status = "failed";                      // 합성 실패 → 이 자리는 건너뜀
     } else {
       if (buffer) { clip.buffer = buffer; }        // 기본: WebAudio(iOS 인식과 공존)
-      else { clip.url = URL.createObjectURL(blob); dbgV("재생 경로: element 폴백"); }
+      else { clip.url = URL.createObjectURL(blob); }
       clip.status = "ready";
       setHasAudio(true);
     }
