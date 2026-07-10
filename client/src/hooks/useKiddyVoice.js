@@ -11,6 +11,43 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //   ⚠️ v2(7/10 2차): muted 언락은 iOS가 '사용자 승인 재생'으로 인정 안 함 + data URI wav는 사파리가
 //      거부할 수 있음 + once 리스너·선플래그 = 한 번 실패하면 영구 잠금 → 셋 다 교체:
 //      런타임 생성 진짜 WAV(Blob URL) · 비뮤트 재생(0진폭이라 무음) · 성공할 때까지 매 제스처 재시도.
+// ── 임시 실기기 진단 (7/10 iOS 마이크 추적) — ?voicedebug 시 재생 경로/세션 상태 표시. 원인 확정 후 제거 예정. ──
+const VOICE_DBG = typeof location !== "undefined" && /voicedebug/.test(location.search);
+function dbgV(msg) {
+  if (!VOICE_DBG || typeof document === "undefined") return;
+  let el = document.getElementById("kiddy-voice-debug");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "kiddy-voice-debug";
+    el.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;max-width:92vw;max-height:38vh;overflow:auto;background:rgba(0,0,0,.88);color:#5FE0BC;font:10px/1.5 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap;";
+    document.body.appendChild(el);
+  }
+  el.textContent += msg + "\n";
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── WebAudio 재생 경로 (7/10 4라운드 — iOS 마이크 고착의 근본 대응) ──
+//   실측: <audio>(미디어 엘리먼트)로 mp3를 튼 '다음' 턴의 음성인식만 시작 직후 aborted로 죽음.
+//   재생이 없던 턴(첫 턴·빈 턴 뒤)은 항상 성공, getUserMedia 프라이밍으로도 못 풂(스트림 ok인데 abort),
+//   자연 복구는 3.5~5초(커뮤니티 보고) — 아이 대화 UX에 못 씀.
+//   원인: 미디어 엘리먼트 재생은 iOS 'Now Playing' 미디어 세션에 등록돼 인식 서비스와 충돌.
+//   해법: WebAudio(AudioContext)는 Now Playing에 등록되지 않고, 재생이 끝나면 suspend()로 세션을
+//   즉시 반납할 수 있어 인식과 공존. AudioContext 미지원/디코드 실패는 기존 엘리먼트 경로 폴백.
+//   ⚠️ 트레이드오프(오너 보고 완료): WebAudio는 iOS 무음 스위치를 따름(스위치 ON이면 TTS 무음 —
+//   표준 동작이고 텍스트는 항상 표시됨). 무음 스위치 우회(무음 audio 상시재생)는 인식을 다시 죽여 금지.
+let sharedCtx = null;
+function getCtx() {
+  if (typeof window === "undefined") return null;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!sharedCtx) { try { sharedCtx = new AC(); } catch { return null; } }
+  return sharedCtx;
+}
+// 재생이 끝나는 즉시 세션 반납 — 다음 마이크(음성인식)가 깨끗하게 시작하게.
+function suspendCtxForMic() {
+  try { if (sharedCtx && sharedCtx.state === "running") { sharedCtx.suspend(); dbgV("ctx suspend(세션 반납)"); } } catch { /* noop */ }
+}
+
 const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
 const audioPool = [];
 const allAudioEls = new Set(); // 생성된 모든 엘리먼트 추적(풀 안팎 무관) — 마이크 직전 일괄 해제용
@@ -34,6 +71,14 @@ function ensurePool() {
 }
 function blessPool() {
   // 제스처 핸들러 '안'에서 호출됨 — 풀에서 쉬는 엘리먼트를 무음(비뮤트) 재생으로 언락.
+  // WebAudio 컨텍스트도 최초 1회 제스처 언락(resume 후 즉시 suspend — 인식과의 공존 위해 평소엔 잠재움).
+  // ⚠️ 매 제스처 resume 금지: 마이크 탭에서 ctx가 깨어나면 인식이 다시 죽는다(언락 1회만).
+  const ctx = getCtx();
+  if (ctx && ctx.state === "suspended" && !ctx._kiddyUnlocked) {
+    try {
+      ctx.resume().then(() => { ctx._kiddyUnlocked = true; dbgV("ctx 언락 ok"); suspendCtxForMic(); }).catch(() => { /* 다음 제스처 재시도 */ });
+    } catch { /* noop */ }
+  }
   ensurePool();
   if (!audioPool.length) return;
   try { if (!unlockUrl) unlockUrl = makeSilentWavUrl(); } catch { return; }
@@ -66,6 +111,7 @@ function acquireAudio() {
 //   해법: src까지 떼고 load()로 자원을 완전히 비워 세션을 반납. 언락(_kiddyBlessed)은 엘리먼트에
 //         남으므로(제스처 이력 기반) 다음 TTS 재생은 그대로 됨. useKiddySpeech.start()가 호출.
 export function releaseKiddyAudioForMic() {
+  suspendCtxForMic(); // WebAudio 경로 세션 반납(재생 중 마이크 탭 등)
   allAudioEls.forEach((a) => {
     try {
       // 이미 자원이 없는 엘리먼트는 건드리지 않기 — 빈 load()도 iOS 세션을 출렁여
@@ -97,7 +143,8 @@ function releaseAudio(a) {
 //   (개정 7/10) STT/TTS 자동 오디오는 비저장 유지. 단, 사용자가 명시적으로 남긴 음성 편지·메모(diaryAudioStore)는 예외 저장 — 오너 확정.
 // 음성은 보조 → 합성/재생 실패해도 조용히 넘어감(텍스트만으로 진행). 같은 대사 중복 합성은 막음.
 export default function useKiddyVoice() {
-  const audioRef = useRef(null);     // 현재 재생 중인 Audio(= elRef 엘리먼트, 재생 중 표시 겸용)
+  const audioRef = useRef(null);     // 현재 재생 중인 Audio(= elRef 엘리먼트, 재생 중 표시 겸용) — 엘리먼트 폴백 경로
+  const srcNodeRef = useRef(null);   // 현재 재생 중인 WebAudio BufferSource(기본 경로) — 7/10 4라운드
   const elRef = useRef(null);        // 언락 풀에서 받은 재사용 엘리먼트(iOS 제스처 언락 유지) — 언마운트 시 풀 복귀
   const clipsRef = useRef([]);       // 현재 대사 그룹: [{ status:'pending'|'ready'|'failed', url }] — 호출 순서 유지
   const idxRef = useRef(0);          // 다음에 재생할 클립 인덱스
@@ -106,6 +153,12 @@ export default function useKiddyVoice() {
   const [hasAudio, setHasAudio] = useState(false);
 
   const stopCurrent = useCallback(() => {
+    const s = srcNodeRef.current;
+    if (s) {
+      try { s.onended = null; s.stop(); } catch { /* noop */ }
+      srcNodeRef.current = null;
+      suspendCtxForMic(); // 재생을 끊었으면(마이크 직전 등) 세션도 즉시 반납
+    }
     const a = audioRef.current;
     if (a) {
       // pause만 하면 iOS가 '재생 세션'을 계속 붙들어 직후 음성인식이 무음/abort — src까지 떼서 즉시 반납(7/10).
@@ -117,15 +170,54 @@ export default function useKiddyVoice() {
   // 클립을 '호출 순서대로' 재생. 다음 자리가 아직 합성 중(pending)이면 멈춰 기다렸다가,
   // 채워지면(say 완료 시 pump 재호출) 이어서 재생. (명명 함수 표현식 → 자기 이름으로 재귀)
   const pump = useCallback(function pump() {
-    if (audioRef.current) return;                 // 재생 중이면 onended가 이어받음
+    if (audioRef.current || srcNodeRef.current) return; // 재생 중이면 onended가 이어받음
     const clip = clipsRef.current[idxRef.current];
     if (!clip) return;                            // 그룹 끝
     if (clip.status === "pending") return;        // 합성 대기 → 채워지면 다시 pump 됨
-    if (clip.status === "failed" || !clip.url) {  // 실패한 클립은 건너뜀
+    if (clip.status === "failed" || (!clip.url && !clip.buffer)) { // 실패한 클립은 건너뜀
       idxRef.current += 1;
       pump();
       return;
     }
+
+    // ── 기본 경로: WebAudio (iOS 음성인식과 공존 — 상단 주석 참조) ──
+    const ctx = clip.buffer ? getCtx() : null;
+    if (ctx && clip.buffer) {
+      try {
+        if (ctx.state === "suspended") {
+          try { ctx.resume(); } catch { /* noop */ }
+          if (!ctx._kiddyUnlocked) {
+            // 아직 제스처 언락 전(첫 인사 등 무제스처 진입) — 대사를 버리지 않고 다음 탭에서 재시도(엘리먼트 경로 2차 안전망과 동일)
+            if (typeof document !== "undefined") document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
+            return;
+          }
+          // 언락 후엔 프로그램적 resume 허용 — start()는 resume 완료에 맞춰 큐잉됨
+        }
+        const node = ctx.createBufferSource();
+        node.buffer = clip.buffer;
+        node.connect(ctx.destination);
+        node.onended = () => {
+          if (srcNodeRef.current === node) {
+            srcNodeRef.current = null;
+            idxRef.current += 1;
+            if (!clipsRef.current[idxRef.current]) suspendCtxForMic(); // 그룹 끝 — 다음 마이크 위해 즉시 반납
+            pump();
+          }
+        };
+        srcNodeRef.current = node;
+        node.start(0);
+        dbgV("재생(WebAudio)");
+        return;
+      } catch {
+        // 생성/시작 실패 — 이 클립은 건너뜀(버퍼 경로엔 엘리먼트 폴백용 url이 없음)
+        srcNodeRef.current = null;
+        idxRef.current += 1;
+        pump();
+        return;
+      }
+    }
+
+    // ── 폴백 경로: 미디어 엘리먼트 (AudioContext 미지원/디코드 실패) ──
     // iOS 언락 유지: 매번 new Audio(미신뢰) 대신 언락 풀 엘리먼트를 재사용(src 교체) — 상단 언락 풀 주석 참조
     if (!elRef.current) elRef.current = acquireAudio();
     const audio = elRef.current;
@@ -190,13 +282,23 @@ export default function useKiddyVoice() {
 
     const blob = await synthesizeKiddyVoice({ text, tone });
     if (myGen !== genRef.current) return;          // 그새 새 대사(speak)로 갈아탐 → 폐기
+
+    // WebAudio 기본 경로: mp3 → AudioBuffer 디코드(미지원/실패 시 엘리먼트 폴백용 Blob URL)
+    let buffer = null;
+    const ctx = blob ? getCtx() : null;
+    if (blob && ctx) {
+      try { buffer = await ctx.decodeAudioData(await blob.arrayBuffer()); } catch { buffer = null; }
+      if (myGen !== genRef.current) return;        // 디코드 사이에 새 대사로 갈아탐 → 폐기
+    }
+
     const clip = clipsRef.current[slot];
     if (!clip) return;                             // 방어(그룹이 리셋됐으면 무시)
 
     if (!blob) {
       clip.status = "failed";                      // 합성 실패 → 이 자리는 건너뜀
     } else {
-      clip.url = URL.createObjectURL(blob);
+      if (buffer) { clip.buffer = buffer; }        // 기본: WebAudio(iOS 인식과 공존)
+      else { clip.url = URL.createObjectURL(blob); dbgV("재생 경로: element 폴백"); }
       clip.status = "ready";
       setHasAudio(true);
     }
