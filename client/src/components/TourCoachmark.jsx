@@ -74,10 +74,19 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
       <div
         className={`fixed left-0 right-0 px-4 pointer-events-none ${cardAtBottom ? "bottom-0 pb-4" : "top-0 pt-32"}`}
       >
+        {/* 오너 7/10: 배경 카드와 구분 안 됨 → 딤 강화 대신 말풍선 자체를 키디색으로 띄움 —
+            ① 에메랄드 프레임+글로우 ② 상단 그라데 액센트 바 ③ key={step} 재마운트로 정거장마다 팝 등장 */}
         <div
-          className="mx-auto max-w-lg rounded-2xl p-5 pointer-events-auto"
-          style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(24,196,154,0.35)", boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
+          key={step}
+          className="mx-auto max-w-lg rounded-2xl p-5 pointer-events-auto relative overflow-hidden animate-tour-card-pop"
+          style={{
+            background: "linear-gradient(180deg, #143A34 0%, #0E2A2A 100%)",
+            border: "1.5px solid rgba(24,196,154,0.65)",
+            boxShadow: "0 0 0 3px rgba(24,196,154,0.14), 0 0 28px rgba(24,196,154,0.22), 0 16px 48px rgba(0,0,0,0.65)",
+          }}
         >
+          {/* 상단 액센트 바 — 키디 시그니처 그라데(버튼과 동일 문법) */}
+          <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ height: "3px", background: "linear-gradient(90deg, #18C49A, #14B8C4)" }} />
           <div className="flex items-start gap-3">
             <div className="shrink-0"><KiddyImg pose="hello" size={52} /></div>
             <p className="pt-0.5 text-base md:text-lg font-bold leading-relaxed" style={{ color: "#EAF5F1" }}>{text}</p>
