@@ -30,6 +30,7 @@ import { TILE, KIDHOME_TOUR } from "../utils/diaryCopy";
 import StampNoticeCard from "../components/StampNoticeCard"; // AD-6 §4: 부모 도장 미확인 알림 카드
 import KiddyFab from "../components/KiddyFab";
 import useTour from "../hooks/useTour"; // 항목2-①: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
+import { releaseKiddyAudioForMic } from "../hooks/useKiddyVoice"; // iOS: 마이크 직전 TTS 오디오 세션 반납(7/10 고착 수정)
 import TourCoachmark from "../components/TourCoachmark";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
@@ -565,6 +566,8 @@ export default function KidHome() {
       recognitionRef.current?.stop();
       return;
     }
+    // iOS 오디오 세션 고착 방지(7/10): 체크인 TTS 등이 재생된 뒤엔 인식이 무음만 잡음 → 마이크 직전 반납
+    try { releaseKiddyAudioForMic(); } catch { /* noop */ }
     const recognition = new SpeechRecognition();
     recognition.lang = "ko-KR";
     recognition.interimResults = true;  // 말하는 도중 실시간으로 입력창에 표시
