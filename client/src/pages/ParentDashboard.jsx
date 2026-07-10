@@ -1105,8 +1105,9 @@ export default function ParentDashboard() {
                 </div>
               )}
 
-              {/* AD-7 관리자 전용: 이 아이의 실데이터(리포트+그림일기+그림)를 '둘러보기' 정적 데모 파일(tourDemoData.js)로 내보내기 */}
-              {isAdmin && !tourMode && kiddyProfile && (
+              {/* AD-7 관리자 전용: 이 아이의 실데이터(리포트+그림일기+그림)를 '둘러보기' 정적 데모 파일(tourDemoData.js)로 내보내기
+                  ⚠️ 오너 7/10: 미사용 기능 — 화면에서 제거(false 게이트). 복구 필요 시 아래 false만 지울 것. */}
+              {false && isAdmin && !tourMode && kiddyProfile && (
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: "#0A1E1E", border: "1px dashed rgba(24,196,154,0.35)" }}>
                   <button
                     onClick={() => handleExportDemo(kiddyProfile)}
