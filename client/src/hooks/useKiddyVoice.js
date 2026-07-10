@@ -11,21 +11,6 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //   ⚠️ v2(7/10 2차): muted 언락은 iOS가 '사용자 승인 재생'으로 인정 안 함 + data URI wav는 사파리가
 //      거부할 수 있음 + once 리스너·선플래그 = 한 번 실패하면 영구 잠금 → 셋 다 교체:
 //      런타임 생성 진짜 WAV(Blob URL) · 비뮤트 재생(0진폭이라 무음) · 성공할 때까지 매 제스처 재시도.
-// ── 임시 실기기 진단 패널 (7/10 iOS 무음 추적) — URL에 ?voicedebug 붙이면 폰 화면에 로그 표시. 원인 확정 후 제거 예정. ──
-const VOICE_DEBUG = typeof location !== "undefined" && /voicedebug/.test(location.search);
-function dbg(msg) {
-  if (!VOICE_DEBUG || typeof document === "undefined") return;
-  let el = document.getElementById("kiddy-voice-debug");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "kiddy-voice-debug";
-    el.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;max-width:92vw;max-height:38vh;overflow:auto;background:rgba(0,0,0,.88);color:#5FE0BC;font:10px/1.5 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap;";
-    document.body.appendChild(el);
-  }
-  el.textContent += msg + "\n";
-  el.scrollTop = el.scrollHeight;
-}
-
 const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
 const audioPool = [];
 let unlockUrl = null; // 런타임 생성 무음 wav Blob URL(모듈 수명 유지 — revoke 안 함)
@@ -55,9 +40,9 @@ function blessPool() {
     try {
       a.src = unlockUrl;
       const p = a.play();
-      if (p?.then) p.then(() => { a._kiddyBlessed = true; dbg("언락 ok"); try { a.pause(); a.currentTime = 0; } catch { /* noop */ } }).catch((e) => { dbg(`언락 fail ${e?.name}: ${e?.message}`); /* 다음 제스처에 재시도 */ });
+      if (p?.then) p.then(() => { a._kiddyBlessed = true; try { a.pause(); a.currentTime = 0; } catch { /* noop */ } }).catch(() => { /* 다음 제스처에 재시도 */ });
       else a._kiddyBlessed = true;
-    } catch (e) { dbg(`언락 throw ${e?.name}`); /* 다음 제스처에 재시도 */ }
+    } catch { /* 다음 제스처에 재시도 */ }
   });
 }
 if (typeof document !== "undefined") {
@@ -128,7 +113,6 @@ export default function useKiddyVoice() {
     audio.src = clip.url;
     try { audio.load(); } catch { /* noop */ } // 사파리: 재사용 엘리먼트 src 교체 후 load 권장(스테일 소스 방지)
     audioRef.current = audio;
-    audio.onerror = () => { dbg(`audio.error code=${audio.error?.code} (4=소스/포맷 거부)`); };
     audio.onended = () => {
       if (audioRef.current === audio) {
         audioRef.current = null;
@@ -139,11 +123,10 @@ export default function useKiddyVoice() {
     // 자동재생 차단(제스처 밖 재생 거부) 시 대사를 버리지 않고 '다음 탭'에서 재시도 —
     // 탭 핸들러 안에서 play()가 다시 불리므로 iOS가 반드시 허용(★2차 안전망, 첫 인사 등 무제스처 진입 커버).
     const p = audio.play();
-    if (p?.then) p.then(() => dbg(`재생 ok (blessed=${!!audio._kiddyBlessed})`)).catch((e) => {
-      dbg(`재생 fail ${e?.name}: ${e?.message}`);
+    if (p?.then) p.catch(() => {
       if (audioRef.current === audio) audioRef.current = null; // 재생 실패 표시 → pump 재진입 가능
       if (typeof document !== "undefined") {
-        document.addEventListener("pointerdown", () => { dbg("탭 재시도"); pump(); }, { once: true, capture: true });
+        document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
       }
     });
   }, []);
@@ -181,7 +164,6 @@ export default function useKiddyVoice() {
     }
 
     const blob = await synthesizeKiddyVoice({ text, tone });
-    dbg(blob ? `합성 ok ${blob.size}b type=${blob.type || "(없음)"}` : `합성 null(${(typeof window !== "undefined" && window.__kiddySynthDebug) || "이유 미상"})`);
     if (myGen !== genRef.current) return;          // 그새 새 대사(speak)로 갈아탐 → 폐기
     const clip = clipsRef.current[slot];
     if (!clip) return;                             // 방어(그룹이 리셋됐으면 무시)
