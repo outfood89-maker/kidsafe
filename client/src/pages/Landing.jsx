@@ -331,7 +331,7 @@ export default function Landing() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-black leading-[1.05] tracking-tight text-white" style={{ wordBreak: "keep-all" }}>
-            아이의 첫 영상 친구
+            아이의 첫 마음 친구
             <br />
             <span style={{ background: "linear-gradient(110deg, #2BE0B4, #18C49A 45%, #14B8C4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
               키디입니다
