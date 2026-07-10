@@ -33,6 +33,8 @@ const FALLBACK_CARD = { label: "공룡", emoji: "🦕" };
 const CHILD_QUESTION = "이거 좋아? 좋으면 '좋아!', 아니면 '음~'";
 const FALLBACK_LINE = "아직 마음에 든 게 없구나? 그럼 다들 좋아하는 이건 어때? 🌟";
 const END_LINE = "좋아, 이제 너에 대해 조금 알 것 같아! 우리 진짜 친구가 됐네 😊";
+// 오너 7/10 A피드백: 빠르게 지나가는 리액션 지문은 읽으면 화면과 타이밍이 어긋남 → 음성은 짧은 한마디만(화면 지문은 그대로)
+const PICK_QUIP = "오! 그걸 골랐구나?";
 
 // 공용 색상 토큰 (다크 에메랄드 테마)
 const C = {
@@ -96,9 +98,10 @@ export default function InterestSeed({ profile, onDone }) {
       ? `역시! ${card.emoji} ${card.label} 완전 좋아 😆 가방에 쏙!`
       : "오케이, 이건 패스! 다음 거 볼까? 👀";
     setReaction(reactionLine);
-    // 리액션 음성 — '패스'는 같은 문장이 반복되므로 stop()으로 중복 가드를 풀고 읽는다(무음 방지)
+    // 오너 7/10 A피드백: 지나가는 리액션 지문은 읽지 않는다(타이밍 불일치). 고른 경우만 짧은 한마디,
+    // 패스는 무음(단, 재생 중이던 카드 이름 등은 stop으로 끊어 어긋남 방지). stop은 중복 가드도 풀어줌(연속 재생 가능).
     voice.stop();
-    voice.speak(reactionLine, "bright");
+    if (liked) voice.speak(PICK_QUIP, "bright");
 
     // 리액션을 타이핑 끝까지 보여줄 시간 확보 후 다음으로 (타이핑 ~1초 + 읽을 여유)
     setTimeout(() => {
@@ -255,16 +258,19 @@ export default function InterestSeed({ profile, onDone }) {
               })()}
             </div>
 
-            {/* 현재 카드 */}
-            <div
-              className="w-full flex flex-col items-center rounded-3xl py-8 mb-5"
+            {/* 현재 카드 — 오너 7/10 A피드백: 카드를 누르면 키디가 이름을 외침("공룡!"). 연타해도 매번(stop이 중복 가드 해제). */}
+            <button
+              type="button"
+              onClick={() => { if (!reaction) { voice.stop(); voice.speak(`${currentCard.label}!`, "bright"); } }}
+              className="w-full flex flex-col items-center rounded-3xl py-8 mb-5 transition active:scale-95"
               style={{ backgroundColor: C.card, border: `2px solid ${C.accent}` }}
+              aria-label={`${currentCard.label} 이름 듣기`}
             >
               <span style={{ fontSize: "84px", lineHeight: 1 }}>{currentCard.emoji}</span>
               <p className="mt-3 font-black" style={{ color: C.ink, fontSize: "26px" }}>
                 {currentCard.label}
               </p>
-            </div>
+            </button>
 
             {/* 좋아 / 음~ */}
             <div className="w-full flex gap-3">
