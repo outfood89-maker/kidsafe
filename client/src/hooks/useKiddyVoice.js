@@ -1,6 +1,47 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { synthesizeKiddyVoice } from "../utils/api";
 
+// ── iOS 오디오 언락 풀 (오너 리포트 7/10: iOS에서 키디 음성 전부 무음) ──
+//   iOS 사파리는 '사용자 제스처 직후'가 아니면 Audio.play()를 차단한다. 키디 TTS는
+//   합성(서버 0.5~2초)이 제스처 여운을 지나서 + 매번 new Audio(미신뢰 엘리먼트)라 전부 차단됐음
+//   (녹음 재생은 탭→IDB 수 ms라 통과 — 증상 일치). 표준 해법 = '언락 풀':
+//   앱의 첫 제스처(프로필 선택 등 탭 없이는 진행 불가) 때 무음 wav를 살짝 재생해 엘리먼트를
+//   신뢰 상태로 만들어 두고, 이후 TTS는 새 Audio 대신 이 엘리먼트를 재사용(src 교체)한다.
+//   iOS는 한번 언락된 엘리먼트의 이후 프로그램적 재생을 허용. 데스크톱은 원래 허용이라 무영향.
+const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=="; // 최소 무음 wav
+const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
+const audioPool = [];
+let poolUnlocked = false;
+function ensurePool() {
+  if (typeof Audio === "undefined") return;
+  while (audioPool.length < POOL_SIZE) audioPool.push(new Audio());
+}
+function unlockPool() {
+  if (poolUnlocked) return;
+  poolUnlocked = true;
+  ensurePool();
+  audioPool.forEach((a) => {
+    try {
+      a.muted = true; a.src = SILENT_WAV;
+      const p = a.play();
+      if (p?.then) p.then(() => { try { a.pause(); } catch { /* noop */ } a.muted = false; }).catch(() => { a.muted = false; });
+      else a.muted = false;
+    } catch { a.muted = false; }
+  });
+}
+if (typeof document !== "undefined") {
+  // 첫 제스처 1회에 전 풀 언락(캡처 단계 — 어떤 버튼이든). once라 이후 비용 0.
+  document.addEventListener("pointerdown", unlockPool, { once: true, capture: true });
+  document.addEventListener("touchend", unlockPool, { once: true, capture: true });
+  document.addEventListener("keydown", unlockPool, { once: true, capture: true });
+}
+function acquireAudio() { ensurePool(); return audioPool.pop() || (typeof Audio !== "undefined" ? new Audio() : null); }
+function releaseAudio(a) {
+  if (!a) return;
+  try { a.onended = null; a.pause(); a.removeAttribute("src"); } catch { /* noop */ }
+  if (audioPool.length < POOL_SIZE) audioPool.push(a); // 풀 복귀(언락 상태 유지 — 다음 인스턴스가 재사용)
+}
+
 // 키디 음성 재생 훅 (재사용 자산) — H 브리프 §2.
 //  - speak(text, tone)  : 새 대사 → 이전 그룹을 멈추고 새로 재생(겹침 방지). 화면이 바뀌는 대사용.
 //  - enqueue(text, tone): 현재 대사에 '이어서' 재생(끊지 않음). 한 말풍선에 이어지는 대사
@@ -17,7 +58,8 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //   (개정 7/10) STT/TTS 자동 오디오는 비저장 유지. 단, 사용자가 명시적으로 남긴 음성 편지·메모(diaryAudioStore)는 예외 저장 — 오너 확정.
 // 음성은 보조 → 합성/재생 실패해도 조용히 넘어감(텍스트만으로 진행). 같은 대사 중복 합성은 막음.
 export default function useKiddyVoice() {
-  const audioRef = useRef(null);     // 현재 재생 중인 Audio
+  const audioRef = useRef(null);     // 현재 재생 중인 Audio(= elRef 엘리먼트, 재생 중 표시 겸용)
+  const elRef = useRef(null);        // 언락 풀에서 받은 재사용 엘리먼트(iOS 제스처 언락 유지) — 언마운트 시 풀 복귀
   const clipsRef = useRef([]);       // 현재 대사 그룹: [{ status:'pending'|'ready'|'failed', url }] — 호출 순서 유지
   const idxRef = useRef(0);          // 다음에 재생할 클립 인덱스
   const genRef = useRef(0);          // 세대 — speak만 증가(이전 그룹의 늦은 합성응답 폐기)
@@ -44,7 +86,11 @@ export default function useKiddyVoice() {
       pump();
       return;
     }
-    const audio = new Audio(clip.url);
+    // iOS 언락 유지: 매번 new Audio(미신뢰) 대신 언락 풀 엘리먼트를 재사용(src 교체) — 상단 언락 풀 주석 참조
+    if (!elRef.current) elRef.current = acquireAudio();
+    const audio = elRef.current;
+    if (!audio) return;                           // Audio 미지원 환경(노드 등) — 텍스트만 진행
+    audio.src = clip.url;
     audioRef.current = audio;
     audio.onended = () => {
       if (audioRef.current === audio) {
@@ -132,6 +178,8 @@ export default function useKiddyVoice() {
     stopCurrent();
     revokeClips();
     lastKeyRef.current = null;
+    releaseAudio(elRef.current); // 언락 엘리먼트 풀 복귀(다음 화면 인스턴스가 재사용 — iOS 언락 상태 유지)
+    elRef.current = null;
   }, [stopCurrent, revokeClips]);
 
   return { speak, enqueue, replay, stop, hasAudio };
