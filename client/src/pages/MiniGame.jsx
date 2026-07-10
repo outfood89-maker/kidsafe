@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaFire, FaStar } from "react-icons/fa";
 import OXQuiz from "../components/games/OXQuiz";
 import WordMatch from "../components/games/WordMatch";
+import WordBook from "../components/games/WordBook"; // B09: 단어장(그림 콕 → 키디 낭독)
 import PuzzleGame from "../components/games/PuzzleGame";
 import MemoryGame from "../components/games/MemoryGame";
 import SortGame from "../components/games/SortGame";
@@ -75,6 +76,17 @@ const GAMES = [
     difficulty: "쉬움~보통",
     color: "#1CB0F6",
     bg: "#EAF6FF",
+    available: true,
+  },
+  {
+    id: "word-book",
+    name: "단어장",
+    emoji: "📖",
+    description: "그림 누르면 키디가 읽어줘!",
+    reward: "최대 +3분",
+    difficulty: "쉬움",
+    color: "#F5B829",
+    bg: "#FFF8ED",
     available: true,
   },
   {
@@ -174,6 +186,30 @@ export default function MiniGame() {
   };
 
   // 게임 플레이 화면
+  // B09: 단어장 — word-match 블록 복제 패턴(전체화면·헤더·onComplete=handleGameComplete). 배경 다크 #0A1E1E.
+  if (selectedGame === "word-book") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0A1E1E" }}>
+        <div
+          className="flex items-center gap-3 px-4 shrink-0"
+          style={{ backgroundColor: "#0E2A2A", borderBottom: "1px solid rgba(255,255,255,0.08)", height: "56px" }}
+        >
+          <button
+            onClick={() => setSelectedGame(null)}
+            className="p-2 rounded-full transition-colors"
+            style={{ color: "#90A9A8" }}
+          >
+            <FaArrowLeft style={{ fontSize: "18px" }} />
+          </button>
+          <span className="font-extrabold text-base" style={{ color: "#F5B829" }}>📖 단어장</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <WordBook onComplete={handleGameComplete} />
+        </div>
+      </div>
+    );
+  }
+
   if (selectedGame === "word-match") {
     return (
       <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#FFF8E7" }}>
