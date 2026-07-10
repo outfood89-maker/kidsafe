@@ -30,7 +30,7 @@ import { TILE, KIDHOME_TOUR } from "../utils/diaryCopy";
 import StampNoticeCard from "../components/StampNoticeCard"; // AD-6 §4: 부모 도장 미확인 알림 카드
 import KiddyFab from "../components/KiddyFab";
 import useTour from "../hooks/useTour"; // 항목2-①: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
-import { releaseKiddyAudioForMic } from "../hooks/useKiddyVoice"; // iOS: 마이크 직전 TTS 오디오 세션 반납(7/10 고착 수정)
+import { releaseKiddyAudioForMic, playKiddySfx } from "../hooks/useKiddyVoice"; // iOS: 마이크 직전 TTS 오디오 세션 반납(7/10 고착 수정) / P5: 배지 효과음
 import TourCoachmark from "../components/TourCoachmark";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
@@ -274,6 +274,11 @@ export default function KidHome() {
     // 비로그인 시도 자동 추천도 비활성화
     // else { fetchRecommendedVideos(7, []); }
   }, []);
+
+  // P5 ③: 배지 획득 팝업이 뜨는 순간 상승 차임 — setNewBadges 4곳 공통 처리(효과음은 장식, TTS 재생 중이면 내부에서 생략)
+  useEffect(() => {
+    if (newBadges.length > 0) { try { playKiddySfx("badge"); } catch { /* 무시 */ } }
+  }, [newBadges]);
 
   // 항목2-②(C 트리거): 부모 대시 '아이 화면 미리보기'에서 /kids?tour=1로 진입 시 튜토리얼 자동 시작. 1회성(마운트). 데모 프로필 시드는 startKidTour가 처리.
   useEffect(() => {
