@@ -845,7 +845,8 @@ export default function ParentDashboard() {
                 </p>
               </div>
               {/* AD-7 + 항목2-②: 헤더 우측 버튼 그룹 — '아이 화면 미리보기'(C 트리거 → /kids?tour=1) + '예시 가족 둘러보기'. DIARY_V0 게이트·투어 중 숨김. */}
-              {DIARY_V0 && !tourMode && (
+              {/* 오너 7/10: 모든 탭 노출 → '키디의 한 주' 탭에서만 (탭별 안내는 각 탭 "?"가 담당, 헤더 중복 제거) */}
+              {DIARY_V0 && !tourMode && mainTab === "kiddy" && (
                 <div className="flex items-center gap-2 shrink-0">
                   {/* 오너 7/10: 다크 아웃라인이 배경에 묻힘 → 전역 액센트 골드(#F5B829, 키디 별·Account 배지 동일 문법)로 채움 */}
                   <button
@@ -870,7 +871,8 @@ export default function ParentDashboard() {
           </section>
 
           {/* AD-7 최초 진입 제안 — 예시 가족 둘러보기 (DIARY_V0 게이트·투어 중엔 숨김) */}
-          {DIARY_V0 && showTourOffer && !tourMode && (
+          {/* 오너 7/10: 둘러보기 UI는 '키디의 한 주' 탭 전용 — 제안 카드도 타 탭에 따라다니지 않게 동일 게이트 */}
+          {DIARY_V0 && showTourOffer && !tourMode && mainTab === "kiddy" && (
             <section className="px-1 md:px-2 mb-4">
               <div
                 className="flex items-start gap-3 rounded-2xl p-4 md:p-5"
