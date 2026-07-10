@@ -2407,7 +2407,9 @@ export default function ParentDashboard() {
 
       {/* 프로필 편집 모달 */}
       {editingProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60">
+          {/* 모바일: 폼이 뷰포트보다 길면 오버레이가 스크롤되도록 — 저장·취소가 화면 밖으로 나가 갇히던 문제 해결(9ed9e44 생성 모달과 동일 패턴) */}
+          <div className="flex min-h-full items-center justify-center px-4 py-6">
           <div className="w-full max-w-xl p-8" style={{ borderRadius: "24px", overflow: "hidden", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold" style={{ color: "#EAF5F1" }}>프로필 수정</h3>
@@ -2549,6 +2551,7 @@ export default function ParentDashboard() {
                 취소
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
