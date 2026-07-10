@@ -771,15 +771,17 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
                     return cached
 
         # 새 분석(캐시 미스)일 때만 일일 한도 체크 — 캐시 히트는 무료, 프리미엄은 무제한
-        subs = await _supabase_select("subscriptions", {
-            "user_id": f"eq.{user['user_id']}",
-            "plan": "eq.premium",
-            "status": "eq.active",
-            "select": "id",
-            "limit": "1",
-        })
-        if not subs:
-            await check_and_increment_usage(user["user_id"])
+        # ── 공모전 모드 (오너 지시 2026-07-10): 전 계정 프리미엄 대우 — 일일 한도 미적용 ──
+        #    심사위원이 검색·분석을 자유롭게 체험하도록. 복구 시 아래 주석 해제.
+        # subs = await _supabase_select("subscriptions", {
+        #     "user_id": f"eq.{user['user_id']}",
+        #     "plan": "eq.premium",
+        #     "status": "eq.active",
+        #     "select": "id",
+        #     "limit": "1",
+        # })
+        # if not subs:
+        #     await check_and_increment_usage(user["user_id"])
 
         trusted_set = await trusted_channel_set()
         trusted = bool(channel_id and channel_id in trusted_set)
