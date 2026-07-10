@@ -36,6 +36,16 @@ html {
   .animate-tour-pulse { animation: none; }
 }
 
+/* 코치마크 말풍선 — 정거장마다 살짝 커지며 등장(팝). 배경 카드와 구분되는 '살아있는' 창 연출(오너 7/10). */
+@keyframes tourCardPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-tour-card-pop { animation: tourCardPop 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-tour-card-pop { animation: none; }
+}
+
 body, #root {
   width: 100%;
   min-height: 100vh;
