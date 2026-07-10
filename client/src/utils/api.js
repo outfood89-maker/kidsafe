@@ -250,23 +250,14 @@ export const synthesizeKiddyVoice = async ({ text, tone = 'bright' }) => {
     )
     // 204(읽을 것 없음/키 미설정) → 빈 Blob → null 처리
     const blob = response.data
-    if (!blob || blob.size === 0) {
-      // [임시 진단 7/10 iOS 무음] 실패 사유를 디버그 패널(useKiddyVoice ?voicedebug)에 노출 — 원인 확정 후 제거
-      if (typeof window !== 'undefined') window.__kiddySynthDebug = `빈응답 status=${response.status}`
-      return null
-    }
+    if (!blob || blob.size === 0) return null
     // iOS 사파리는 blob URL의 MIME이 정확한 오디오 타입이 아니면 재생을 거부(크롬은 내용 추측으로 재생) —
     // 전송 과정에서 타입이 비거나 어긋나도 안전하게 audio/mpeg로 강제 정규화(7/10 iOS 무음 대응).
     if (!blob.type || !blob.type.startsWith('audio/')) return new Blob([blob], { type: 'audio/mpeg' })
     return blob
-  } catch (e) {
-    // 키 오류·네트워크·CLOVA 실패 → 음성 없이 진행
-    // [임시 진단 7/10 iOS 무음] HTTP 상태/네트워크 사유를 디버그 패널에 노출 — 원인 확정 후 제거
-    if (typeof window !== 'undefined') {
-      window.__kiddySynthDebug = e?.response
-        ? `HTTP ${e.response.status}`
-        : `${e?.code || ''} ${e?.message || e?.name || '알수없음'}`.trim()
-    }
+  } catch {
+    // 키 오류·네트워크·CLOVA 실패(204/502) → 음성 없이 진행
+    // ⚠️ 프로덕션 무음이면 제일 먼저 Railway 환경변수 CLOVA_VOICE_CLIENT_ID/SECRET 확인 (7/10 실사고 — 서버는 키 없으면 204)
     return null
   }
 }
