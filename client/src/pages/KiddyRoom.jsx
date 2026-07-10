@@ -100,7 +100,9 @@ export const KIDDYROOM_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접
 
 export default function KiddyRoom() {
   const navigate = useNavigate();
-  const speech = useKiddySpeech();
+  // keepMicWarm(7/10 오너 결정): 대화 내내 마이크 스트림 유지 → iOS 세션이 '재생+녹음'으로 남아
+  // 무음(매너) 스위치가 켜져 있어도 키디 목소리가 들림(체크인 실측 현상의 의도적 활용). 언마운트 시 해제.
+  const speech = useKiddySpeech({ keepMicWarm: true });
   const voice = useKiddyVoice();
   const tour = useTour(KIDDYROOM_TOUR_STATIONS); // 부모 소개 튜토리얼 — 시드 없이 훅 기본(start/exit)만
 
