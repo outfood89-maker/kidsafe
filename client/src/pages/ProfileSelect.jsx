@@ -116,8 +116,16 @@ export default function ProfileSelect() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  // P3 §1: 로딩 완료 후 프로필 0개 + 미노출 플래그 없을 때만 온보딩 1회 시작. 시작 시점에 플래그 기록(부모 투어 패턴 동일).
-  //   ⚠️ 로딩 중 profiles=[] 오판 금지 — 반드시 loading 완료 뒤. 기존 사용자(1개 이상)는 절대 안 뜸.
+  // P3 개정(오너 7/10): "?" 재진입 버튼 신설 — 프로필이 이미 있는 계정도 언제든 안내를 볼 수 있게.
+  //   투어 시작 시점의 프로필 수를 기억해, '투어 중 새 프로필이 생겼을 때만' 스텝1→2 자동 전환(아래 §3).
+  const tourBaseCountRef = useRef(0);
+  const startOnboarding = () => {
+    tourBaseCountRef.current = profiles.length;
+    tour.start();
+  };
+
+  // P3 §1: 로딩 완료 후 프로필 0개 + 미노출 플래그 없을 때만 온보딩 1회 자동 시작. 시작 시점에 플래그 기록(부모 투어 패턴 동일).
+  //   ⚠️ 로딩 중 profiles=[] 오판 금지 — 반드시 loading 완료 뒤. 기존 사용자(1개 이상)는 자동으론 안 뜸("?"로만).
   useEffect(() => {
     if (loading || onboardStartedRef.current || profiles.length !== 0) return;
     let seen = false;
@@ -125,24 +133,26 @@ export default function ProfileSelect() {
     if (seen) return;
     onboardStartedRef.current = true;
     try { localStorage.setItem("kidsafe_profile_onboarding_seen", "1"); } catch { /* 무시 */ }
-    tour.start();
+    startOnboarding();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profiles.length]);
 
   // P3 §3(시퀀스 함정): 스텝1→스텝2 전환은 '생성 모달 닫힘'이 아니라 '관심사 인터뷰까지 끝나고 그리드에 프로필이 생긴 순간'.
-  //   생성 취소/실패로 여전히 0개면 스텝1 유지. showCreate·seedTarget 떠 있는 동안은 아래 렌더 게이트가 코치마크를 숨김.
+  //   생성 취소/실패로 안 늘었으면 스텝1 유지. showCreate·seedTarget 떠 있는 동안은 아래 렌더 게이트가 코치마크를 숨김.
+  //   개정: '투어 시작 때보다 프로필이 늘었을 때'만 전환 — "?" 재진입(프로필 이미 있음)에서 스텝1이 즉시 건너뛰어지는 것 방지.
   useEffect(() => {
-    if (tour.isActive && tour.step === 0 && !showCreate && !seedTarget && profiles.length >= 1) {
+    if (tour.isActive && tour.step === 0 && !showCreate && !seedTarget && profiles.length > tourBaseCountRef.current) {
       tour.next();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tour.isActive, tour.step, showCreate, seedTarget, profiles.length]);
 
   // P3: 코치마크 '다음' 배선 — TourCoachmark 무수정이라 '다음' 버튼은 항상 렌더됨.
-  //   ①(만들기): '다음' = ➕와 동일하게 생성 모달 열기(프로필이 생기면 위 §3 효과가 ②로 자동 전환).
+  //   ①(만들기): 프로필 0개면 '다음' = ➕와 동일하게 생성 모달 열기(프로필이 생기면 위 §3 효과가 ②로 자동 전환).
+  //     "?" 재진입(이미 있음)이면 안내만 하고 일반 진행 — 무료 1개 초과 paywall을 우회해 생성 모달을 열면 안 됨.
   //   ②→③: 일반 진행. ③: 종료 CTA로 투어 종료.
   const onboardNext = () => {
-    if (tour.step === 0) { setShowCreate(true); return; }
+    if (tour.step === 0 && profiles.length === 0) { setShowCreate(true); return; }
     if (tour.isLast) { tour.exit(); return; }
     tour.next();
   };
@@ -223,17 +233,6 @@ export default function ProfileSelect() {
         {/* 오른쪽: 계정 액션 묶음 (계정 + 로그아웃 + 부모님) — 관습대로 우측 정렬
             계정 설정을 프로필 선택 단계에 둠 → 향후 프로필별 개별 부모페이지+PIN(멀티테넌시) 대비 */}
         <div className="flex items-center gap-2">
-          {/* P3 §7(오너 7/10): 아이 화면 미리보기 — /kids?tour=1(KidHome 데모 프로필 자동 주입·종료 시 navigate(-1)). 프로필 0개여도 안전. 온보딩 앵커 아님. */}
-          <button
-            data-testid="profile-kid-preview-btn"
-            onClick={() => navigate("/kids?tour=1")}
-            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
-            style={{ background: "linear-gradient(135deg, #F5B829, #EF9F27)", color: "#3A2A00" }}
-            title="아이 화면 미리보기"
-          >
-            <span>👀</span>
-            <span className="hidden sm:block">아이 화면 미리보기</span>
-          </button>
           {/* 관리 모드 토글 — 켜면 카드에 삭제 노출 (프로필 추가/삭제는 계정 영역) */}
           <button
             onClick={() => setManage((m) => !m)}
@@ -268,6 +267,29 @@ export default function ProfileSelect() {
 
       {/* P3: 읽기전용 스텝(②③)에선 콘텐츠 inert — 스포트라이트 구멍으로의 실제 클릭(카드 진입 등) 차단. ①(interactive)은 ➕ 실제 클릭 허용 위해 inert 해제. */}
       <div className="mx-auto max-w-2xl px-5 py-8" inert={tour.isActive && !tour.station?.interactive}>
+
+        {/* P3 개정(오너 7/10): 헤더 아래 우측 버튼 줄 — "?" 온보딩 재진입 + 👀 아이 화면 미리보기(헤더에서 이동, 라벨 상시 표시) */}
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <button
+            data-testid="onboard-help-btn"
+            onClick={startOnboarding}
+            title="이 화면 안내"
+            className="shrink-0 flex items-center justify-center rounded-full text-sm font-black transition hover:opacity-80"
+            style={{ width: "34px", height: "34px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+          >
+            ?
+          </button>
+          {/* §7: 아이 화면 미리보기 — /kids?tour=1(KidHome 데모 프로필 자동 주입·종료 시 복귀). 프로필 0개여도 안전. 온보딩 앵커 아님. */}
+          <button
+            data-testid="profile-kid-preview-btn"
+            onClick={() => navigate("/kids?tour=1")}
+            className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-80 active:scale-95"
+            style={{ background: "linear-gradient(135deg, #F5B829, #EF9F27)", color: "#3A2A00" }}
+          >
+            <span>👀</span>
+            <span>아이 화면 미리보기</span>
+          </button>
+        </div>
 
         {/* 상단 인사 */}
         <div className="mb-8 flex flex-col items-center gap-2">

@@ -105,6 +105,23 @@ describe("P3 온보딩 건너뛰기 (T5)", () => {
   });
 });
 
+describe("P3 개정 — '?' 재진입 버튼 (T7, 오너 7/10)", () => {
+  it("프로필 2개+플래그 있어도 '?' 클릭 → 스텝1부터 시작, '다음'은 생성 모달 없이 스텝2로", async () => {
+    localStorage.setItem(FLAG, "1");
+    H.profiles = [{ id: "e1", name: "하나", age: 7, avatarId: 1 }, { id: "e2", name: "둘", age: 5, avatarId: 2 }];
+    render(<ProfileSelect />);
+    await loadingDone();
+    expect(screen.queryByTestId("tour-overlay")).toBeNull(); // 자동 노출 없음(플래그+프로필 있음)
+    fireEvent.click(screen.getByTestId("onboard-help-btn"));
+    const ov1 = await screen.findByTestId("tour-overlay");
+    expect(within(ov1).getByText(PROFILE_ONBOARD.steps[0])).toBeTruthy(); // base=2라 즉시 건너뜀 없음
+    fireEvent.click(within(ov1).getByText("다음"));
+    const ov2 = await screen.findByTestId("tour-overlay");
+    expect(within(ov2).getByText(PROFILE_ONBOARD.steps[1])).toBeTruthy(); // 일반 진행(paywall 우회 생성 모달 금지)
+    expect(screen.queryByTestId("pfm-create")).toBeNull();
+  });
+});
+
 describe("P3 §7 아이 화면 미리보기 버튼 (T6)", () => {
   it("버튼 노출 + 클릭 시 /kids?tour=1 네비게이트", async () => {
     localStorage.setItem(FLAG, "1"); // 온보딩 오버레이 없이 순수 버튼만 검증
