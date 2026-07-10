@@ -60,15 +60,17 @@ export default function TourCoachmark({ rect, text, step, total, interactive, on
         <div data-testid="tour-backdrop" className="fixed inset-0 pointer-events-auto" style={{ backgroundColor: DIM }} />
       )}
 
-      {/* ── 정직 배너 (상시 상단·NavBar 아래) ── */}
-      <div className="fixed left-0 right-0 top-0 px-4 pointer-events-none" style={{ paddingTop: "68px" }}>
-        <div
-          className="mx-auto max-w-lg rounded-full px-4 py-2.5 text-center text-sm font-bold"
-          style={{ backgroundColor: "rgba(14,42,42,0.94)", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.45)" }}
-        >
-          {banner}
+      {/* ── 정직 배너 (상시 상단·NavBar 아래) — P3: banner=""(온보딩 등 예시 화면이 아닌 투어)면 빈 알약 대신 미렌더 ── */}
+      {banner && (
+        <div className="fixed left-0 right-0 top-0 px-4 pointer-events-none" style={{ paddingTop: "68px" }}>
+          <div
+            className="mx-auto max-w-lg rounded-full px-4 py-2.5 text-center text-sm font-bold"
+            style={{ backgroundColor: "rgba(14,42,42,0.94)", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.45)" }}
+          >
+            {banner}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── 안내 말풍선 (대상 반대쪽 절반, 카드만 클릭 가능) ── */}
       <div

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus, FaLock, FaSignOutAlt, FaUserCircle, FaTrash, FaSlidersH, FaPen } from "react-icons/fa";
 import KiddyImg from "../components/KiddyImg";
@@ -7,8 +7,11 @@ import ProfileFormModal from "../components/ProfileFormModal";
 import InterestSeed from "../components/InterestSeed";
 import Typewriter from "../components/Typewriter";
 import PaywallModal from "../components/PaywallModal";
+import useTour from "../hooks/useTour"; // P3: 프로필 생성 온보딩 — 기존 앵커드 코치마크 엔진 재사용(훅 무수정)
+import TourCoachmark from "../components/TourCoachmark"; // P3: 코치마크 UI 재사용(컴포넌트 무수정)
 import { getProfiles, getBadges, getPinStatus, deleteProfile } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
+import { PROFILE_ONBOARD } from "../utils/diaryCopy"; // P3: 온보딩 3스텝 카피(팀장 스탬프 verbatim)
 
 // 높을수록 희귀 (획득 조건 기준) — 서버 배지 목록과 동기화(N 개편: 시청량·빈도 배지 제거, 마음 개근왕 추가)
 const BADGE_RANK = {
@@ -46,6 +49,14 @@ const getBadgeTierClass = (badgeId) => {
   return "badge-bronze";
 };
 
+// P3: 프로필 생성 온보딩 3정거장 — targetId는 아래 앵커(data-tour-id)와 일치. ①만 interactive(실제 ➕ 클릭 통과).
+//   ⚠️ PROFILE_ONBOARD.steps(diaryCopy)와 1:1 인덱스 매칭. TourCoachmark·useTour 무수정 재사용.
+export const PROFILE_ONBOARD_STATIONS = [ // export: 1:1 가드 테스트 접근용
+  { targetId: "onboard-add",  interactive: true },  // ① 만들기(➕) — 사용자가 실제로 눌러 생성 모달 진입
+  { targetId: "onboard-card", interactive: false }, // ② 방금 만든 아이 카드
+  { targetId: "onboard-lock", interactive: false }, // ③ 🔒 부모 공간
+];
+
 export default function ProfileSelect() {
   const navigate = useNavigate();
   const { user, signOut, isPremium } = useAuth();
@@ -60,6 +71,9 @@ export default function ProfileSelect() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [profileBadges, setProfileBadges] = useState({});
+  // P3: 프로필 생성 온보딩(프로필 0개 최초 1회) — 앵커드 코치마크 3스텝
+  const tour = useTour(PROFILE_ONBOARD_STATIONS);
+  const onboardStartedRef = useRef(false); // 세션 내 중복 시작 방지
 
   useEffect(() => {
     // 로그인 사용자가 확정된 뒤 조회. user.id는 토큰 갱신과 무관하게 안정적이라
@@ -101,6 +115,37 @@ export default function ProfileSelect() {
     fetchProfiles();
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  // P3 §1: 로딩 완료 후 프로필 0개 + 미노출 플래그 없을 때만 온보딩 1회 시작. 시작 시점에 플래그 기록(부모 투어 패턴 동일).
+  //   ⚠️ 로딩 중 profiles=[] 오판 금지 — 반드시 loading 완료 뒤. 기존 사용자(1개 이상)는 절대 안 뜸.
+  useEffect(() => {
+    if (loading || onboardStartedRef.current || profiles.length !== 0) return;
+    let seen = false;
+    try { seen = localStorage.getItem("kidsafe_profile_onboarding_seen") === "1"; } catch { /* 무시 */ }
+    if (seen) return;
+    onboardStartedRef.current = true;
+    try { localStorage.setItem("kidsafe_profile_onboarding_seen", "1"); } catch { /* 무시 */ }
+    tour.start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, profiles.length]);
+
+  // P3 §3(시퀀스 함정): 스텝1→스텝2 전환은 '생성 모달 닫힘'이 아니라 '관심사 인터뷰까지 끝나고 그리드에 프로필이 생긴 순간'.
+  //   생성 취소/실패로 여전히 0개면 스텝1 유지. showCreate·seedTarget 떠 있는 동안은 아래 렌더 게이트가 코치마크를 숨김.
+  useEffect(() => {
+    if (tour.isActive && tour.step === 0 && !showCreate && !seedTarget && profiles.length >= 1) {
+      tour.next();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.isActive, tour.step, showCreate, seedTarget, profiles.length]);
+
+  // P3: 코치마크 '다음' 배선 — TourCoachmark 무수정이라 '다음' 버튼은 항상 렌더됨.
+  //   ①(만들기): '다음' = ➕와 동일하게 생성 모달 열기(프로필이 생기면 위 §3 효과가 ②로 자동 전환).
+  //   ②→③: 일반 진행. ③: 종료 CTA로 투어 종료.
+  const onboardNext = () => {
+    if (tour.step === 0) { setShowCreate(true); return; }
+    if (tour.isLast) { tour.exit(); return; }
+    tour.next();
+  };
 
   // 카드 클릭 → 먼저 확인 오버레이 (잘못 들어가기 방지)
   const handleProfileClick = (profile) => {
@@ -178,6 +223,17 @@ export default function ProfileSelect() {
         {/* 오른쪽: 계정 액션 묶음 (계정 + 로그아웃 + 부모님) — 관습대로 우측 정렬
             계정 설정을 프로필 선택 단계에 둠 → 향후 프로필별 개별 부모페이지+PIN(멀티테넌시) 대비 */}
         <div className="flex items-center gap-2">
+          {/* P3 §7(오너 7/10): 아이 화면 미리보기 — /kids?tour=1(KidHome 데모 프로필 자동 주입·종료 시 navigate(-1)). 프로필 0개여도 안전. 온보딩 앵커 아님. */}
+          <button
+            data-testid="profile-kid-preview-btn"
+            onClick={() => navigate("/kids?tour=1")}
+            className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-bold transition hover:opacity-80"
+            style={{ background: "linear-gradient(135deg, #F5B829, #EF9F27)", color: "#3A2A00" }}
+            title="아이 화면 미리보기"
+          >
+            <span>👀</span>
+            <span className="hidden sm:block">아이 화면 미리보기</span>
+          </button>
           {/* 관리 모드 토글 — 켜면 카드에 삭제 노출 (프로필 추가/삭제는 계정 영역) */}
           <button
             onClick={() => setManage((m) => !m)}
@@ -210,7 +266,8 @@ export default function ProfileSelect() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-5 py-8">
+      {/* P3: 읽기전용 스텝(②③)에선 콘텐츠 inert — 스포트라이트 구멍으로의 실제 클릭(카드 진입 등) 차단. ①(interactive)은 ➕ 실제 클릭 허용 위해 inert 해제. */}
+      <div className="mx-auto max-w-2xl px-5 py-8" inert={tour.isActive && !tour.station?.interactive}>
 
         {/* 상단 인사 */}
         <div className="mb-8 flex flex-col items-center gap-2">
@@ -237,7 +294,7 @@ export default function ProfileSelect() {
           <>
             {/* 프로필 그리드 */}
             <div className="grid grid-cols-2 gap-4 mb-4">
-              {profiles.map((profile) => {
+              {profiles.map((profile, idx) => {
                 const isSelected = selectedId === profile.id;
                 const topBadge = getRarestBadge(profileBadges[profile.id]);
                 return (
@@ -265,8 +322,9 @@ export default function ProfileSelect() {
                       </button>
                     </>
                   )}
-                  {/* 부모 잠금 — 이 아이 전용 부모페이지(PIN 게이트) */}
+                  {/* 부모 잠금 — 이 아이 전용 부모페이지(PIN 게이트). P3: 첫 카드 🔒 = 온보딩 ③ 앵커 */}
                   <button
+                    data-tour-id={idx === 0 ? "onboard-lock" : undefined}
                     onClick={(e) => { e.stopPropagation(); handleParentEnter(profile); }}
                     className="absolute right-3 top-3 z-10 flex items-center justify-center rounded-full transition hover:opacity-80"
                     style={{ width: "36px", height: "36px", backgroundColor: "rgba(24,196,154,0.18)", border: "1px solid rgba(24,196,154,0.35)" }}
@@ -276,6 +334,7 @@ export default function ProfileSelect() {
                     <FaLock style={{ color: "#18C49A", fontSize: "15px" }} />
                   </button>
                   <button
+                    data-tour-id={idx === 0 ? "onboard-card" : undefined}
                     onClick={() => handleProfileClick(profile)}
                     className="w-full flex flex-col items-center py-8 px-6 transition hover:-translate-y-1"
                     style={{
@@ -329,9 +388,10 @@ export default function ProfileSelect() {
                 );
               })}
 
-              {/* 프로필 추가 카드 — 계정 영역 동작 (생성 모달, 무료는 1개 초과 시 paywall) */}
+              {/* 프로필 추가 카드 — 계정 영역 동작 (생성 모달, 무료는 1개 초과 시 paywall). P3: 온보딩 ① 앵커 */}
               {profiles.length < 4 && (
                 <button
+                  data-tour-id="onboard-add"
                   onClick={() => {
                     if (!isPremium && profiles.length >= 1) setShowPaywall(true);
                     else setShowCreate(true);
@@ -514,6 +574,22 @@ export default function ProfileSelect() {
 
       {/* 무료 1개 초과 paywall */}
       {showPaywall && <PaywallModal reason="profile" onClose={() => setShowPaywall(false)} />}
+
+      {/* P3: 프로필 생성 온보딩 코치마크 — 루트 직속(inert 밖). §3: 생성 모달·관심사 인터뷰·기타 오버레이가 떠 있는 동안은 숨김(z-index 싸움 금지).
+          banner="" — 온보딩은 '미리보기 예시'가 아니라 실제 화면이라 부모 투어의 예시 배너를 쓰지 않음(빈 값·신규 카피 미생성). */}
+      {tour.isActive && !showCreate && !seedTarget && !pinTarget && !editTarget && !confirmTarget && !showPaywall && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={PROFILE_ONBOARD.steps[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={tour.station?.interactive}
+          banner=""
+          onPrev={tour.prev}
+          onNext={onboardNext}
+          onExit={tour.exit}
+        />
+      )}
     </div>
   );
 }
