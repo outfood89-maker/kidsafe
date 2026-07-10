@@ -41,9 +41,11 @@ export default function useKiddySpeech() {
 
   const recognitionRef = useRef(null);
   const finalRef = useRef("");   // 세션 동안 누적된 최종 인식 텍스트
+  const retryTimerRef = useRef(null); // iOS aborted 자동 재시작 대기 타이머(7/10)
 
   // 진행 중인 인식 정리 (핸들러 해제 후 중단) — 언마운트/재시작 공통.
   const teardown = useCallback(() => {
+    if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
     const rec = recognitionRef.current;
     if (rec) {
       try {
@@ -79,55 +81,86 @@ export default function useKiddySpeech() {
     setInterim("");
     setError(null);
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "ko-KR";
-    recognition.continuous = true;      // 수동 종료 모드 — 말 멈춰도 자동 종료 안 됨(stop 필요)
-    recognition.interimResults = true;  // 말하는 도중 실시간 텍스트
-    recognition.maxAlternatives = 1;
+    // ── iOS aborted 자동 재시작(7/10 실측): TTS가 한 번이라도 재생된 뒤의 인식은 iOS 오디오 세션
+    //    전환 지연 때문에 시작 직후 'aborted'로 죽을 수 있음(1턴은 되고 2턴부터 즉사 패턴).
+    //    아무것도 못 들은 aborted면 0.3초 뒤 같은 듣기 세션으로 자동 재시작(최대 2회) —
+    //    그때는 세션 정리가 끝난 뒤라 성공. listening은 유지해 화면 '듣는 중' 흔들림 없음.
+    let retries = 0; // 이번 start() 한 번(한 듣기 세션)에 한정
+    const begin = (isRetry) => {
+      retryTimerRef.current = null;
+      const recognition = new SpeechRecognition();
+      recognition.lang = "ko-KR";
+      recognition.continuous = true;      // 수동 종료 모드 — 말 멈춰도 자동 종료 안 됨(stop 필요)
+      recognition.interimResults = true;  // 말하는 도중 실시간 텍스트
+      recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-      dbg("인식 시작");
-      setError(null);
-      setListening(true);
-    };
-    recognition.onerror = (e) => {
-      dbg(`인식 에러 ${e.error}`);
-      setListening(false);
-      // 'aborted'(정상 stop 과정에서 흔히 발생)는 에러로 취급하지 않음 — 조용히 넘어감.
-      setError(e.error === "aborted" ? null : e.error);
-    };
-    recognition.onresult = (event) => {
-      let finalText = "";
-      let interimText = "";
-      // continuous=true 라 results 는 세션 시작부터 누적 → 매번 전체를 다시 조립.
-      for (let i = 0; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText += t;
-        else interimText += t;
+      recognition.onstart = () => {
+        dbg(isRetry ? `인식 재시작(${retries}차)` : "인식 시작");
+        setError(null);
+        setListening(true);
+      };
+      recognition.onerror = (e) => {
+        if (e.error === "aborted" && !finalRef.current.trim() && retries < 2 && recognitionRef.current === recognition) {
+          retries += 1;
+          recognition._kiddyRetried = true; // 이 세션의 잔여 onend는 마무리 처리 건너뜀
+          dbg(`aborted → ${retries}차 재시도 예약`);
+          retryTimerRef.current = setTimeout(() => begin(true), 300);
+          return; // listening 유지
+        }
+        dbg(`인식 에러 ${e.error}`);
+        setListening(false);
+        // 'aborted'(정상 stop 과정에서 흔히 발생)는 에러로 취급하지 않음 — 조용히 넘어감.
+        // 재시도 세션의 'not-allowed'는 제스처 밖 시작 거부일 수 있음 → 마이크 차단으로 오인 금지(m6 래치 방지).
+        setError(e.error === "aborted" || (isRetry && e.error === "not-allowed") ? null : e.error);
+      };
+      recognition.onresult = (event) => {
+        let finalText = "";
+        let interimText = "";
+        // continuous=true 라 results 는 세션 시작부터 누적 → 매번 전체를 다시 조립.
+        for (let i = 0; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalText += t;
+          else interimText += t;
+        }
+        finalRef.current = finalText;
+        dbg(`인식 결과 확정${finalText.trim().length}자/중간${interimText.trim().length}자`);
+        setTranscript(finalText.trim());
+        setInterim(interimText.trim());
+      };
+      recognition.onend = () => {
+        if (recognition._kiddyRetried) {
+          // 재시도로 대체된 세션의 잔여 onend — 상태를 건드리면 '듣는 중'이 풀려버림 → 정리만.
+          if (recognitionRef.current === recognition) recognitionRef.current = null;
+          return;
+        }
+        dbg(`인식 종료 (확정 ${finalRef.current.trim().length}자)`);
+        setListening(false);
+        setInterim("");
+        setTranscript(finalRef.current.trim());   // 최종 확정
+        if (recognitionRef.current === recognition) recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+      } catch {
+        // 이미 시작됐거나 즉시 실패 — 조용히 무시(호출부는 error/listening 로 상태 판단)
+        setListening(false);
       }
-      finalRef.current = finalText;
-      dbg(`인식 결과 확정${finalText.trim().length}자/중간${interimText.trim().length}자`);
-      setTranscript(finalText.trim());
-      setInterim(interimText.trim());
     };
-    recognition.onend = () => {
-      dbg(`인식 종료 (확정 ${finalRef.current.trim().length}자)`);
-      setListening(false);
-      setInterim("");
-      setTranscript(finalRef.current.trim());   // 최종 확정
-      recognitionRef.current = null;
-    };
-
-    recognitionRef.current = recognition;
-    try {
-      recognition.start();
-    } catch {
-      // 이미 시작됐거나 즉시 실패 — 조용히 무시(호출부는 error/listening 로 상태 판단)
-      setListening(false);
-    }
+    begin(false);
   }, [teardown]);
 
   const stop = useCallback(() => {
+    if (retryTimerRef.current) {
+      // 재시작 대기 중 사용자가 [다 말했어요] — 대기 취소하고 지금까지 결과로 조용히 마무리.
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+      setListening(false);
+      setInterim("");
+      setTranscript(finalRef.current.trim());
+      return;
+    }
     const rec = recognitionRef.current;
     if (rec) {
       try { rec.stop(); } catch { /* noop */ }   // onend 에서 최종 transcript 확정

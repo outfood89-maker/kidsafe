@@ -67,7 +67,12 @@ function acquireAudio() {
 //         남으므로(제스처 이력 기반) 다음 TTS 재생은 그대로 됨. useKiddySpeech.start()가 호출.
 export function releaseKiddyAudioForMic() {
   allAudioEls.forEach((a) => {
-    try { a.onended = null; a.pause(); a.removeAttribute("src"); a.load(); } catch { /* noop */ }
+    try {
+      // 이미 자원이 없는 엘리먼트는 건드리지 않기 — 빈 load()도 iOS 세션을 출렁여
+      // 직후 시작하는 음성인식을 aborted로 죽일 수 있음(7/10 실측: 2턴부터 즉시 abort).
+      if (!a.getAttribute("src")) return;
+      a.onended = null; a.pause(); a.removeAttribute("src"); a.load();
+    } catch { /* noop */ }
   });
 }
 function releaseAudio(a) {
@@ -103,7 +108,8 @@ export default function useKiddyVoice() {
   const stopCurrent = useCallback(() => {
     const a = audioRef.current;
     if (a) {
-      try { a.onended = null; a.pause(); } catch { /* noop */ }
+      // pause만 하면 iOS가 '재생 세션'을 계속 붙들어 직후 음성인식이 무음/abort — src까지 떼서 즉시 반납(7/10).
+      try { a.onended = null; a.pause(); a.removeAttribute("src"); a.load(); } catch { /* noop */ }
       audioRef.current = null;
     }
   }, []);
@@ -131,7 +137,12 @@ export default function useKiddyVoice() {
       if (audioRef.current === audio) {
         audioRef.current = null;
         idxRef.current += 1;
-        pump();                                   // 다음 자리로
+        if (!clipsRef.current[idxRef.current]) {
+          // 그룹 끝 — iOS 오디오 세션을 '말 끝난 즉시' 반납해 두면 다음 마이크가 1턴처럼 깨끗하게 시작(7/10).
+          // (replay는 pump가 src를 다시 걸므로 무영향)
+          try { audio.removeAttribute("src"); audio.load(); } catch { /* noop */ }
+        }
+        pump();                                   // 다음 자리로(끝이면 내부에서 그냥 반환)
       }
     };
     // 자동재생 차단(제스처 밖 재생 거부) 시 대사를 버리지 않고 '다음 탭'에서 재시도 —
