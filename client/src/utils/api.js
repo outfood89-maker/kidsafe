@@ -239,6 +239,7 @@ export const reactToCheckinStream = async (payload, onChunk) => {
 //  - text: 읽어줄 키디 대사 (이모지는 서버가 제거 후 합성)
 //  - tone: 'calm'(😢😡 위로=차분) | 'bright'(😄🙂😐 밝게)
 // ⚠️ 다시듣기는 받은 Blob을 메모리에 들고 재생(추가 호출 0). 디스크/스토리지 저장 금지(정책).
+//   (개정 7/10) STT/TTS 자동 오디오는 비저장 유지. 단, 사용자가 명시적으로 남긴 음성 편지·메모(diaryAudioStore)는 예외 저장 — 오너 확정.
 export const synthesizeKiddyVoice = async ({ text, tone = 'bright' }) => {
   if (!text || !text.trim()) return null
   try {

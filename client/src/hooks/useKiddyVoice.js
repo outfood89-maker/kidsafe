@@ -14,6 +14,7 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //    기다렸다가(채워지면 재개) 잇는다. (짧은 후속 질문이 받아주기보다 먼저 재생되던 버그 방지)
 //
 // ⚠️ localStorage/sessionStorage 미사용(정책). Blob URL은 컴포넌트 생명주기 동안만 메모리에 유지.
+//   (개정 7/10) STT/TTS 자동 오디오는 비저장 유지. 단, 사용자가 명시적으로 남긴 음성 편지·메모(diaryAudioStore)는 예외 저장 — 오너 확정.
 // 음성은 보조 → 합성/재생 실패해도 조용히 넘어감(텍스트만으로 진행). 같은 대사 중복 합성은 막음.
 export default function useKiddyVoice() {
   const audioRef = useRef(null);     // 현재 재생 중인 Audio

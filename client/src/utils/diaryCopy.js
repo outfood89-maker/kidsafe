@@ -250,8 +250,21 @@ export const STAMP_EMOJIS = ["❤️", "👍", "🌟", "🐾"]; // 도장 이모
 export const STAMP_NOTICE = {
   stamp: "엄마아빠가 네 일기에 도장을 찍어줬어! 보러 갈까?",
   letter: "엄마아빠가 도장이랑 편지를 남겼어! 보러 갈까?",
+  voice: "엄마아빠가 목소리 편지를 남겼어! 들으러 갈까?", // B08a(팀장 스탬프) — 음성 있으면 최우선 분기
 };
 export const LETTER_READ = "엄마아빠의 편지야. 키디가 읽어줄게!"; // ✉️ 탭 시 키디 안내(TTS) — 팀장 verbatim
+export const LETTER_READ_CTA = "✉️ 키디야, 읽어줘!"; // 편지 낭독 버튼 라벨(아이 말투) — 오너 7/10: 자동 펼침 후 '눌러야 하는 것'임을 알리는 장치(팀장 스탬프)
+
+// ── B08a: 부모 음성 편지 (팀장 스탬프 verbatim 2026-07-10) — 사용자가 직접 남긴 음성만 저장(오너 확정 예외) ──
+export const VOICE_LETTER = {
+  record: "🎤 목소리 편지 남기기",   // 부모: 녹음 시작
+  stop: "멈추기",                    // 부모: 녹음 중지(빨간 점과 함께)
+  preview: "▶ 들어보기",             // 부모: 저장 전 미리듣기
+  discard: "지우기",                 // 부모: 녹음 폐기
+  unsupported: "이 브라우저에서는 음성 녹음을 지원하지 않아요.", // 미지원/거부 안내(부모 톤)
+  play: "🔊 목소리 편지",            // 아이: 재생 버튼 라벨
+};
+export const LETTER_READ_VOICE = "엄마아빠가 목소리로 편지를 남겼어! 키디가 틀어줄게, 들어봐~ 🔊"; // 아이: 재생 안내(키디)
 export const LETTER_PLACEHOLDER = "아이에게 전할 한마디 (30자)"; // 부모 편지 입력 placeholder — 팀장 verbatim
 export const LETTER_NUDGE = "칭찬보다, 마음을 전해보세요 — \"네 이야기 잘 읽었어\" 처럼요."; // 입력 아래 서브 넛지 — 팀장 verbatim
 export const BLANK_SHELF_PARENT = "아직 아이가 간직한 이야기가 없어요."; // 부모 책장 빈 상태 — 겸임 팀장 스탬프 2026-07-07

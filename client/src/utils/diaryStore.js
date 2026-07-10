@@ -7,6 +7,7 @@
 
 import { ROTATING_QUESTIONS } from "./diaryCopy"; // AD-4 §4: getTodayQuestion 선정 풀(단방향 의존)
 import { deleteImage } from "./diaryImageStore"; // AD-5: 찢기 시 IDB 이미지 완전삭제(브라우저 전용, 노드선 no-op)
+import { deleteAudio } from "./diaryAudioStore"; // B08a: 음성 편지 orphan·완전삭제(브라우저 전용, 노드선 no-op)
 
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
 //   → main엔 이 브랜치 diff가 없어야 하므로 플래그로 신규 UI 전체를 게이트한다.
@@ -67,6 +68,7 @@ export function tearEntry(pid, entryId) {
   writeJson(ENTRIES_KEY(pid), all.filter((e) => e.id !== entryId));
   if (torn?.imageId) { try { deleteImage(torn.imageId); } catch { /* 무시 */ } } // 채택본 완전삭제
   if (torn?.drawingId) { try { deleteImage(torn.drawingId); } catch { /* 무시 */ } } // AD-8: 원본 낙서도 완전삭제
+  if (torn?.stamp?.voiceId) { try { deleteAudio(torn.stamp.voiceId); } catch { /* 무시 */ } } // B08a: 부모 음성 편지도 완전삭제(모든 삭제 경로=tearEntry로 수렴: doTear·doShelfDelete·doRemake)
 }
 
 // ── 회전 질문 dedup (최근 3일 사용 qid 회피) ──
@@ -231,13 +233,18 @@ export function discardPendingContinue(pid) {
 // ── AD-6: 부모 도장·편지 (entry 선택 필드 stamp). 사후 setStamp로만 설정 — saveEntry 저장경로 무접촉 ──
 //   stamp: { emoji, letter, at, seenAt }. entry에 얹히므로 tearEntry(통삭제) 시 함께 소멸(아이 삭제권 우선, 불변식④).
 //   ⚠️ 배지·보상·평가 연결 금지(§0-3). letter는 부모→아이 방향(비밀채널 무침식).
-export function setStamp(pid, entryId, { emoji, letter } = {}) {
+export function setStamp(pid, entryId, { emoji, letter, voiceId, voiceMs } = {}) {
   const entries = getEntries(pid);
   const e = entries.find((x) => x.id === entryId);
   if (!e) return; // 없는 entryId면 무시
+  const prevVoiceId = e.stamp?.voiceId; // B08a: 재도장 orphan 방지용 이전 값 보관
   // 변경=덮어쓰기: at 갱신·seenAt 리셋(재도장 시 아이에게 다시 '미확인'으로). letter 30자 방어(UI maxLength와 별개).
   e.stamp = { emoji: emoji || "", letter: String(letter || "").slice(0, 30), at: todayKST(), seenAt: null };
+  if (voiceId) e.stamp.voiceId = voiceId; // B08a: 음성 편지 참조(있을 때만 — 직렬화 불변식 유지)
+  if (voiceMs) e.stamp.voiceMs = voiceMs; // B08a: 실측 녹음 길이(재생 바 분모 — webm duration=Infinity 회피)
   writeJson(ENTRIES_KEY(pid), entries);
+  // B08a: 옛 음성 orphan 삭제 — 새 voiceId와 다르거나(재녹음) 음성 제거 시. fire-and-forget(diaryStore async 방지).
+  if (prevVoiceId && prevVoiceId !== voiceId) { try { deleteAudio(prevVoiceId); } catch { /* 무시 */ } }
 }
 // 아이가 상세를 열어 확인 → seenAt 기록(알림 자연 소멸용).
 export function markStampSeen(pid, entryId) {
@@ -245,9 +252,9 @@ export function markStampSeen(pid, entryId) {
   const e = entries.find((x) => x.id === entryId);
   if (e && e.stamp) { e.stamp.seenAt = todayKST(); writeJson(ENTRIES_KEY(pid), entries); }
 }
-// 미확인 도장 목록(도장 있고 seenAt 없음) → 아이 홈 알림 분기(도장만 vs 편지 포함).
+// 미확인 도장 목록(도장 있고 seenAt 없음) → 아이 홈 알림 분기(도장만 vs 편지 vs 음성). B08a: hasVoice 파생 추가(음성 최우선).
 export function getUnseenStamps(pid) {
   return getEntries(pid)
     .filter((e) => e.stamp && !e.stamp.seenAt)
-    .map((e) => ({ entryId: e.id, hasLetter: !!(e.stamp.letter && e.stamp.letter.trim()) }));
+    .map((e) => ({ entryId: e.id, hasLetter: !!(e.stamp.letter && e.stamp.letter.trim()), hasVoice: !!e.stamp.voiceId }));
 }
