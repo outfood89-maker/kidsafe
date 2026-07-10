@@ -251,6 +251,9 @@ export const synthesizeKiddyVoice = async ({ text, tone = 'bright' }) => {
     // 204(읽을 것 없음/키 미설정) → 빈 Blob → null 처리
     const blob = response.data
     if (!blob || blob.size === 0) return null
+    // iOS 사파리는 blob URL의 MIME이 정확한 오디오 타입이 아니면 재생을 거부(크롬은 내용 추측으로 재생) —
+    // 전송 과정에서 타입이 비거나 어긋나도 안전하게 audio/mpeg로 강제 정규화(7/10 iOS 무음 대응).
+    if (!blob.type || !blob.type.startsWith('audio/')) return new Blob([blob], { type: 'audio/mpeg' })
     return blob
   } catch {
     // 키 오류·네트워크·CLOVA 실패 → 음성 없이 진행
