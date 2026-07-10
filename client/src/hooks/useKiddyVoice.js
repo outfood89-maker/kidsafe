@@ -181,7 +181,7 @@ export default function useKiddyVoice() {
     }
 
     const blob = await synthesizeKiddyVoice({ text, tone });
-    dbg(blob ? `합성 ok ${blob.size}b type=${blob.type || "(없음)"}` : "합성 null(서버/네트워크)");
+    dbg(blob ? `합성 ok ${blob.size}b type=${blob.type || "(없음)"}` : `합성 null(${(typeof window !== "undefined" && window.__kiddySynthDebug) || "이유 미상"})`);
     if (myGen !== genRef.current) return;          // 그새 새 대사(speak)로 갈아탐 → 폐기
     const clip = clipsRef.current[slot];
     if (!clip) return;                             // 방어(그룹이 리셋됐으면 무시)
