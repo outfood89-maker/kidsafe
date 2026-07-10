@@ -1,4 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { releaseKiddyAudioForMic } from "./useKiddyVoice";
+
+// ── 임시 실기기 진단 (7/10 iOS 마이크 고착 추적) — URL에 ?voicedebug 붙이면 인식 이벤트를 폰 화면에 표시. 원인 확정 후 제거 예정. ──
+const MIC_DEBUG = typeof location !== "undefined" && /voicedebug/.test(location.search);
+function dbg(msg) {
+  if (!MIC_DEBUG || typeof document === "undefined") return;
+  let el = document.getElementById("kiddy-voice-debug");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "kiddy-voice-debug";
+    el.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;max-width:92vw;max-height:38vh;overflow:auto;background:rgba(0,0,0,.88);color:#5FE0BC;font:10px/1.5 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap;";
+    document.body.appendChild(el);
+  }
+  el.textContent += msg + "\n";
+  el.scrollTop = el.scrollHeight;
+}
 
 // 키디 음성 입력 훅 (재사용 자산) — K 브리프 §1. useKiddyVoice(TTS)의 '입력' 버전.
 // 브라우저 Web Speech API(webkitSpeechRecognition)를 얇게 감싼다. 이미 KidHome 음성 검색이
@@ -55,6 +71,9 @@ export default function useKiddySpeech() {
       return;
     }
     teardown();            // 혹시 남은 세션 정리 후 새로 시작
+    // iOS 오디오 세션 고착 방지(7/10): TTS 엘리먼트가 미디어 자원을 물고 있으면 인식이 무음만 잡음 →
+    // 마이크 켜기 직전에 전부 반납. (데스크톱 무영향 — 어차피 아이가 말하기 전 키디는 멈추는 UX)
+    try { releaseKiddyAudioForMic(); dbg("오디오 세션 반납"); } catch { /* noop */ }
     finalRef.current = "";
     setTranscript("");
     setInterim("");
@@ -67,10 +86,12 @@ export default function useKiddySpeech() {
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+      dbg("인식 시작");
       setError(null);
       setListening(true);
     };
     recognition.onerror = (e) => {
+      dbg(`인식 에러 ${e.error}`);
       setListening(false);
       // 'aborted'(정상 stop 과정에서 흔히 발생)는 에러로 취급하지 않음 — 조용히 넘어감.
       setError(e.error === "aborted" ? null : e.error);
@@ -85,10 +106,12 @@ export default function useKiddySpeech() {
         else interimText += t;
       }
       finalRef.current = finalText;
+      dbg(`인식 결과 확정${finalText.trim().length}자/중간${interimText.trim().length}자`);
       setTranscript(finalText.trim());
       setInterim(interimText.trim());
     };
     recognition.onend = () => {
+      dbg(`인식 종료 (확정 ${finalRef.current.trim().length}자)`);
       setListening(false);
       setInterim("");
       setTranscript(finalRef.current.trim());   // 최종 확정

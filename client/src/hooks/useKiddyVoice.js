@@ -13,6 +13,8 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //      런타임 생성 진짜 WAV(Blob URL) · 비뮤트 재생(0진폭이라 무음) · 성공할 때까지 매 제스처 재시도.
 const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
 const audioPool = [];
+const allAudioEls = new Set(); // 생성된 모든 엘리먼트 추적(풀 안팎 무관) — 마이크 직전 일괄 해제용
+function trackAudio(a) { if (a) allAudioEls.add(a); return a; }
 let unlockUrl = null; // 런타임 생성 무음 wav Blob URL(모듈 수명 유지 — revoke 안 함)
 function makeSilentWavUrl() {
   // 유효한 최소 WAV를 코드로 생성(mono 16bit 8kHz, 무음 샘플 8개) — 포맷 거부 불가
@@ -28,7 +30,7 @@ function makeSilentWavUrl() {
 }
 function ensurePool() {
   if (typeof Audio === "undefined") return;
-  while (audioPool.length < POOL_SIZE) audioPool.push(new Audio());
+  while (audioPool.length < POOL_SIZE) audioPool.push(trackAudio(new Audio()));
 }
 function blessPool() {
   // 제스처 핸들러 '안'에서 호출됨 — 풀에서 쉬는 엘리먼트를 무음(비뮤트) 재생으로 언락.
@@ -54,7 +56,19 @@ function acquireAudio() {
   ensurePool();
   const i = audioPool.findIndex((a) => a._kiddyBlessed); // 언락된 엘리먼트 우선
   const el = i >= 0 ? audioPool.splice(i, 1)[0] : audioPool.pop();
-  return el || (typeof Audio !== "undefined" ? new Audio() : null);
+  return el || (typeof Audio !== "undefined" ? trackAudio(new Audio()) : null);
+}
+
+// ── iOS 오디오 세션 반납 (마이크 켜기 직전 전용) — 오너 리포트 7/10 ──
+//   증상: 키디 TTS가 한두 턴 재생된 뒤부터 음성인식이 켜지긴 하는데 무음만 잡힘("아무 소리도 안 들렸어").
+//   원인: iOS는 재생/녹음을 하나의 오디오 세션으로 관리하는데, <audio>가 미디어 자원을 물고 있으면
+//         (일시정지 상태여도) 세션이 '재생 모드'에 고착 → 인식 마이크에 소리가 안 들어옴.
+//   해법: src까지 떼고 load()로 자원을 완전히 비워 세션을 반납. 언락(_kiddyBlessed)은 엘리먼트에
+//         남으므로(제스처 이력 기반) 다음 TTS 재생은 그대로 됨. useKiddySpeech.start()가 호출.
+export function releaseKiddyAudioForMic() {
+  allAudioEls.forEach((a) => {
+    try { a.onended = null; a.pause(); a.removeAttribute("src"); a.load(); } catch { /* noop */ }
+  });
 }
 function releaseAudio(a) {
   if (!a) return;
