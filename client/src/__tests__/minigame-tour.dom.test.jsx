@@ -16,9 +16,10 @@ vi.mock("../components/KiddyImg", () => ({ default: () => null }));
 vi.mock("../components/BottomTabBar", () => ({ default: () => null }));
 vi.mock("../components/KiddyFab", () => ({ default: () => null }));
 vi.mock("../components/ChatWidget", () => ({ default: () => null }));
-// 게임 6종 — 허브(selectedGame=null)에선 미렌더. import만 되게 stub(무해).
+// 게임 7종 — 허브(selectedGame=null)에선 미렌더. import만 되게 stub(무해). B09: WordBook 추가.
 vi.mock("../components/games/OXQuiz", () => ({ default: () => null }));
 vi.mock("../components/games/WordMatch", () => ({ default: () => null }));
+vi.mock("../components/games/WordBook", () => ({ default: () => null }));
 vi.mock("../components/games/PuzzleGame", () => ({ default: () => null }));
 vi.mock("../components/games/MemoryGame", () => ({ default: () => null }));
 vi.mock("../components/games/SortGame", () => ({ default: () => null }));

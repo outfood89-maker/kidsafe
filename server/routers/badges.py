@@ -254,6 +254,17 @@ def get_badge_definitions(favorites: list, searches: list, checkin_dates: list, 
             "description": "미니게임을 열 판이나 해냈어요!",  # 배움·성취 프레임. '시간' 언급 금지(팀장 조건).
             "check": lambda history, profile_id, earned_badges: len(game_plays or []) >= 10,
         },
+        # 🟢 B09(단어장): 1회성 마일스톤(사다리 금지) — 단어장 1판(=서로 다른 단어 10개) 완료 시. game_bonus.game=="word-book" 존재 판정.
+        # 🚨 '시간을 벌었다'류 금지 — 배움 프레임(놀이 척척박사와 동일 원칙).
+        {
+            "id": "word_explorer",
+            "name": "단어 탐험가",
+            "emoji": "📖",
+            "description": "단어장에서 단어를 10개나 배웠어요!",  # 배움 프레임. '시간' 언급 금지
+            "check": lambda history, profile_id, earned_badges: any(
+                (g.get("game") == "word-book") for g in (game_plays or [])
+            ),
+        },
         {
             "id": "all_star",
             "name": "올스타",
@@ -355,9 +366,9 @@ async def check_badges(profile_id: str, user: dict = Depends(get_current_user)):
     # 마음 개근왕 판정용 — 체크인 '날짜'만 조회(내용·공유·감정 미조회). 🚨 answers/mood/share 안 가져옴.
     checkin_dates = [r.get("checkin_date") for r in await sb_select(
         "daily_checkins", {"profile_id": f"eq.{profile_id}", "select": "checkin_date"}) if r.get("checkin_date")]
-    # 놀이 척척박사 판정용 — 게임 완료 행 수(=통산 판 수)만 필요. id만 조회.
+    # 놀이 척척박사 판정용 — 게임 완료 행 수(=통산 판 수). B09: 단어 탐험가 판정용 game 컬럼 추가(id,game) — play_expert는 len만 봐 무영향.
     game_plays = await sb_select(
-        "game_bonus", {"profile_id": f"eq.{profile_id}", "select": "id"})
+        "game_bonus", {"profile_id": f"eq.{profile_id}", "select": "id,game"})
     earned = [_badge_to_api(b) for b in await sb_select(
         "badges", {"profile_id": f"eq.{profile_id}", "select": "*"})]
     earned_ids = [b["badgeId"] for b in earned]

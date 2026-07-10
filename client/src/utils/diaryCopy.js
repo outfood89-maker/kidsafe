@@ -278,6 +278,14 @@ export const VOICE_MEMO = {
   play: "🔊 내 목소리",                     // 아이 책장 재생 라벨
   parentPlay: "🔊 아이가 남긴 한마디",       // 부모 책장 재생 라벨
 };
+
+// ── B09: 단어장 (팀장 스탬프 verbatim 2026-07-10) — 배움·성취 프레임, '시간' 언급 금지 ──
+export const WORD_BOOK_COPY = {
+  intro: "그림을 콕! 누르면 키디가 읽어줄게",
+  progress: (n) => `오늘 들은 단어 ${n}개`,
+  doneToast: "우와, 단어 10개나 배웠어! 🎉",
+  moreHint: "더 눌러봐! 키디가 다 읽어줄 수 있어",
+};
 export const LETTER_PLACEHOLDER = "아이에게 전할 한마디 (30자)"; // 부모 편지 입력 placeholder — 팀장 verbatim
 export const LETTER_NUDGE = "칭찬보다, 마음을 전해보세요 — \"네 이야기 잘 읽었어\" 처럼요."; // 입력 아래 서브 넛지 — 팀장 verbatim
 export const BLANK_SHELF_PARENT = "아직 아이가 간직한 이야기가 없어요."; // 부모 책장 빈 상태 — 겸임 팀장 스탬프 2026-07-07
