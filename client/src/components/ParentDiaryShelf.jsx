@@ -168,6 +168,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   const discardVoice = () => { stopPreview(); setVoiceRec(null); setSaved(false); };
   const playPreview = () => {
     if (!voiceRec?.blob) return;
+    stopMemoPlay(); // B08c §1: 아이 메모 재생 중이면 중단(미리듣기↔메모 상호배타 — 항상 하나만)
     stopPreview();
     try {
       const url = URL.createObjectURL(voiceRec.blob);
@@ -187,6 +188,7 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   const playChildMemo = async () => {
     const vid = openEntry?.voiceId;
     if (!vid) return;
+    stopPreview(); // B08c §1: 녹음 미리듣기 중이면 중단(메모↔미리듣기 상호배타 — 항상 하나만)
     const myReq = memoReqRef.current; // 상세 전환 토큰(비동기 레이스 가드)
     try {
       const blob = await getAudio(vid);

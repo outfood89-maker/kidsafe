@@ -5,7 +5,7 @@
 //   T4 삭제 정합: tearEntry → deleteAudio(entry.voiceId).
 //   diaryAudioStore·voiceRecorder·diaryImageStore·api는 목(서버·IDB·마이크 0). diaryStore는 실제(localStorage).
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 const H = vi.hoisted(() => ({
@@ -16,6 +16,8 @@ const H = vi.hoisted(() => ({
   recResult: null,   // startVoiceRecording 반환(핸들|null)
   lastOnStop: null,  // 녹음 종료 콜백(테스트가 수동 발화)
   voice: { speak: vi.fn(), enqueue: vi.fn(), stop: vi.fn(), replay: vi.fn(), hasAudio: false },
+  hold: vi.fn(),     // B08c: holdMediaChannelForTTS 스파이(무음 우회)
+  release: vi.fn(),  // B08c: releaseMediaChannelHold 스파이
   api: {
     generateDiaryImage: vi.fn(() => Promise.resolve({ ok: true, b64: "AAAA" })),
     continueDiaryImage: vi.fn(() => Promise.resolve({ ok: false })),
@@ -32,7 +34,7 @@ vi.mock("../utils/voiceRecorder", () => ({
 }));
 vi.mock("../utils/diaryImageStore", () => ({ getImage: vi.fn(() => Promise.resolve(null)), putImage: vi.fn(() => Promise.resolve(true)), deleteImage: vi.fn() }));
 vi.mock("../utils/diaryAssembler", () => ({ assembleDiary: () => ["오늘은 놀이터에서 놀았어."], pickClosing: () => "" }));
-vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice }));
+vi.mock("../hooks/useKiddyVoice", () => ({ default: () => H.voice, holdMediaChannelForTTS: H.hold, releaseMediaChannelHold: H.release })); // B08c: FamilyShelf가 named export 호출(무음 우회)
 vi.mock("../hooks/useKiddySpeech", () => ({ default: () => ({ supported: false, listening: false, error: null, transcript: "", start: vi.fn(), stop: vi.fn(), reset: vi.fn() }) }));
 vi.mock("../utils/safetyLexicon", () => ({ screenText: () => null, fixedResponse: () => "", isHigh: () => false }));
 vi.mock("../utils/api", () => H.api);
@@ -45,7 +47,8 @@ import FamilyShelf from "../pages/FamilyShelf";
 import ParentDiaryShelf from "../components/ParentDiaryShelf";
 import * as diaryStore from "../utils/diaryStore";
 import {
-  VOICE_MEMO, DIARYFLOW_TOUR_SEED, WEATHER_CHIPS, NO_ANSWER_CHIP, CONTINUE_CHIP, KEEP, TILE,
+  VOICE_MEMO, VOICE_LETTER, LETTER_READ, LETTER_READ_CTA, STAMP_EMOJIS,
+  DIARYFLOW_TOUR_SEED, WEATHER_CHIPS, NO_ANSWER_CHIP, CONTINUE_CHIP, KEEP, TILE,
 } from "../utils/diaryCopy";
 
 const PROFILE = { id: "p1", name: "테스트아이", age: 7, gender: "여자" };
@@ -179,5 +182,65 @@ describe("항목3-b T4 — 완전삭제", () => {
     diaryStore.saveEntry("d1", mkEntry("de1", { voiceId: "vTearMemo" }));
     diaryStore.tearEntry("d1", "de1");
     expect(H.deleteAudio).toHaveBeenCalledWith("vTearMemo");
+  });
+});
+
+// ── B08c: 재생 상호배타(항상 하나) + 무음 우회(hold/release) ──
+describe("B08c — 가족 책장 음성 재생 상호배타 + 무음 우회", () => {
+  const seedBoth = () => { // 아이 메모(entry.voiceId) + 부모 편지(stamp.voiceId+글) 공존
+    diaryStore.saveEntry("t1", mkEntry("bc1", { voiceId: "vMemo", voiceMs: 4000 }));
+    diaryStore.setStamp("t1", "bc1", { emoji: "❤️", letter: "잘했어", voiceId: "vLetter", voiceMs: 3000 });
+    localStorage.setItem("selectedProfile", JSON.stringify({ id: "t1", name: "아이", age: 6 }));
+  };
+  const openDetail = async () => { render(<MemoryRouter><FamilyShelf /></MemoryRouter>); fireEvent.click(await screen.findByText(TILE.done)); };
+
+  it("① 🔊 목소리 편지 재생 중 ✉️ 탭 → 녹음 바 사라짐 + 낭독(LETTER_READ) + 무음 우회 hold", async () => {
+    seedBoth();
+    await openDetail();
+    await act(async () => { fireEvent.click(await screen.findByText(VOICE_LETTER.play)); }); // 🔊 목소리 편지
+    expect(screen.getByTestId("voice-bar")).toBeTruthy();       // 녹음 재생 바
+    H.voice.speak.mockClear(); H.hold.mockClear();
+    await act(async () => { fireEvent.click(screen.getByText(LETTER_READ_CTA)); }); // ✉️ 키디야 읽어줘
+    expect(H.hold).toHaveBeenCalled();                          // §2 무음 우회(탭 제스처 안)
+    expect(H.voice.speak).toHaveBeenCalledWith(LETTER_READ, "bright"); // 낭독
+    expect(screen.queryByTestId("voice-bar")).toBeNull();       // 녹음 재생 중단(상호배타)
+  });
+
+  it("② 🔊 내 목소리 ↔ 🔊 목소리 편지 교차 → 항상 바 하나 + 매 탭 voice.stop", async () => {
+    seedBoth();
+    await openDetail();
+    await act(async () => { fireEvent.click(await screen.findByText(VOICE_MEMO.play)); }); // 🔊 내 목소리
+    expect(H.getAudio).toHaveBeenCalledWith("vMemo");
+    expect(screen.getAllByTestId("voice-bar").length).toBe(1);
+    H.voice.stop.mockClear();
+    await act(async () => { fireEvent.click(screen.getByText(VOICE_LETTER.play)); });      // 🔊 목소리 편지
+    expect(H.voice.stop).toHaveBeenCalled();                    // TTS 즉시 중단(상호배타)
+    expect(H.getAudio).toHaveBeenCalledWith("vLetter");
+    expect(screen.getAllByTestId("voice-bar").length).toBe(1);  // 교차해도 바 하나
+  });
+
+  it("③ ✉️ 탭 → hold, 상세 이탈(‹ 책장으로) → release", async () => {
+    seedBoth();
+    await openDetail();
+    await act(async () => { fireEvent.click(screen.getByText(LETTER_READ_CTA)); });
+    expect(H.hold).toHaveBeenCalled();
+    H.release.mockClear();
+    fireEvent.click(screen.getByText("‹ 책장으로")); // 상세 닫기 → [openId] 효과에서 release
+    expect(H.release).toHaveBeenCalled();
+  });
+
+  it("④ 부모 책장: 아이 메모 재생 중 미리듣기 탭 → 메모 재생 중단(stopMemoPlay 상호배타)", async () => {
+    diaryStore.saveEntry("t1", mkEntry("bp1", { voiceId: "vMemoP", voiceMs: 5000 }));
+    render(<MemoryRouter><ParentDiaryShelf profileId="t1" tourOpenEntryId="bp1" /></MemoryRouter>);
+    const memoBtn = await screen.findByText(VOICE_MEMO.parentPlay);
+    await act(async () => { fireEvent.click(memoBtn); });
+    const memoRegion = memoBtn.closest("div");
+    expect(within(memoRegion).getByTestId("voice-bar")).toBeTruthy(); // 메모 재생 바
+    // 녹음 → 미리듣기 준비
+    fireEvent.click(screen.getByLabelText(`도장 ${STAMP_EMOJIS[0]}`));
+    await act(async () => { fireEvent.click(screen.getByText(VOICE_LETTER.record)); });
+    await act(async () => { H.lastOnStop({ blob: new Blob(["v"], { type: "audio/webm" }), ms: 3000 }); });
+    await act(async () => { fireEvent.click(screen.getByText(VOICE_LETTER.preview)); }); // 미리듣기 → stopMemoPlay
+    expect(within(memoRegion).queryByTestId("voice-bar")).toBeNull(); // 메모 바 사라짐(상호배타)
   });
 });
