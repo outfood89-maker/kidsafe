@@ -36,6 +36,18 @@ html {
   .animate-tour-pulse { animation: none; }
 }
 
+/* 편지 낭독 CTA — 몇 초마다 살짝 갸웃갸웃(4~7세 시선 유도, 오너 7/10 '누르고 싶게'). */
+@keyframes letterWobble {
+  0%, 82%, 100% { transform: rotate(0deg) scale(1); }
+  86% { transform: rotate(-3deg) scale(1.04); }
+  90% { transform: rotate(3deg) scale(1.04); }
+  94% { transform: rotate(-2deg) scale(1.02); }
+}
+.animate-letter-wobble { animation: letterWobble 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-letter-wobble { animation: none; }
+}
+
 /* 코치마크 말풍선 — 정거장마다 살짝 커지며 등장(팝). 배경 카드와 구분되는 '살아있는' 창 연출(오너 7/10). */
 @keyframes tourCardPop {
   from { opacity: 0; transform: translateY(10px) scale(0.96); }

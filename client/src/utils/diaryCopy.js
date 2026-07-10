@@ -253,6 +253,7 @@ export const STAMP_NOTICE = {
   voice: "엄마아빠가 목소리 편지를 남겼어! 들으러 갈까?", // B08a(팀장 스탬프) — 음성 있으면 최우선 분기
 };
 export const LETTER_READ = "엄마아빠의 편지야. 키디가 읽어줄게!"; // ✉️ 탭 시 키디 안내(TTS) — 팀장 verbatim
+export const LETTER_READ_CTA = "✉️ 키디야, 읽어줘!"; // 편지 낭독 버튼 라벨(아이 말투) — 오너 7/10: 자동 펼침 후 '눌러야 하는 것'임을 알리는 장치(팀장 스탬프)
 
 // ── B08a: 부모 음성 편지 (팀장 스탬프 verbatim 2026-07-10) — 사용자가 직접 남긴 음성만 저장(오너 확정 예외) ──
 export const VOICE_LETTER = {

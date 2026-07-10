@@ -11,7 +11,7 @@ import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
 import { getAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 재생(IDB)
-import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_VOICE, VOICE_LETTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy";
+import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, LETTER_READ_VOICE, VOICE_LETTER, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy";
 import useTour from "../hooks/useTour"; // 항목2-⑤: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
 import TourCoachmark from "../components/TourCoachmark";
 
@@ -576,16 +576,16 @@ export default function FamilyShelf() {
                   <p key={i} className="text-base leading-relaxed pb-1" style={{ color: "#4A4433", borderBottom: "1px solid #EADFC2" }}>{s}</p>
                 ))}
               </div>
-              {/* AD-6 §3: 부모 도장(우하단, 목업③ 문법) + 편지 있으면 ✉️. 편지 본문은 기본 숨김 → ✉️ 탭 시 낭독+표시 */}
+              {/* AD-6 §3 + 오너 7/10: 부모 도장(우하단) + 편지 본문 자동 펼침. 낭독 버튼은 라벨 알약+갸웃 애니로 '누르고 싶게'(아이는 눌러야 하는 걸 모름) */}
               {openEntry.stamp?.emoji && (
                 <>
                   <div className="flex items-end justify-end gap-2 mt-4" data-tour-id="shelf-stamp">
                     {/* B08a: 부모 음성 편지 있으면 🔊(글 편지 유무와 독립 — 음성만이면 ✉️ 없이 🔊만) */}
                     {openEntry.stamp.voiceId && (
-                      <button onClick={onVoiceTap} aria-label="목소리 편지 듣기" className="rounded-full px-3 py-1.5 text-sm font-bold active:scale-95 transition" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.4)" }}>{VOICE_LETTER.play}</button>
+                      <button onClick={onVoiceTap} aria-label="목소리 편지 듣기" className="rounded-full px-3 py-1.5 text-sm font-bold active:scale-95 transition animate-letter-wobble" style={{ backgroundColor: "#13302B", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.4)" }}>{VOICE_LETTER.play}</button>
                     )}
                     {openEntry.stamp.letter?.trim() && (
-                      <button onClick={onLetterTap} aria-label="편지 보기" className="text-2xl active:scale-95 transition">✉️</button>
+                      <button onClick={onLetterTap} aria-label="편지 보기" className="rounded-full px-3 py-1.5 text-sm font-bold active:scale-95 transition animate-letter-wobble" style={{ backgroundColor: "#FFF7E6", color: "#9A8B63", border: "1px solid #E7D9B0", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>{LETTER_READ_CTA}</button>
                     )}
                     <StampMark emoji={openEntry.stamp.emoji} />
                   </div>
