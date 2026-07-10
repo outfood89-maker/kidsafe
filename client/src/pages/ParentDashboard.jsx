@@ -847,11 +847,12 @@ export default function ParentDashboard() {
               {/* AD-7 + 항목2-②: 헤더 우측 버튼 그룹 — '아이 화면 미리보기'(C 트리거 → /kids?tour=1) + '예시 가족 둘러보기'. DIARY_V0 게이트·투어 중 숨김. */}
               {DIARY_V0 && !tourMode && (
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* 오너 7/10: 다크 아웃라인이 배경에 묻힘 → 전역 액센트 골드(#F5B829, 키디 별·Account 배지 동일 문법)로 채움 */}
                   <button
                     data-testid="kid-preview-btn"
                     onClick={() => navigate("/kids?tour=1")}
                     className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
-                    style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.35)" }}
+                    style={{ background: "linear-gradient(135deg, #F5B829, #EF9F27)", color: "#3A2A00" }}
                   >
                     👀 아이 화면 미리보기
                   </button>
