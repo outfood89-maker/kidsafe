@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useKiddySpeech from "../hooks/useKiddySpeech";
-import useKiddyVoice from "../hooks/useKiddyVoice";
+import useKiddyVoice, { startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // P4: 키디의 방 배경음악(진입 시 자동)
 import { sendChatMessage, createCareSignal } from "../utils/api";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
@@ -105,6 +105,13 @@ export default function KiddyRoom() {
   const speech = useKiddySpeech({ keepMicWarm: true });
   const voice = useKiddyVoice();
   const tour = useTour(KIDDYROOM_TOUR_STATIONS); // 부모 소개 튜토리얼 — 시드 없이 훅 기본(start/exit)만
+
+  // P4(오너 7/10): 키디의 방 진입 시 배경음악 자동 시작 — 곡 끝나면 루프, 방을 나가면 페이드아웃.
+  //   말하기(듣는 중)엔 모듈이 자동 일시정지 → 키디 답변과 함께 복귀(마이크 공존 규율 유지). TTS 중엔 덕킹.
+  useEffect(() => {
+    try { startKiddyBgm(); } catch { /* 무시 */ }
+    return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
+  }, []);
 
   // 프로필 — localStorage '읽기'만 (KidHome 패턴). 대화는 저장하지 않는다.
   const [profile, setProfile] = useState(null);

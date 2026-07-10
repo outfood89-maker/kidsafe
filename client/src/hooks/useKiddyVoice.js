@@ -29,14 +29,129 @@ function getCtx() {
   return sharedCtx;
 }
 // 재생이 끝나는 즉시 세션 반납 — 다음 마이크(음성인식)가 깨끗하게 시작하게.
+// P4: BGM 루프가 살아 있는 동안엔 반납하지 않음(반납하면 음악이 멎음) — BGM 화면(인터뷰·그림 대기)엔 마이크가 없고,
+//     마이크 직전 경로(releaseKiddyAudioForMic)는 BGM을 '즉시 정지'시킨 뒤 강제 반납하므로 공존 규율 불변.
 function suspendCtxForMic() {
+  try { if (bgmSrc) return; } catch { /* noop */ }
   try { if (sharedCtx && sharedCtx.state === "running") sharedCtx.suspend(); } catch { /* noop */ }
+}
+
+// ── P4: 배경음악(BGM) — 부드러운 루프 + TTS 자동 덕킹 + 페이드아웃 (팀장 규격 7/10 + 오너 확장) ──
+//   적용(오너 7/10): 키디랑 인터뷰하는 모든 곳 — 관심사 인터뷰·체크인·키디의 방(진입 시 자동)·그림일기 전체.
+//   loop=true라 곡이 끝나면 이어서 무한 반복 / 화면 이탈·인터뷰 종료는 페이드아웃(툭 끊김 금지).
+//   기존 WebAudio 체계 재사용(iOS 언락 상속) → 무음 스위치 정책도 TTS와 동일(스위치 ON=무음).
+//   ⚠️ 마이크 공존(5차전 규율): 음성인식 직전 pauseKiddyBgmForMic()로 '즉시 일시정지'(의도는 유지) →
+//      키디가 다음에 말하는 순간(trackTtsStart) 자동 복귀. 듣는 중 음악이 인식을 죽이거나 마이크에 섞이는 것 방지.
+//   트랙: client/public/music/ (오너 제작 Warm Room Glow — 원본 wav 23.7MB → aac 128k 2MB 변환본). 404면 조용히 무음.
+let bgmSrc = null;        // 현재 루프 소스(AudioBufferSource)
+let bgmGain = null;       // 마스터 게인 — 덕킹·페이드 담당
+let bgmBuffer = null;     // 디코드 캐시(재진입 시 재다운로드 0)
+let bgmLoadedUrl = null;  // 캐시된 트랙 URL
+let bgmDesiredUrl = null; // '지금 BGM을 원하는 상태'(시작/정지 레이스·언락/마이크 후 복귀 판정)
+const BGM_URL = "/music/warm-room-glow.m4a"; // 오너 제작 트랙(7/10 수신)
+const BGM_VOL = 0.22;     // 기본 볼륨(낮게 — 키디 목소리 밑에 깔리는 용도)
+const BGM_DUCK = 0.06;    // TTS 발화 중 덕킹 볼륨
+function bgmSetDuck(on) {
+  try {
+    if (!bgmGain || !sharedCtx) return;
+    const t = sharedCtx.currentTime;
+    bgmGain.gain.cancelScheduledValues(t);
+    bgmGain.gain.setValueAtTime(bgmGain.gain.value, t);
+    bgmGain.gain.linearRampToValueAtTime(on ? BGM_DUCK : BGM_VOL, t + 0.25); // 0.25s 스무드 덕킹
+  } catch { /* noop */ }
+}
+// 중첩 화면 참조 카운트 — 체크인(음악) 안에서 일기 오버레이가 열렸다 닫혀도 바깥 음악이 죽지 않게.
+//   startKiddyBgm=획득(+1) / stopKiddyBgm=반납(-1, 0이 될 때만 실제 페이드아웃). 내부 복귀(_bgmPlay)는 카운트 무관.
+let bgmHolds = 0;
+export function startKiddyBgm(url = BGM_URL) {
+  bgmHolds += 1;
+  return _bgmPlay(url);
+}
+async function _bgmPlay(url) {
+  try {
+    if (typeof fetch === "undefined") return;
+    bgmDesiredUrl = url;
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (!ctx._kiddyUnlocked) {
+      // 아직 제스처 언락 전 — 다음 탭에서 재시도(그새 stop됐으면 무시)
+      if (typeof document !== "undefined") {
+        document.addEventListener("pointerdown", () => { if (bgmDesiredUrl) _bgmPlay(bgmDesiredUrl); }, { once: true, capture: true });
+      }
+      return;
+    }
+    if (bgmSrc && bgmLoadedUrl === url) return; // 이미 재생 중
+    if (bgmLoadedUrl !== url || !bgmBuffer) {
+      const res = await fetch(url);
+      if (!res.ok) return; // 트랙 미배치(404 등) — 조용히 무음
+      const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+      bgmBuffer = buf; bgmLoadedUrl = url;
+    }
+    if (bgmDesiredUrl !== url) return; // 로딩 사이에 stop/교체됨 — 폐기
+    if (ctx.state !== "running") { try { await ctx.resume(); } catch { return; } }
+    if (bgmDesiredUrl !== url || bgmSrc) return; // resume 사이 레이스 방어
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(activeTtsNodes.size > 0 ? BGM_DUCK : BGM_VOL, ctx.currentTime + 0.6); // 페이드인
+    const src = ctx.createBufferSource();
+    src.buffer = bgmBuffer;
+    src.loop = true; // 곡이 끝나면 이어서 무한 반복(오너 규격)
+    if (bgmBuffer.duration > 2) {
+      // AAC 인코더 프라이밍/패딩(앞뒤 수십 ms 무음)이 루프 이음매에서 '뚝' 끊겨 들리는 것 방지 — 양끝 60ms 트림 루프
+      src.loopStart = 0.06;
+      src.loopEnd = bgmBuffer.duration - 0.06;
+    }
+    src.connect(gain).connect(ctx.destination);
+    src.start(0);
+    bgmSrc = src; bgmGain = gain;
+  } catch { /* BGM은 장식 — 실패 시 조용히 */ }
+}
+export function stopKiddyBgm({ immediate = false } = {}) {
+  try {
+    bgmHolds = Math.max(0, bgmHolds - 1);
+    if (bgmHolds > 0) return; // 아직 음악을 원하는 바깥 화면이 남아 있음(중첩 오버레이) — 계속 재생
+    bgmDesiredUrl = null;
+    const src = bgmSrc, gain = bgmGain;
+    bgmSrc = null; bgmGain = null; // 즉시 해제 — suspendCtxForMic 게이트가 바로 풀리게
+    if (!src) return;
+    if (immediate || !sharedCtx || sharedCtx.state !== "running") {
+      try { src.stop(); } catch { /* noop */ }
+    } else {
+      // 화면 이탈·인터뷰 종료 페이드아웃(0.9s) 후 정지 — 툭 끊김 금지(오너 규격)
+      const t = sharedCtx.currentTime;
+      try {
+        gain.gain.cancelScheduledValues(t);
+        gain.gain.setValueAtTime(gain.gain.value, t);
+        gain.gain.linearRampToValueAtTime(0.0001, t + 0.9);
+      } catch { /* noop */ }
+      setTimeout(() => { try { src.stop(); } catch { /* noop */ } if (activeTtsNodes.size === 0) suspendCtxForMic(); }, 950);
+      return;
+    }
+    if (activeTtsNodes.size === 0) suspendCtxForMic();
+  } catch { /* noop */ }
+}
+// P4: 마이크 직전 일시정지 — 재생만 즉시 멈추고 '원하는 상태(bgmDesiredUrl)'는 유지 →
+//     키디가 다음에 말하는 순간(trackTtsStart) 자동 복귀. 화면 이탈(stopKiddyBgm)과 구분됨.
+function pauseKiddyBgmForMic() {
+  try {
+    const src = bgmSrc;
+    bgmSrc = null; bgmGain = null; // 즉시 해제 — suspendCtxForMic 게이트가 바로 풀리게
+    if (src) { try { src.stop(); } catch { /* noop */ } }
+  } catch { /* noop */ }
 }
 
 // ── P5: 효과음(SFX) — WebAudio 신디 합성(음원 파일 0, 팀장 허용안 7/10) ──
 //   부드러운 사인파 계열만(날카로운 비프 금지)·낮은 볼륨. TTS 재생 중이면 생략(키디 목소리 항상 우선).
 //   ctx 규율은 TTS와 완전 동일: 제스처 언락 전엔 침묵, 재생 끝나면 TTS가 안 돌 때만 suspend(마이크 공존 — 오디오 5차전 재발 방지).
-const activeTtsNodes = new Set(); // 재생 중 TTS 노드/엘리먼트(모듈 전역) — SFX 중첩 생략 판정
+const activeTtsNodes = new Set(); // 재생 중 TTS 노드/엘리먼트(모듈 전역) — SFX 중첩 생략 + P4 BGM 덕킹 판정
+// P4: TTS 시작/종료를 한 곳에서 추적 — BGM 덕킹(키디 목소리 항상 우선)을 자동 연동.
+//   TTS 시작은 '마이크 일시정지된 BGM의 복귀 신호'이기도 함(듣기 끝 → 키디 답변과 함께 음악 페이드인).
+function trackTtsStart(n) {
+  activeTtsNodes.add(n);
+  if (bgmDesiredUrl && !bgmSrc) { try { _bgmPlay(bgmDesiredUrl); } catch { /* noop */ } } // 마이크 일시정지 복귀(카운트 무관)
+  bgmSetDuck(true);
+}
+function trackTtsEnd(n) { activeTtsNodes.delete(n); if (activeTtsNodes.size === 0) bgmSetDuck(false); }
 // [주파수Hz, 시작오프셋s, 길이s] — 전부 짧고 부드러운 차임(어택 15ms·지수 감쇠로 클릭 노이즈 방지)
 const SFX_DEFS = {
   select: [[880, 0, 0.09]],                                        // ① 칩/카드 선택 — 짧은 블립
@@ -167,6 +282,7 @@ export function releaseMediaChannelHold() {
 
 export function releaseKiddyAudioForMic() {
   releaseMediaChannelHold(); // 무음 우회 루프가 남아있으면 인식이 죽음 — 마이크 직전 반드시 해제
+  pauseKiddyBgmForMic(); // P4: BGM 즉시 일시정지(의도 유지 — 키디 다음 발화 때 자동 복귀). bgmSrc가 남으면 아래 suspend가 게이트에 막힘
   suspendCtxForMic(); // WebAudio 경로 세션 반납(재생 중 마이크 탭 등)
   allAudioEls.forEach((a) => {
     try {
@@ -211,14 +327,14 @@ export default function useKiddyVoice() {
   const stopCurrent = useCallback(() => {
     const s = srcNodeRef.current;
     if (s) {
-      activeTtsNodes.delete(s); // P5: SFX 중첩 판정 집합에서 제거
+      trackTtsEnd(s); // P5 SFX·P4 덕킹 판정 집합에서 제거
       try { s.onended = null; s.stop(); } catch { /* noop */ }
       srcNodeRef.current = null;
       suspendCtxForMic(); // 재생을 끊었으면(마이크 직전 등) 세션도 즉시 반납
     }
     const a = audioRef.current;
     if (a) {
-      activeTtsNodes.delete(a); // P5: 폴백 엘리먼트도 동일 추적
+      trackTtsEnd(a); // P5·P4: 폴백 엘리먼트도 동일 추적
       // pause만 하면 iOS가 '재생 세션'을 계속 붙들어 직후 음성인식이 무음/abort — src까지 떼서 즉시 반납(7/10).
       try { a.onended = null; a.pause(); a.removeAttribute("src"); a.load(); } catch { /* noop */ }
       audioRef.current = null;
@@ -268,7 +384,7 @@ export default function useKiddyVoice() {
         node.buffer = clip.buffer;
         node.connect(ctx.destination);
         node.onended = () => {
-          activeTtsNodes.delete(node); // P5: SFX 중첩 판정
+          trackTtsEnd(node); // P5 SFX·P4 덕킹 판정
           if (srcNodeRef.current === node) {
             srcNodeRef.current = null;
             idxRef.current += 1;
@@ -278,7 +394,7 @@ export default function useKiddyVoice() {
         };
         srcNodeRef.current = node;
         node.start(0);
-        activeTtsNodes.add(node); // P5: 재생 중 표시(SFX는 이 집합이 비어야 재생)
+        trackTtsStart(node); // P5: 재생 중 표시(SFX 생략 판정) + P4: BGM 덕킹
         return;
       } catch {
         // 생성/시작 실패 — 이 클립은 건너뜀(버퍼 경로엔 엘리먼트 폴백용 url이 없음)
@@ -298,7 +414,7 @@ export default function useKiddyVoice() {
     try { audio.load(); } catch { /* noop */ } // 사파리: 재사용 엘리먼트 src 교체 후 load 권장(스테일 소스 방지)
     audioRef.current = audio;
     audio.onended = () => {
-      activeTtsNodes.delete(audio); // P5: SFX 중첩 판정
+      trackTtsEnd(audio); // P5 SFX·P4 덕킹 판정
       if (audioRef.current === audio) {
         audioRef.current = null;
         idxRef.current += 1;
@@ -312,10 +428,10 @@ export default function useKiddyVoice() {
     };
     // 자동재생 차단(제스처 밖 재생 거부) 시 대사를 버리지 않고 '다음 탭'에서 재시도 —
     // 탭 핸들러 안에서 play()가 다시 불리므로 iOS가 반드시 허용(★2차 안전망, 첫 인사 등 무제스처 진입 커버).
-    activeTtsNodes.add(audio); // P5: 재생 중 표시(실패 catch에서 제거)
+    trackTtsStart(audio); // P5: 재생 중 표시(실패 catch에서 제거) + P4: 덕킹
     const p = audio.play();
     if (p?.then) p.catch(() => {
-      activeTtsNodes.delete(audio); // P5: 재생 거부 → 미재생이므로 해제
+      trackTtsEnd(audio); // P5·P4: 재생 거부 → 미재생이므로 해제
       if (audioRef.current === audio) audioRef.current = null; // 재생 실패 표시 → pump 재진입 가능
       if (typeof document !== "undefined") {
         document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });

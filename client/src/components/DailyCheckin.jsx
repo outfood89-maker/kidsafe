@@ -13,7 +13,7 @@ import * as diaryStore from "../utils/diaryStore";
 // import { ENTRY, SAD_MOODS } from "../utils/diaryCopy";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 import { hasBatchim } from "../utils/korean";
-import useKiddyVoice from "../hooks/useKiddyVoice";
+import useKiddyVoice, { startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // P4: 체크인 배경음악
 import useKiddySpeech from "../hooks/useKiddySpeech";
 
 // 반응 생성 중 보여줄 짧은 '생각 소리' (랜덤 — 매번 같은 말 안 나오게)
@@ -94,6 +94,13 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
   // AD-10 폐기 유지(ⓐ): reward '제안 요소' 상태 diaryPropose 계속 주석. 오버레이·시작스텝(ⓑ)은 복구.
   // const [diaryPropose, setDiaryPropose] = useState(false);
   const [diaryStartAt, setDiaryStartAt] = useState("weather");
+
+  // P4(오너 7/10): 체크인 진행 중 배경음악 — 열릴 때 시작·곡 끝나면 루프, 닫히면 페이드아웃.
+  //   TTS 덕킹·마이크 일시정지는 모듈이 자동 처리. 트랙 미배치·목 환경은 조용히 무음(BGM은 장식).
+  useEffect(() => {
+    try { startKiddyBgm(); } catch { /* 무시 */ }
+    return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
+  }, []);
 
   const [phase, setPhase] = useState("loading"); // loading | greeting | questions | share | reward
   const [questions, setQuestions] = useState([]);

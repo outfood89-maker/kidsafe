@@ -3,7 +3,7 @@ import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import { saveProfileInterests } from "../utils/api";
 import { withSubject } from "../utils/korean";
-import useKiddyVoice from "../hooks/useKiddyVoice"; // 오너 7/10: 첫 인터뷰에도 키디 목소리(다른 화면과 동일 훅 — WebAudio·무회귀)
+import useKiddyVoice, { startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // 오너 7/10: 첫 인터뷰에도 키디 목소리(다른 화면과 동일 훅 — WebAudio·무회귀) / P4: 인터뷰 배경음악
 
 // F0 — 관심사 씨앗 심기 (프로필 생성 직후 1회)
 // 흐름: intro(3비트) → fork(갈림길) → child(미니게임) / parent(그리드) → end(도착지)
@@ -64,6 +64,13 @@ export default function InterestSeed({ profile, onDone }) {
     { pose: "chat", text: "우리 오늘부터 친구야. 근데 친구라면… 서로 뭘 좋아하는지 알아야겠지?" },
     { pose: "think", text: `${withSubject(name)} 좋아하는 거, 누가 알려줄까?` },
   ];
+
+  // P4: 인터뷰 진행 중 배경음악 — 마운트~언마운트 루프(TTS 발화 중 자동 덕킹은 모듈이 처리).
+  //   트랙 미배치(404)·목(mock)·미지원 환경에선 조용히 무음(BGM은 장식).
+  useEffect(() => {
+    try { startKiddyBgm(); } catch { /* 무시 */ }
+    return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
+  }, []);
 
   // 키디 음성(오너 7/10) — 인트로 비트·미니게임 질문·마무리는 말풍선과 같은 원문을 읽는다.
   //   부모 그리드(parent)는 부모용 안내문이라 음성 없음. 훅의 중복 가드로 같은 대사 이중 재생 없음.
