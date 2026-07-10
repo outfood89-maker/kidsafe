@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import KiddyImg from "./KiddyImg";
 import Typewriter from "./Typewriter";
 import { saveProfileInterests } from "../utils/api";
 import { withSubject } from "../utils/korean";
+import useKiddyVoice from "../hooks/useKiddyVoice"; // 오너 7/10: 첫 인터뷰에도 키디 목소리(다른 화면과 동일 훅 — WebAudio·무회귀)
 
 // F0 — 관심사 씨앗 심기 (프로필 생성 직후 1회)
 // 흐름: intro(3비트) → fork(갈림길) → child(미니게임) / parent(그리드) → end(도착지)
@@ -28,6 +29,11 @@ const INTERESTS = [
 // 아이가 하나도 안 골랐을 때 권유할 폴백 카드 (다들 좋아하는 것)
 const FALLBACK_CARD = { label: "공룡", emoji: "🦕" };
 
+// 키디 대사(화면 말풍선과 음성이 같은 원문을 쓰도록 상수화 — 문구 수정 시 한 곳만)
+const CHILD_QUESTION = "이거 좋아? 좋으면 '좋아!', 아니면 '음~'";
+const FALLBACK_LINE = "아직 마음에 든 게 없구나? 그럼 다들 좋아하는 이건 어때? 🌟";
+const END_LINE = "좋아, 이제 너에 대해 조금 알 것 같아! 우리 진짜 친구가 됐네 😊";
+
 // 공용 색상 토큰 (다크 에메랄드 테마)
 const C = {
   bg: "#0A1E1E",
@@ -48,6 +54,7 @@ export default function InterestSeed({ profile, onDone }) {
   const [finalInterests, setFinalInterests] = useState([]); // end 에서 저장할 배열
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const voice = useKiddyVoice(); // 키디 목소리 — 언마운트 시 훅이 자체 정리(stop)
 
   // ── intro 비트 (3비트로 천천히) ──
   const INTRO_BEATS = [
@@ -55,6 +62,15 @@ export default function InterestSeed({ profile, onDone }) {
     { pose: "chat", text: "우리 오늘부터 친구야. 근데 친구라면… 서로 뭘 좋아하는지 알아야겠지?" },
     { pose: "think", text: `${withSubject(name)} 좋아하는 거, 누가 알려줄까?` },
   ];
+
+  // 키디 음성(오너 7/10) — 인트로 비트·미니게임 질문·마무리는 말풍선과 같은 원문을 읽는다.
+  //   부모 그리드(parent)는 부모용 안내문이라 음성 없음. 훅의 중복 가드로 같은 대사 이중 재생 없음.
+  useEffect(() => {
+    if (phase === "intro") voice.speak(INTRO_BEATS[beat].text, "bright");
+    else if (phase === "child") voice.speak(CHILD_QUESTION, "bright");
+    else if (phase === "end") voice.speak(END_LINE, "bright");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, beat]);
 
   // ── 아이 경로(미니게임) 상태 ──
   const [cardIdx, setCardIdx] = useState(0);
@@ -76,11 +92,13 @@ export default function InterestSeed({ profile, onDone }) {
     const card = currentCard;
     const nextBasket = liked ? [...basket, card] : basket;
     setBasket(nextBasket);
-    setReaction(
-      liked
-        ? `역시! ${card.emoji} ${card.label} 완전 좋아 😆 가방에 쏙!`
-        : "오케이, 이건 패스! 다음 거 볼까? 👀"
-    );
+    const reactionLine = liked
+      ? `역시! ${card.emoji} ${card.label} 완전 좋아 😆 가방에 쏙!`
+      : "오케이, 이건 패스! 다음 거 볼까? 👀";
+    setReaction(reactionLine);
+    // 리액션 음성 — '패스'는 같은 문장이 반복되므로 stop()으로 중복 가드를 풀고 읽는다(무음 방지)
+    voice.stop();
+    voice.speak(reactionLine, "bright");
 
     // 리액션을 타이핑 끝까지 보여줄 시간 확보 후 다음으로 (타이핑 ~1초 + 읽을 여유)
     setTimeout(() => {
@@ -95,6 +113,7 @@ export default function InterestSeed({ profile, onDone }) {
         // 카드 다 봄 — 하나도 안 담겼으면 폴백 1장 권유, 있으면 종료
         if (nextBasket.length === 0) {
           setFallback(true);
+          voice.speak(FALLBACK_LINE, "bright"); // 폴백 권유도 목소리로
         } else {
           goEnd(nextBasket.map((c) => c.label), "child");
         }
@@ -223,8 +242,8 @@ export default function InterestSeed({ profile, onDone }) {
                 const bubble = reaction
                   ? reaction
                   : fallback
-                    ? "아직 마음에 든 게 없구나? 그럼 다들 좋아하는 이건 어때? 🌟"
-                    : "이거 좋아? 좋으면 '좋아!', 아니면 '음~'";
+                    ? FALLBACK_LINE
+                    : CHILD_QUESTION;
                 return (
                   <Typewriter
                     key={bubble}
@@ -383,7 +402,7 @@ export default function InterestSeed({ profile, onDone }) {
               style={{ backgroundColor: C.card, border: "1px solid rgba(255,255,255,0.08)" }}
             >
               <Typewriter
-                text="좋아, 이제 너에 대해 조금 알 것 같아! 우리 진짜 친구가 됐네 😊"
+                text={END_LINE}
                 className="font-extrabold leading-snug"
                 style={{ color: C.ink, fontSize: "19px" }}
               />
