@@ -1,10 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import * as diary from "../utils/diaryStore";
 import { getImage } from "../utils/diaryImageStore";
+import { putAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 저장(IDB)
+import { startVoiceRecording, isVoiceRecordingSupported, VOICE_MAX_MS } from "../utils/voiceRecorder"; // B08a: 음성 녹음 공용 유틸(10초)
 import DiaryLightbox from "./DiaryLightbox";
+import VoiceBar from "./VoiceBar"; // B08a: 녹음/재생 진행 바(공용)
 import {
   SHELF_NAME, IMAGE_PLACEHOLDER, SHELF_FOOTER, monthBookTitle, monthBookMeta,
-  STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT,
+  STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT, VOICE_LETTER,
 } from "../utils/diaryCopy";
 
 // ── AD-6 §2: 부모 '가족 책장' — 읽기전용 열람 + 도장·짧은 편지 쓰기 ──
@@ -53,6 +56,15 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   const [selEmoji, setSelEmoji] = useState("");
   const [letterText, setLetterText] = useState("");
   const [saved, setSaved] = useState(false); // 저장 완료 피드백(다음 편집/페이지 전환 시 해제)
+  // B08a: 부모 음성 편지 — 녹음 상태(핸들은 ref, UI는 recording 플래그). onStamp(투어)면 UI 자체 미노출(§4-1).
+  const [recording, setRecording] = useState(false); // 녹음 중 여부(빨간 점·멈추기)
+  const [voiceRec, setVoiceRec] = useState(null);     // 정지 후 { blob, ms }(미리듣기·저장 대상). ms=실측 녹음 길이
+  const [recDenied, setRecDenied] = useState(false);  // 시작 시 미지원/권한거부 → unsupported 안내
+  const [recElapsed, setRecElapsed] = useState(0);    // 녹음 경과 ms(진행 바 — 100ms 갱신)
+  const [previewProgress, setPreviewProgress] = useState(0); // 미리듣기 진행 0~1
+  const recHandleRef = useRef(null);                  // 녹음 핸들(언마운트/전환 정리용 — 최신값·startedAt 보유)
+  const recTimerRef = useRef(null);                   // 녹음 경과 interval
+  const previewAudioRef = useRef(null);               // 미리듣기 Audio(유령 오디오 차단용)
 
   useEffect(() => {
     setOpenId(null); setOpenMonth(null);
@@ -93,9 +105,20 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
     setSelEmoji(openEntry?.stamp?.emoji || "");
     setLetterText(openEntry?.stamp?.letter || "");
     setSaved(false); // 페이지 전환 시 저장 표시 초기화
+    // B08a: 페이지 전환 시 녹음/미리듣기 정리(마이크 표시등·유령 오디오·타이머 잔류 방지)
+    try { recHandleRef.current?.cancel(); } catch { /* 무시 */ }
+    recHandleRef.current = null; clearRecTimer(); setRecording(false); setRecElapsed(0); setVoiceRec(null); setRecDenied(false);
+    stopPreview();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
+
+  // B08a: 언마운트 시 녹음·미리듣기·타이머 강제 정리(마이크 잔류·유령 오디오 차단) — 최신 핸들은 ref로.
+  useEffect(() => () => {
+    try { recHandleRef.current?.cancel(); } catch { /* 무시 */ }
+    clearRecTimer(); stopPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 월 열람 시 그 달 페이지 썸네일 병렬 로드
   useEffect(() => {
@@ -113,10 +136,47 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openMonth, entries]);
 
-  // 도장·편지 저장(함께) → 재조회. 이모지 없으면 저장 불가(도장 = 이모지 1개 필수, 편지 선택).
-  const saveStamp = () => {
+  // ── B08a: 부모 음성 편지 녹음 핸들러 (onStamp 투어 모드에선 UI 자체 미노출이라 호출 경로 없음) ──
+  const clearRecTimer = () => { if (recTimerRef.current) { clearInterval(recTimerRef.current); recTimerRef.current = null; } };
+  const stopPreview = () => {
+    try { const a = previewAudioRef.current; if (a) { a.pause(); if (a.src) URL.revokeObjectURL(a.src); } } catch { /* 무시 */ }
+    previewAudioRef.current = null; setPreviewProgress(0);
+  };
+  const startRec = async () => {
+    setRecDenied(false);
+    const h = await startVoiceRecording({
+      onStop: ({ blob, ms }) => { // 수동 정지·10초 자동정지 공통 경로
+        clearRecTimer(); setRecElapsed(0);
+        setVoiceRec(blob ? { blob, ms } : null); setRecording(false); recHandleRef.current = null;
+      },
+    });
+    if (!h) { setRecDenied(true); return; } // 미지원·권한 거부 → 안내(글 편지는 평소대로)
+    setVoiceRec(null); recHandleRef.current = h; setRecording(true); setRecElapsed(0);
+    clearRecTimer();
+    recTimerRef.current = setInterval(() => { // 진행 바 경과(분모=VOICE_MAX_MS). 10초 자동정지 시 onStop이 정리.
+      const st = recHandleRef.current?.startedAt || 0;
+      setRecElapsed(st ? Math.min(VOICE_MAX_MS, Date.now() - st) : 0);
+    }, 100);
+  };
+  const stopRec = () => { try { recHandleRef.current?.stop(); } catch { /* 무시 */ } }; // onStop 콜백이 voiceRec 세팅
+  const discardVoice = () => { stopPreview(); setVoiceRec(null); setSaved(false); };
+  const playPreview = () => {
+    if (!voiceRec?.blob) return;
+    stopPreview();
+    try {
+      const url = URL.createObjectURL(voiceRec.blob);
+      const a = new Audio(url);
+      previewAudioRef.current = a;
+      a.ontimeupdate = () => { const d = voiceRec.ms; if (d) setPreviewProgress(Math.min(1, (a.currentTime * 1000) / d)); };
+      a.onended = () => { setPreviewProgress(0); try { URL.revokeObjectURL(url); } catch { /* 무시 */ } };
+      a.play().catch(() => {});
+    } catch { /* 무시 */ }
+  };
+
+  // 도장·편지 저장(함께) → 재조회. 이모지 없으면 저장 불가(도장 = 이모지 1개 필수, 편지·음성 선택).
+  const saveStamp = async () => {
     if (!openId || !selEmoji) return;
-    // 투어 주입(AD-7): onStamp 경유면 diaryStore·서버 무접촉 — 부모 콜백 + 로컬 메모리 도장 반영만.
+    // 투어 주입(AD-7): onStamp 경유면 diaryStore·서버 무접촉 — 부모 콜백 + 로컬 메모리 도장 반영만. (🎤 UI 미노출이라 voice 무관)
     if (onStamp) {
       try { onStamp(openId, { emoji: selEmoji, letter: letterText }); } catch { /* 무시 */ }
       setEntries((prev) => prev.map((e) =>
@@ -129,8 +189,18 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
     }
     if (!profileId) return;
     try {
-      diary.setStamp(profileId, openId, { emoji: selEmoji, letter: letterText });
+      // B08a: 새로 녹음한 음성이 있으면 IDB에 저장, 없으면 기존 voiceId·voiceMs 보존(letter 프리필과 대칭 — 재도장 시 음성 유실 방지, 팀장 확정 7/10).
+      let voiceId = openEntry?.stamp?.voiceId;
+      let voiceMs = openEntry?.stamp?.voiceMs;
+      if (voiceRec?.blob) {
+        const newId = `vl_${openId}_${Date.now()}`;
+        const ok = await putAudio(newId, voiceRec.blob);
+        if (ok) { voiceId = newId; voiceMs = voiceRec.ms; } // 성공 → 새 음성(옛 voiceId는 setStamp가 orphan 삭제)
+        // 실패 → 기존 voiceId·voiceMs 유지(음성은 보조, 글 편지 흐름 불변)
+      }
+      diary.setStamp(profileId, openId, { emoji: selEmoji, letter: letterText, voiceId, voiceMs });
       setEntries(diary.getEntries(profileId));
+      setVoiceRec(null); stopPreview(); // 저장 성공 후 초기화
       setSaved(true); // 저장 완료 → 버튼에 확인 피드백
     } catch { /* 무시 */ }
   };
@@ -209,6 +279,34 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
             </div>
             <p className="text-xs mt-1.5" style={{ color: "#8FA89F" }}>{LETTER_NUDGE}</p>
           </div>
+          {/* B08a: 부모 음성 편지(선택, 최대 10초) — 도장 필수 유지. ⚠️ onStamp(투어) 모드엔 미노출: putAudio 실 IDB 오염 방지. */}
+          {!onStamp && (isVoiceRecordingSupported() || recDenied) && (
+            <div className="flex items-center gap-2">
+              {recDenied ? (
+                <p className="text-xs" style={{ color: "#8FA89F" }}>{VOICE_LETTER.unsupported}</p>
+              ) : recording ? (
+                <>
+                  <button
+                    onClick={stopRec}
+                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition active:scale-95 shrink-0"
+                    style={{ backgroundColor: "#3A1A1A", color: "#F2655C", border: "1px solid rgba(242,101,92,0.5)" }}
+                  >
+                    <span className="inline-block rounded-full animate-pulse" style={{ width: 9, height: 9, backgroundColor: "#F2655C" }} />
+                    {VOICE_LETTER.stop}
+                  </button>
+                  <div className="flex-1"><VoiceBar progress={recElapsed / VOICE_MAX_MS} /></div>
+                </>
+              ) : voiceRec ? (
+                <>
+                  <button onClick={playPreview} className="rounded-xl px-3 py-2 text-sm font-bold transition active:scale-95 shrink-0" style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.35)" }}>{VOICE_LETTER.preview}</button>
+                  <div className="flex-1"><VoiceBar progress={previewProgress} /></div>
+                  <button onClick={discardVoice} className="rounded-xl px-3 py-2 text-sm font-bold transition active:scale-95 shrink-0" style={{ color: "#8FA89F" }}>{VOICE_LETTER.discard}</button>
+                </>
+              ) : (
+                <button onClick={startRec} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold transition active:scale-95" style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(95,224,188,0.35)" }}>{VOICE_LETTER.record}</button>
+              )}
+            </div>
+          )}
           <button
             onClick={saveStamp}
             disabled={!selEmoji}

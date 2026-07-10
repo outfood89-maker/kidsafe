@@ -379,7 +379,7 @@ export default function KidHome() {
     if (!DIARY_V0 || !selectedProfile?.id) { setStampNotice(null); return; }
     try {
       const unseen = diaryStore.getUnseenStamps(selectedProfile.id);
-      setStampNotice(unseen.length ? { hasLetter: unseen.some((s) => s.hasLetter) } : null);
+      setStampNotice(unseen.length ? { hasLetter: unseen.some((s) => s.hasLetter), hasVoice: unseen.some((s) => s.hasVoice) } : null); // B08a: 음성 최우선 분기용
     } catch { setStampNotice(null); }
   }, [selectedProfile?.id]);
 
@@ -1767,6 +1767,7 @@ export default function KidHome() {
             {DIARY_V0 && stampNotice && (
               <StampNoticeCard
                 hasLetter={stampNotice.hasLetter}
+                hasVoice={stampNotice.hasVoice}
                 onOpen={() => navigate("/family-shelf")}
                 onClose={() => setStampNotice(null)}
               />
