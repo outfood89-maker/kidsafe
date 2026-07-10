@@ -139,6 +139,13 @@ const TOUR_STATIONS = [
   { tab: "children", targetId: "tour-settings-controls", interactive: false },                          // ⑧b 자녀설정 — 설정 3종(종료 CTA)
 ];
 
+// 항목1: 탭의 정거장 인덱스 범위(연속 구간). 각 탭은 TOUR_STATIONS에서 연속 구간을 차지 → [start,end]로 스코프 서브투어 한정. 정거장 없으면 null.
+//   export: T1(범위 정확성) 테스트 접근용.
+export const tabTourRange = (tab) => {
+  const idxs = TOUR_STATIONS.reduce((a, s, i) => (s.tab === tab ? [...a, i] : a), []);
+  return idxs.length ? { start: idxs[0], end: idxs[idxs.length - 1] } : null;
+};
+
 export default function ParentDashboard() {
   const { isPremium, isAdmin } = useAuth();
   // 프로필별 부모페이지 — :profileId 가 있으면 그 아이로 스코프 잠금 (프로필 전환 탭 숨김)
@@ -194,6 +201,7 @@ export default function ParentDashboard() {
   // ── AD-7 부모 '둘러보기' 투어 (예시 가족·메모리 전용·서버/저장 0) ──
   const [tourMode, setTourMode] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [tourRange, setTourRange] = useState({ start: 0, end: TOUR_STATIONS.length - 1 }); // 항목1: 순회 범위(전체투어=기본 전체 / 탭투어=그 탭 구간)
   const [tourEntries, setTourEntries] = useState([]); // ③ 도장 체험용 시드 엔트리(메모리 복사본)
   const [tourRect, setTourRect] = useState(null); // 현재 정거장 대상 요소의 화면 좌표(스포트라이트) — 측정으로 채움
   // 최초 진입 제안 게이트 — 유일하게 허용된 저장(플래그 1개). 없으면 제안 노출.
@@ -213,7 +221,8 @@ export default function ParentDashboard() {
     for (const [k, v] of Object.entries(imgs)) putImage(k, v);
   }, []);
 
-  const startTour = () => {
+  // AD-7 + 항목1: 예시 가족 시드 주입(전체투어·탭 서브투어 공통). 서버/저장 0(메모리 state만). 범위·시작스텝·탭은 호출자가 지정.
+  const injectTourSeed = () => {
     try { localStorage.setItem("kidsafe_parent_tour_seen", "1"); } catch { /* 무시 */ }
     setShowTourOffer(false);
     setError(""); // 진입 전 실데이터 fetch 실패 배너가 큐레이션 투어에 새지 않게(AD-7 적대검증 MED)
@@ -225,10 +234,23 @@ export default function ParentDashboard() {
     setTourEntries((tourSeed.diaryEntries || []).map((e) => ({ ...e }))); // 메모리 복사본(원본 불변)
     prevTabsRef.current = { kiddy: kiddyTab, shelf: shelfTab, schedule: scheduleTab }; // 투어 전 선택 보존(이탈 시 원복)
     setKiddyTab(tourSeed.profile.id); setShelfTab(tourSeed.profile.id); setScheduleTab(tourSeed.profile.id); // scopedId보다 우선(시드 아이로 잠금)
-    setTourStep(0);
-    setMainTab("kiddy");
     setTourMode(true);
     setLoading(false);
+  };
+  const startTour = () => {
+    injectTourSeed();
+    setTourRange({ start: 0, end: TOUR_STATIONS.length - 1 }); // 전체 둘러보기(온보딩) — 기존 동작 100% 동일
+    setTourStep(0);
+    setMainTab("kiddy");
+  };
+  // 항목1: 탭 "?" — 그 탭 정거장만 도는 스코프 서브투어. 시드 주입은 전체투어와 동일(예시 가족).
+  const startTabTour = (tab) => {
+    const range = tabTourRange(tab);
+    if (!range) return; // 정거장 없는 탭은 무시(버튼도 숨김)
+    injectTourSeed();
+    setTourRange(range);
+    setTourStep(range.start);
+    setMainTab(tab);
   };
   const dismissTourOffer = () => {
     try { localStorage.setItem("kidsafe_parent_tour_seen", "1"); } catch { /* 무시 */ }
@@ -240,10 +262,11 @@ export default function ParentDashboard() {
     setMainTab(TOUR_STATIONS[s].tab);
   };
   const tourNext = () => {
-    if (tourStep >= TOUR_STATIONS.length - 1) exitTour(true); // 마지막 '다음'=종료 CTA → 자녀설정 착지
+    const isFullTour = tourRange.start === 0 && tourRange.end === TOUR_STATIONS.length - 1;
+    if (tourStep >= tourRange.end) exitTour(isFullTour); // 전체투어=자녀설정 착지(기존 유지) / 탭투어=그 탭에 머묾
     else gotoTourStep(tourStep + 1);
   };
-  const tourPrev = () => gotoTourStep(tourStep - 1);
+  const tourPrev = () => gotoTourStep(Math.max(tourRange.start, tourStep - 1)); // 범위 하한에서 멈춤(전 탭으로 안 넘어감)
   const exitTour = (toChildren = false) => {
     setTourMode(false);      // tourMode=false → fetchData effect 재실행 → 실데이터 복귀
     setTourEntries([]);      // 시드 폐기(메모리)
@@ -256,6 +279,7 @@ export default function ParentDashboard() {
     setLoading(true);        // 실데이터 재조회 표시(로딩 게이트로 빈 시드 순간 노출도 가림)
     setKiddyTab(prevTabsRef.current.kiddy); setShelfTab(prevTabsRef.current.shelf); setScheduleTab(prevTabsRef.current.schedule); // 시드 잠금 해제 → 투어 전 선택으로 원복(AD-7 적대검증 LOW: 비스코프 다자녀 선택 유실 방지)
     setTourStep(0);
+    setTourRange({ start: 0, end: TOUR_STATIONS.length - 1 }); // 항목1: 범위 원복(다음 전체투어가 기본 전체로 시작)
     if (toChildren) setMainTab("children"); // 종료 CTA: 자녀설정으로
   };
   // 도장 체험 — 메모리 시드에만 반영(diaryStore·서버 0). ③에서 ParentDiaryShelf onStamp로 호출.
@@ -711,8 +735,8 @@ export default function ParentDashboard() {
         <TourCoachmark
           rect={tourRect}
           text={PARENT_TOUR.stations[tourStep]}
-          step={tourStep}
-          total={TOUR_STATIONS.length}
+          step={tourStep - tourRange.start}
+          total={tourRange.end - tourRange.start + 1}
           interactive={TOUR_STATIONS[tourStep]?.interactive}
           onPrev={tourPrev}
           onNext={tourNext}
@@ -799,7 +823,21 @@ export default function ParentDashboard() {
             )}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
+                <h1 className="text-xl md:text-2xl font-bold inline-flex items-center gap-2" style={{ color: "#EAF5F1" }}>
+                  {MAIN_NAV.find((t) => t.id === mainTab)?.label}
+                  {/* 항목1: 탭 "?" — 이 탭 정거장만 도는 스코프 서브투어(전체 '둘러보기'는 헤더 우측 그대로 유지). 정거장 있는 탭·비투어에서만. */}
+                  {DIARY_V0 && !tourMode && tabTourRange(mainTab) && (
+                    <button
+                      data-testid="tab-tour-btn"
+                      onClick={() => startTabTour(mainTab)}
+                      title="이 탭 안내"
+                      className="shrink-0 flex items-center justify-center rounded-full text-xs font-black transition hover:opacity-80"
+                      style={{ width: "24px", height: "24px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+                    >
+                      ?
+                    </button>
+                  )}
+                </h1>
                 <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
                   {scopedProfile
                     ? `${childStem(scopedProfile.name)} · ${scopedProfile.age}세 전용 부모 페이지`
