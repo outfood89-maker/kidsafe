@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import useKiddyVoice from "../hooks/useKiddyVoice";
+import useKiddyVoice, { playKiddySfx } from "../hooks/useKiddyVoice"; // P5: 효과음(신디 차임 — 선택·간직·공개)
+
+// P5: 효과음 안전 래퍼 — 효과음은 장식이라 목(mock)·미지원 환경에서 함수가 없어도 조용히 무시
+const sfx = (kind) => { try { playKiddySfx(kind); } catch { /* 무시 */ } };
 import useKiddySpeech from "../hooks/useKiddySpeech";
 import Typewriter from "./Typewriter";
 import KiddyImg from "./KiddyImg";
@@ -247,6 +250,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     voice.speak(WEATHER_ASK, "bright");
   };
   const chooseWeather = (key) => {
+    sfx("select"); // P5 ①: 칩 선택(TTS 재생 중이면 내부에서 생략)
     setWeather(key);
     setStep("rotating");
     setKiddyLine(question?.ask || "");
@@ -261,6 +265,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     return [...new Set(cands.filter((c) => c && String(c).trim()))].slice(0, 5);
   };
   const answerRotating = ({ answer, isSpeech = false, noAnswer = false }) => {
+    sfx("select"); // P5 ①: 칩 선택
     const next = { qid: question.qid, answer, isSpeech, noAnswer };
     setRotating(next);
     setRetryCount(0); setVoiceLocked(false); // AD-10 §3: 슬롯 전환 → 되묻기 상태 초기화
@@ -335,6 +340,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
         await putImage(id, url); // IDB 저장(실패해도 화면엔 imgUrl로 렌더)
         if (!mountedRef.current) return;
         setImgUrl(url);
+        sfx("reveal"); // P5 ④: 그림 완성 공개(대기연출 TTS 재생 중이면 내부에서 생략)
         setImgState("done");
         setKiddyLine(IMG_DONE);
         voice.enqueue(IMG_DONE, "bright");
@@ -352,6 +358,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   // AD-8 §2: 생성 방식 선택 — "ai"=키디 단독(AD-5 runImage) / "me"=낙서 캔버스 → 이어 그리기.
   const chooseGen = (mode) => {
     if (tourMode) return; // 방식 S: 읽기전용 — 생성 방식 선택 차단
+    sfx("select"); // P5 ①: 생성 방식 칩 선택
     setGenMode(mode);
     if (mode === "ai") runImage(sentences);
     else { voice.stop(); setCanvasOpen(true); } // 캔버스 진입
@@ -389,6 +396,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     if (mountedRef.current) {
       if (ok) {
         setCompletedUrl(`data:image/png;base64,${res.b64}`);
+        sfx("reveal"); // P5 ④: 이어그리기 완성 공개(실패 failadopt엔 효과음 없음)
         setContinueChoice(null); // mine/both 선택 대기
         setImgState("done");
         setKiddyLine(CONTINUE_DONE);
@@ -505,6 +513,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
       diary.discardPendingContinue(pid); // AD-8b-FIX(HIGH): 새 일기를 완성하면 이탈로 남은 미해결 pending 폐기(상호배타). in-flow keep엔 pending 없어 no-op(안전)
     }
     savedEntryRef.current = entry;
+    sfx("keep"); // P5 ②: 간직 완료 차임(TTS 시작 전이라 겹침 없음 — speak가 뒤따름)
     setStep("done");
     setKiddyLine(KEEP.done);
     voice.speak(KEEP.done, "bright");
@@ -668,7 +677,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
               {pendingConfirm ? <ConfirmButtons /> : (
                 <div className="grid grid-cols-2 gap-2.5">
                   {pickChips.map((c) => (
-                    <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => { setChildPick(c); goResult({ pickValue: c }); }} />
+                    <BigChip key={c} emoji={CHIP_EMOJI[c]} label={c} onClick={() => { sfx("select"); setChildPick(c); goResult({ pickValue: c }); }} />
                   ))}
                   <SpeakButton slot="pick" />
                 </div>
@@ -682,13 +691,13 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
             <div className="flex flex-col gap-4" data-tour-id="flow-continue">
               <p className="text-base font-bold" style={{ color: "#EAF5F1" }}>{CONTINUE_PICK.ask}</p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setContinueChoice("mine")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                <button onClick={() => { sfx("select"); setContinueChoice("mine"); }} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
                   <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
                     {drawingUrl && <img src={drawingUrl} alt={CONTINUE_PICK.mine} style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>
                   <span className="text-sm font-bold" style={{ color: "#4A4433" }}>{CONTINUE_PICK.mine}</span>
                 </button>
-                <button onClick={() => setContinueChoice("both")} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                <button onClick={() => { sfx("select"); setContinueChoice("both"); }} className="flex flex-col items-center gap-2 rounded-2xl p-2 active:scale-[0.98] transition" style={{ backgroundColor: "#FBF6E9", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
                   <div className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: "4 / 3", backgroundColor: "#F1E9D2" }}>
                     {completedUrl && <img src={completedUrl} alt={CONTINUE_PICK.both} style={{ width: "100%", height: "100%", objectFit: "contain" }} />}
                   </div>

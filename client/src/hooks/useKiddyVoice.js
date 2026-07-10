@@ -33,6 +33,54 @@ function suspendCtxForMic() {
   try { if (sharedCtx && sharedCtx.state === "running") sharedCtx.suspend(); } catch { /* noop */ }
 }
 
+// ── P5: 효과음(SFX) — WebAudio 신디 합성(음원 파일 0, 팀장 허용안 7/10) ──
+//   부드러운 사인파 계열만(날카로운 비프 금지)·낮은 볼륨. TTS 재생 중이면 생략(키디 목소리 항상 우선).
+//   ctx 규율은 TTS와 완전 동일: 제스처 언락 전엔 침묵, 재생 끝나면 TTS가 안 돌 때만 suspend(마이크 공존 — 오디오 5차전 재발 방지).
+const activeTtsNodes = new Set(); // 재생 중 TTS 노드/엘리먼트(모듈 전역) — SFX 중첩 생략 판정
+// [주파수Hz, 시작오프셋s, 길이s] — 전부 짧고 부드러운 차임(어택 15ms·지수 감쇠로 클릭 노이즈 방지)
+const SFX_DEFS = {
+  select: [[880, 0, 0.09]],                                        // ① 칩/카드 선택 — 짧은 블립
+  keep:   [[660, 0, 0.12], [880, 0.09, 0.18]],                     // ② 간직 완료 — 2음 도약 차임
+  badge:  [[660, 0, 0.11], [830, 0.09, 0.11], [990, 0.18, 0.22]],  // ③ 배지 획득 — 3음 상승 차임
+  reveal: [[520, 0, 0.14], [780, 0.1, 0.22]],                      // ④ 그림 완성 공개 — 부드러운 스파클
+};
+export function playKiddySfx(kind) {
+  try {
+    if (activeTtsNodes.size > 0) return; // TTS와 중첩 시 SFX 생략(팀장 규격)
+    const ctx = getCtx();
+    if (!ctx || !ctx._kiddyUnlocked) return; // 언락 전(첫 제스처 이전) — 조용히 포기(장식이라 무해)
+    const notes = SFX_DEFS[kind];
+    if (!notes) return;
+    const play = () => {
+      try {
+        if (ctx.state !== "running") return;
+        const t0 = ctx.currentTime;
+        let lastEnd = 0;
+        notes.forEach(([freq, at, dur]) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, t0 + at);
+          gain.gain.linearRampToValueAtTime(0.08, t0 + at + 0.015); // 낮은 볼륨(피크 0.08)
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t0 + at);
+          osc.stop(t0 + at + dur + 0.02);
+          lastEnd = Math.max(lastEnd, at + dur);
+        });
+        // 여운 뒤 세션 반납 — 그새 TTS가 시작됐으면 건드리지 않음(TTS 자신이 끝에서 반납)
+        setTimeout(() => { if (activeTtsNodes.size === 0) suspendCtxForMic(); }, (lastEnd + 0.15) * 1000);
+      } catch { /* noop */ }
+    };
+    if (ctx.state !== "running") {
+      const rp = ctx.resume();
+      if (rp?.then) rp.then(play).catch(() => { /* 효과음은 장식 — 실패 시 조용히 */ });
+      else play();
+    } else play();
+  } catch { /* 효과음은 장식 — 실패 시 조용히 */ }
+}
+
 const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
 const audioPool = [];
 const allAudioEls = new Set(); // 생성된 모든 엘리먼트 추적(풀 안팎 무관) — 마이크 직전 일괄 해제용
@@ -163,12 +211,14 @@ export default function useKiddyVoice() {
   const stopCurrent = useCallback(() => {
     const s = srcNodeRef.current;
     if (s) {
+      activeTtsNodes.delete(s); // P5: SFX 중첩 판정 집합에서 제거
       try { s.onended = null; s.stop(); } catch { /* noop */ }
       srcNodeRef.current = null;
       suspendCtxForMic(); // 재생을 끊었으면(마이크 직전 등) 세션도 즉시 반납
     }
     const a = audioRef.current;
     if (a) {
+      activeTtsNodes.delete(a); // P5: 폴백 엘리먼트도 동일 추적
       // pause만 하면 iOS가 '재생 세션'을 계속 붙들어 직후 음성인식이 무음/abort — src까지 떼서 즉시 반납(7/10).
       try { a.onended = null; a.pause(); a.removeAttribute("src"); a.load(); } catch { /* noop */ }
       audioRef.current = null;
@@ -218,6 +268,7 @@ export default function useKiddyVoice() {
         node.buffer = clip.buffer;
         node.connect(ctx.destination);
         node.onended = () => {
+          activeTtsNodes.delete(node); // P5: SFX 중첩 판정
           if (srcNodeRef.current === node) {
             srcNodeRef.current = null;
             idxRef.current += 1;
@@ -227,6 +278,7 @@ export default function useKiddyVoice() {
         };
         srcNodeRef.current = node;
         node.start(0);
+        activeTtsNodes.add(node); // P5: 재생 중 표시(SFX는 이 집합이 비어야 재생)
         return;
       } catch {
         // 생성/시작 실패 — 이 클립은 건너뜀(버퍼 경로엔 엘리먼트 폴백용 url이 없음)
@@ -246,6 +298,7 @@ export default function useKiddyVoice() {
     try { audio.load(); } catch { /* noop */ } // 사파리: 재사용 엘리먼트 src 교체 후 load 권장(스테일 소스 방지)
     audioRef.current = audio;
     audio.onended = () => {
+      activeTtsNodes.delete(audio); // P5: SFX 중첩 판정
       if (audioRef.current === audio) {
         audioRef.current = null;
         idxRef.current += 1;
@@ -259,8 +312,10 @@ export default function useKiddyVoice() {
     };
     // 자동재생 차단(제스처 밖 재생 거부) 시 대사를 버리지 않고 '다음 탭'에서 재시도 —
     // 탭 핸들러 안에서 play()가 다시 불리므로 iOS가 반드시 허용(★2차 안전망, 첫 인사 등 무제스처 진입 커버).
+    activeTtsNodes.add(audio); // P5: 재생 중 표시(실패 catch에서 제거)
     const p = audio.play();
     if (p?.then) p.catch(() => {
+      activeTtsNodes.delete(audio); // P5: 재생 거부 → 미재생이므로 해제
       if (audioRef.current === audio) audioRef.current = null; // 재생 실패 표시 → pump 재진입 가능
       if (typeof document !== "undefined") {
         document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
