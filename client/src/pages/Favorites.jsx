@@ -5,6 +5,7 @@ import { getFavorites, removeFavorite } from "../utils/api";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 import BottomTabBar from "../components/BottomTabBar";
+import KiddyFab from "../components/KiddyFab"; // AD-4 §2 (feature/diary-v0 브랜치 전용)
 import ChatWidget from "../components/ChatWidget";
 import VideoModal from "../components/VideoModal";
 import VideoPlayer from "../components/VideoPlayer";
@@ -239,6 +240,8 @@ export default function Favorites() {
       <div className="md:hidden">
         <BottomTabBar activeTab="favorites" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
+      {/* AD-4 §2: 키디 플로팅 — 영상 모달/플레이어 열림 시 숨김 */}
+      <KiddyFab profile={selectedProfile} bottomOffset={84} hidden={!!selectedVideo || !!playingVideo} />
     </div>
   );
 }

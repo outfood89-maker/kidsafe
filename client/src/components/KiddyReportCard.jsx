@@ -80,14 +80,16 @@ const buildSeedFallback = (name, counts, highlights) => {
   return `오늘 저녁 ${who}에게 “오늘 제일 재밌었던 게 뭐야?” 하고 물어봐 주세요.`;
 };
 
-export default function KiddyReportCard({ profileId, profileName, watched, starCount = 0 }) {
-  const [loading, setLoading] = useState(true);
+export default function KiddyReportCard({ profileId, profileName, avatarId, watched, starCount = 0, report: reportProp }) {
+  const [loading, setLoading] = useState(!reportProp); // 투어 주입(AD-7): report prop 있으면 즉시 로딩 해제
   const [error, setError] = useState("");
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState(reportProp || null);
 
   // ⚠️ 부모(ParentDashboard)가 key={profileId} 로 remount 시키므로 profileId 는 생애 내 고정.
   //    초기 state(loading=true, report=null)에서 시작하면 되니 effect 안에서 동기 setState 불필요.
   useEffect(() => {
+    // 투어 주입(AD-7): reportProp 있으면 서버 fetch 스킵 — 메모리 시드만 렌더. (없으면 기존 경로 그대로)
+    if (reportProp) { setReport(reportProp); setLoading(false); return; }
     if (!profileId) return;
     let cancelled = false;
     getCheckinReport(profileId)
@@ -95,14 +97,14 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
       .catch(() => { if (!cancelled) setError("리포트를 불러오지 못했어요. 잠시 후 다시 시도해주세요."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [profileId]);
+  }, [profileId, reportProp]);
 
   // ── 로딩 ──
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <KiddyImg pose="hello" size={120} float />
-        <p className="mt-4 text-sm" style={{ color: C.sub }}>키디가 {profileName || "아이"}의 한 주를 정리하고 있어요…</p>
+        <p className="mt-4 text-sm" style={{ color: C.sub }}>키디가 {childStem(profileName || "아이")}의 한 주를 정리하고 있어요…</p>
       </div>
     );
   }
@@ -144,14 +146,23 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── 편지 헤더 (이름·기간) ── */}
+      {/* ── 편지 헤더 (아바타·이름·기간) ── */}
       <div className="flex items-center gap-3">
-        <div className="shrink-0 flex h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(24,196,154,0.14)" }}>
-          <span style={{ fontSize: "22px" }}>🦕</span>
+        <div className="shrink-0 overflow-hidden flex h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: avatarId ? "#fff" : "rgba(24,196,154,0.14)" }}>
+          {/* 아이 프로필 아바타 — 아바타 렌더 표준(cover·center top·scale 1.04). id 없으면 🦕 폴백 */}
+          {avatarId ? (
+            <img
+              src={`/images/avatars/avatar_${String(avatarId).padStart(2, "0")}.png`}
+              alt={profileName || "아이"}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", transform: "scale(1.04)", transformOrigin: "center top" }}
+            />
+          ) : (
+            <span style={{ fontSize: "22px" }}>🦕</span>
+          )}
         </div>
         <div className="min-w-0">
           <h2 className="text-lg font-extrabold leading-tight" style={{ color: C.ink }}>
-            {profileName || "아이"}의 이번 주
+            {childStem(profileName || "아이")}의 이번 주
           </h2>
           {range && <p className="mt-0.5 text-xs" style={{ color: C.sub }}>{range}</p>}
         </div>
@@ -160,6 +171,7 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
       {/* ── 키디 한마디 (정서적 절정) ── */}
       {/* 데모 클라이맥스: 편지를 '여는 순간' 살짝 떠오르며 나타남 (reduced-motion 존중은 CSS에서) */}
       <div
+        data-tour-id="tour-letter"
         className="relative overflow-hidden rounded-2xl p-5 md:p-6 animate-letter-rise"
         style={{
           background: "linear-gradient(135deg, rgba(24,196,154,0.16), rgba(20,184,196,0.10))",
@@ -172,7 +184,7 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
             <KiddyImg pose="hello" size={56} float />
           </div>
           <p className="text-sm font-extrabold" style={{ color: C.accent }}>
-            키디가 전하는 {profileName || "아이"}의 한 주
+            키디가 전하는 {childStem(profileName || "아이")}의 한 주
           </p>
         </div>
         <Typewriter
@@ -323,6 +335,7 @@ export default function KiddyReportCard({ profileId, profileName, watched, starC
 
       {/* ── 대화의 씨앗 — 오늘 저녁 이렇게 말 걸어보세요 (C 기둥: 정보 → 대화의 시작점) ── */}
       <div
+        data-tour-id="tour-seed"
         className="rounded-2xl p-4 md:p-5"
         style={{
           background: "linear-gradient(135deg, rgba(24,196,154,0.14), rgba(20,184,196,0.08))",

@@ -6,6 +6,11 @@ import KiddyGreeting from "./KiddyGreeting";
 import { getCheckinQuestions, getRecentCheckin, saveCheckin, reactToCheckinStream, getCheckinGreeting, createCareSignal } from "../utils/api";
 import { screenText, fixedResponse, isHigh } from "../utils/safetyLexicon";
 import { questionLine, reactionLine, shareQuestionLine, closingLine, moodFollowup, moodFollowupClosing } from "../utils/kiddyLines";
+// AD 그림일기 (feature/diary-v0 브랜치 전용 — 7/14 전 main 머지 금지). main엔 이 파일 diff가 아예 없어야 함.
+import DiaryFlow from "./DiaryFlow";
+import * as diaryStore from "../utils/diaryStore";
+// AD-10 재개정: 제안 요소(ⓐ)만 폐기 → 제안 전용 ENTRY/SAD_MOODS는 주석 유지. 명시적 의도 연속(ⓑ)은 복구.
+// import { ENTRY, SAD_MOODS } from "../utils/diaryCopy";
 import { buildWatchOptions, toKidQuery } from "../utils/kidTopics";
 import { hasBatchim } from "../utils/korean";
 import useKiddyVoice from "../hooks/useKiddyVoice";
@@ -79,8 +84,16 @@ function StreamingText({ target = "", streaming = false, onComplete, speed = 30,
   );
 }
 
-export default function DailyCheckin({ profile, onComplete, onSkip }) {
+// AD-2 §1: 그림일기 진입 플래그는 diaryStore.DIARY_V0 로 승격(단일 소스). 아래는 참조로 교체.
+// const DIARY_V0 = true; // (승격 — diaryStore.DIARY_V0 사용)
+
+export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent = false }) {
   const name = profile?.name || "친구";
+  // AD: 그림일기 오버레이 열림 상태 (DIARY_V0 뒤에만 동작) — AD-10 재개정: ⓑ 연속 복구
+  const [diaryOpen, setDiaryOpen] = useState(false);
+  // AD-10 폐기 유지(ⓐ): reward '제안 요소' 상태 diaryPropose 계속 주석. 오버레이·시작스텝(ⓑ)은 복구.
+  // const [diaryPropose, setDiaryPropose] = useState(false);
+  const [diaryStartAt, setDiaryStartAt] = useState("weather");
 
   const [phase, setPhase] = useState("loading"); // loading | greeting | questions | share | reward
   const [questions, setQuestions] = useState([]);
@@ -517,6 +530,55 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
     }
   };
 
+  // ── AD 그림일기 진입 (feature/diary-v0 브랜치 전용) ──
+  // 재료 2개만 사용(§2 두 채널 구분): mood(moodEmoji) + 한 일. 볼것·비공개 후속답은 일기에 안 씀.
+  // AD-2 §1: 날짜는 diaryStore.todayKST() 로 승격(단일 소스). 기존 로컬 함수는 보존용 주석.
+  // const diaryToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  // AD-10 재개정: DiaryFlow 마운트(ⓑ 연속)가 사용 → 복구.
+  const diaryDidToday = () => {
+    const a = answers.find((x) => x.qId === "what_did_today"); // 하루 = 오늘 한 일 (양성 필터 — 질문 증설 시 방어)
+    return a?.answer || "";
+  };
+  // AD-10 폐기 유지(ⓐ 부르지 않은 제안): reward 제안 노출 판정 effect 계속 비활성 — 제안 안 뜸. ⚠️ 별개인 confetti effect는 무접촉 (복구 가능)
+  // AD-3 §4: reward 진입 시 제안 노출 판정 — R5(체크인 완료)+R8(빈도) 통과 & 브릿지 의도가 아니면 '제안 요소'를 화면에 노출(자동 팝업 아님).
+  //   제안을 노출한 순간 = 당일 제안 쿼터 소비(markProposed) → DiaryFlow 마운트가 다시 기록하지 않게 이관.
+  // useEffect(() => {
+  //   if (phase !== "reward") return;
+  //   try {
+  //     if (diaryStore.DIARY_V0 && profile?.id && !diaryIntent &&
+  //         diaryStore.shouldProposeToday(profile.id, diaryStore.todayKST(), true)) {
+  //       diaryStore.markProposed(profile.id, diaryStore.todayKST());
+  //       setDiaryPropose(true);
+  //     }
+  //   } catch { /* 무시 */ }
+  // }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // AD-10 폐기 유지(ⓐ): 제안 수락/거절 핸들러 — 제안 UI 폐기로 호출부 0 (복구 가능)
+  // 제안 '좋아!' — 수락 통계 기록 후 DiaryFlow(날씨부터). 통계는 여기서 처리하므로 selfInitiated로 진입.
+  // const acceptDiaryProposal = () => {
+  //   try { if (profile?.id) diaryStore.recordProposalResult(profile.id, true); } catch { /* 무시 */ }
+  //   setDiaryPropose(false);
+  //   setDiaryStartAt("weather");
+  //   setDiaryOpen(true);
+  // };
+  // 제안 '안 할래' — 거절 통계(R8 streak++) 기록 후 정상 완료.
+  // const declineDiaryProposal = () => {
+  //   try { if (profile?.id) diaryStore.recordProposalResult(profile.id, false); } catch { /* 무시 */ }
+  //   onComplete?.({ watchKeyword });
+  // };
+
+  // reward 완료 버튼 핸들러 — AD-10 재개정: diaryIntent(명시적 의도 브릿지)면 연속 진행(ⓑ 복구). 그 외(정상 체크인)는 영상 종료.
+  const diaryFinish = () => {
+    try {
+      if (diaryStore.DIARY_V0 && profile?.id && diaryIntent) {
+        setDiaryStartAt("weather");
+        setDiaryOpen(true);
+        return; // 일기 오버레이 → 닫힐 때 onComplete
+      }
+    } catch { /* 무시 — 실패 시 정상 완료 */ }
+    onComplete?.({ watchKeyword });
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-5 py-8 overflow-y-auto"
@@ -870,14 +932,46 @@ export default function DailyCheckin({ profile, onComplete, onSkip }) {
             {/* 키디 목소리 다시듣기 (메모리 재생) */}
             {replayBtn}
 
+            {/* AD-3 §4: 자동 팝업 대신 reward 안의 '제안 요소' — 좋아!/안 할래(기존 ENTRY 스탬프·분기·통계 이관). */}
+            {/* AD-10 제거: reward 제안 분기 전체 비활성 — 항상 '영상 보러 가자! 🚀'만(아래 단독 버튼) (복구 가능)
+            {diaryPropose ? (
+              <div className="w-full flex flex-col gap-3">
+                <div className="w-full rounded-2xl px-5 py-4" style={{ backgroundColor: C.chip, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="font-bold leading-snug" style={{ color: C.ink, fontSize: "17px" }}>
+                    {SAD_MOODS.includes(moodEmoji) ? ENTRY.sad : ENTRY.base}
+                  </p>
+                </div>
+                <button onClick={acceptDiaryProposal} className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95" style={btnPrimary}>
+                  {SAD_MOODS.includes(moodEmoji) ? ENTRY.sadYes : ENTRY.baseYes}
+                </button>
+                <button onClick={declineDiaryProposal} className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95" style={btnGhost}>
+                  {SAD_MOODS.includes(moodEmoji) ? ENTRY.sadNo : ENTRY.baseNo}
+                </button>
+              </div>
+            ) : ( */}
             <button
-              onClick={() => onComplete?.({ watchKeyword })}
+              onClick={diaryFinish}
               className="w-full rounded-2xl py-4 font-extrabold transition active:scale-95"
               style={btnPrimary}
             >
               영상 보러 가자! 🚀
             </button>
+            {/* )} */}
           </div>
+        )}
+
+        {/* AD: 그림일기 진입 오버레이 (DIARY_V0 뒤에만, 브랜치 전용). 기존 체크인 흐름·비밀 약속 무접촉. */}
+        {/* AD-10 재개정: 명시적 의도(diaryIntent) 연속만 복구(ⓑ) — 부르지 않은 제안(ⓐ)은 위에서 계속 폐기 */}
+        {diaryStore.DIARY_V0 && diaryOpen && (
+          <DiaryFlow
+            profile={profile}
+            today={diaryStore.todayKST()}
+            checkinMood={moodEmoji}
+            checkinDidToday={diaryDidToday()}
+            selfInitiated={true}
+            startAt={diaryStartAt}
+            onClose={() => { setDiaryOpen(false); onComplete?.({ watchKeyword }); }}
+          />
         )}
 
       </div>

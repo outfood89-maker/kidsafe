@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   FaClock,
   FaShieldAlt,
@@ -41,6 +41,15 @@ import PaywallModal from "../components/PaywallModal";
 import PinModal from "../components/PinModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
+import ParentDiaryShelf from "../components/ParentDiaryShelf"; // AD-6 §2: 부모 가족 책장(열람+도장·편지)
+import { DIARY_V0 } from "../utils/diaryStore"; // AD-6: feature/diary-v0 게이트
+import { childStem } from "../utils/josa"; // 아이 이름 애칭형 어간(받침 있으면 '이' 붙임: 주혁→주혁이) — 앱 전역 공용
+import TourCoachmark from "../components/TourCoachmark"; // AD-7: 부모 둘러보기 코치마크
+import { TOUR_SEED, TOUR_SCHEDULES, TOUR_GREETING, TOUR_ALERTS, TOUR_CARE_SIGNALS, TOUR_ALERT_SETTINGS, TOUR_BLOCKED_KEYWORDS, TOUR_HISTORY, TOUR_INSIGHTS, TOUR_COACH } from "../utils/tourSeed"; // AD-7: 하드코딩 예시 시드(폴백·메모리 전용·서버/저장 0) + 탭 데모(스케줄·안전·시청분석)
+import { TOUR_DEMO_SEED, TOUR_DEMO_IMAGES } from "../utils/tourDemoData"; // AD-7: 주혁 정적 데모(있으면 우선·캐시 무관)
+import { exportDemoFile } from "../utils/tourDemoSeed"; // AD-7: '데모 파일 만들기'(정적 파일 내보내기·다운로드)
+import { putImage } from "../utils/diaryImageStore"; // AD-7: 정적 데모 그림 base64 → IDB 하이드레이트
+import { PARENT_TOUR } from "../utils/diaryCopy"; // AD-7: 투어 카피(팀장 §5 스탬프)
 
 const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 
@@ -99,6 +108,8 @@ const gradeStyle = (grade) => {
 const MAIN_NAV = [
   { id: "overview", icon: "📊", label: "한눈에 보기", short: "개요" },
   { id: "kiddy",    icon: "🦕", label: "키디의 한 주", short: "키디" },
+  // AD-6: 가족 책장(부모 열람+도장·편지) — DIARY_V0 게이트 뒤에서만 노출(main 무접촉)
+  ...(DIARY_V0 ? [{ id: "shelf", icon: "📖", label: "가족 책장", short: "책장" }] : []),
   { id: "schedule", icon: "📅", label: "스케줄", short: "스케줄" },
   { id: "children", icon: "👶", label: "자녀 설정", short: "자녀" },
   { id: "history",  icon: "📺", label: "시청 기록", short: "기록" },
@@ -106,10 +117,40 @@ const MAIN_NAV = [
   { id: "safety",   icon: "🔔", label: "안전 알림", short: "알림" },
 ];
 
+// AD-7 부모 '둘러보기' 정거장 — 순서 고정(①편지 ②씨앗 ③책장 도장체험 ④자녀설정).
+//   tab=보여줄 mainTab · targetId=스포트라이트로 짚을 요소(data-tour-id, 문구↔화면 일치의 핵심) ·
+//   interactive=코치마크 포인터 통과(③ 도장 체험만) · openSeedEntry=그 정거장 진입 시 자동 열 시드 일기(③).
+//   ①②는 같은 kiddy 뷰지만 서로 다른 요소(편지/씨앗)를 짚어 스크롤·스포트라이트로 구분됨.
+// AD-7 v2: 8→13 정거장 — 탭당 '소개→사용법' 분할, 각 스텝이 자기 영역만 스포트라이트(오너 실기기 피드백).
+//   PARENT_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭 필수(어긋나면 빈 말풍선). 자녀설정은 항상 마지막.
+const TOUR_STATIONS = [
+  { tab: "kiddy",    targetId: "tour-letter",            interactive: false },                          // ① 편지
+  { tab: "kiddy",    targetId: "tour-seed",              interactive: false },                          // ② 씨앗
+  { tab: "shelf",    targetId: "tour-stamp",             interactive: true,  openSeedEntry: "tour_e3" }, // ③ 책장(도장체험)
+  { tab: "schedule", targetId: "tour-schedule",          interactive: false },                          // ④a 스케줄 — 말로 부탁
+  { tab: "schedule", targetId: "tour-schedule-calendar", interactive: false },                          // ④b 스케줄 — 달력 직접 작성
+  { tab: "safety",   targetId: "tour-care-signal",       interactive: false },                          // ⑤a 안전 — 위기 신호(💛)
+  { tab: "safety",   targetId: "tour-safety",            interactive: false },                          // ⑤b 안전 — 위험 영상 알림
+  { tab: "safety",   targetId: "tour-blocked-keywords",  interactive: false },                          // ⑤c 안전 — 걸러낼 키워드
+  { tab: "analysis", targetId: "tour-analysis",          interactive: false },                          // ⑥a 분석 — AI 키디 코치
+  { tab: "analysis", targetId: "tour-analysis-charts",   interactive: false, openSection: "precision" }, // ⑥b 분석 — 그래프(정밀검수 강제펼침)
+  { tab: "history",  targetId: "tour-history",           interactive: false },                          // ⑦ 시청 기록
+  { tab: "children", targetId: "tour-settings",          interactive: false },                          // ⑧a 자녀설정 — 소개
+  { tab: "children", targetId: "tour-settings-controls", interactive: false },                          // ⑧b 자녀설정 — 설정 3종(종료 CTA)
+];
+
+// 항목1: 탭의 정거장 인덱스 범위(연속 구간). 각 탭은 TOUR_STATIONS에서 연속 구간을 차지 → [start,end]로 스코프 서브투어 한정. 정거장 없으면 null.
+//   export: T1(범위 정확성) 테스트 접근용.
+export const tabTourRange = (tab) => {
+  const idxs = TOUR_STATIONS.reduce((a, s, i) => (s.tab === tab ? [...a, i] : a), []);
+  return idxs.length ? { start: idxs[0], end: idxs[idxs.length - 1] } : null;
+};
+
 export default function ParentDashboard() {
-  const { isPremium } = useAuth();
+  const { isPremium, isAdmin } = useAuth();
   // 프로필별 부모페이지 — :profileId 가 있으면 그 아이로 스코프 잠금 (프로필 전환 탭 숨김)
   const { profileId: scopedId } = useParams();
+  const navigate = useNavigate(); // 항목2-②: '아이 화면 미리보기' 런처 → /kids?tour=1
   const [mainTab, setMainTab] = useState("kiddy"); // 좌측 사이드바 활성 탭 (AA A7: 기본 탭 = '키디의 한 주', 오너 결정)
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768); // 접이식 사이드바 (데스크톱 기본 열림)
   const [history, setHistory] = useState([]);
@@ -121,6 +162,7 @@ export default function ParentDashboard() {
   const [chartTab, setChartTab] = useState(scopedId || "전체");
   const [reportTab, setReportTab] = useState(scopedId || "all");
   const [kiddyTab, setKiddyTab] = useState(scopedId || ""); // 키디의 한 주 — 아이별(전체 없음)
+  const [shelfTab, setShelfTab] = useState(scopedId || ""); // AD-6: 가족 책장 — 아이별(전체 없음, kiddyTab 패턴)
   const [scheduleTab, setScheduleTab] = useState(scopedId || ""); // 스케줄 — 아이별(전체 없음)
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showProfilePaywall, setShowProfilePaywall] = useState(false);
@@ -156,13 +198,165 @@ export default function ParentDashboard() {
   const [openSec, setOpenSec] = useState({ coach: true, precision: false, habit: false });
   const toggleSec = (k) => setOpenSec((p) => ({ ...p, [k]: !p[k] }));
 
+  // ── AD-7 부모 '둘러보기' 투어 (예시 가족·메모리 전용·서버/저장 0) ──
+  const [tourMode, setTourMode] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const [tourRange, setTourRange] = useState({ start: 0, end: TOUR_STATIONS.length - 1 }); // 항목1: 순회 범위(전체투어=기본 전체 / 탭투어=그 탭 구간)
+  const [tourEntries, setTourEntries] = useState([]); // ③ 도장 체험용 시드 엔트리(메모리 복사본)
+  const [tourRect, setTourRect] = useState(null); // 현재 정거장 대상 요소의 화면 좌표(스포트라이트) — 측정으로 채움
+  // 최초 진입 제안 게이트 — 유일하게 허용된 저장(플래그 1개). 없으면 제안 노출.
+  const [showTourOffer, setShowTourOffer] = useState(
+    () => typeof window !== "undefined" && !localStorage.getItem("kidsafe_parent_tour_seen")
+  );
+  // 투어 진입 전 kiddy/shelf 탭 선택 보존(이탈 시 원복) — 렌더 무영향 ref. 스코프 부모는 기본값=scopedId라 기존과 동일.
+  const prevTabsRef = useRef({ kiddy: scopedId || "", shelf: scopedId || "", schedule: scopedId || "" });
+  // AD-7: 투어가 쓸 시드 — 정적 데모 파일(주혁)이 있으면 그걸, 없으면 하드코딩 예시(TOUR_SEED). 정적이라 캐시·실데이터 무관.
+  const tourSeed = TOUR_DEMO_SEED || TOUR_SEED;
+  const [capturing, setCapturing] = useState(false);   // '데모 파일 만들기' 진행중(관리자)
+  const [captureMsg, setCaptureMsg] = useState("");     // 내보내기 피드백
+
+  // AD-7: 정적 데모 그림(base64)을 IDB로 하이드레이트 — 마운트 1회. 캐시가 지워져도 정적 파일에서 매번 복원(캐시 무관).
   useEffect(() => {
+    const imgs = TOUR_DEMO_IMAGES || {};
+    for (const [k, v] of Object.entries(imgs)) putImage(k, v);
+  }, []);
+
+  // AD-7 + 항목1: 예시 가족 시드 주입(전체투어·탭 서브투어 공통). 서버/저장 0(메모리 state만). 범위·시작스텝·탭은 호출자가 지정.
+  const injectTourSeed = () => {
+    try { localStorage.setItem("kidsafe_parent_tour_seen", "1"); } catch { /* 무시 */ }
+    setShowTourOffer(false);
+    setError(""); // 진입 전 실데이터 fetch 실패 배너가 큐레이션 투어에 새지 않게(AD-7 적대검증 MED)
+    // 시드 주입 — 실데이터 자리에 예시 가족(fetchData는 tourMode로 early-return되어 덮어쓰지 않음)
+    setProfiles([tourSeed.profile]);
+    setHistory(TOUR_HISTORY); setAlerts(TOUR_ALERTS); setCareSignals(TOUR_CARE_SIGNALS); setProfileBadges({}); // history=시청분석/시청기록 공유 시드(⑥·⑦)
+    setAlertSettings(TOUR_ALERT_SETTINGS); setBlockedKeywords(TOUR_BLOCKED_KEYWORDS); // 실데이터(기준점수·차단키워드) 잔존 노출 덮기(AD-7 안전탭 §3-3)
+    setInsights(TOUR_INSIGHTS); setCoach(TOUR_COACH); // ⑥ 시청 분석 — 서버 대신 시드(insights effect는 tourMode early-return이라 덮어쓰지 않음)
+    setTourEntries((tourSeed.diaryEntries || []).map((e) => ({ ...e }))); // 메모리 복사본(원본 불변)
+    prevTabsRef.current = { kiddy: kiddyTab, shelf: shelfTab, schedule: scheduleTab }; // 투어 전 선택 보존(이탈 시 원복)
+    setKiddyTab(tourSeed.profile.id); setShelfTab(tourSeed.profile.id); setScheduleTab(tourSeed.profile.id); // scopedId보다 우선(시드 아이로 잠금)
+    setTourMode(true);
+    setLoading(false);
+  };
+  const startTour = () => {
+    injectTourSeed();
+    setTourRange({ start: 0, end: TOUR_STATIONS.length - 1 }); // 전체 둘러보기(온보딩) — 기존 동작 100% 동일
+    setTourStep(0);
+    setMainTab("kiddy");
+  };
+  // 항목1: 탭 "?" — 그 탭 정거장만 도는 스코프 서브투어. 시드 주입은 전체투어와 동일(예시 가족).
+  const startTabTour = (tab) => {
+    const range = tabTourRange(tab);
+    if (!range) return; // 정거장 없는 탭은 무시(버튼도 숨김)
+    injectTourSeed();
+    setTourRange(range);
+    setTourStep(range.start);
+    setMainTab(tab);
+  };
+  const dismissTourOffer = () => {
+    try { localStorage.setItem("kidsafe_parent_tour_seen", "1"); } catch { /* 무시 */ }
+    setShowTourOffer(false);
+  };
+  const gotoTourStep = (n) => {
+    const s = Math.max(0, Math.min(TOUR_STATIONS.length - 1, n));
+    setTourStep(s);
+    setMainTab(TOUR_STATIONS[s].tab);
+  };
+  const tourNext = () => {
+    const isFullTour = tourRange.start === 0 && tourRange.end === TOUR_STATIONS.length - 1;
+    if (tourStep >= tourRange.end) exitTour(isFullTour); // 전체투어=자녀설정 착지(기존 유지) / 탭투어=그 탭에 머묾
+    else gotoTourStep(tourStep + 1);
+  };
+  const tourPrev = () => gotoTourStep(Math.max(tourRange.start, tourStep - 1)); // 범위 하한에서 멈춤(전 탭으로 안 넘어감)
+  const exitTour = (toChildren = false) => {
+    setTourMode(false);      // tourMode=false → fetchData effect 재실행 → 실데이터 복귀
+    setTourEntries([]);      // 시드 폐기(메모리)
+    setInsights(null); setCoach(null); // ⑥ 시청 분석 시드 폐기 — 종료 후 실뷰에 예시 코치/차트 잔존 금지(history는 fetchData 재실행이 실데이터로 복귀)
+    setOpenSec({ coach: true, precision: false, habit: false }); // AD-7 v2: ⑥b 강제펼침 원복(초기값=useState 기본값과 동일) — 투어가 실뷰 아코디언 상태 오염 방지
+    // ⚠️ 시드 profiles를 능동 폐기 — 재조회 실패 시에도 가짜 아이(tour_raon)가 실뷰에 남아
+    //    getCheckinReport("tour_raon") 등 실서버 호출을 유발하지 않게(AD-7 적대검증 MEDIUM).
+    setProfiles([]); setProfileBadges({});
+    setAlerts([]); setCareSignals([]); setBlockedKeywords({ system: [], custom: [] }); setAlertSettings({ threshold: 70, lateNightAlert: true, lateNightHour: 22 }); // AD-7 안전탭 시드 폐기(exit flash·잔존 방지 — fetchData가 실데이터로 재충전)
+    setLoading(true);        // 실데이터 재조회 표시(로딩 게이트로 빈 시드 순간 노출도 가림)
+    setKiddyTab(prevTabsRef.current.kiddy); setShelfTab(prevTabsRef.current.shelf); setScheduleTab(prevTabsRef.current.schedule); // 시드 잠금 해제 → 투어 전 선택으로 원복(AD-7 적대검증 LOW: 비스코프 다자녀 선택 유실 방지)
+    setTourStep(0);
+    setTourRange({ start: 0, end: TOUR_STATIONS.length - 1 }); // 항목1: 범위 원복(다음 전체투어가 기본 전체로 시작)
+    if (toChildren) setMainTab("children"); // 종료 CTA: 자녀설정으로
+  };
+  // 도장 체험 — 메모리 시드에만 반영(diaryStore·서버 0). ③에서 ParentDiaryShelf onStamp로 호출.
+  const memoryStampHandler = (entryId, { emoji, letter }) => {
+    setTourEntries((prev) => prev.map((e) =>
+      e.id === entryId
+        ? { ...e, stamp: { emoji, letter: String(letter || "").slice(0, 30), at: e.stamp?.at || "", seenAt: null } }
+        : e
+    ));
+  };
+
+  // AD-7 '데모 파일 만들기'(관리자) — 선택 아이의 실데이터(리포트+그림일기+그림)를 정적 tourDemoData.js 파일로 내보내기(다운로드).
+  //   브라우저 저장 0(실데이터 읽기만·무변경). 오너가 이 파일을 client/src/utils/tourDemoData.js 에 넣으면 투어가 정적으로 사용(캐시·실데이터 무관).
+  const handleExportDemo = async (prof) => {
+    if (!prof || !prof.id) return;
+    setCapturing(true); setCaptureMsg("");
+    try {
+      const r = await exportDemoFile(prof);
+      setCaptureMsg(`tourDemoData.js 내려받음 — 일기 ${r.entries}건·그림 ${r.images}장 ✓ (client/src/utils/에 넣어주세요)`);
+    } catch {
+      setCaptureMsg("데모 파일 생성에 실패했어요.");
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  // AD-7: 현재 정거장 대상(data-tour-id)을 측정해 코치마크 스포트라이트에 주입 — 문구가 '그 요소'를 실제로 짚게.
+  //   대상이 나타날 때까지(③ 일기 자동열림 등 비동기) rAF로 재시도 + 화면 안으로 스크롤. 리사이즈/스크롤 시 재측정.
+  //   못 찾으면 rect=null로 폴백(전체 딤+중앙 말풍선) — 투어가 절대 안 깨지게.
+  useEffect(() => {
+    if (!tourMode) { setTourRect(null); return; }
+    const targetId = TOUR_STATIONS[tourStep]?.targetId;
+    if (!targetId) { setTourRect(null); return; }
+    let raf = 0, scrolled = false, last = null;
+    const changed = (a, b) => !a || Math.abs(a.top - b.top) > 0.5 || Math.abs(a.left - b.left) > 0.5 || Math.abs(a.width - b.width) > 0.5 || Math.abs(a.height - b.height) > 0.5;
+    // 대상을 매 프레임 추적 — 크기(①편지 Typewriter 타이핑) + 위치(③ 도장 선택 시 위 미리보기가 밀어냄) 변화를
+    //   모두 따라감. 값이 실제로 바뀔 때만 setTourRect(렌더 최소화). 대상 없으면 폴백(null).
+    const tick = () => {
+      const el = document.querySelector(`[data-tour-id="${targetId}"]`);
+      if (el) {
+        if (!scrolled) { try { el.scrollIntoView({ block: "center" }); } catch { /* jsdom 미구현 무시 */ } scrolled = true; }
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 || r.height > 0) {
+          const next = { top: r.top, left: r.left, width: r.width, height: r.height };
+          if (changed(last, next)) { last = next; setTourRect(next); }
+        }
+      } else if (last) { last = null; setTourRect(null); } // 대상 사라짐(전환 등) → 폴백
+      raf = requestAnimationFrame(tick);
+    };
+    // 새 대상이 아직 DOM에 없으면(③ 자동열기 등 비동기) 이전 rect 잔존으로 엉뚱한 위치를 짚지 않게 즉시 폴백.(적대검증 LOW)
+    if (!document.querySelector(`[data-tour-id="${targetId}"]`)) setTourRect(null);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourMode, tourStep]);
+
+  // AD-7 v2: openSection 있는 정거장(⑥b) 진입 시 해당 아코디언 강제 펼침 — 차트가 접힘 언마운트라 '그래프가 안 보이는' 문제 해결.
+  //   ⚠️ tourStep-keyed(측정 effect와 동일 패턴). gotoTourStep에 넣으면 step0(startTour 직접 진입)에서 누락됨.
+  useEffect(() => {
+    if (!tourMode) return;
+    const sec = TOUR_STATIONS[tourStep]?.openSection;
+    if (sec) setOpenSec((p) => (p[sec] ? p : { ...p, [sec]: true })); // 이미 열려있으면 no-op(무한 setState 방지)
+  }, [tourMode, tourStep]);
+
+  useEffect(() => {
+    if (tourMode) return; // AD-7: 투어 중엔 실데이터 조회/덮어쓰기 금지(시드만). 종료 시 tourMode=false로 재실행→복귀.
+    // AD-7: 취소 토큰 — 초기 fetch 비행 중 투어 진입 시(빠른 클릭) stale 결과가 시드를 덮어쓰거나
+    //   후속 네트워크(getBadges·getCareSignals)를 쏘지 않게, cleanup에서 cancelled=true로 무효화.
+    let cancelled = false;
     const fetchData = async () => {
       try {
         const [historyData, profilesData] = await Promise.all([
           getHistory(),
           getProfiles(),
         ]);
+        if (cancelled) return; // 투어 진입 등으로 무효화 → 이후 setState·네트워크 전부 생략
+        setError(""); // 성공 (재)조회 시 이전 에러 배너 제거 — 투어 이탈 후 재조회 성공에도 잔존 방지(AD-7 적대검증 MED)
         setHistory(historyData);
         setProfiles(profilesData);
 
@@ -173,12 +367,15 @@ export default function ParentDashboard() {
             badgesMap[profile.id] = badges;
           })
         );
+        if (cancelled) return;
         setProfileBadges(badgesMap);
 
         const blockedData = await getBlockedKeywords();
+        if (cancelled) return;
         setBlockedKeywords(blockedData);
 
         const [alertData, settingsData] = await Promise.all([getAlerts(), getAlertSettings()]);
+        if (cancelled) return;
         setAlerts(alertData.alerts);
         setAlertSettings(settingsData);
 
@@ -194,18 +391,22 @@ export default function ParentDashboard() {
             } catch { return []; }
           })
         );
+        if (cancelled) return;
         setCareSignals(signalsNested.flat());
       } catch (err) {
-        setError("데이터를 불러오지 못했어요.");
+        if (!cancelled) setError("데이터를 불러오지 못했어요.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchData();
-  }, []);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourMode]);
 
   // 시청 분석 탭 진입/프로필 전환 시 서버 심화 분석(조인+pandas) 조회
   useEffect(() => {
+    if (tourMode) return; // AD-7: 투어 중 서버 조회 0(정거장은 analysis 미방문이지만 방어)
     if (mainTab !== "analysis") return;
     let cancelled = false;
     setInsightsLoading(true);
@@ -217,7 +418,7 @@ export default function ParentDashboard() {
     setCoach(null);
     setCoachError("");
     return () => { cancelled = true; };
-  }, [mainTab, chartTab]);
+  }, [mainTab, chartTab, tourMode]);
 
   // AI 코치 분석 받기 (버튼 클릭)
   const handleGetCoach = async () => {
@@ -234,17 +435,26 @@ export default function ParentDashboard() {
   };
 
   const filteredHistory =
-    activeTab === "전체"
+    activeTab === "전체" || tourMode          // 투어(예시화면): 시드는 프로필 필터 우회(스코프 페이지 빈화면 방지 — AD-7 시청기록 §2-2)
       ? history
       : history.filter((item) => item.profileId === activeTab);
 
   // 스코프 잠금: :profileId 가 있으면 그 아이만 노출 (프로필 전환 탭/추가 숨김)
   const scopedProfile = scopedId ? profiles.find((p) => p.id === scopedId) : null;
-  const visibleProfiles = scopedId ? profiles.filter((p) => p.id === scopedId) : profiles;
+  // 투어 중엔 시드 아이(id≠scopedId)를 그대로 노출 — 아니면 scopedId 필터에 걸려 ④ 자녀설정이 빈 화면이 됨(AD-7 적대검증 HIGH).
+  const visibleProfiles = tourMode ? profiles : (scopedId ? profiles.filter((p) => p.id === scopedId) : profiles);
+  // ③ 정거장서 자동으로 열 시드 일기 — 완성된 도장+편지 예시 우선(주혁 예시 '이렇게 남겨요'), 없으면 가장 최근. (정적 데모·라온 폴백 모두 대응)
+  const tourStampTargetId = (() => {
+    const es = tourSeed.diaryEntries || [];
+    const target = es.find((e) => e.stamp) || es.slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
+    return target?.id;
+  })();
   // 위기 신호 렌더용 — 미확인 + 스코프 잠금 시 그 아이만(조회도 이미 스코프하지만 렌더에서 2중 방어). 다른 아이 신호 노출 금지.
-  const visibleCareSignals = careSignals.filter((s) => !s.read && (!scopedId || s.profileId === scopedId));
+  //   ⚠️ 투어 중엔 시드(profileId=tour_raon)가 scopedId와 안 맞아 필터 탈락 → tourMode 우회(AD-7 안전탭 적대검증 HIGH: 스코프 페이지 빈화면 방지).
+  const visibleCareSignals = careSignals.filter((s) => !s.read && (tourMode || !scopedId || s.profileId === scopedId));
   // 위험 영상 알림 — getAlerts는 계정 전체(모든 아이) 반환 → 스코프 잠금 부모페이지는 그 아이 알림만 노출(다른 아이 위험영상 알림 유입 금지). alert.profileId로 필터.
-  const visibleAlerts = scopedId ? alerts.filter((a) => a.profileId === scopedId) : alerts;
+  //   ⚠️ visibleProfiles와 동일 패턴 — 투어 중엔 시드 알림 전량 노출(scopedId 필터 우회). 우회 없으면 스코프 페이지서 시드 넣어도 빈 화면(AD-7 적대검증 HIGH).
+  const visibleAlerts = tourMode ? alerts : (scopedId ? alerts.filter((a) => a.profileId === scopedId) : alerts);
 
   const handleCreateProfile = async () => {
     if (!newName.trim()) {
@@ -444,9 +654,12 @@ export default function ParentDashboard() {
   ];
 
   // 차트 전용 필터 (시청 기록 탭과 독립)
-  const chartFilteredHistory = chartTab === "전체"
+  //   ⚠️ 투어: 시드 history 전체 노출(chartTab이 스코프 실아이 id여도 필터로 비지 않게 — 397행 visibleProfiles와 동일 패턴, AD-7 시청분석 §3-3).
+  const chartFilteredHistory = tourMode
     ? history
-    : history.filter(item => item.profileId === chartTab);
+    : chartTab === "전체"
+      ? history
+      : history.filter(item => item.profileId === chartTab);
 
   // 안전도 분포 (PieChart)
   const safetyDistData = [
@@ -517,13 +730,27 @@ export default function ParentDashboard() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0A1E1E" }}>
+      {/* AD-7 부모 둘러보기 코치마크 — tourMode 동안 오버레이(③만 인터랙션 허용) */}
+      {tourMode && (
+        <TourCoachmark
+          rect={tourRect}
+          text={PARENT_TOUR.stations[tourStep]}
+          step={tourStep - tourRange.start}
+          total={tourRange.end - tourRange.start + 1}
+          interactive={TOUR_STATIONS[tourStep]?.interactive}
+          onPrev={tourPrev}
+          onNext={tourNext}
+          onExit={() => exitTour(false)}
+        />
+      )}
+
       {/* 프로필 추가 한도 초과 paywall */}
       {showProfilePaywall && (
         <PaywallModal reason="profile" onClose={() => setShowProfilePaywall(false)} />
       )}
 
-      {/* 상단 네비게이션 바 */}
-      <NavBar backTo="/profiles" backLabel="프로필 선택" title="부모 대시보드" showAccountMenu />
+      {/* 상단 네비게이션 바 — AD-7 적대검증 LOW: 투어 중 계정 메뉴 숨김(③ 책장 정거장의 클릭 통과로 로그아웃 signOut 등 서버호출 유발 방지) */}
+      <NavBar backTo="/profiles" backLabel="프로필 선택" title="부모 대시보드" showAccountMenu={!tourMode} />
 
       {/* ── 모바일 드로어 어두운 배경 (열렸을 때) ── */}
       {sidebarOpen && (
@@ -561,7 +788,7 @@ export default function ParentDashboard() {
             return (
               <button
                 key={t.id}
-                onClick={() => { setMainTab(t.id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                onClick={() => { if (tourMode) return; setMainTab(t.id); if (window.innerWidth < 768) setSidebarOpen(false); }}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold transition text-left"
                 style={active
                   ? { backgroundColor: "#18C49A", color: "#08160F" }
@@ -576,7 +803,12 @@ export default function ParentDashboard() {
       </aside>
 
       {/* ── 메인 영역 (사이드바 열리면 데스크톱에서 밀림) ── */}
-      <div className={`transition-all duration-200 ${sidebarOpen ? "md:ml-60" : ""}`}>
+      {/* AD-7 적대검증 LOW: 읽기전용 정거장(①②④)에서 배경 대시보드를 inert로 — 키보드 포커스/포인터가 배경 프로필 컨트롤(updateProfile('tour_raon') 등)에 닿아 서버호출·시드유출되는 것 차단. ③ 책장은 인터랙션 유지(도장 체험). */}
+      <div
+        data-testid="dash-main"
+        inert={tourMode && !TOUR_STATIONS[tourStep]?.interactive}
+        className={`transition-all duration-200 ${sidebarOpen ? "md:ml-60" : ""}`}
+      >
         <div className={`mx-auto pt-6 md:py-8 pb-28 md:pb-8 ${mainTab === "schedule" ? "max-w-none px-1 md:px-3" : "max-w-6xl px-4 md:px-6"}`}>
 
           <section className="mb-6">
@@ -589,13 +821,80 @@ export default function ParentDashboard() {
                 ☰ 메뉴
               </button>
             )}
-            <h1 className="text-xl md:text-2xl font-bold" style={{ color: "#EAF5F1" }}>{MAIN_NAV.find((t) => t.id === mainTab)?.label}</h1>
-            <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
-              {scopedProfile
-                ? `${scopedProfile.name} · ${scopedProfile.age}세 전용 부모 페이지`
-                : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold inline-flex items-center gap-2" style={{ color: "#EAF5F1" }}>
+                  {MAIN_NAV.find((t) => t.id === mainTab)?.label}
+                  {/* 항목1: 탭 "?" — 이 탭 정거장만 도는 스코프 서브투어(전체 '둘러보기'는 헤더 우측 그대로 유지). 정거장 있는 탭·비투어에서만. */}
+                  {DIARY_V0 && !tourMode && tabTourRange(mainTab) && (
+                    <button
+                      data-testid="tab-tour-btn"
+                      onClick={() => startTabTour(mainTab)}
+                      title="이 탭 안내"
+                      className="shrink-0 flex items-center justify-center rounded-full text-xs font-black transition hover:opacity-80"
+                      style={{ width: "24px", height: "24px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+                    >
+                      ?
+                    </button>
+                  )}
+                </h1>
+                <p className="mt-1 text-sm" style={{ color: "#8FA89F" }}>
+                  {scopedProfile
+                    ? `${childStem(scopedProfile.name)} · ${scopedProfile.age}세 전용 부모 페이지`
+                    : "아이의 콘텐츠 시청 기록과 안전도를 확인하세요."}
+                </p>
+              </div>
+              {/* AD-7 + 항목2-②: 헤더 우측 버튼 그룹 — '아이 화면 미리보기'(C 트리거 → /kids?tour=1) + '예시 가족 둘러보기'. DIARY_V0 게이트·투어 중 숨김. */}
+              {DIARY_V0 && !tourMode && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    data-testid="kid-preview-btn"
+                    onClick={() => navigate("/kids?tour=1")}
+                    className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
+                    style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.35)" }}
+                  >
+                    👀 아이 화면 미리보기
+                  </button>
+                  <button
+                    data-testid="tour-header-btn"
+                    onClick={startTour}
+                    className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition hover:opacity-90 active:scale-95"
+                    style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}
+                  >
+                    🦕 {PARENT_TOUR.offer.start}
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
+
+          {/* AD-7 최초 진입 제안 — 예시 가족 둘러보기 (DIARY_V0 게이트·투어 중엔 숨김) */}
+          {DIARY_V0 && showTourOffer && !tourMode && (
+            <section className="px-1 md:px-2 mb-4">
+              <div
+                className="flex items-start gap-3 rounded-2xl p-4 md:p-5"
+                style={{ background: "linear-gradient(135deg, rgba(24,196,154,0.16), rgba(20,184,196,0.10))", border: "1px solid rgba(24,196,154,0.3)" }}
+              >
+                <div className="shrink-0"><KiddyImg pose="hello" size={52} /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-extrabold" style={{ color: "#EAF5F1" }}>{PARENT_TOUR.offer.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed" style={{ color: "#90A9A8" }}>{PARENT_TOUR.offer.body}</p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={startTour}
+                      className="rounded-xl px-4 py-2 text-sm font-bold transition active:scale-95"
+                      style={{ backgroundColor: "#18C49A", color: "#08160F" }}
+                    >{PARENT_TOUR.offer.start}</button>
+                    <button
+                      onClick={dismissTourOffer}
+                      className="rounded-xl px-4 py-2 text-sm font-bold transition active:scale-95"
+                      style={{ backgroundColor: "#163635", color: "#8FA89F" }}
+                    >{PARENT_TOUR.offer.later}</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
         {loading && <p className="text-center text-sm" style={{ color: "#90A9A8" }}>불러오는 중...</p>}
         {error && (
@@ -795,10 +1094,65 @@ export default function ParentDashboard() {
                 </div>
               )}
 
+              {/* AD-7 관리자 전용: 이 아이의 실데이터(리포트+그림일기+그림)를 '둘러보기' 정적 데모 파일(tourDemoData.js)로 내보내기 */}
+              {isAdmin && !tourMode && kiddyProfile && (
+                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: "#0A1E1E", border: "1px dashed rgba(24,196,154,0.35)" }}>
+                  <button
+                    onClick={() => handleExportDemo(kiddyProfile)}
+                    disabled={capturing}
+                    className="rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-50"
+                    style={{ backgroundColor: "#163635", color: "#5FE0BC", border: "1px solid rgba(24,196,154,0.4)" }}
+                  >{capturing ? "만드는 중…" : `📁 ${childStem(kiddyProfile.name)} 데모 파일 만들기`}</button>
+                  {captureMsg && <span className="text-xs" style={{ color: "#5FE0BC" }}>{captureMsg}</span>}
+                </div>
+              )}
+
               {profiles.length === 0 ? (
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
-                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} watched={kiddyWatched} starCount={kiddyStars} />
+                <KiddyReportCard key={kiddyProfileId} profileId={kiddyProfileId} profileName={kiddyProfile?.name} avatarId={kiddyProfile?.avatarId} watched={kiddyWatched} starCount={kiddyStars} report={tourMode ? tourSeed.report : undefined} />
+              )}
+            </section>
+          );
+        })()}
+
+        {/* AD-6 §2: 가족 책장 (부모 열람 + 도장·짧은 편지) — DIARY_V0 게이트 뒤. 데이터=diaryStore 직접 읽기(v0: 부모·아이 동일 브라우저 전제) */}
+        {DIARY_V0 && mainTab === "shelf" && !loading && (() => {
+          const shelfProfileId = shelfTab || scopedId || profiles[0]?.id || "";
+          return (
+            <section
+              className="p-4 md:p-6 mb-5"
+              style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">📖</span>
+                <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>가족 책장</h2>
+                <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>아이가 간직한 그림일기를 함께 봐요</span>
+              </div>
+
+              {/* 아이 선택 탭 — 스코프 잠금 시 숨김 (아이별, 전체 없음) */}
+              {!scopedId && profiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {profiles.map((profile) => (
+                    <button
+                      key={profile.id}
+                      onClick={() => setShelfTab(profile.id)}
+                      className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-medium transition"
+                      style={shelfProfileId === profile.id
+                        ? { backgroundColor: "#18C49A", color: "#08160F" }
+                        : { backgroundColor: "#163635", color: "#90A9A8" }}
+                    >
+                      <img src={getAvatarUrl(profile)} alt={profile.name} className="h-5 w-5 rounded-full bg-white" />
+                      {profile.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {profiles.length === 0 ? (
+                <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
+              ) : (
+                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} tourOpenEntryId={tourMode && TOUR_STATIONS[tourStep]?.tab === "shelf" ? tourStampTargetId : undefined} />
               )}
             </section>
           );
@@ -838,7 +1192,8 @@ export default function ParentDashboard() {
               {profiles.length === 0 ? (
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
-                <SchedulePlanner key={schedProfileId} profileId={schedProfileId} profileName={schedProfile?.name} />
+                <SchedulePlanner key={schedProfileId} profileId={schedProfileId} profileName={schedProfile?.name}
+                  tourSchedules={tourMode ? TOUR_SCHEDULES : undefined} tourGreeting={tourMode ? TOUR_GREETING : undefined} />
               )}
             </section>
           );
@@ -846,6 +1201,7 @@ export default function ParentDashboard() {
 
         {mainTab === "children" && !loading && (
           <section
+            data-tour-id="tour-settings"
             className="p-4 md:p-6 mb-5"
             style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
@@ -871,6 +1227,17 @@ export default function ParentDashboard() {
                 </button>
               )}
             </div>
+
+            {/* AD-7 재진입 링크 — 헤더 우측 상시 '둘러보기' 버튼으로 이전(오너 지시 7/8, 위치 개선). 복구 필요 시 주석 해제.
+            {DIARY_V0 && !tourMode && (
+              <button
+                onClick={startTour}
+                className="mb-4 text-xs font-bold underline transition active:scale-95"
+                style={{ color: "#5FE0BC" }}
+              >
+                🦕 {PARENT_TOUR.reentry}
+              </button>
+            )} */}
 
             {showCreateForm && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4">
@@ -1024,9 +1391,10 @@ export default function ParentDashboard() {
               <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>아직 프로필이 없어요. 위 버튼을 눌러 추가해보세요!</p>
             ) : (
               <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                {visibleProfiles.map((profile) => (
+                {visibleProfiles.map((profile, index) => (
                   <div
                     key={profile.id}
+                    data-tour-id={index === 0 ? "tour-settings-controls" : undefined}
                     className="relative flex flex-col items-center p-4"
                     style={{ borderRadius: "14px", backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
@@ -1285,6 +1653,7 @@ export default function ParentDashboard() {
                     return (
                       <div
                         key={`${item.videoId}-${index}`}
+                        data-tour-id={index === 0 ? "tour-history" : undefined}
                         className="flex flex-col gap-2 p-3 md:flex-row md:items-center md:justify-between"
                         style={{ borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", backgroundColor: "#163635" }}
                       >
@@ -1401,7 +1770,7 @@ export default function ParentDashboard() {
             ) : (<>
 
                 {/* ── 키디 코치 (아코디언) ── */}
-                <div className="mb-4 rounded-2xl overflow-hidden"
+                <div className="mb-4 rounded-2xl overflow-hidden" data-tour-id="tour-analysis"
                   style={{ background: "linear-gradient(135deg, #0E2A2A, #143A38)", border: "1px solid rgba(63,224,176,0.22)" }}>
                   <button type="button" onClick={() => toggleSec("coach")}
                     className="w-full flex items-center justify-between gap-3 p-5 text-left transition hover:opacity-90">
@@ -1497,8 +1866,8 @@ export default function ParentDashboard() {
                   )}
                 </div>
 
-                {/* 🔬 정밀 검수 분석 (아코디언) */}
-                <div className="mb-4 rounded-2xl overflow-hidden" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {/* 🔬 정밀 검수 분석 (아코디언) — 바깥 컨테이너는 openSec 무관 항상 마운트라 tour-analysis-charts 앵커 안전(⑥b 강제펼침 시 차트가 안에서 펼쳐짐) */}
+                <div className="mb-4 rounded-2xl overflow-hidden" data-tour-id="tour-analysis-charts" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <button type="button" onClick={() => toggleSec("precision")}
                     className="w-full flex items-center justify-between gap-3 p-5 text-left transition hover:opacity-90">
                     <div className="flex items-center gap-2">
@@ -1759,7 +2128,7 @@ export default function ParentDashboard() {
         {mainTab === "safety" && (<>
         {/* 🚨 위기 신호(P §4) — 부모에게 '존재만' 알림. 무슨 말이었는지는 어디에도 없음. 카피는 팀장 검수 verbatim. */}
         {visibleCareSignals.length > 0 && (
-          <section className="mb-6">
+          <section className="mb-6" data-tour-id="tour-care-signal">
             <div className="flex flex-col gap-3">
               {visibleCareSignals.map((sig) => (
                 <div
@@ -1770,7 +2139,7 @@ export default function ParentDashboard() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xl">💛</span>
                     <h3 className="text-base md:text-lg font-extrabold" style={{ color: "#F5D97A" }}>
-                      {sig.profileName ? `${sig.profileName} — 오늘의 관심 신호` : "오늘의 관심 신호"}
+                      {sig.profileName ? `${childStem(sig.profileName)} — 오늘의 관심 신호` : "오늘의 관심 신호"}
                     </h3>
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "#EAE3C8", whiteSpace: "pre-line" }}>
@@ -1790,6 +2159,7 @@ export default function ParentDashboard() {
         )}
         {/* 위험 영상 알림 */}
         <section
+          data-tour-id="tour-safety"
           className="p-4 md:p-6 mb-5"
           style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
         >
@@ -1947,6 +2317,7 @@ export default function ParentDashboard() {
 
         {/* 차단 키워드 관리 */}
         <section
+          data-tour-id="tour-blocked-keywords"
           className="p-4 md:p-6 mb-5"
           style={{ borderRadius: "14px", backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)" }}
         >

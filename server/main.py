@@ -4,7 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-load_dotenv()
+# ⚠️ server/.env를 명시 경로로 + override=True 로 로드 — 셸/OS에 남은 낡은 env(예전 export 등)가
+#    새 키를 가리는 것 방지(load_dotenv 기본 override=False의 함정, 실기기서 실제 발생).
+#    Railway엔 .env 파일이 없어 no-op → 배포 env 변수 그대로 사용(안전).
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 
 def ensure_data_files():
@@ -39,6 +42,7 @@ def ensure_data_files():
 ensure_data_files()
 
 from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit, me, recommend, reports, checkins, schedules, kiddy_greeting, tts, care_signals
+from routers import diary_image  # AD-5: 그림일기 이미지 파이프라인 (feature/diary-v0 브랜치 전용)
 
 app = FastAPI(
     title="KidSafe API",
@@ -78,6 +82,7 @@ app.include_router(schedules.router, prefix="/schedules")
 app.include_router(kiddy_greeting.router, prefix="/kiddy-greeting")
 app.include_router(tts.router, prefix="/tts")
 app.include_router(care_signals.router, prefix="/care-signals")
+app.include_router(diary_image.router, prefix="/diary-image")  # AD-5 (브랜치 전용)
 
 
 @app.get("/")

@@ -5,6 +5,11 @@ import useKiddyVoice from "../hooks/useKiddyVoice";
 import { sendChatMessage, createCareSignal } from "../utils/api";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
+// AD-4 §1·§5: 방 책장 오브젝트 + 방 인사 초대 변주 (feature/diary-v0 브랜치 전용 — DIARY_V0 게이트 뒤)
+import * as diary from "../utils/diaryStore";
+import { SHELF_NAME, ROOM_INVITE, KIDDYROOM_TOUR } from "../utils/diaryCopy";
+import useTour from "../hooks/useTour"; // 항목2-③: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
+import TourCoachmark from "../components/TourCoachmark";
 
 // ── 키디의 방 v0 — '말하기 연습' (X, 스트레치 2 / X-2 리뷰 반영) ──
 //   프레임은 오직 '말하기 연습'(친구 방 아님). 음성 루프만: 텍스트 채팅 로그 없음.
@@ -85,10 +90,19 @@ function RoomFallback({ line, onTextChat, onHome }) {
   );
 }
 
+// 키디의 방 부모 소개 튜토리얼 — 3정거장. targetId는 아래 앵커(data-tour-id)와 일치. 전부 읽기전용(interactive:false).
+//   ⚠️ KIDDYROOM_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭. 시드 불필요(마운트 기본 상태에 3앵커 존재).
+export const KIDDYROOM_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용
+  { targetId: "room-kiddy", interactive: false }, // ① 키디 캐릭터
+  { targetId: "room-talk",  interactive: false }, // ② 현재 대사
+  { targetId: "room-mic",   interactive: false }, // ③ 마이크 버튼
+];
+
 export default function KiddyRoom() {
   const navigate = useNavigate();
   const speech = useKiddySpeech();
   const voice = useKiddyVoice();
+  const tour = useTour(KIDDYROOM_TOUR_STATIONS); // 부모 소개 튜토리얼 — 시드 없이 훅 기본(start/exit)만
 
   // 프로필 — localStorage '읽기'만 (KidHome 패턴). 대화는 저장하지 않는다.
   const [profile, setProfile] = useState(null);
@@ -106,6 +120,7 @@ export default function KiddyRoom() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [phase, setPhase] = useState("idle"); // idle | listening | thinking | ended
   const [kiddyLine, setKiddyLine] = useState(GREETING);
+  const [inviteMode, setInviteMode] = useState(false); // AD-4 §5: 오늘 미작성이면 방 초대 인사(인사 단계 한정)
   const [micBlocked, setMicBlocked] = useState(false); // m6: 마이크 거부 래치(reset이 error 지워도 유지)
   const lastReplyCareRef = useRef(false); // m3: isCrisis||isSoft (리추얼 마무리 억제 판정)
   const endedRef = useRef(false);
@@ -116,7 +131,17 @@ export default function KiddyRoom() {
   // 입장 인사(TTS 1회) + 5분 리추얼 타이머(마운트 시 1회). 리셋은 오직 재입장(재마운트)뿐.
   useEffect(() => {
     mountedRef.current = true;
-    voice.speak(GREETING, "bright");
+    // AD-4 §5: 오늘 그림일기 미작성이면 초대 인사 변주, 아니면 기존 GREETING.
+    //   profile state는 아직 null일 수 있어 localStorage를 동기로 읽어 판정(입장 인사 타이밍 유지).
+    let invite = false;
+    try {
+      const p = JSON.parse(localStorage.getItem("selectedProfile") || "null");
+      if (diary.DIARY_V0 && p?.id) invite = !diary.getEntries(p.id).some((e) => e.date === diary.todayKST());
+    } catch { /* 무시 */ }
+    if (invite) { setInviteMode(true); setKiddyLine(ROOM_INVITE.line); voice.speak(ROOM_INVITE.line, "bright"); }
+    // 오너 지시(7/8): 일기 쓴 상태에선 이 방('말하기 연습')이 사실상 기본 화면 → 매 진입마다 GREETING 음성이 과하게 반복됨.
+    //   입장 GREETING '음성'만 억제(화면 안내는 kiddyLine=GREETING 초기 state 텍스트로 유지). 초대 인사(미작성 시 하루 유혹)는 음성 존치.
+    //   ⚠️ 아래는 의도적 제거(삭제 아님) — 기존: else { voice.speak(GREETING, "bright"); }
     const t = setTimeout(() => finishSession({ silent: lastReplyCareRef.current }), SESSION_MS);
     return () => {
       mountedRef.current = false;
@@ -245,11 +270,21 @@ export default function KiddyRoom() {
   // Z §2: 마이크 폴백 — KidHome 경유로 타이핑 챗봇 자동 오픈 (접근성 폴백). 대화 저장 없음은 챗봇 쪽에서도 동일.
   const goTextChat = () => navigate("/kids", { state: { openChat: true } });
 
+  // AD-4 §5: 방 초대 — '좋아!' → 일기 직행(FamilyShelf가 startWrite 자동 실행) / '나중에' → 방 기능(말하기 연습) 정상 진행, 기록 0.
+  const goInvite = () => navigate("/family-shelf", { state: { startWrite: true } });
+  const dismissInvite = () => {
+    setInviteMode(false);
+    setKiddyLine(GREETING);
+    try { voice.stop(); } catch { /* 무시 */ }
+    voice.speak(GREETING, "bright");
+  };
+
   const handleTap = () => {
     if (sessionEnded || phase === "thinking") return;
     if (speech.listening) {
       speech.stop(); // 다 말함 → 종료 감지 effect가 전송
     } else {
+      if (inviteMode) setInviteMode(false); // 초대 무시하고 바로 말하기 시작 → 초대 버튼 소거
       voice.stop(); // 키디가 말하는 중이면 멈추고 듣기
       speech.reset();
       speech.start();
@@ -271,8 +306,29 @@ export default function KiddyRoom() {
     : phase === "idle" && turnCount === 0 ? "hello"
     : "chat";
 
+  // AD-5 §7: 방 오브젝트 존 — 배열 매핑(공통 위치·받침·라벨). 향후 마이크 등 추가 상정. 현재 책장 1개.
+  const roomObjects = [
+    { key: "shelf", emoji: "📚", label: SHELF_NAME, onTap: () => { if (lastReplyCareRef.current) return; navigate("/family-shelf"); } },
+  ];
+
   return (
     <div className="relative overflow-hidden min-h-screen flex flex-col" style={{ backgroundColor: "#0E2A2A", isolation: "isolate" }}>
+      {/* 부모 소개 튜토리얼 코치마크 — 전 정거장 읽기전용. inert 컨테이너 밖(루트 직속). 시드 없음. */}
+      {tour.isActive && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={KIDDYROOM_TOUR.stations[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={tour.station?.interactive}
+          banner={KIDDYROOM_TOUR.banner}
+          nav={KIDDYROOM_TOUR.nav}
+          exitCta={KIDDYROOM_TOUR.exitCta}
+          onPrev={tour.prev}
+          onNext={() => (tour.isLast ? tour.exit() : tour.next())}
+          onExit={tour.exit}
+        />
+      )}
       <RoomDeco />
       {/* 헤더 — 홈으로 / '말하기 연습' 프레임 명시 */}
       <div className="flex items-center justify-between px-4 py-3">
@@ -280,23 +336,70 @@ export default function KiddyRoom() {
           ‹ 홈으로
         </button>
         <p className="text-sm font-extrabold" style={{ color: "#5FE0BC" }}>말하기 연습 🦕</p>
-        <span className="w-12" />
+        {/* AD-4 건1: 책장은 방 안 실체 오브젝트로 승격(헤더 텍스트버튼 비활성). 이 스페이서 자리에 부모 소개 "?" 트리거 배치(B03). */}
+        {diary.DIARY_V0 && !tour.isActive ? (
+          <button
+            data-testid="room-tour-btn"
+            onClick={tour.start}
+            title="이 화면 둘러보기"
+            className="flex items-center justify-center rounded-full text-sm font-black transition hover:opacity-80"
+            style={{ width: "32px", height: "32px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+          >
+            ?
+          </button>
+        ) : (
+          <span className="w-12" />
+        )}
       </div>
+
+      {/* 헤더 아래 콘텐츠 — 투어 중 inert(마이크 탭→speech.start·sendChatMessage 서버호출 차단). display:contents로 flex 레이아웃 보존. */}
+      <div className="contents" inert={tour.isActive}>
+
+      {/* AD-5 §7(AD-4 건1 시정): 방 오브젝트 존 — '사물이 놓인 공간'감(≥64px·이모지 크게·받침 선반+그림자·부유 애니).
+          위치·받침·라벨 공통 처리(향후 마이크 등 추가 상정). 현재 책장 1개. 위기 calm 표시 중 탭 무시(P 계보). */}
+      {/* AD-10: 초대 중엔 숨김(하단 3버튼과 겹침 방지) + bottom 96→132(모바일서 마이크 버튼과도 안 겹치게). */}
+      {diary.DIARY_V0 && !inviteMode && (
+        <div className="absolute z-10 flex flex-col items-center" style={{ right: 12, bottom: 132 }}>
+          <style>{`@keyframes kiddyObjFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}`}</style>
+          {roomObjects.map((obj) => (
+            <button
+              key={obj.key}
+              onClick={obj.onTap}
+              aria-label={`${obj.emoji} ${obj.label}`}
+              className="flex flex-col items-center active:scale-95 transition"
+              style={{ minWidth: 64, minHeight: 64, padding: 4 }}
+            >
+              {/* 이모지(놓인 사물 — 부유·기울임 애니 + drop-shadow) */}
+              <span style={{ fontSize: 50, lineHeight: 1, filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))", animation: "kiddyObjFloat 2.8s ease-in-out infinite" }}>{obj.emoji}</span>
+              {/* 받침 선반 바 + 바닥 그림자 → '떠 있는 아이콘'이 아니라 '놓인 사물' */}
+              <span style={{ width: 46, height: 6, borderRadius: 99, marginTop: 3, background: "linear-gradient(#2c5049,#173a34)", boxShadow: "0 6px 10px rgba(0,0,0,0.4)" }} />
+              <span className="text-[11px] font-bold mt-1" style={{ color: "#90A9A8" }}>{obj.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 큰 키디 + 현재 한 줄 (로그 리스트 없음 — 지금 말하는 한 줄만) */}
       {/* AA A6: 데스크톱 밀도 — 컬럼 최대 폭 제한(넓은 모니터 여백 정리). 모바일 무변경. */}
       <div className="flex-1 w-full max-w-xl mx-auto flex flex-col items-center justify-center gap-5 px-6">
         {/* AA A6: 데스크톱 한정 확대 래퍼(md:scale-125) — 바깥 래퍼라 KiddyVideo 내부 float transform과 충돌 없음. clip 등 프롭 불변. */}
-        <div className="md:scale-125">
+        <div className="md:scale-125" data-tour-id="room-kiddy">
           <KiddyVideo clip={roomClip} size={200} float />
         </div>
-        <p className="text-center text-lg font-bold leading-snug min-h-[3.5rem]" style={{ color: "#EAF5F1" }}>
+        <p className="text-center text-lg font-bold leading-snug min-h-[3.5rem]" style={{ color: "#EAF5F1" }} data-tour-id="room-talk">
           <Typewriter key={kiddyLine} text={kiddyLine} speed={28} />
         </p>
       </div>
 
       {/* 하단 — 탭 버튼 / 마무리 후 홈으로 / 마이크 거부 안내 */}
       <div className="px-6 pb-10 pt-2 flex flex-col items-center gap-3">
+        {/* AD-4 §5: 방 초대 버튼(인사 단계 한정 — turnCount 0, 대화 시작 전). 말하기 UI 위. */}
+        {inviteMode && !sessionEnded && phase === "idle" && turnCount === 0 && (
+          <div className="w-full max-w-xs flex flex-col gap-2.5">
+            <button onClick={goInvite} className="w-full rounded-2xl py-4 text-base font-extrabold active:scale-95 transition" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>{ROOM_INVITE.go}</button>
+            <button onClick={dismissInvite} className="w-full rounded-2xl py-3 text-base font-bold active:scale-95 transition" style={{ backgroundColor: "#163635", color: "#EAF5F1", border: "1px solid rgba(255,255,255,0.1)" }}>{ROOM_INVITE.later}</button>
+          </div>
+        )}
         {sessionEnded ? (
           <button
             onClick={() => navigate("/kids")}
@@ -320,6 +423,7 @@ export default function KiddyRoom() {
           </>
         ) : (
           <button
+            data-tour-id="room-mic"
             onClick={handleTap}
             disabled={phase === "thinking"}
             className="w-full max-w-xs rounded-2xl py-5 text-lg font-extrabold active:scale-95 transition disabled:opacity-60"
@@ -333,6 +437,7 @@ export default function KiddyRoom() {
           </button>
         )}
       </div>
+      </div>{/* /inert 콘텐츠 래퍼 */}
     </div>
   );
 }

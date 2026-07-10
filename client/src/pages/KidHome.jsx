@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   FaSearch, FaStar, FaHeart, FaRegHeart, FaRobot, FaSpinner,
@@ -23,10 +23,18 @@ import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
 import Typewriter from "../components/Typewriter";
 import DailyCheckin from "../components/DailyCheckin";
+// AD-2/AD-4: 그림일기 홈 진입 + 키디 플로팅/티저 (feature/diary-v0 브랜치 전용 — main 무접촉, DIARY_V0 게이트 뒤)
+import * as diaryStore from "../utils/diaryStore";
+import { DIARY_V0, todayKST } from "../utils/diaryStore";
+import { TILE, KIDHOME_TOUR } from "../utils/diaryCopy";
+import StampNoticeCard from "../components/StampNoticeCard"; // AD-6 §4: 부모 도장 미확인 알림 카드
+import KiddyFab from "../components/KiddyFab";
+import useTour from "../hooks/useTour"; // 항목2-①: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
+import TourCoachmark from "../components/TourCoachmark";
 
 // ⚠️ 테스트용: 이 이름의 프로필은 '하루 1번' 제한을 무시하고 진입할 때마다 체크인이 뜬다.
 //    테스트가 끝나면 빈 문자열("")로 되돌릴 것. (배포 전 반드시 "") — 배포 청소로 리셋됨.
-const CHECKIN_TEST_PROFILE = "";
+const CHECKIN_TEST_PROFILE = ""; // ⚠️ 테스트 켜짐(2026-07-03 오너 요청) — 배포 태울 커밋 전 반드시 ""로!
 
 // 깡총 점프 키프레임 주입 (한 번만)
 if (typeof document !== "undefined" && !document.getElementById("kiddy-jump-style")) {
@@ -101,6 +109,30 @@ const formatDuration = (sec) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
+// 아이 홈 부모 소개 튜토리얼 — 6정거장. targetId는 아래 앵커(data-tour-id)와 일치. 전부 읽기전용(interactive:false).
+//   ⚠️ KIDHOME_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭. ⑤⑥은 같은 그림일기 타일을 두 번 짚음(물어봄→완성).
+export const KIDHOME_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용 — 브리프 §7 허용(테스트 전용 named export)
+  { targetId: "kid-home",   interactive: false }, // ① 히어로
+  { targetId: "kid-search", interactive: false }, // ② 검색바
+  { targetId: "kid-safety", interactive: false }, // ③ 안전 점수 배지(시드 영상 카드)
+  { targetId: "kid-room",   interactive: false }, // ④ 키디의 방 진입
+  { targetId: "kid-diary",  interactive: false }, // ⑤ 그림일기 타일(물어봄)
+  { targetId: "kid-diary",  interactive: false }, // ⑥ 그림일기 타일(완성)
+];
+
+// 투어 ③(안전 배지)용 데모 영상 — 서버호출 0, 로컬 자산 썸네일(외부 GET 0). totalScore 96 → 초록('안전').
+const KID_TOUR_VIDEO = {
+  videoId: "kid-tour-demo",
+  title: "예시 영상 — 키디가 고른 안전한 영상",
+  channelTitle: "키디 채널",
+  thumbnail: "/images/logo/icon_light_256.png", // 앱 아이콘(로컬·외부 GET 없음). 오너 지시 교체(symbol→app icon).
+  totalScore: 96,
+  duration: "",        // 길이 배지 생략(formatDuration("")→null이라 배지 미렌더).
+  madeForKids: true,
+  educational: 88,
+  summary: "안전도 점수와 등급이 이렇게 함께 표시돼요.",
+};
+
 export default function KidHome() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [videos, setVideos] = useState([]);
@@ -139,14 +171,62 @@ export default function KidHome() {
   const [kiddyClicked, setKiddyClicked] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false); // F1 오늘의 체크인 오버레이 (오늘 미체크인 시)
+  const [diaryTeaser, setDiaryTeaser] = useState(null); // AD-4 §4: 하루 첫 진입 티저 말풍선(오늘의 질문 ask)
+  const [stampNotice, setStampNotice] = useState(null); // AD-6 §4: 부모 도장 미확인 알림 { hasLetter } | null (티저보다 우선)
+  const teaserTimerRef = useRef(null);
+  const teaserTriedRef = useRef(false);
   const searchBoxRef = useRef(null);
   const kiddyMobileRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  // 항목2-①: 부모 소개 튜토리얼(6정거장) — 헤더 "?" 트리거. 시드는 클라이언트 setState만(서버호출 0), 이탈 시 원복.
+  const tour = useTour(KIDHOME_TOUR_STATIONS);
+  const tourSnapshotRef = useRef(null); // 투어 진입 전 검색/추천 상태 스냅샷(이탈 시 원복)
+  const fromTourLinkRef = useRef(false); // 항목2-②: C 진입(부모 대시 '미리보기' 링크 ?tour=1)에서 왔는지 — 종료 시 navigate(-1) 복귀 판정
+
+  // 투어 시작 — 홈 레이아웃을 드러내고(검색 비우기) ③ 배지용 시드 영상 1개 주입. 서버호출 0.
+  //   opts.fromLink: C 진입(부모 미리보기) — 종료 시 대시보드로 복귀. 실프로필 없으면 데모 프로필을 state에만 주입(localStorage 무접촉).
+  const startKidTour = (opts = {}) => {
+    fromTourLinkRef.current = !!opts.fromLink;
+    tourSnapshotRef.current = {
+      videos, playlists, searchKeyword, loading,
+      historyVideos, historyLoading, historyKeyword, favorites,
+      selectedProfile, // C 진입 시 데모로 덮으므로 함께 스냅샷 → 종료 시 원복
+    };
+    // C 진입: 실프로필 없으면 데모 프로필 주입(히어로 인사·그림일기 타일 게이트 통과용). state만 — 실제 selectedProfile 오염 0.
+    if (!selectedProfile) {
+      setSelectedProfile({ id: "kid-tour-demo-profile", name: "라온", age: 6, avatarId: 1 });
+    }
+    setVideos([]); setPlaylists([]); setSearchKeyword(""); setLoading(false); // 홈(추천) 레이아웃 노출 = 정거장 ③④⑤⑥ 표시 조건
+    setHistoryVideos([KID_TOUR_VIDEO]); setHistoryLoading(false); setHistoryKeyword(""); // ③ '내가 좋아할 것 같아요' 카드+배지
+    setFavorites([]); // '내 찜 목록'(실데이터)을 예시 배경에서 숨김 — 종료 시 원복(오너 결정 B, 2026-07-09)
+    tour.start();
+  };
+
+  // 투어 종료 — 시드 폐기 + 진입 전 상태 원복. C 진입이면 대시보드로 복귀.
+  const exitKidTour = () => {
+    tour.exit();
+    const s = tourSnapshotRef.current;
+    if (s) {
+      setVideos(s.videos); setPlaylists(s.playlists); setSearchKeyword(s.searchKeyword); setLoading(s.loading);
+      setHistoryVideos(s.historyVideos); setHistoryLoading(s.historyLoading); setHistoryKeyword(s.historyKeyword);
+      setFavorites(s.favorites); // 찜 목록 원복
+      setSelectedProfile(s.selectedProfile); // C 진입 데모 프로필 원복(실프로필 없었으면 null로)
+      tourSnapshotRef.current = null;
+    }
+    if (fromTourLinkRef.current) {
+      fromTourLinkRef.current = false;
+      navigate(-1); // C 진입 종료 → 온 곳(대시보드)으로 복귀
+    }
+  };
+  // AD-2 §4: 그림일기 홈 브릿지에서 넘어온 의도(체크인 완료 후 일기 연속 진행), 1회성. AD-10 재개정: ⓑ 명시적 의도 연속 복구
+  const diaryAfterRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    if (searchParams.get("tour") === "1") return; // 항목2-②: C 진입(부모 미리보기) — 실프로필/검색 복원·서버호출 생략(데모 화면 순수 유지, 자동시작 effect가 처리)
     const demoKeyword = searchParams.get("q");
     if (demoKeyword) {
       setSearchKeyword(demoKeyword);
@@ -194,10 +274,18 @@ export default function KidHome() {
     // else { fetchRecommendedVideos(7, []); }
   }, []);
 
+  // 항목2-②(C 트리거): 부모 대시 '아이 화면 미리보기'에서 /kids?tour=1로 진입 시 튜토리얼 자동 시작. 1회성(마운트). 데모 프로필 시드는 startKidTour가 처리.
+  useEffect(() => {
+    if (searchParams.get("tour") !== "1") return;
+    startKidTour({ fromLink: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // F1 — 프로필 진입 시 오늘 체크인 안 했으면 체크인 오버레이 (데모 q검색 진입은 제외)
   useEffect(() => {
     if (!selectedProfile?.id) return;
     if (searchParams.get("q")) return; // 데모 딥링크 진입은 체크인 생략
+    if (searchParams.get("tour") === "1") return; // 항목2-②: 미리보기(데모 프로필)는 체크인 서버조회·오버레이 생략(서버호출 0)
     let cancelled = false;
     // 테스트 프로필은 하루 1번 제한 무시 → 매 진입마다 체크인
     const testAlways = CHECKIN_TEST_PROFILE && selectedProfile.name === CHECKIN_TEST_PROFILE;
@@ -266,6 +354,57 @@ export default function KidHome() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // AD-2 §4: 그림일기 홈 '미체크인 브릿지'에서 navigate("/kids", { state: { diaryAfter: true } })로 돌아오면
+  //          체크인 자동 오픈(기존 F1 로직 재사용)이 뜨고, 완료 후 일기로 연속 진행하도록 의도 플래그만 세운다. state 즉시 소거(Z 패턴).
+  // AD-10 재개정: 명시적 일기 의도(타일·방 초대 '좋아!') 브릿지 연속 복구(ⓑ). 부르지 않은 제안(ⓐ)만 폐기.
+  useEffect(() => {
+    if (location.state?.diaryAfter) {
+      diaryAfterRef.current = true;
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // AD-2 §2: 오늘 그림일기 작성 여부 — 타일 상태(제목 vs 완료) 전환용. 체크인 열림/닫힘·프로필 변화 시만 재계산(과도한 localStorage 파싱 방지).
+  const hasDiaryToday = useMemo(() => {
+    if (!DIARY_V0 || !selectedProfile?.id) return false;
+    try { return diaryStore.getEntries(selectedProfile.id).some((e) => e.date === todayKST()); }
+    catch { return false; }
+  }, [selectedProfile?.id, checkinOpen]);
+
+  // AD-6 §4: 진입 시 부모 도장 미확인 알림 계산 — 있으면 인앱 카드(도장만/편지 포함 분기). 푸시·뱃지·숫자 없음.
+  //   확인(=책장 상세 열람 → markStampSeen)하면 다음 접속 시 자연 소멸. 닫기(✕)는 이번 세션만, 다음 접속 재노출.
+  useEffect(() => {
+    if (!DIARY_V0 || !selectedProfile?.id) { setStampNotice(null); return; }
+    try {
+      const unseen = diaryStore.getUnseenStamps(selectedProfile.id);
+      setStampNotice(unseen.length ? { hasLetter: unseen.some((s) => s.hasLetter) } : null);
+    } catch { setStampNotice(null); }
+  }, [selectedProfile?.id]);
+
+  // AD-4 §4: 하루 첫 키즈 홈 진입 1회 티저 — 오늘의 질문 ask를 3~4초 노출(신규 카피 0). 몰입(체크인 등) 중엔 보류→닫히면 재평가.
+  //   teaserDate가 유일 기준(표시 즉시 기록) → 같은 날 재진입/리렌더 미표시. 오늘 일기 완료면 미표시.
+  useEffect(() => {
+    if (teaserTriedRef.current) return;
+    if (!DIARY_V0 || !selectedProfile?.id) return;
+    if (searchParams.get("tour") === "1") return; // 항목2-②: 미리보기(데모 프로필)는 티저 localStorage 기록·표시 생략(무오염)
+    if (checkinOpen) return; // 몰입 중 보류(체크인 닫히면 checkinOpen 변화로 재실행)
+    try {
+      const today = todayKST();
+      // AD-6 §4: 도장 알림이 티저보다 우선 — 미확인 도장 있으면 티저 보류(동시표시 금지)
+      if (diaryStore.getUnseenStamps(selectedProfile.id).length) { teaserTriedRef.current = true; return; }
+      if (diaryStore.getTeaserDate(selectedProfile.id) === today) { teaserTriedRef.current = true; return; }
+      const has = diaryStore.getEntries(selectedProfile.id).some((e) => e.date === today);
+      if (has) { teaserTriedRef.current = true; return; } // 오늘 작성 완료 → 티저 없음
+      teaserTriedRef.current = true;
+      const q = diaryStore.getTodayQuestion(selectedProfile.id, { age: selectedProfile.age }); // 무드 미상 → sunnyOnly 제외(안전)
+      diaryStore.markTeaserShown(selectedProfile.id, today);
+      setDiaryTeaser(q?.ask || null);
+      teaserTimerRef.current = setTimeout(() => setDiaryTeaser(null), 3500); // 3~4초 자동 소멸
+    } catch { /* 무시 */ }
+  }, [selectedProfile?.id, checkinOpen]);
+  useEffect(() => () => { if (teaserTimerRef.current) clearTimeout(teaserTimerRef.current); }, []);
 
   const fetchSearchHistory = async (profileId) => {
     try { const data = await getSearchHistory(profileId); setSearchHistory(data); }
@@ -783,7 +922,22 @@ export default function KidHome() {
   return (
     <div className="min-h-screen pb-24 md:pb-0 md:pr-20" style={{ backgroundColor: "#0A1E1E" }}>
 
-
+      {/* 아이 홈 부모 소개 튜토리얼 코치마크 — 전 정거장 읽기전용. inert 컨테이너 밖(루트 직속)이라 오버레이 버튼 정상. */}
+      {tour.isActive && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={KIDHOME_TOUR.stations[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={tour.station?.interactive}
+          banner={KIDHOME_TOUR.banner}
+          nav={KIDHOME_TOUR.nav}
+          exitCta={KIDHOME_TOUR.exitCta}
+          onPrev={tour.prev}
+          onNext={() => (tour.isLast ? exitKidTour() : tour.next())}
+          onExit={exitKidTour}
+        />
+      )}
 
       {/* 커스텀 NavBar */}
       <header
@@ -813,6 +967,18 @@ export default function KidHome() {
           </div>
           {/* 오른쪽: 시간 pill + 배지 pill + 아바타 */}
           <div className="flex items-center gap-2">
+            {/* 이 화면 둘러보기(부모 소개) — 프로필 있고 투어 중 아닐 때만. 부모가 아이 홈을 이해하는 용도. */}
+            {DIARY_V0 && selectedProfile && !tour.isActive && (
+              <button
+                data-testid="kid-tour-btn"
+                onClick={startKidTour}
+                title="이 화면 둘러보기"
+                className="flex items-center justify-center rounded-full text-sm font-black transition hover:opacity-80"
+                style={{ width: "32px", height: "32px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+              >
+                ?
+              </button>
+            )}
             {/* 남은 시간 — timeLimit 설정된 프로필만 표시 */}
             {earnedBadges.length > 0 && (
               <button
@@ -855,7 +1021,7 @@ export default function KidHome() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-7xl px-4 py-6" inert={tour.isActive && !tour.station?.interactive}>
 
         {/* 모달 */}
         {selectedVideo && (
@@ -1042,7 +1208,7 @@ export default function KidHome() {
                 ? "영상을 찾았어! 아래로 내려서 확인해봐! 👇"
                 : GREETING_DIALOGUES[greetingIndex].text.replace("{name}야", withVocative(selectedProfile?.name ?? "친구"));
               return (
-                <div className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
+                <div data-tour-id="kid-home" className="relative flex flex-col md:flex-row items-center gap-6 mb-8 px-8 py-8 overflow-hidden"
                   style={{ background: "linear-gradient(135deg, #0E2A23 0%, #14463C 50%, #1A9180 100%)", borderRadius: "24px", minHeight: "220px" }}>
                   {/* 배경 글로우 */}
                   <div className="absolute -top-10 -right-10 h-56 w-56 rounded-full opacity-25 pointer-events-none" style={{ backgroundColor: "#18C49A", filter: "blur(80px)" }} />
@@ -1053,7 +1219,7 @@ export default function KidHome() {
                       {selectedProfile ? `${withVocative(selectedProfile.name)}, 안녕! 👋` : "안녕 친구야~ 👋"}
                     </p>
                     <p className="text-2xl font-black mb-5 tracking-tight" style={{ color: "#fff" }}>오늘은 어떤 영상 볼까?</p>
-                    <div ref={searchBoxRef} className="relative">
+                    <div ref={searchBoxRef} data-tour-id="kid-search" className="relative">
                       <div className="flex items-center gap-2"
                         style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "14px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)" }}>
                         <FaSearch style={{ color: "#B8D8B2", flexShrink: 0 }} />
@@ -1280,6 +1446,7 @@ export default function KidHome() {
               <>
                 {/* 키디의 방 진입 — '말하기 연습' (X). 추천 게이트 안(기본 화면 전용) + lg:hidden 아님 → 모바일·데스크톱 공통. 순수 ADD. */}
                 <button
+                  data-tour-id="kid-room"
                   onClick={() => navigate("/kiddy-room")}
                   className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
                   style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}
@@ -1291,6 +1458,29 @@ export default function KidHome() {
                   </div>
                   <span className="shrink-0 text-xl font-black" style={{ color: "#08160F" }}>›</span>
                 </button>
+
+                {/* AD-2 §2: 그림일기 타일 — 주 진입 (feature/diary-v0 브랜치 전용, 순수 ADD). 웜톤으로 말하기연습(청록)과 구분. */}
+                {DIARY_V0 && selectedProfile && (
+                  <button
+                    data-tour-id="kid-diary"
+                    onClick={() => navigate("/family-shelf")}
+                    className="w-full mb-6 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition"
+                    style={{ background: "linear-gradient(135deg, #F6A623, #F2655C)", boxShadow: "0 8px 24px rgba(242,101,92,0.3)" }}
+                  >
+                    <KiddyImg pose="jump" size={54} />
+                    <div className="min-w-0 flex-1">
+                      {hasDiaryToday ? (
+                        <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.done}</p>
+                      ) : (
+                        <>
+                          <p className="text-base font-extrabold" style={{ color: "#3A1A0E" }}>{TILE.title}</p>
+                          <p className="text-xs font-bold" style={{ color: "#3A1A0E", opacity: 0.8 }}>{TILE.sub}</p>
+                        </>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-xl font-black" style={{ color: "#3A1A0E" }}>›</span>
+                  </button>
+                )}
 
                 {/* 오늘의 추천 — 가로 스크롤 캐러셀 */}
                 {(recommendLoading || recommendedVideos.length > 0) && (
@@ -1316,7 +1506,7 @@ export default function KidHome() {
 
                 {/* 내가 좋아할 것 같아요 — 가로 스크롤 캐러셀 */}
                 {(historyLoading || historyVideos.length > 0) && (
-                  <section className="mb-6">
+                  <section className="mb-6" data-tour-id="kid-safety">
                     <div className="mb-3 flex items-center gap-2">
                       <FaHeart style={{ color: "#F2655C", fontSize: "14px" }} />
                       <h2 className="text-base font-bold" style={{ color: "#EAF5F1" }}>내가 좋아할 것 같아요</h2>
@@ -1490,8 +1680,10 @@ export default function KidHome() {
       {checkinOpen && selectedProfile && (
         <DailyCheckin
           profile={selectedProfile}
-          onSkip={() => setCheckinOpen(false)}
+          diaryIntent={diaryAfterRef.current}
+          onSkip={() => { diaryAfterRef.current = false; setCheckinOpen(false); }}
           onComplete={({ watchKeyword }) => {
+            diaryAfterRef.current = false; // 1회성 의도 소거 (그림일기 진입은 DailyCheckin 내부에서 이미 처리됨)
             setCheckinOpen(false);
             // '볼 것' 답이 있으면 그 키워드로 바로 검색 (데모 시나리오의 payoff)
             if (watchKeyword) {
@@ -1557,6 +1749,32 @@ export default function KidHome() {
           onChatToggle={() => navigate("/kiddy-room")}
         />
       </div>
+
+      {/* AD-4 §2·§4: 키디 플로팅 + 하루 첫 진입 티저 (DIARY_V0 뒤). 몰입 오버레이 열림 시 숨김(이중 방어). */}
+      {(() => {
+        const fabHidden = checkinOpen || !!selectedVideo || !!selectedPlaylist || !!playingVideo
+          || newBadges.length > 0 || (timeLimitReached && !timeLimitModalDismissed) || chatOpen;
+        return (
+          <>
+            {DIARY_V0 && diaryTeaser && !fabHidden && (
+              <div className="fixed z-40" style={{ right: 16, bottom: 152 }} onClick={() => setDiaryTeaser(null)}>
+                <div className="rounded-2xl px-4 py-2.5" style={{ maxWidth: 220, backgroundColor: "#0E2A2A", border: "1px solid rgba(95,224,188,0.35)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}>
+                  <p className="text-sm font-bold" style={{ color: "#EAF5F1" }}>{diaryTeaser}</p>
+                </div>
+              </div>
+            )}
+            {/* AD-6 §4: 부모 도장 미확인 알림 — 티저와 같은 자리, 티저보다 우선(위 가드로 동시표시 방지). FAB 숨김과 독립. 탭→책장, ✕→이번 세션만 닫힘 */}
+            {DIARY_V0 && stampNotice && (
+              <StampNoticeCard
+                hasLetter={stampNotice.hasLetter}
+                onOpen={() => navigate("/family-shelf")}
+                onClose={() => setStampNotice(null)}
+              />
+            )}
+            <KiddyFab profile={selectedProfile} bottomOffset={84} hidden={fabHidden} />
+          </>
+        );
+      })()}
 
     </div>
   );

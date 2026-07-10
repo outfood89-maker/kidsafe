@@ -1,0 +1,203 @@
+// 우리 그림일기 v0 — 스토어·플로우·위기 결정 검증 (AD2~AD15 결정론 커버). feature/diary-v0 전용.
+// 실행: cd client && npx esbuild src/utils/diaryStore.test.mjs --bundle --platform=node --format=cjs --outfile=<tmp> && node <tmp>
+// ⚠️ 브라우저 완주(React 렌더/클릭)는 별도 — 이건 flow가 의존하는 결정 로직/데이터 계층 검증.
+
+// localStorage 폴리필 (node) — store가 함수 내부에서 접근하므로 호출 전에 세팅되면 됨
+const _mem = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (_mem.has(k) ? _mem.get(k) : null),
+  setItem: (k, v) => _mem.set(k, String(v)),
+  removeItem: (k) => _mem.delete(k),
+  clear: () => _mem.clear(),
+};
+
+import * as diary from "./diaryStore.js";
+import { assembleDiary } from "./diaryAssembler.js";
+import { screenText, isHigh, fixedResponse } from "./safetyLexicon.js";
+import { ROTATING_QUESTIONS, SAD_MOODS } from "./diaryCopy.js";
+
+let pass = 0, fail = 0;
+const chk = (name, cond) => { console.log(`${cond ? "✅" : "❌"} ${name}`); cond ? pass++ : fail++; };
+const PID = "p1";
+
+console.log("── AD1/AD3/AD4/AD5: 저장·미저장·저장물·찢기 ──");
+{
+  _mem.clear();
+  // 전 플로우 데이터: 조립 → 간직만 저장
+  const sentences = assembleDiary({ weather: "sunny", mood: "🙂", didToday: "블록 놀이", rotating: { qid: "who", answer: "엄마" } });
+  const entry = { id: "e1", date: "2026-07-04", sentences, moodEmoji: "🙂", childPick: "미끄럼틀", keptAt: "2026-07-04", transcript: "몰래원문" /* 유입 시도 */ };
+  diary.saveEntry(PID, entry);
+  const got = diary.getEntries(PID);
+  chk("AD1 간직 → 책장에 1편", got.length === 1 && got[0].sentences.length >= 3);
+  chk("AD4 저장물 = 허용 필드만 (transcript 미저장)", !("transcript" in got[0]) && Object.keys(got[0]).sort().join(",") === "childPick,date,id,keptAt,moodEmoji,sentences");
+  diary.tearEntry(PID, "e1");
+  chk("AD5 찢기 → 즉시 소멸", diary.getEntries(PID).length === 0);
+}
+{
+  _mem.clear();
+  // AD3: 간직 안 함(=saveEntry 미호출) → 흔적 0
+  assembleDiary({ weather: "rainy", mood: "😐", didToday: "산책", rotating: null });
+  chk("AD3 '안 할래'/중간 이탈 → 저장 0", diary.getEntries(PID).length === 0);
+}
+
+console.log("── AD2: 위기 결정 (텍스트 미유입) ──");
+{
+  const lvl = screenText("죽고 싶어");
+  chk("AD2 '죽고 싶어' → high_self + isHigh + 고정응답", lvl === "high_self" && isHigh(lvl) && !!fixedResponse(lvl));
+  // flow 규칙: 위기 판정 시 그 텍스트를 답으로 쓰지 않음 → 일기에 유입 0
+  const rotating = null; // DiaryFlow가 위기면 answerRotating 호출 안 함(칩 복귀)
+  const s = assembleDiary({ weather: "sunny", mood: "🙂", didToday: "놀이", rotating });
+  chk("AD2 위기 텍스트 일기 미유입", !s.join(" ").includes("죽"));
+}
+
+console.log("── AD6/AD11: 회전 풀 필터 (dedup·연령·감정) ──");
+{
+  _mem.clear();
+  diary.recordQid(PID, "who", "d1"); diary.recordQid(PID, "tasty", "d2"); diary.recordQid(PID, "fun", "d3"); diary.recordQid(PID, "firstsaw", "d4");
+  const recent = diary.getRecentQids(PID);
+  chk("AD6 최근 3개만 유지·중복 회피", recent.length === 3 && recent.includes("firstsaw") && !recent.includes("who"));
+  const age5 = ROTATING_QUESTIONS.filter((q) => 5 >= q.minAge).map((q) => q.qid);
+  chk("AD6 5세 → sound(6+) 미출현", !age5.includes("sound"));
+  const sadPool = ROTATING_QUESTIONS.filter((q) => !q.sunnyOnly).map((q) => q.qid);
+  chk("AD11 흐린 날 → sunnyOnly(fun·bestdid) 제외", !sadPool.includes("fun") && !sadPool.includes("bestdid") && sadPool.includes("who"));
+}
+
+console.log("── AD13/AD15: 진입 빈도 (R5·R8) ──");
+{
+  _mem.clear();
+  chk("AD13 R5 — 당일 체크인 미완료 → 제안 없음", diary.shouldProposeToday(PID, "2026-07-01", false) === false);
+  chk("AD13 R5 — 체크인 완료 → 제안", diary.shouldProposeToday(PID, "2026-07-01", true) === true);
+}
+{
+  _mem.clear();
+  // 3일 연속 '안 할래'
+  const days = ["2026-07-01", "2026-07-02", "2026-07-03"];
+  for (const d of days) { diary.markProposed(PID, d); diary.recordProposalResult(PID, false); }
+  chk("AD15 3연속 거절 → 4일째 격일(제안 없음)", diary.shouldProposeToday(PID, "2026-07-04", true) === false);
+  chk("AD15 하루 걸러(5일째) → 제안 있음", diary.shouldProposeToday(PID, "2026-07-05", true) === true);
+  diary.recordShelfVisit(PID); // 자발 방문 → 기본 빈도 복귀
+  chk("AD15 책장 방문 → 기본 빈도 복귀(4일째도 제안)", diary.shouldProposeToday(PID, "2026-07-04", true) === true);
+}
+
+console.log("── AD-4 §4: getTodayQuestion(하루 고정) + 티저 게이트 ──");
+{
+  _mem.clear();
+  const q1 = diary.getTodayQuestion(PID, { age: 7, isSad: false });
+  const q2 = diary.getTodayQuestion(PID, { age: 7, isSad: false });
+  chk("V4 같은 날 2회 = 같은 qid(고정)", !!q1 && q1.qid === q2.qid);
+}
+{
+  _mem.clear();
+  const qt = diary.getTodayQuestion(PID, { age: 7 }); // 무드 미상(티저) → sunnyOnly 제외(안전)
+  chk("V4 티저(무드 미상) 선정 = sunnyOnly 아님", ROTATING_QUESTIONS.find((x) => x.qid === qt.qid)?.sunnyOnly !== true);
+  const qs = diary.getTodayQuestion(PID, { age: 7, isSad: true }); // 이어 흐림 플로우
+  chk("V4 티저 후 흐림 플로우도 규칙 위반 없이 동일 반환", qs.qid === qt.qid);
+}
+{
+  _mem.clear();
+  const q5 = diary.getTodayQuestion(PID, { age: 5 }); // 6세+ 전용(sound) 배제
+  chk("V4 5세 → sound(6세+) 미선정", q5.qid !== "sound");
+}
+{
+  _mem.clear();
+  // 저장된 todayQ가 sunnyOnly(fun)인데 흐림(isSad=true)으로 호출 → 필터 위반 → 재선정(전천후)
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  _mem.set(`diary_v0_meta_${PID}`, JSON.stringify({ todayQ: { date: today, qid: "fun" } }));
+  const q = diary.getTodayQuestion(PID, { age: 7, isSad: true });
+  chk("V4 저장 sunnyOnly가 흐림 필터 위반 → 재선정(sunnyOnly 아님)", ROTATING_QUESTIONS.find((x) => x.qid === q.qid)?.sunnyOnly !== true);
+}
+{
+  _mem.clear();
+  // 컨트롤타워 리뷰 수정 검증: 시드 선택도 최근 3일 dedup 준수 (fresh[0] 고정이던 시절의 기아와 무관하게 불변식 유지)
+  diary.recordQid(PID, "who", "2026-07-04");
+  diary.recordQid(PID, "tasty", "2026-07-05");
+  diary.recordQid(PID, "firstsaw", "2026-07-06");
+  const qd = diary.getTodayQuestion(PID, { age: 7, isSad: false });
+  chk("V4 시드 선택도 최근 3일 dedup 준수", !["who", "tasty", "firstsaw"].includes(qd.qid));
+}
+{
+  _mem.clear();
+  chk("V3 티저 게이트 초기 = 미표시(teaserDate 없음)", !diary.getTeaserDate(PID));
+  diary.markTeaserShown(PID, "2026-07-06");
+  chk("V3 표시 즉시 기록 → 그 날짜(같은 날 재표시 금지 근거)", diary.getTeaserDate(PID) === "2026-07-06");
+}
+
+console.log("── AD-5 §2·§3: imageId 저장·연결 + 다시 그리기 한도 ──");
+{
+  _mem.clear();
+  diary.saveEntry(PID, { id: "e1", date: "2026-07-06", sentences: ["a", "b", "c"], moodEmoji: "🙂", childPick: "", keptAt: "2026-07-06" });
+  chk("AD-5 imageId 없으면 필드 없음(직렬화 불변식 유지)", !("imageId" in diary.getEntries(PID)[0]));
+  diary.setEntryImage(PID, "e1", "img_e1");
+  chk("AD-5 setEntryImage → 뒤늦게 imageId 연결(책장 재시도 복구)", diary.getEntries(PID)[0].imageId === "img_e1");
+  diary.saveEntry(PID, { id: "e2", date: "2026-07-06", sentences: ["x"], moodEmoji: "😄", childPick: "", keptAt: "2026-07-06", imageId: "img_e2" });
+  chk("AD-5 imageId 있으면 저장", diary.getEntries(PID).find((e) => e.id === "e2").imageId === "img_e2");
+}
+{
+  _mem.clear();
+  const today = "2026-07-06";
+  chk("V3 초기 2회 남음", diary.getRegenLeft(PID, today) === 2);
+  diary.recordRegen(PID, today);
+  chk("V3 1회 후 1 남음", diary.getRegenLeft(PID, today) === 1);
+  diary.recordRegen(PID, today);
+  chk("V3 2회 소진 → 0(REGEN_OUT 조건)", diary.getRegenLeft(PID, today) === 0);
+  chk("V3 다음날 리셋 → 2", diary.getRegenLeft(PID, "2026-07-07") === 2);
+}
+
+console.log("── AD-8: 이어 그리기 쿼터(하루 1회, regen과 독립) + drawingId 저장 ──");
+{
+  _mem.clear();
+  const today = "2026-07-06";
+  chk("AD-8 이어그리기 초기 1회 남음", diary.getContinueLeft(PID, today) === 1);
+  diary.recordContinue(PID, today);
+  chk("AD-8 1회 소진 → 0(칩 미노출 조건)", diary.getContinueLeft(PID, today) === 0);
+  chk("AD-8 regen과 독립(이어그리기 소진해도 regen 2회 그대로)", diary.getRegenLeft(PID, today) === 2);
+  diary.recordRegen(PID, today); diary.recordRegen(PID, today);
+  chk("AD-8 regen 2회 소진해도 이어그리기 쿼터 무관", diary.getContinueLeft(PID, today) === 0);
+  chk("AD-8 다음날 이어그리기 리셋 → 1", diary.getContinueLeft(PID, "2026-07-07") === 1);
+}
+{
+  _mem.clear();
+  diary.saveEntry(PID, { id: "e1", date: "2026-07-06", sentences: ["a"], moodEmoji: "🙂", childPick: "", keptAt: "2026-07-06", imageId: "img1", drawingId: "draw1" });
+  const e1 = diary.getEntries(PID)[0];
+  chk("AD-8 drawingId 있으면 저장(원본·완성본 병치)", e1.imageId === "img1" && e1.drawingId === "draw1");
+  diary.saveEntry(PID, { id: "e2", date: "2026-07-06", sentences: ["b"], moodEmoji: "🙂", childPick: "", keptAt: "2026-07-06", imageId: "img2" });
+  chk("AD-8 drawingId 없으면 필드 없음(직렬화 불변식)", !("drawingId" in diary.getEntries(PID).find((x) => x.id === "e2")));
+}
+
+console.log("── AD-6: 부모 도장·편지(setStamp/markStampSeen/getUnseenStamps) ──");
+{
+  _mem.clear();
+  const today = diary.todayKST();
+  diary.saveEntry(PID, { id: "s1", date: "2026-06-20", sentences: ["a"], moodEmoji: "🙂", childPick: "", keptAt: "2026-06-20" });
+  // 도장 찍기
+  diary.setStamp(PID, "s1", { emoji: "❤️", letter: "네 이야기 잘 읽었어" });
+  let e = diary.getEntries(PID)[0];
+  chk("AD-6 setStamp → emoji·letter·at 설정·seenAt null", e.stamp.emoji === "❤️" && e.stamp.letter === "네 이야기 잘 읽었어" && e.stamp.at === today && e.stamp.seenAt === null);
+  // 미확인 목록(편지 있음)
+  let un = diary.getUnseenStamps(PID);
+  chk("AD-6 getUnseenStamps → 미확인 1건·hasLetter true", un.length === 1 && un[0].entryId === "s1" && un[0].hasLetter === true);
+  // seen 처리 → 미확인에서 빠짐
+  diary.markStampSeen(PID, "s1");
+  chk("AD-6 markStampSeen → seenAt 기록", diary.getEntries(PID)[0].stamp.seenAt === today);
+  chk("AD-6 seen 후 getUnseenStamps 0", diary.getUnseenStamps(PID).length === 0);
+  // 변경=덮어쓰기: emoji 교체·letter 비움·seenAt 리셋(다시 미확인)
+  diary.setStamp(PID, "s1", { emoji: "🌟", letter: "" });
+  e = diary.getEntries(PID)[0];
+  chk("AD-6 재도장=덮어쓰기(emoji 교체·seenAt 리셋)", e.stamp.emoji === "🌟" && e.stamp.seenAt === null);
+  un = diary.getUnseenStamps(PID);
+  chk("AD-6 편지 없으면 hasLetter false(도장만 분기)", un.length === 1 && un[0].hasLetter === false);
+  // letter 30자 방어(UI maxLength와 별개)
+  diary.setStamp(PID, "s1", { emoji: "👍", letter: "가".repeat(50) });
+  chk("AD-6 letter store slice(0,30) 방어", diary.getEntries(PID)[0].stamp.letter.length === 30);
+  // 없는 entryId → 무시(throw 없음·무효)
+  diary.setStamp(PID, "nope", { emoji: "🐾" });
+  chk("AD-6 없는 entryId setStamp 무시", diary.getEntries(PID).length === 1);
+  diary.markStampSeen(PID, "nope"); // no-op
+  chk("AD-6 없는 entryId markStampSeen 무시(throw 없음)", true);
+  // 찢기 → stamp 소멸(entry 통삭제, 아이 삭제권 우선)
+  diary.tearEntry(PID, "s1");
+  chk("AD-6 tearEntry → stamp 함께 소멸", diary.getEntries(PID).length === 0 && diary.getUnseenStamps(PID).length === 0);
+}
+
+console.log(`\n결과: ${pass} PASS / ${fail} FAIL`);
+process.exit(fail ? 1 : 0);

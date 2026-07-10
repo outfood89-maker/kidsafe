@@ -9,9 +9,14 @@ import SortGame from "../components/games/SortGame";
 import MathQuiz from "../components/games/MathQuiz";
 import KiddyImg from "../components/KiddyImg";
 import BottomTabBar from "../components/BottomTabBar";
+import KiddyFab from "../components/KiddyFab"; // AD-4 §2 (feature/diary-v0 브랜치 전용)
 import ChatWidget from "../components/ChatWidget";
 import { getGameBonus, saveGameBonus, checkBadges } from "../utils/api";
 import { computeGameBonus } from "../utils/gameBonus";
+import { DIARY_V0 } from "../utils/diaryStore"; // 항목2-⑥: 부모 소개 튜토리얼 게이트
+import useTour from "../hooks/useTour";
+import TourCoachmark from "../components/TourCoachmark";
+import { MINIGAME_TOUR } from "../utils/diaryCopy";
 
 // 듀오링고 스타일 애니메이션 주입
 if (typeof document !== "undefined" && !document.getElementById("minigame-duo-style")) {
@@ -107,6 +112,14 @@ const GAMES = [
   },
 ];
 
+// 미니게임 허브 부모 소개 튜토리얼 — 3정거장. targetId는 아래 앵커(data-tour-id)와 일치. 전부 읽기전용(interactive:false).
+//   ⚠️ MINIGAME_TOUR.stations(diaryCopy)와 1:1 인덱스 매칭. 시드 불필요(앵커 3 상시 마운트).
+export const MINIGAME_TOUR_STATIONS = [ // export: T1(1:1 가드) 테스트 접근용
+  { targetId: "game-list",   interactive: false }, // ① 게임 카드 목록
+  { targetId: "game-bonus",  interactive: false }, // ② 보너스 진행 바
+  { targetId: "game-streak", interactive: false }, // ③ 헤더 스트릭 배지
+];
+
 export default function MiniGame() {
   const navigate = useNavigate();
   const [selectedGame, setSelectedGame] = useState(null);
@@ -116,6 +129,7 @@ export default function MiniGame() {
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [bonusMessage, setBonusMessage] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const tour = useTour(MINIGAME_TOUR_STATIONS); // 부모 소개 튜토리얼 — 시드 없이 훅 기본(start/exit)만
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedProfile");
@@ -280,6 +294,23 @@ export default function MiniGame() {
   return (
     <div className="min-h-screen pb-28" style={{ backgroundColor: "#0A1E1E" }}>
 
+      {/* 부모 소개 튜토리얼 코치마크 — 전 정거장 읽기전용. inert 컨테이너 밖(루트 직속). 시드 없음. */}
+      {tour.isActive && (
+        <TourCoachmark
+          rect={tour.rect}
+          text={MINIGAME_TOUR.stations[tour.step]}
+          step={tour.step}
+          total={tour.total}
+          interactive={tour.station?.interactive}
+          banner={MINIGAME_TOUR.banner}
+          nav={MINIGAME_TOUR.nav}
+          exitCta={MINIGAME_TOUR.exitCta}
+          onPrev={tour.prev}
+          onNext={() => (tour.isLast ? tour.exit() : tour.next())}
+          onExit={tour.exit}
+        />
+      )}
+
       {/* 헤더 */}
       <div
         className="flex items-center justify-between px-4 sticky top-0 z-10"
@@ -291,15 +322,32 @@ export default function MiniGame() {
         <span className="text-base font-extrabold" style={{ color: "#EAF5F1" }}>
           미니게임
         </span>
-        {/* 스트릭 */}
-        <div className="flex items-center gap-1 rounded-full px-3 py-1.5"
-          style={{ backgroundColor: "#3A2F14" }}>
-          <FaFire style={{ color: "#F5B829", fontSize: "14px" }} />
-          <span className="text-sm font-extrabold" style={{ color: "#F5B829" }}>
-            {todayBonus >= maxBonus ? "오늘 완료!" : "도전 중"}
-          </span>
+        {/* 우측: "?" 둘러보기 트리거 + 스트릭 배지 */}
+        <div className="flex items-center gap-2">
+          {DIARY_V0 && !tour.isActive && (
+            <button
+              data-testid="game-tour-btn"
+              onClick={tour.start}
+              title="이 화면 둘러보기"
+              className="flex items-center justify-center rounded-full text-sm font-black transition hover:opacity-80"
+              style={{ width: "32px", height: "32px", backgroundColor: "#163635", color: "#18C49A", border: "1px solid rgba(24,196,154,0.35)" }}
+            >
+              ?
+            </button>
+          )}
+          {/* 스트릭 */}
+          <div className="flex items-center gap-1 rounded-full px-3 py-1.5" data-tour-id="game-streak"
+            style={{ backgroundColor: "#3A2F14" }}>
+            <FaFire style={{ color: "#F5B829", fontSize: "14px" }} />
+            <span className="text-sm font-extrabold" style={{ color: "#F5B829" }}>
+              {todayBonus >= maxBonus ? "오늘 완료!" : "도전 중"}
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* 헤더 아래 콘텐츠 — 투어 중 inert(게임 카드 탭→setSelectedGame 전체화면 진입 차단). display:contents로 레이아웃 보존. */}
+      <div className="contents" inert={tour.isActive}>
 
       {/* 키디 + 메시지 */}
       <div className="flex flex-col items-center pt-6 pb-2 px-5">
@@ -319,7 +367,7 @@ export default function MiniGame() {
       </div>
 
       {/* 보너스 진행 바 — 듀오링고 XP 바 스타일 */}
-      <div className="px-5 py-4">
+      <div className="px-5 py-4" data-tour-id="game-bonus">
         <div className="flex justify-between items-center mb-2">
           <span className="text-xs font-bold" style={{ color: "#90A9A8" }}>오늘 보너스</span>
           <span className="text-xs font-extrabold" style={{ color: "#5FE0BC" }}>
@@ -375,7 +423,7 @@ export default function MiniGame() {
       )}
 
       {/* 게임 카드 목록 */}
-      <div className="px-5 flex flex-col gap-3">
+      <div className="px-5 flex flex-col gap-3" data-tour-id="game-list">
         <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#90A9A8" }}>
           게임 선택
         </p>
@@ -484,6 +532,10 @@ export default function MiniGame() {
         <BottomTabBar activeTab="games" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
 
+      {/* AD-4 §2: 키디 플로팅 (허브 화면만 — 게임 플레이 화면은 별도 return이라 미표시) */}
+      <KiddyFab profile={profile} bottomOffset={84} />
+
+      </div>{/* /inert 콘텐츠 래퍼 */}
     </div>
   );
 }

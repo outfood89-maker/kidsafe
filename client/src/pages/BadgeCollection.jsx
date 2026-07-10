@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getBadges, getProfiles } from "../utils/api";
 import NavBar from "../components/NavBar";
 import BottomTabBar from "../components/BottomTabBar";
+import KiddyFab from "../components/KiddyFab"; // AD-4 §2 (feature/diary-v0 브랜치 전용)
 import ChatWidget from "../components/ChatWidget";
 
 // ⚠️ 서버(server/routers/badges.py get_badge_definitions)와 1:1 동기화 필수.
@@ -235,6 +236,8 @@ export default function BadgeCollection() {
       <div className="md:hidden">
         <BottomTabBar activeTab="badges" chatOpen={chatOpen} onChatToggle={() => navigate("/kiddy-room")} />
       </div>
+      {/* AD-4 §2: 키디 플로팅 */}
+      <KiddyFab profile={profile} bottomOffset={84} />
     </div>
   );
 }

@@ -149,6 +149,8 @@ async def compute_insights(user_id: str, profileId: Optional[str] = "all") -> di
 # GET /reports/insights — 조인 기반 심화 분석
 @router.get("/insights")
 async def get_insights(profileId: Optional[str] = "all", user: dict = Depends(get_current_user)):
+    if profileId and profileId != "all":
+        await get_owned_profile(profileId, user["user_id"])  # 소유권 가드(방어심층·404 통일). 'all'(및 빈값=전체) 집계는 user_id 필터가 커버라 제외.
     return await compute_insights(user["user_id"], profileId)
 
 
@@ -259,6 +261,8 @@ async def generate_coach(child_name: str, child_age: int, insights: dict) -> dic
 @router.get("/coach")
 async def get_coach(profileId: Optional[str] = "all", user: dict = Depends(get_current_user)):
     user_id = user["user_id"]
+    if profileId and profileId != "all":
+        await get_owned_profile(profileId, user_id)  # 소유권 가드(방어심층·404 통일). 'all'(및 빈값) 집계는 user_id 필터가 커버.
     insights = await compute_insights(user_id, profileId)
 
     if insights["totalWatched"] == 0:

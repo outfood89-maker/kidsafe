@@ -16,6 +16,26 @@ html {
   .animate-letter-rise { animation: none; }
 }
 
+/* 그림일기 라이트박스 — 그림 탭 시 살짝 커지며 등장. */
+@keyframes lightboxPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-lightbox-pop { animation: lightboxPop 0.2s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-lightbox-pop { animation: none; }
+}
+
+/* 부모 둘러보기 코치마크 — 대상 강조 링 은은한 펄스. */
+@keyframes tourPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(24,196,154,0.28); }
+  50%      { box-shadow: 0 0 0 6px rgba(24,196,154,0.16); }
+}
+.animate-tour-pulse { animation: tourPulse 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-tour-pulse { animation: none; }
+}
+
 body, #root {
   width: 100%;
   min-height: 100vh;

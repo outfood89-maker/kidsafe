@@ -17,6 +17,19 @@ axios.interceptors.request.use(async (config) => {
   return config
 })
 
+// ── AD-5: 그림일기 이미지 생성 (feature/diary-v0 브랜치 전용) ──
+// 인증 필수 엔드포인트 — 위 인터셉터가 토큰 자동 첨부. { ok, b64, prompt } | { ok:false }
+export const generateDiaryImage = async (payload) => {
+  const response = await axios.post(`${BASE_URL}/diary-image/generate`, payload)
+  return response.data
+}
+
+// ── AD-8: 이어 그리기 (아이 낙서 + AI 완성). payload에 drawingB64(data URL) 포함. { ok, b64, prompt } | { ok:false } ──
+export const continueDiaryImage = async (payload) => {
+  const response = await axios.post(`${BASE_URL}/diary-image/continue`, payload)
+  return response.data
+}
+
 // 키워드로 YouTube 영상 검색
 export const searchVideos = async (keyword) => {
   const response = await axios.get(`${BASE_URL}/search`, {
