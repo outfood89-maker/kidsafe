@@ -6,7 +6,7 @@ import DiaryFlow from "../components/DiaryFlow";
 import KiddyFab from "../components/KiddyFab";
 import DiaryLightbox from "../components/DiaryLightbox";
 import VoiceBar from "../components/VoiceBar"; // B08a: 음성 편지 재생 진행 바(공용)
-import useKiddyVoice, { holdMediaChannelForTTS, releaseMediaChannelHold } from "../hooks/useKiddyVoice"; // B08c §2: 무음 스위치 우회(편지 낭독 — 마이크 없는 화면 전용)
+import useKiddyVoice, { holdMediaChannelForTTS, releaseMediaChannelHold, startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // B08c §2: 무음 스위치 우회(편지 낭독 — 마이크 없는 화면 전용) / P4: 책장 배경음악
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
@@ -73,6 +73,13 @@ export default function FamilyShelf() {
   const location = useLocation();
   const voice = useKiddyVoice();
   const startWriteWanted = useRef(false); // AD-4 §5: 방 초대 '좋아!' 경유 자동 쓰기 의도
+
+  // P4(오너 7/10): 가족 책장도 키즈 구역 — 배경음악 계속(방→책장 이동은 300ms 유예 덕에 끊김 0). 나가면 페이드아웃.
+  useEffect(() => {
+    try { startKiddyBgm(); } catch { /* 무시 */ }
+    return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
+  }, []);
+
   const [profile, setProfile] = useState(null);
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null); // 상세 열람 중인 페이지
