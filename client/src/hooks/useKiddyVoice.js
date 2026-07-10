@@ -8,34 +8,54 @@ import { synthesizeKiddyVoice } from "../utils/api";
 //   앱의 첫 제스처(프로필 선택 등 탭 없이는 진행 불가) 때 무음 wav를 살짝 재생해 엘리먼트를
 //   신뢰 상태로 만들어 두고, 이후 TTS는 새 Audio 대신 이 엘리먼트를 재사용(src 교체)한다.
 //   iOS는 한번 언락된 엘리먼트의 이후 프로그램적 재생을 허용. 데스크톱은 원래 허용이라 무영향.
-const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=="; // 최소 무음 wav
+//   ⚠️ v2(7/10 2차): muted 언락은 iOS가 '사용자 승인 재생'으로 인정 안 함 + data URI wav는 사파리가
+//      거부할 수 있음 + once 리스너·선플래그 = 한 번 실패하면 영구 잠금 → 셋 다 교체:
+//      런타임 생성 진짜 WAV(Blob URL) · 비뮤트 재생(0진폭이라 무음) · 성공할 때까지 매 제스처 재시도.
 const POOL_SIZE = 4; // 동시 마운트되는 useKiddyVoice 인스턴스 수보다 넉넉히
 const audioPool = [];
-let poolUnlocked = false;
+let unlockUrl = null; // 런타임 생성 무음 wav Blob URL(모듈 수명 유지 — revoke 안 함)
+function makeSilentWavUrl() {
+  // 유효한 최소 WAV를 코드로 생성(mono 16bit 8kHz, 무음 샘플 8개) — 포맷 거부 불가
+  const rate = 8000, samples = 8;
+  const buf = new ArrayBuffer(44 + samples * 2);
+  const v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + samples * 2, true); w(8, "WAVE");
+  w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, "data"); v.setUint32(40, samples * 2, true); // 샘플은 0(무음)
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
 function ensurePool() {
   if (typeof Audio === "undefined") return;
   while (audioPool.length < POOL_SIZE) audioPool.push(new Audio());
 }
-function unlockPool() {
-  if (poolUnlocked) return;
-  poolUnlocked = true;
+function blessPool() {
+  // 제스처 핸들러 '안'에서 호출됨 — 풀에서 쉬는 엘리먼트를 무음(비뮤트) 재생으로 언락.
   ensurePool();
+  if (!audioPool.length) return;
+  try { if (!unlockUrl) unlockUrl = makeSilentWavUrl(); } catch { return; }
   audioPool.forEach((a) => {
+    if (a._kiddyBlessed) return; // 이미 언락 — no-op(매 제스처 호출돼도 비용 0)
     try {
-      a.muted = true; a.src = SILENT_WAV;
+      a.src = unlockUrl;
       const p = a.play();
-      if (p?.then) p.then(() => { try { a.pause(); } catch { /* noop */ } a.muted = false; }).catch(() => { a.muted = false; });
-      else a.muted = false;
-    } catch { a.muted = false; }
+      if (p?.then) p.then(() => { a._kiddyBlessed = true; try { a.pause(); a.currentTime = 0; } catch { /* noop */ } }).catch(() => { /* 다음 제스처에 재시도 */ });
+      else a._kiddyBlessed = true;
+    } catch { /* 다음 제스처에 재시도 */ }
   });
 }
 if (typeof document !== "undefined") {
-  // 첫 제스처 1회에 전 풀 언락(캡처 단계 — 어떤 버튼이든). once라 이후 비용 0.
-  document.addEventListener("pointerdown", unlockPool, { once: true, capture: true });
-  document.addEventListener("touchend", unlockPool, { once: true, capture: true });
-  document.addEventListener("keydown", unlockPool, { once: true, capture: true });
+  // once 아님 — 성공할 때까지 모든 제스처에서 재시도(한 번 실패=영구 잠금 방지). 언락 후엔 플래그 체크만이라 비용 0.
+  document.addEventListener("pointerdown", blessPool, { capture: true });
+  document.addEventListener("touchend", blessPool, { capture: true });
 }
-function acquireAudio() { ensurePool(); return audioPool.pop() || (typeof Audio !== "undefined" ? new Audio() : null); }
+function acquireAudio() {
+  ensurePool();
+  const i = audioPool.findIndex((a) => a._kiddyBlessed); // 언락된 엘리먼트 우선
+  const el = i >= 0 ? audioPool.splice(i, 1)[0] : audioPool.pop();
+  return el || (typeof Audio !== "undefined" ? new Audio() : null);
+}
 function releaseAudio(a) {
   if (!a) return;
   try { a.onended = null; a.pause(); a.removeAttribute("src"); } catch { /* noop */ }
@@ -99,8 +119,14 @@ export default function useKiddyVoice() {
         pump();                                   // 다음 자리로
       }
     };
-    // 자동재생 차단(사용자 제스처 전) 등은 조용히 무시 — 음성은 보조 기능
-    audio.play().catch(() => { /* noop */ });
+    // 자동재생 차단(제스처 밖 재생 거부) 시 대사를 버리지 않고 '다음 탭'에서 재시도 —
+    // 탭 핸들러 안에서 play()가 다시 불리므로 iOS가 반드시 허용(★2차 안전망, 첫 인사 등 무제스처 진입 커버).
+    audio.play().catch(() => {
+      if (audioRef.current === audio) audioRef.current = null; // 재생 실패 표시 → pump 재진입 가능
+      if (typeof document !== "undefined") {
+        document.addEventListener("pointerdown", () => pump(), { once: true, capture: true });
+      }
+    });
   }, []);
 
   const revokeClips = useCallback(() => {
