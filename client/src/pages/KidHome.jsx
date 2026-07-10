@@ -1048,7 +1048,7 @@ export default function KidHome() {
         {/* YouTube API 할당량 초과 안내 */}
         {quotaError && (
           <div className="mb-4 px-4 py-4 text-center" style={{ backgroundColor: "#FFF0EF", borderRadius: "14px", border: "1px solid #F5C6C5" }}>
-            <p className="text-base font-bold" style={{ color: "#C84B47" }}>오늘은 검색을 많이 했어! 내일 또 찾아보자 😊</p>
+            <p className="text-base font-bold" style={{ color: "#C84B47" }}>오늘 검색 횟수를 다 썼어요! 내일 또 만나~</p>
             <p className="text-sm mt-1" style={{ color: "#6B7A65" }}>그동안 키디가 미리 골라둔 영상 보러 가자!</p>
           </div>
         )}
