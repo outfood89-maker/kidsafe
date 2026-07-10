@@ -1,0 +1,24 @@
+# Kiddy (KidSafe) — 실행에 필요한 환경변수 목록 (이름만, 값 없음)
+# 심사·검토용 참고 문서입니다. 실제 값은 배포 환경(Railway/Vercel)에만 존재하며 소스에 포함되지 않습니다.
+
+## 백엔드 (server/ — FastAPI, Railway)
+ANTHROPIC_API_KEY=            # Claude API — 키디 대화·체크인 반응·리포트·정밀 검수
+OPENAI_API_KEY=               # 그림일기 이미지 생성·이어그리기 (gpt-image-1 계열)
+YOUTUBE_API_KEY=              # YouTube Data API v3 — 영상 검색·메타데이터
+CLOVA_VOICE_CLIENT_ID=        # 네이버 CLOVA Voice — 키디 음성(TTS)
+CLOVA_VOICE_CLIENT_SECRET=    #   〃
+SUPABASE_URL=                 # Supabase 프로젝트 URL (DB·인증)
+SUPABASE_SECRET_KEY=          # Supabase 서버용 시크릿 키
+
+## 백엔드 — 선택(모델 오버라이드, 미설정 시 코드 기본값 사용)
+IMAGE_PROMPT_MODEL=           # 그림일기 프롬프트 변환 모델 (기본 claude-sonnet-5)
+OPENAI_IMAGE_MODEL=           # 일반 그림 생성 모델
+OPENAI_CONTINUE_MODEL=        # 이어그리기 편집 모델
+REPORT_MODEL=                 # 주간 리포트·AI 코치 모델 (기본 claude-sonnet-5)
+
+## 프론트엔드 (client/ — Vite 빌드 시 주입, Vercel)
+VITE_API_URL=                 # 백엔드 API 베이스 URL
+VITE_SUPABASE_URL=            # Supabase 프로젝트 URL
+VITE_SUPABASE_PUBLISHABLE_KEY=# Supabase 공개(퍼블리셔블) 키 — 클라이언트용 공개 키
+
+# 참고: 서버 포트는 Railway가 $PORT로 주입 (Procfile: uvicorn main:app --host 0.0.0.0 --port $PORT)
