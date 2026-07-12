@@ -262,10 +262,17 @@ function blessPool() {
   // WebAudio 컨텍스트도 최초 1회 제스처 언락(resume 후 즉시 suspend — 인식과의 공존 위해 평소엔 잠재움).
   // ⚠️ 매 제스처 resume 금지: 마이크 탭에서 ctx가 깨어나면 인식이 다시 죽는다(언락 1회만).
   const ctx = getCtx();
-  if (ctx && ctx.state === "suspended" && !ctx._kiddyUnlocked) {
-    try {
-      ctx.resume().then(() => { ctx._kiddyUnlocked = true; suspendCtxForMic(); }).catch(() => { /* 다음 제스처 재시도 */ });
-    } catch { /* noop */ }
+  if (ctx && !ctx._kiddyUnlocked) {
+    if (ctx.state === "running") {
+      // 제스처 안에서 갓 생성된 ctx는 'running'으로 태어남(브라우저 정책) — 이미 재생 허용 상태이므로 플래그만 동기화.
+      // (이 분기 누락이 '첫 진입 인터뷰만 BGM 무음' 사고의 원인: TTS는 running이면 플래그를 안 보고 재생돼 증상이 숨었음)
+      // ⚠️ 여기서 suspendCtxForMic() 호출 금지 — TTS가 재생 중일 수 있음(끝나면 trackTtsEnd가 알아서 반납).
+      ctx._kiddyUnlocked = true;
+    } else if (ctx.state === "suspended") {
+      try {
+        ctx.resume().then(() => { ctx._kiddyUnlocked = true; suspendCtxForMic(); }).catch(() => { /* 다음 제스처 재시도 */ });
+      } catch { /* noop */ }
+    }
   }
   ensurePool();
   if (!audioPool.length) return;
