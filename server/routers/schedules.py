@@ -27,7 +27,7 @@ router = APIRouter()
 
 KST = timezone(timedelta(hours=9))
 AGENT_MODEL = "claude-haiku-4-5-20251001"  # 비용 절약. 설계(operations) 수정으로 Haiku 한계 보완 시도 중.
-# 복합명령·애매한 말투에서 부족하면 "claude-sonnet-4-6" 로 올리면 됨(약 3배 비용, 추론 강함).
+# 복합명령·애매한 말투에서 부족하면 "claude-sonnet-5" 로 올리면 됨(약 3배 비용, 추론 강함).
 
 # 허용 타입 (프론트 칩과 일치). 그 외 값이 와도 막지 않되 기본은 '일정'.
 SCHEDULE_TYPES = ["일정", "이벤트", "음식", "상태"]
