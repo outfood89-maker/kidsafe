@@ -11,6 +11,11 @@
   - ⚠️ 윤리 선: 키디는 아이의 '비밀 친구'. 부모에겐 **아이가 공유 선택한 것 + 감정 흐름 요약만** 전달(원본 대화 노출 금지).
   - 상세: `UPDATE_1/KidSafe_정체성전환_전략.md`(전략) / `UPDATE_1/KidSafe_ClaudeCode_작업지시서.md`(구현 명세)
 
+## 🧭 협업 체제 (4인) — `prompts/`
+- Claude Code 창 3개로 나눠 돌린다: **팀장**(전략·아동 카피 게이트) / **컨트롤타워**(설계·브리프·리뷰·커밋) / **작업자**(구현, 커밋 보류). 오너(Freddie)가 복사-붙여넣기로 중계.
+- 시스템 프롬프트 3종 + 사용법: **`prompts/README.md`** 부터 읽을 것.
+- ⚠️ 팀장 프롬프트는 원래 git에 없어 유실 직전이었음(2026-08-01 백업 폴더에서 복구). **`prompts/`는 반드시 커밋 유지.**
+
 ## 기술 스택
 - 프론트: React 19, React Router v7, Tailwind CSS, Axios, Recharts, react-icons
 - 백엔드: FastAPI (Python) — `server/` 폴더, uvicorn으로 실행 / Express 백업: `server_backup/`
