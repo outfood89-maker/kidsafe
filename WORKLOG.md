@@ -13,7 +13,7 @@
 
 - **개발 환경**: 맥(Apple Silicon) 신규 세팅 **완료**. 바로 실행 가능한 상태.
 - **작업 폴더**: `~/Desktop/kidsafe` ← **앞으로 여기서만 작업**
-- **git**: `master` = `4ef5bd1` — ⚠️ **`prompts/` 관련 미커밋 변경 있음** (아래 세션 로그 참조)
+- **git**: `master` — 원격과 동기화됨. 마지막 실작업 커밋 = `9f67cae` (`prompts/` 통합)
 - **협업 체제**: 4인(팀장·컨트롤타워·작업자) 프롬프트 3종을 **`prompts/`** 로 정리 완료 → `prompts/README.md`
 - **무게중심**: 정체성 전환 **P0** — F0 관심사 씨앗 / F1 키디 환영+체크인 / F2 부모 리포트
 - **진행 중인 구현 작업**: 없음 (환경 세팅·문서 정비만 했음)
@@ -112,7 +112,7 @@ git push origin master
 7. **깨진 링크 수정** — `kiddy_voice/ARCHIVE-dev-process.md:25`의 `../control-tower-role.md` → 새 경로.
 8. **`CLAUDE.md`에 협업 체제 섹션 신설** — `prompts/` 존재를 하네스에 박아 다음 세션이 또 헤매지 않게.
 
-**커밋:** 아직 없음 — **미커밋 상태**. 다음 세션 시작 시 `git status` 확인할 것.
+**커밋:** `9f67cae` `docs: 역할 프롬프트 3종 prompts/ 로 통합 + 팀장 프롬프트 복구` (7파일, +199/−9) — `origin/master` 푸시 완료
 
 **알게 된 것**
 
