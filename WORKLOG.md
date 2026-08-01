@@ -16,7 +16,8 @@
 - **git**: `master` — 원격과 동기화됨.
 - **협업 체제**: 4인(팀장·컨트롤타워·작업자) 프롬프트 3종을 **`prompts/`** 로 정리 완료 → `prompts/README.md`.
 - **정체성 전환 P0 상태**: **F0·F1·F2 = 완료 확정** (2026-08-02 코드 전수 검증 + 적대 검증). **F3 = 미착수**.
-- **다음 무게중심**: ① **DB 스키마 레포 미보관**(최우선 리스크, 지뢰 #6) ② F3 착수 여부 결정 ③ 고도화 4축(`Kiddy_고도화_계획서_v2.md`)
+- **DB 스키마**: 지뢰 #6 **해소** — P0 테이블 3종 + `profiles` 4컬럼을 `server/sql/004_identity_p0_tables.sql`로 박제(2026-08-02). ⚠️ **실 DB 실행(Supabase SQL Editor)은 오너 수동 — 아직 미실행**.
+- **다음 무게중심**: ① **F3 착수 여부 결정** ② 고도화 4축(`Kiddy_고도화_계획서_v2.md`) ③ 리포트 502 폴백(지뢰 #10)
 - **진행 중인 구현 작업**: 없음
 
 ---
@@ -92,7 +93,7 @@ git push origin master
 | 3 | 옛 백업 폴더 | `~/Desktop/백업자료/.../Kiddy_전체백업_2026-07-23/kidsafe` 는 **git 저장소가 아니고**, `CHECKIN_TEST_PROFILE = "해인"` 이 켜진 채로 남아있다. **여기서 코드를 가져다 쓰지 말 것** |
 | 4 | YouTube API | 과호출 시 429 → 서버가 500 반환. 쿼터 초기화는 **매일 오후 4시(KST)**. 프론트 안내 문구 **미구현** |
 | 5 | `kiddy_voice/*~1*.MD` | 윈도우 8.3로 뭉개진 파일 4개(`KI009F~1` `KI7A19~1` `그림일기/KI366E~1` `그림일기/KI7155~1`). **한글 이름 검색·`*.md` 필터 양쪽에서 빠진다.** 문서를 "없다"고 판정하기 전에 **내용을 열어 확인할 것** (실사고: 설계 v2를 유실로 오분류) |
-| **6** 🔴 | `server/sql/` | **DB 스키마가 레포에 없다.** `daily_checkins`·`parent_reports` CREATE TABLE, `profiles.interests`/`interest_source`, `continuous_play` 전부 부재(Supabase 콘솔에서 직접 생성됨, 근거는 작업지시서 문서뿐). **`schema.sql`로 재프로비저닝하면 F0 저장·F1 저장·F2 캐싱이 한꺼번에 깨진다.** → 실 DB에서 덤프해 커밋 필요 |
+| ~~**6**~~ ✅ | `server/sql/004_identity_p0_tables.sql` | ~~**P0 테이블 DDL이 레포에 없다.**~~ **해소(2026-08-02).** 누락은 테이블 **3종**(`daily_checkins`·`parent_reports`·`report_coach`)과 `profiles` 확장 **4컬럼**(`continuous_play`·`parent_pin`·`interests`·`interest_source`)이었다(`continuous_play`는 테이블이 아니라 profiles 컬럼 — 옛 문구 오류). 실 DB 덤프를 `004_identity_p0_tables.sql`로 박제해 커밋. **검증: 코드가 쓰는 테이블 21종이 `server/sql/`에 전부 정의됨(차집합 0).** |
 | **7** | 새 기기 세팅 (macOS) | **Python `.pkg` 설치는 SSL 인증서가 별도 단계다.** 안 하면 `PyJWKClient`가 Supabase JWKS를 못 받아 **모든 API가 401 "유효하지 않은 인증 토큰"**이 된다(토큰은 멀쩡한데!). curl·브라우저는 시스템 인증서를 써서 정상이라 원인 파악이 어렵다. → `/Applications/Python\ 3.12/Install\ Certificates.command` 실행 후 **서버 재시작**(전역 `_jwks_client` 캐시 때문) |
 | **8** | `server/auth.py:95` | `except Exception`이 **SSL 오류·설정 오류까지 전부 "유효하지 않은 인증 토큰"으로 둔갑**시킨다(지뢰 #7의 원인 파악을 어렵게 만든 장본인). 인증 문제 디버깅 시 이 지점에 임시 로그를 넣고 실제 예외를 볼 것 |
 | **9** | `server/routers/reports.py:359-364` | `_period_range`가 `days = 7 if period == "week" else 7` — **어떤 값을 넣어도 7일**. 현재 프론트는 `week`만 써서 무해하나, 기간 옵션 추가 시 함정 |
@@ -101,6 +102,62 @@ git push origin master
 ---
 
 ## 📜 세션 로그
+
+### 2026-08-02 (2) — P0 테이블 스키마 레포 복원 (지뢰 #6 해소)
+
+**배경:** F0·F1·F2가 딛고 선 테이블들이 Supabase 콘솔에서 직접 생성돼 레포에 DDL이 없었다. `server/sql/`로 재프로비저닝하면 세 기능이 동시에 무너지는 상태. **새 설계가 아니라 실 DB 덤프를 파일로 박제한 작업**이다.
+
+---
+
+#### 1. 복원 대상 — 테이블 3종 + `profiles` 확장 4컬럼
+
+신규 파일 **`server/sql/004_identity_p0_tables.sql`** (명명 규칙 `001`~`003` 승계).
+
+| 대상 | 내용 | 코드 사용처 |
+|---|---|---|
+| `daily_checkins` | F1 아이 데일리 체크인. `(profile_id, checkin_date)` UNIQUE + `idx_daily_checkins_profile_date` | `checkins.py`(저장·조회·공유토글) / `reports.py:593,607` / `badges.py:368` |
+| `parent_reports` | F2 "키디의 한 주" 캐시. `(profile_id, period_start, period_end)` UNIQUE + `idx_parent_reports_profile_period` | `reports.py:635`(조회) · `683-687`(delete-then-insert) |
+| `report_coach` | AI 코치 결과 캐시. **UNIQUE 없음이 정상** — 코드가 delete 후 insert로 스코프당 1행 유지 | `reports.py:275`(조회) · `300-304` |
+| `profiles` +4컬럼 | `continuous_play` · `parent_pin` · `interests` · `interest_source` | `profiles.py:38-40,136-141` / `checkins.py:214` / `pin_utils.py` |
+
+**옛 지뢰 문구 정정:** 지뢰 #6은 `continuous_play`를 테이블처럼 적었으나 실제로는 `profiles` 컬럼이고, `report_coach` 누락은 아예 빠져 있었다. → 지뢰 표 문구를 실측 기준으로 교체.
+
+**보존 결정(임의 개선 금지):**
+- `user_id`에 **FK를 붙이지 않았다.** `schedules` 등 다른 테이블은 `references auth.users(id)`를 갖지만 **실 DB의 이 3개 테이블엔 FK가 없다.** 관례에 맞추는 순간 박제가 아니라 새 설계가 된다.
+- `daily_checkins.user_id`·`parent_reports.user_id`는 **NULL 허용** (덤프 그대로).
+- **RLS 켜되 정책 0건** — 누락이 아니라 의도된 fail-closed(백엔드 service key 전용 접근).
+- `interest_source` CHECK는 **`DO` 블록으로 감쌌다.** Postgres `add constraint`에는 `if not exists`가 없어 재실행 시 42710으로 죽고, Supabase SQL Editor는 스크립트를 한 트랜잭션으로 돌려 **앞 문장까지 통째로 롤백**된다.
+- `schema.sql`은 **무접촉.** profiles 확장은 004에서 `alter table ... add column if not exists`로만.
+
+#### 2. 🔒 게이트 2건 — 오너가 실 DB에서 확인해 확정
+
+| 게이트 | 실측 | 반영 |
+|---|---|---|
+| A `report_coach.id` | `is_identity=YES`, `identity_generation=**ALWAYS**` | `bigint primary key generated **always** as identity` |
+| B `profiles.interests` | `data_type=**jsonb**`, `is_nullable=NO`, `default='[]'::jsonb` | `jsonb not null default '[]'::jsonb` (초안 그대로 — `text[]` 분기 폐기) |
+
+⚠️ `always`는 **명시적 id INSERT를 거부한다(SQLSTATE `428C9`)**. 현재 코드는 id를 안 보내 정상이나(`reports.py:301`), 데이터 복원·백필로 id를 직접 넣어야 하면 `insert ... overriding system value`가 필요하다 → 파일 주석에 명시.
+
+#### 3. 검증 — 차집합 0
+
+코드가 `sb_*()`로 실제 접근하는 테이블 **21종** 중 `server/sql/`에 DDL이 없는 것을 뽑는 차집합:
+
+```bash
+comm -23 \
+  <(grep -rhoE 'sb_(select|insert|upsert|update|delete)\(\s*"[a-z_]+"' server/ --include="*.py" | grep -oE '"[a-z_]+"' | tr -d '"' | sort -u) \
+  <(grep -rhoiE "create table if not exists (public\.)?[a-z_]+" server/sql/*.sql | sed 's/.*exists //I; s/public\.//' | sort -u)
+```
+
+- **작업 전:** `daily_checkins` · `parent_reports` · `report_coach` (3건)
+- **작업 후:** **출력 없음(차집합 0)** — 21종 전부 레포에 정의됨.
+
+#### 4. ⚠️ 실 DB 실행은 오너 수동
+
+이 세션에서 **실 DB에 DDL을 실행하지 않았다.** 파일 박제까지가 범위이며, `Supabase 대시보드 → SQL Editor` 실행은 오너 몫이다. 재실행 안전하게 작성됨(`if not exists` + `DO` 블록).
+
+**커밋:** `_(커밋 후 SHA 기입 — 컨트롤타워)_`
+
+---
 
 ### 2026-08-02 — F0~F2 완료 확정 (코드 전수 검증) + 인증 401 사고 해결
 
@@ -166,7 +223,7 @@ macOS에 Python을 공식 `.pkg`로 설치하면 **루트 인증서 설치가 �
 
 | 우선순위 | 할 일 |
 |---|---|
-| 🔴 최우선 | **DB 스키마 덤프해 `server/sql/`에 커밋** (지뢰 #6). 실 DB에서 `daily_checkins`·`parent_reports`·`profiles` 확장 컬럼·`continuous_play` DDL 추출 |
+| ✅ 완료 | ~~DB 스키마 덤프해 `server/sql/`에 커밋(지뢰 #6)~~ → `004_identity_p0_tables.sql` 로 완료(2026-08-02) |
 | 중 | F3 착수 여부 오너 판단 |
 | 중 | `reports.py` 리포트 502 폴백 추가(지뢰 #10) — 계산된 타임라인만이라도 살리기 |
 | 하 | `KidHome.jsx:38` 주석 stale 정정('테스트 켜짐'인데 값은 `""`) |
