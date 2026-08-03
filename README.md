@@ -4,7 +4,7 @@
 > 공룡 친구 **키디**가 아이의 하루를 묻고, 그 대답이 그림일기가 되어 부모에게 전해지는 서비스
 
 🔗 **배포 주소**: [https://kidsafe-eight.vercel.app](https://kidsafe-eight.vercel.app)
-📖 **데모 체험 가이드**: [심사위원_가이드/README.md](심사위원_가이드/README.md) (데모 계정·추천 체험 동선)
+📖 **데모 체험 가이드**: [심사위원_가이드/README.md](문서/소개자료/심사위원_가이드/README.md) (데모 계정·추천 체험 동선)
 
 ---
 
@@ -62,7 +62,7 @@ Kiddy는 '영상 검수 도구'가 아니라 **아이의 첫 미디어 경험 �
 
 - Tier 2에서 90점 이상을 반복 판정받은 채널은 **자동 신뢰 채널**로 등록됩니다.
 - 안전도 기준: **90점 이상 안전(green) / 70~89 주의(yellow) / 69 이하 위험(red)**
-- 상세 설계: [KidSafe_검수아키텍처_핵심설계.md](KidSafe_검수아키텍처_핵심설계.md)
+- 상세 설계: [KidSafe_검수아키텍처_핵심설계.md](문서/설계/KidSafe_검수아키텍처_핵심설계.md)
 
 ---
 
@@ -224,11 +224,11 @@ kidsafe/
 |---|---|
 | [CLAUDE.md](CLAUDE.md) | **개발 규칙 · 과거 실수 방지 하네스 (작업 전 필독)** |
 | [ENV_SAMPLE.txt](ENV_SAMPLE.txt) | 환경변수 이름 목록 |
-| [심사위원_가이드/README.md](심사위원_가이드/README.md) | 데모 계정 · 추천 체험 동선 |
+| [심사위원_가이드/README.md](문서/소개자료/심사위원_가이드/README.md) | 데모 계정 · 추천 체험 동선 |
 | [UPDATE_1/](UPDATE_1/) | 정체성 전환 전략 + Claude Code 작업지시서 |
-| [KidSafe_검수아키텍처_핵심설계.md](KidSafe_검수아키텍처_핵심설계.md) | Tier 0~2 검수 설계 |
-| [KidSafe_기능명세서.md](KidSafe_기능명세서.md) | 전체 기능 명세 |
-| [CONTEXT.md](CONTEXT.md) | 개발 히스토리 |
+| [KidSafe_검수아키텍처_핵심설계.md](문서/설계/KidSafe_검수아키텍처_핵심설계.md) | Tier 0~2 검수 설계 |
+| [KidSafe_기능명세서.md](문서/설계/KidSafe_기능명세서.md) | 전체 기능 명세 |
+| [CONTEXT.md](문서/아카이브/CONTEXT.md) | 개발 히스토리 |
 
 ---
 

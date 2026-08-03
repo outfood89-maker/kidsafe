@@ -31,7 +31,7 @@
 - 배포: Vercel (프론트 `https://kidsafe-eight.vercel.app`) + Railway (백엔드 `https://kidsafe-production.up.railway.app`)
 
 ## 남은 작업 우선순위
-- ✅ **검수 고도화 (Tier0~2): 사실상 완료** — 자막+썸네일 Vision+Claude 정밀분석·캐싱·채널학습까지 구현됨. (설계: `KidSafe_검수아키텍처_핵심설계.md`) 남은 건 정확도 튜닝뿐.
+- ✅ **검수 고도화 (Tier0~2): 사실상 완료** — 자막+썸네일 Vision+Claude 정밀분석·캐싱·채널학습까지 구현됨. (설계: `문서/설계/KidSafe_검수아키텍처_핵심설계.md`) 남은 건 정확도 튜닝뿐.
 - 🟢 **현재 무게중심 = 정체성 전환 P0** (`UPDATE_1/KidSafe_ClaudeCode_작업지시서.md` TASK 순서):
   - F0 관심사 씨앗(InterestSeed) / F1 키디 환영+체크인(DailyCheckin) / F2 부모 리포트(KiddyReportCard) — 데모의 심장. **✅ 3건 모두 완료 확정**(2026-08-02 코드 전수 검증 + 적대 검증, 근거는 `WORKLOG.md` 세션 로그).
   - F3 리터러시 한 스푼은 **미착수**. 착수 시에도 작게(질문 풀 로컬·LLM 0). 7세+ 자유 대화는 '다음' 단계.
