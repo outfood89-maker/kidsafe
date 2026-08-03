@@ -3,7 +3,8 @@
 ## 프로젝트 개요
 - AI 기반 어린이 미디어 안전 및 추천 플랫폼
 - 개발자: Freddie (초급 프론트엔드, 포트폴리오 목적)
-- 목표: 7월 초 완성 / GitHub: https://github.com/outfood89-maker/kidsafe
+- 현황: KT 공모전 본상 후보 — 시상식 2026-08-14(금) / 고도화 착수 예정 2026-08-17(월)
+- GitHub: https://github.com/outfood89-maker/kidsafe
 - **정체성(현재 방향, UPDATE_1 기준):** '영상 검수 도구'가 아니라 **'아이의 첫 미디어 경험 공간'**.
   - 정체성(B) = 키디와 함께하는 첫 미디어 경험 / 해자·증거(A) = 대단한 검수.
   - **B가 부모 가슴을 치고, A가 그것을 믿게 만든다.** 검수는 잘하는 기본기, 관계가 방어 가능한 정체성.
@@ -12,7 +13,7 @@
   - 상세: `UPDATE_1/KidSafe_정체성전환_전략.md`(전략) / `UPDATE_1/KidSafe_ClaudeCode_작업지시서.md`(구현 명세)
 
 ## 🧭 협업 체제 (4인) — `prompts/`
-- Claude Code 창 3개로 나눠 돌린다: **팀장**(전략·아동 카피 게이트) / **컨트롤타워**(설계·브리프·리뷰·커밋) / **작업자**(구현, 커밋 보류). 오너(Freddie)가 복사-붙여넣기로 중계.
+- Claude Code 창 3개로 나눠 돌린다: **팀장**(전략·아동 카피 게이트) / **컨트롤타워**(설계·브리프·리뷰·커밋) / **작업자**(구현). 오너(Freddie)가 복사-붙여넣기로 중계. 커밋 규칙은 아래 **커밋 게이트** 참조.
 - 시스템 프롬프트 3종 + 사용법: **`prompts/README.md`** 부터 읽을 것.
 - ⚠️ 팀장 프롬프트는 원래 git에 없어 유실 직전이었음(2026-08-01 백업 폴더에서 복구). **`prompts/`는 반드시 커밋 유지.**
 - **기록 문서 2종 — 성격이 다르니 섞지 말 것**
@@ -24,18 +25,19 @@
 
 ## 기술 스택
 - 프론트: React 19, React Router v7, Tailwind CSS, Axios, Recharts, react-icons
-- 백엔드: FastAPI (Python) — `server/` 폴더, uvicorn으로 실행 / Express 백업: `server_backup/`
+- 백엔드: FastAPI (Python) — `server/` 폴더, uvicorn으로 실행 (초기 Express 구현은 폐기됨)
 - AI: Anthropic API — 실시간 상호작용(챗봇·체크인 반응/인사·스케줄)은 `claude-haiku-4-5-20251001`, **주간 리포트·AI 코치는 Sonnet 승격**(`reports.py`의 `REPORT_MODEL` 환경변수, 기본 `claude-sonnet-5`)
 - 영상: YouTube Data API v3
-- 아바타: 로컬 PNG (avatar_01~08.png) — DiceBear 제거
+- 아바타: 로컬 PNG (`client/public/images/avatars/avatar_01~08.png`)
 - 배포: Vercel (프론트 `https://kidsafe-eight.vercel.app`) + Railway (백엔드 `https://kidsafe-production.up.railway.app`)
 
 ## 남은 작업 우선순위
 - ✅ **검수 고도화 (Tier0~2): 사실상 완료** — 자막+썸네일 Vision+Claude 정밀분석·캐싱·채널학습까지 구현됨. (설계: `문서/설계/KidSafe_검수아키텍처_핵심설계.md`) 남은 건 정확도 튜닝뿐.
 - 🟢 **현재 무게중심 = 정체성 전환 P0** (`UPDATE_1/KidSafe_ClaudeCode_작업지시서.md` TASK 순서):
   - F0 관심사 씨앗(InterestSeed) / F1 키디 환영+체크인(DailyCheckin) / F2 부모 리포트(KiddyReportCard) — 데모의 심장. **✅ 3건 모두 완료 확정**(2026-08-02 코드 전수 검증 + 적대 검증, 근거는 `WORKLOG.md` 세션 로그).
-  - F3 리터러시 한 스푼은 **미착수**. 착수 시에도 작게(질문 풀 로컬·LLM 0). 7세+ 자유 대화는 '다음' 단계.
-  - ⚠️ 다음 무게중심은 **DB 스키마 레포 미보관**(`WORKLOG.md` 지뢰 #6) — 재프로비저닝 시 F0~F2가 한꺼번에 깨진다.
+  - F3 리터러시 한 스푼은 **보류 확정**(2026-08-02, 근거: `kiddy_voice/F3-리터러시한스푼-판단자료.md`). 7세+ 자유 대화는 '다음' 단계.
+  - ✅ 지뢰 #6(DB 스키마 레포 미보관) **해소 완료** — `server/sql/004_identity_p0_tables.sql` 박제 + 실 DB 실행 검증(2026-08-02).
+- 🔵 **다음 무게중심 = 고도화 (2026-08-17 착수)** — 전체 지도·체크리스트 36항목은 `고도화/README.md`. 최대 관문은 **그림일기 서버 이전**(현재 브라우저 로컬 저장이라 TV·앨범·타임캡슐이 전부 여기 막혀 있음).
 
 ## ⚠️ FastAPI 핵심 주의사항
 - Railway 재시작 시 JSON 초기화됨 → `main.py`의 `ensure_data_files()`로 해결
@@ -43,19 +45,20 @@
 - FastAPI에서 Anthropic은 반드시 `AsyncAnthropic` 사용 (sync 쓰면 블로킹)
 - API 엔드포인트 주소 동일하게 유지 → 프론트 코드 수정 불필요
 - **라우터 추가 시 반드시 `main.py`에 import + `include_router` 등록할 것** — 누락 시 404 (chat 라우터 누락 사고 발생)
-- **FastAPI 응답 JSON 형태를 Express와 100% 동일하게 유지** — 프론트가 `{ ...video, ...safety }` 패턴으로 spread하므로 필드 추가 시 원본 데이터 덮어쓰기 위험 (videoId 덮어쓰기 사고 발생)
+- **응답 JSON에 필드를 추가할 때 키 충돌 주의** — 프론트가 `{ ...video, ...safety }` 패턴으로 spread하므로, 같은 키가 있으면 **원본 데이터를 덮어쓴다** (videoId 덮어쓰기 사고 발생)
 - **외부 API(YouTube 등) 응답 dict 접근은 반드시 `.get()`으로** — JS는 undefined로 넘어가지만 Python은 KeyError로 500 터짐 (예: `item["id"]["videoId"]` → `item.get("id", {}).get("videoId")`)
 - **Pydantic 모델의 Optional 필드는 `Optional[str]` 등으로 선언** — 프론트가 `null`을 명시적으로 보낼 경우 `str` 타입이면 422 Unprocessable Entity 발생 (chat profileName/profileAge 사고 발생)
 
 ## 중요 설정
 
-### 안전도 분석
-- 현재: 키워드 기반 (Anthropic 크레딧 절약 목적) — `server/routers/analyze.py`
-- Anthropic API 사용처: `chat.py`·`checkins.py`(반응/인사)·`kiddy_greeting.py`·`schedules.py`는 Haiku, `reports.py`(리포트·코치)는 Sonnet(`REPORT_MODEL`), `analyze.py` Tier2 정밀검수는 Haiku Vision. (안전도 기본 채점은 여전히 키워드 기반)
+### 안전도 분석 (`server/routers/analyze.py`)
+- **2층 구조** — 기본 채점은 **키워드 기반**(크레딧 절약), 그 위에 **Tier1~2 정밀검수**(자막·썸네일 Vision + Claude)가 얹힌다. 대체가 아니라 층위다.
+- Anthropic 모델 배치: `chat.py`·`checkins.py`(반응/인사)·`kiddy_greeting.py`·`schedules.py`는 Haiku, `reports.py`(리포트·코치)는 Sonnet(`REPORT_MODEL`), `analyze.py` Tier2 정밀검수는 Haiku Vision. (안전도 기본 채점은 여전히 키워드 기반)
 
 ### 모바일 테스트
-- `api.js` BASE_URL을 PC의 로컬 IP로 변경 (예: `http://172.30.1.56:3000`)
-- 배포 전 BASE_URL이 로컬 IP로 남아있지 않은지 반드시 확인
+- `client/.env`의 **`VITE_API_URL`** 에 PC 로컬 IP를 넣는다 (예: `http://172.30.1.56:3000`).
+- ⚠️ **`api.js` 코드를 직접 고치지 말 것** — 기본값 `http://localhost:3000`을 환경변수로 덮는 구조다(`api.js:4`).
+- ⚠️ 배포 전 `.env`에 로컬 IP가 남아있지 않은지 반드시 확인 (`WORKLOG.md` 지뢰 #2)
 
 ### Git 커밋 방식 (Freddie 선호)
 ```bash
