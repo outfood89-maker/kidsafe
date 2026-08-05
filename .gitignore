@@ -25,3 +25,8 @@ _test_out/
 
 # Claude Code 로컬 설정(머신별·비작업물)
 .claude/
+
+# .env 백업본 — 키가 들어있으므로 절대 커밋 금지
+.env.backup*
+server/.env.backup*
+**/.env.backup*
