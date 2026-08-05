@@ -53,43 +53,20 @@ if [ -n "$BACK" ]; then
   [ -x server/venv/bin/python ] || fail "server/venv 를 찾을 수 없음" \
     "가상환경이 없습니다. 백엔드 검사를 건너뛰려면 --no-verify 를 쓰세요."
 
-  OUT=$(cd server && ./venv/bin/python -c "
-import sys
-sys.path.insert(0, '.')
-try:
-    from main import app
-except Exception as e:
-    print('IMPORT_FAIL', type(e).__name__, e); sys.exit(2)
+  # 검사 4종을 한 진입점으로: 서버 임포트 + 인증 기준선 + 인가(소유권) + 🐤 윤리선 카나리아
+  # 같은 검사를 손으로 보려면:  cd server && ./venv/bin/python _verify_all.py
+  OUT=$(cd server && ./venv/bin/python _verify_all.py 2>&1) || {
+    echo "$OUT" | grep -E "❌|🔴|🚫|Error|Traceback" | head -14
+    fail "백엔드 검사 실패" \
+"위 항목을 고치세요. 전체 출력:
+       cd server && ./venv/bin/python _verify_all.py
 
-noauth = []
-for r in app.routes:
-    if not hasattr(r, 'dependant'): continue
-    deps = [d.call.__name__ for d in r.dependant.dependencies if getattr(d, 'call', None)]
-    for m in (r.methods or []):
-        if m in ('GET','POST','PUT','DELETE','PATCH') and not deps:
-            noauth.append(f'{m} {r.path}')
-print('NOAUTH', len(noauth), '|', ', '.join(sorted(noauth)))
-" 2>&1) || { echo "$OUT"; fail "서버가 임포트되지 않습니다" "문법 오류·순환 import·모듈 누락을 확인하세요. 위 메시지를 보세요."; }
-
-  case "$OUT" in
-    IMPORT_FAIL*) echo "$OUT"; fail "서버가 임포트되지 않습니다" "위 오류를 고치세요." ;;
-  esac
-
-  COUNT=$(echo "$OUT" | awk '/^NOAUTH/{print $2}')
-  LIST=$(echo "$OUT" | sed 's/^NOAUTH [0-9]* | //')
-
-  # 🔴 인증 기준선: 미인증은 GET / (Railway 헬스체크) 하나뿐이어야 한다 — GD-S0 판정표 §2
-  if [ "$COUNT" != "1" ] || [ "$LIST" != "GET /" ]; then
-    fail "인증이 없는 엔드포인트가 늘었습니다 (미인증 ${COUNT}개)" \
-"현재 미인증: ${LIST}
-     허용: GET / 하나뿐 (Railway 헬스체크 — 잠그면 배포가 깨짐)
-
-     새 엔드포인트에는 권한 등급을 붙이세요:
-       👤 회원   user: dict = Depends(get_current_user)
-       🔑 관리자  admin: dict = Depends(require_admin)
-     공개로 두어야 한다면 사유를 GD-S0 판정표 §2 에 기록하고 이 훅을 갱신하세요."
-  fi
-  echo "   ✅ 서버 임포트 정상 · 미인증 1개(GET /) 유지"
+     · 인증 기준선  — 새 라우트에 Depends(get_current_user|require_admin) 를 붙였나
+     · 인가(소유권) — 프로필을 다루면 get_owned_profile 또는 user_id 매칭이 있나
+     · 🐤 윤리선    — 아이의 비공유 이야기가 부모 화면으로 새지 않나
+                     (키디는 아이의 '비밀 친구'. 이 선은 기능이 아니라 존재 이유다)"
+  }
+  echo "$OUT" | grep -E "^  ✅" | sed 's/^/  /'
 fi
 
 # ──────────────────────────────────────────────────────────────

@@ -253,8 +253,12 @@ class FakeAnthropic:
         class _Messages:
             async def create(self, **kw):
                 rec.log("anthropic", **kw)
+                # ⚠️ type="text" 를 반드시 넣는다. reports.py:256·509 는
+                #    `"".join(b.text for b in response.content if getattr(b, "type", "") == "text")`
+                #    로 거르므로, type 이 없으면 빈 문자열이 되어 "Claude 생성 실패: 빈 응답" → 502.
+                #    2026-08-05 카나리아 검사에서 실제로 이 함정에 빠졌다(가짜의 '모양'이 실제와 달랐다).
                 return types.SimpleNamespace(
-                    content=[types.SimpleNamespace(text=text)]
+                    content=[types.SimpleNamespace(text=text, type="text")]
                 )
 
         class _Client:
