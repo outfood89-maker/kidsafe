@@ -661,7 +661,7 @@ class BatchAnalyzeRequest(BaseModel):
 
 # POST /analyze — 단일 영상 검수 (캐시 우선)
 @router.post("")
-async def analyze_video(data: AnalyzeRequest):
+async def analyze_video(data: AnalyzeRequest, user: dict = Depends(get_current_user)):
     try:
         if not data.title:
             raise HTTPException(status_code=400, detail="영상 제목을 입력해주세요")
@@ -700,7 +700,7 @@ async def analyze_video(data: AnalyzeRequest):
 
 # POST /analyze/batch — 여러 영상 일괄 분석 (Tier 0~1만, 빠르게)
 @router.post("/batch")
-async def analyze_batch(data: BatchAnalyzeRequest):
+async def analyze_batch(data: BatchAnalyzeRequest, user: dict = Depends(get_current_user)):
     try:
         # 핫패스 최적화: 영상 id 들의 캐시를 in 쿼리 1번으로, 신뢰 채널은 메모리 1회
         video_ids = [it.videoId for it in data.items if it.videoId]

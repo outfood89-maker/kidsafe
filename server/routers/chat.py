@@ -1,9 +1,10 @@
 import os
 import anthropic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 
+from auth import get_current_user  # GD-A2: 미인증 호출 차단
 from safety_lexicon import screen_text, fixed_response, is_high
 
 router = APIRouter()
@@ -98,13 +99,18 @@ def make_system_prompt(profile_name: str, profile_age: int, level: str) -> str:
 
 # POST /chat
 @router.post("")
-async def chat_with_kiddy(data: ChatRequest):
+async def chat_with_kiddy(data: ChatRequest, user: dict = Depends(get_current_user)):
+    """키디 챗봇 — 인증 필수(get_current_user).
+    로그인 토큰 없는 호출은 Anthropic 을 부르지 못한다(비용 남용 + 통제 없는 국외전송 차단 — GD-A2).
+    ⚠️ user 는 인증 게이트 용도로만 받는다. 응답 JSON 은 기존과 100% 동일({reply} / {reply, care})."""
     if not data.messages or len(data.messages) == 0:
         raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
 
     # 🚨 위기 신호 스크리닝 — Claude 호출 '전'. 감지 시 LLM 건너뛰고 사람이 검수한 고정 응답만 (P 브리프 §2).
     #    care 플래그를 함께 반환 → 클라(토큰·profileId 보유)가 care_signal 을 생성한다.
     #    ⚠️ /chat 은 auth·profileId 가 없어 서버에서 신호를 직접 만들 수 없음 → 신호 생성은 클라 담당(브리프 §4 attribution, 팀장 확정 대기).
+    #    ↑ (GD-A2, 2026-08-05) 위 한 줄은 '인증 추가 이전' 기록이다. 이제 auth 는 붙었고, profileId 만 여전히 안 받는다.
+    #      따라서 서버가 신호를 직접 만들 수 없는 사정은 그대로 → 신호 생성은 계속 클라 담당(ChatWidget.jsx · KiddyRoom.jsx).
     last_user = next((m.content for m in reversed(data.messages) if m.role == "user"), "")
     crisis = screen_text(last_user)
     if crisis:

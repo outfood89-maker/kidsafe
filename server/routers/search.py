@@ -3,7 +3,9 @@ import re
 import asyncio
 import html
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+
+from auth import get_current_user  # GD-S0: YouTube 쿼터 보호 — 미인증 호출 차단
 
 router = APIRouter()
 
@@ -211,7 +213,7 @@ async def search_youtube_playlists(keyword: str, max_results: int = 6) -> list:
 
 # GET /search?keyword=xxx
 @router.get("")
-async def search(keyword: str):
+async def search(keyword: str, user: dict = Depends(get_current_user)):
     if not keyword:
         raise HTTPException(status_code=400, detail="키워드를 입력해주세요")
 
@@ -227,7 +229,7 @@ async def search(keyword: str):
 
 # GET /search/recommend?age=xxx
 @router.get("/recommend")
-async def recommend(age: int):
+async def recommend(age: int, user: dict = Depends(get_current_user)):
     if not age:
         raise HTTPException(status_code=400, detail="나이를 입력해주세요")
 
@@ -244,7 +246,7 @@ async def recommend(age: int):
 
 # GET /search/playlist-items?playlistId=xxx — 재생목록 안 영상 목록 (검수용)
 @router.get("/playlist-items")
-async def get_playlist_items(playlistId: str):
+async def get_playlist_items(playlistId: str, user: dict = Depends(get_current_user)):
     if not playlistId:
         raise HTTPException(status_code=400, detail="playlistId를 입력해주세요")
     try:
@@ -304,7 +306,7 @@ async def get_playlist_items(playlistId: str):
 
 # GET /search/history-recommend?keyword=xxx
 @router.get("/history-recommend")
-async def history_recommend(keyword: str):
+async def history_recommend(keyword: str, user: dict = Depends(get_current_user)):
     if not keyword:
         raise HTTPException(status_code=400, detail="키워드를 입력해주세요")
 

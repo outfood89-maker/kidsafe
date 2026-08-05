@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import anthropic
 
-from auth import require_admin
+from auth import require_admin, get_current_user  # GD-A1: 신고 접수는 회원 전용
 from audit import write_audit
 from db import sb_select, sb_insert, sb_delete, sb_update
 from rules_store import load_prompt_rules, save_prompt_rules
@@ -86,9 +86,11 @@ class BulkRequest(BaseModel):
 
 
 # ─── POST /feedback — 점수 이상 신고 접수 ─────────────────────
+# GD-A1: 회원 전용(get_current_user). 호출부 VideoModal 은 ProtectedRoute 뒤라 정상 사용자 무영향.
+# ⚠️ user 는 인증 게이트 용도로만 받는다. feedback 테이블에 user_id 컬럼을 넣는 스키마 변경은 범위 밖(DB=오너).
 
 @router.post("")
-async def submit_feedback(data: FeedbackRequest):
+async def submit_feedback(data: FeedbackRequest, user: dict = Depends(get_current_user)):
     try:
         await sb_insert("feedback", {
             "video_id": data.videoId,
