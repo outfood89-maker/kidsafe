@@ -319,6 +319,11 @@ async def get_current_rules(admin: dict = Depends(require_admin)):
 
 # ─── POST /feedback/pipeline — 완전 자동화 파이프라인 ─────────
 # ① 피드백 저장 → ② Claude 룰 1개 생성 → ③ prompt_rules 즉시 반영 → ④ 캐시 삭제
+# ⚠️ GD-A1(2026-08-05): 인증 없음 → require_admin. 이 엔드포인트는 사람 승인 없이 prompt_rules 를
+#    즉시 쓴다(아래 ③ _add_rule → save_prompt_rules). save_prompt_rules 가 updated_at 을 갱신하면
+#    analyze_deep 이 rules_dt > cached_dt 인 Tier2 정밀분석 캐시(confidence=="high")를 전량 무효화하고
+#    재분석한다(rules_store.save_prompt_rules → analyze.analyze_deep). 미인증이면 외부인이 프롬프트로
+#    안전 판정 기준을 조작할 수 있었다.
 
 class PipelineRequest(BaseModel):
     videoId: str
@@ -330,7 +335,7 @@ class PipelineRequest(BaseModel):
 
 
 @router.post("/pipeline")
-async def feedback_pipeline(data: PipelineRequest):
+async def feedback_pipeline(data: PipelineRequest, admin: dict = Depends(require_admin)):
     try:
         # ① 피드백 저장
         await sb_insert("feedback", {
@@ -402,6 +407,7 @@ async def feedback_pipeline(data: PipelineRequest):
         if data.videoId:
             await sb_delete("analysis_cache", {"video_id": f"eq.{data.videoId}"})
 
+        await write_audit(admin, "룰 자동 반영(파이프라인)", target=data.category, detail=new_rule)
         return {
             "ok": True,
             "addedRule": new_rule,

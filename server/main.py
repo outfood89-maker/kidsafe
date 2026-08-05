@@ -1,6 +1,6 @@
 import os
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends  # GD-S0: /test-env 관리자 잠금용
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -43,6 +43,7 @@ ensure_data_files()
 
 from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit, me, recommend, reports, checkins, schedules, kiddy_greeting, tts, care_signals
 from routers import diary_image  # AD-5: 그림일기 이미지 파이프라인 (feature/diary-v0 브랜치 전용)
+from auth import require_admin  # GD-S0: /test-env 관리자 잠금용 (라우터와 동일 시점 import)
 
 app = FastAPI(
     title="KidSafe API",
@@ -85,13 +86,18 @@ app.include_router(care_signals.router, prefix="/care-signals")
 app.include_router(diary_image.router, prefix="/diary-image")  # AD-5 (브랜치 전용)
 
 
+# GD-S0(2026-08-05) 판정: 🌐 공개 유지. Railway 헬스체크가 이 응답으로 서버 생존을 판단한다
+#    → 잠그면 배포가 깨진다. 응답은 고정 문자열이라 정보 노출 0.
 @app.get("/")
 async def root():
     return {"message": "KidSafe 서버 작동 중! 🛡️"}
 
 
+# GD-S0(2026-08-05): 인증 없음 → require_admin. 키 '값'은 노출되지 않지만(✅/❌만 반환)
+#    외부인에게 우리가 어떤 외부 API를 쓰는지 알려줄 이유가 0. 프론트 호출부 0건.
+#    ⚠️ 삭제 금지 — 비활성은 주석으로(프로젝트 불변 규칙). 오너가 "안 쓴다" 확정하면 그때.
 @app.get("/test-env")
-async def test_env():
+async def test_env(admin: dict = Depends(require_admin)):
     return {
         "anthropic": "✅ 연결됨" if os.getenv("ANTHROPIC_API_KEY") else "❌ 없음",
         "youtube": "✅ 연결됨" if os.getenv("YOUTUBE_API_KEY") else "❌ 없음",

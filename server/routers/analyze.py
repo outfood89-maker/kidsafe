@@ -11,7 +11,7 @@ import time
 import base64
 import httpx
 import anthropic
-from auth import get_current_user, _supabase_select
+from auth import get_current_user, require_admin, _supabase_select  # GD-S0: 캐시 삭제는 관리자 전용
 from db import sb_select, sb_upsert, sb_delete
 from rules_store import load_prompt_rules, prompt_rules_updated_at
 
@@ -829,8 +829,11 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
 
 
 # DELETE /analyze/cache/{videoId} — 특정 영상 캐시 삭제 (재분석 강제)
+# ⚠️ GD-S0(2026-08-05): 인증 없음 → require_admin. 캐시를 지우면 다음 조회 때 Tier2 정밀분석이
+#    새로 돌아 Haiku Vision 비용이 나간다. 외부인이 반복 호출하면 비용을 유발할 수 있었다.
+#    프론트 호출부 0건(레포 전수 grep) — 관리자로 올려도 깨지는 화면 없음.
 @router.delete("/cache/{video_id}")
-async def delete_cache(video_id: str):
+async def delete_cache(video_id: str, admin: dict = Depends(require_admin)):
     try:
         existing = await get_cache_entry(video_id)
         if not existing:
@@ -842,8 +845,10 @@ async def delete_cache(video_id: str):
 
 
 # GET /analyze/{videoId} — 캐시된 결과 조회
+# GD-S0(2026-08-05): 인증 없음 → get_current_user(회원 전용). 읽기 전용이라 위험은 낮지만
+#    검수 결과는 우리 자산이다. 프론트 호출부 0건 — 깨지는 화면 없음.
 @router.get("/{video_id}")
-async def get_cached_analysis(video_id: str):
+async def get_cached_analysis(video_id: str, user: dict = Depends(get_current_user)):
     try:
         cached = await get_cache_entry(video_id)
         if not cached:

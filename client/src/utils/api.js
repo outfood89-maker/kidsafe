@@ -470,6 +470,9 @@ export const submitFeedback = async (data) => {
 }
 
 // 점수 피드백 자동화 파이프라인 (룰 추가 + 캐시 삭제 한 방에)
+// ⚠️ 호출부 0 (2026-08-05 레포 전수 grep). '점수 이상해요' 버튼은 submitFeedback(단순 접수)을 쓴다
+//    — 설계 결정: 문서/설계/KidSafe_회원_수익_아키텍처_설계.md:188.
+//    GD-A1 이후 서버가 require_admin 전용 → 일반 회원 세션으로 부르면 403. 삭제하지 말 것(기록 보존).
 export const submitFeedbackPipeline = async (data) => {
   const response = await axios.post(`${BASE_URL}/feedback/pipeline`, data)
   return response.data

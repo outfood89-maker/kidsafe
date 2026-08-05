@@ -180,7 +180,7 @@ kidsafe/
 |---|---|---|
 | POST | `/feedback` | 점수 이상 신고 접수 |
 | GET | `/feedback` | 피드백 목록 조회 |
-| POST | `/feedback/pipeline` | **자동화 파이프라인** (피드백 → Claude 룰 생성 → 즉시 반영 → 캐시 삭제) |
+| POST | `/feedback/pipeline` | **자동화 파이프라인** (피드백 → Claude 룰 생성 → 즉시 반영 → 캐시 삭제) · **관리자 전용(GD-A1, 2026-08-05)** |
 | GET | `/feedback/admin/rules` | 현재 적용 룰 조회 |
 | POST | `/feedback/admin/rules/suggest` | Claude가 피드백 분석 → 룰 제안 |
 | GET | `/feedback/admin/rules/pending` | 승인 대기 룰 조회 |
