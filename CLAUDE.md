@@ -62,10 +62,16 @@
 
 ### 🔒 pre-commit 훅 — 규칙을 '장치'로 (2026-08-05 신설)
 
-**설치(기기당 1회):**
-```bash
-git config core.hooksPath scripts/hooks
-```
+**설치 — 자동이다. 손댈 것 없음.**
+`client` 에서 `npm install` 하면 `postinstall` → `scripts/setup-hooks.mjs` 가 훅을 활성화한다.
+새 기기 세팅은 반드시 `npm install` 을 거치므로 **잊을 수가 없다.**
+
+> ⚠️ **왜 자동이어야 했나:** 훅은 `.git/hooks` 에 살아서 **git 으로 전파되지 않는다.**
+> 새 기기에서는 훅 없이 커밋이 **아무 경고 없이** 그냥 된다. CLAUDE.md 에 "설치하세요"라고
+> 적어두는 건 **'규칙'이지 '장치'가 아니다**(읽고 기억해서 실행해야 함).
+> 안전장치: git 저장소가 아니거나 훅 파일이 없어도 **npm install 을 절대 실패시키지 않는다.**
+
+수동으로 켜야 할 때(드묾): `git config core.hooksPath scripts/hooks`
 
 `scripts/hooks/pre-commit` 이 **바뀐 영역만** 검사한다. 문서만 고쳤으면 **0.4초에 통과**한다.
 
