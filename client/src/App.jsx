@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute' // GD-S0: /admin 은 role=admin 만
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Account from './pages/Account'
@@ -49,7 +50,7 @@ function App() {
           <Route path="/badges" element={<ProtectedRoute><BadgeCollection /></ProtectedRoute>} />
           <Route path="/games" element={<ProtectedRoute><MiniGame /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminPage /></AdminRoute></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

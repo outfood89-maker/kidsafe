@@ -337,6 +337,69 @@ FastAPI는 `docs_url` 을 끄지 않으면 **API 사용설명서를 자동 공�
 
 2차 검증 T4 에서 `/search` 계열에 끼운 가짜가 실제 함수에 안 걸려 **진짜 YouTube 를 호출했다**(`search.list` 100유닛 × 3 ≈ 300유닛 / 일일 10,000). 3차부터는 외부 호출이 필요한 검증을 **스키마 대조로 대체**해 쿼터 소모 0. 기록으로 남긴다.
 
+### 4-0-3. 추가 조치 — `/admin` 관리자 게이트 + 🔴 SPA 라우팅 404 (2026-08-05)
+
+오너 질문("웹에서 관리자 페이지를 어떻게 여나?")을 확인하다 **보안과 무관한 실서비스 버그**를 같이 발견했다.
+
+#### 🔴 발견 — 배포본에서 `/` 말고는 전부 404였다
+
+```
+/  200 ✅ │ /login 404 │ /profiles 404 │ /kids 404 │ /admin 404 │ /account 404 │ /badges 404
+```
+
+응답 헤더가 `x-vercel-error: NOT_FOUND`, `content-type: text/plain` — **앱이 로드되다 만 게 아니라 시작조차 못 했다.**
+
+원인: React Router 는 브라우저 안에서만 통하는 지도다. 주소창에 직접 치거나 **새로고침하면** Vercel 이 `/kids` 라는 *파일*을 찾고, 없으니 404. 진짜 파일은 `index.html` 하나뿐이다.
+`vercel.json` · `_redirects` **둘 다 없었다.**
+
+**피해가 관리자 페이지보다 컸다:**
+
+| 상황 | 이전 |
+|---|---|
+| 아이가 영상 보다 **새로고침** | 🔴 **404 — 앱이 죽음** |
+| 부모에게 `/kids` 링크 공유 | 🔴 404 |
+| 즐겨찾기로 `/profiles` 저장 후 열기 | 🔴 404 |
+| 홈에서 시작해 클릭으로만 이동 | ✅ 정상 ← **그래서 여태 안 드러났다** |
+
+**조치:** `client/vercel.json` 신설 (4줄)
+```json
+{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
+```
+> ⚠️ 위치 근거: 레포 루트에 `package.json` 이 없고 `client/` 에만 있다 → Vercel Root Directory 가 `client` 여야 빌드가 성립한다. **배포 후 실측으로 확인할 것.** 안 먹으면 레포 루트로 옮긴다.
+
+#### `/admin` 관리자 게이트 (오너 판단: *"B도 끝내야 할 문제 맞아"*)
+
+문제: `ProtectedRoute` 는 **로그인 여부만** 본다(role 검사 0). SPA 404 를 고치는 순간 **로그인한 회원 누구나 `/admin` 화면이 열린다.** 서버가 데이터는 403 으로 막지만 **관리자 화면의 구조·기능 목록은 노출**된다.
+
+**조치:** [`client/src/components/AdminRoute.jsx`](../../../client/src/components/AdminRoute.jsx) 신설 — `ProtectedRoute` 는 **손대지 않고**(모든 보호 라우트에 영향) 안쪽에 겹쳐 쓴다.
+
+```jsx
+<Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminPage /></AdminRoute></ProtectedRoute>} />
+```
+
+- 판정 재료는 **이미 있었다** — `AuthContext.jsx:19` 가 `GET /me/status` 로 `isAdmin` 을 이미 들고 있다. 새 API 0.
+- **깜빡임 없음의 근거:** `AuthContext.jsx:33` 이 `loading` 해제 **전에** `fetchUserStatus()` 를 `await` 한다 → 게이트 도달 시점에 `isAdmin` 이 이미 확정. 관리자가 잠깐 튕기지 않는다.
+- 비관리자는 **조용히 `/profiles` 로** 보낸다(관리자 화면의 존재를 알리지 않음).
+- ⚠️ **이건 두 번째 자물쇠다.** 진짜 방어선은 서버의 `require_admin`(AdminPage 가 쓰는 API 13개 전부)이며 그대로 유지된다.
+
+#### 검증
+
+| 검증 | 결과 |
+|---|---|
+| [회귀 테스트 신설](../../../client/src/__tests__/admin-route-gate.dom.test.jsx) — 관리자 통과 / 회원 차단 / loading 중 미노출 / loading 중 리다이렉트 안 함 | ✅ 4/4 |
+| 프로덕션 빌드 `npm run build` | ✅ 891 모듈, 2.87s |
+| 프론트 테스트 전체 | ✅ **26 파일 / 199 테스트** |
+| 삭제(−) 줄 전수 | ✅ **1줄** — `/admin` 라우트, 같은 줄의 수정판. 로직 삭제 0 |
+
+#### 관리자 페이지를 여는 법 (오너용)
+
+```
+https://kidsafe-eight.vercel.app/admin
+```
+화면 어디에도 **들어가는 링크가 없다** — 주소창에 직접 친다(의도된 설계). 조건 2가지:
+1. 로그인 (ProtectedRoute)
+2. `accounts` 테이블의 `role = 'admin'` — ⚠️ **오너 계정이 admin 인지 Supabase 대시보드에서 확인 필요**
+
 ### 4-1. 신규 실패 모드 1건 (인지 사항, 코드 변경 아님)
 
 세션이 **만료된 상태**에서 신고 버튼을 누르면 이제 401 → `VideoModal.jsx:81-85` catch → `:409` **"오류 발생"** 2초 표시.
