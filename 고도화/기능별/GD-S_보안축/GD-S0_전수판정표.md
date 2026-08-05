@@ -460,6 +460,57 @@ https://kidsafe-eight.vercel.app/admin
 1. 로그인 (ProtectedRoute)
 2. `accounts` 테이블의 `role = 'admin'` — ⚠️ **오너 계정이 admin 인지 Supabase 대시보드에서 확인 필요**
 
+### 4-0-5. S3a — 프로덕션 API 문서 비공개 (2026-08-05)
+
+§3-2에서 지적한 노출면 문제를 닫았다. **오너 선택: A안(환경변수로 분기 — 로컬은 열고 배포는 닫는다).**
+
+#### 무엇이 문제였나
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" https://kidsafe-production.up.railway.app/docs   # → 200
+```
+
+FastAPI 는 `docs_url` 을 끄지 않으면 **API 사용설명서를 자동 공개**한다. 열면 보이는 것:
+엔드포인트 **83개 전체 목록** · 각 문의 **자물쇠 유무**(어디가 안 잠겼는지 한눈에) · **"Try it out" 버튼**.
+→ 문 82개를 잠갔는데 **"어디가 안 잠겼는지 알려주는 안내판"이 걸려 있던 셈.**
+
+#### 설계 — 기본값을 '닫힘'으로 (fail-closed)
+
+`server/main.py`
+```python
+IS_DEV = os.getenv("APP_ENV", "production").strip().lower() in ("development", "dev", "local")
+
+app = FastAPI(..., docs_url="/docs" if IS_DEV else None,
+                   redoc_url="/redoc" if IS_DEV else None,
+                   openapi_url="/openapi.json" if IS_DEV else None)
+```
+
+⭐ **핵심은 기본값이 `production` 이라는 것이다.**
+Railway 엔 `.env` 파일이 없으므로(`main.py:9` 주석) **아무 설정을 하지 않아도 자동으로 닫힌다** → **배포 쪽 오너 작업 0.**
+로컬은 `server/.env` 에 `APP_ENV=development` 한 줄로 연다(gitignore 대상, `ENV_SAMPLE.txt` 에 문서화).
+
+⚠️ **부작용 1건(인지 사항):** 문서를 닫으면 `/openapi.json` 도 사라진다 → **배포본을 대상으로 한 검증 스크립트**(`verify_s1_*.py`)는 이제 **로컬에서 돌려야 한다**(`APP_ENV=development`). 코드 주석에 명시.
+
+#### 검증 — [`verify_s3_docs.py`](verify_s3_docs.py) 통과 21 / 실패 0
+
+| 구간 | 검증 | 결과 |
+|---|---|---|
+| A | **APP_ENV 미설정 + `.env` 없음 (= Railway 그대로)** | ✅ `IS_DEV=False` · `/docs`·`/redoc`·`/openapi.json` **전부 404** |
+| A | 문서를 닫아도 서비스는 그대로인가 | ✅ `GET /` 200 · `/test-env` 401 · `/chat` 401 |
+| B | `APP_ENV=development` | ✅ 셋 다 200 · openapi 정상(경로 72 / 오퍼레이션 83) |
+| B-2 | **로컬 실제 상황**(`.env` 로드 그대로) | ✅ `.env` 한 줄만으로 열림 |
+| C | **오타·대소문자 안전성** | ✅ `Development`·`DEV`·`local`·공백포함 → 열림 / `prod`·`''`·`staging` → **닫힘** |
+
+> 🔴 **1차 검증에서 7건이 실패했는데 코드가 아니라 테스트가 틀렸다.**
+> `main.py:10` 의 `load_dotenv(..., override=True)` 가 로컬 `.env` 의 `APP_ENV=development` 로 환경변수를 **덮어써서**, 무슨 값을 넣어도 `development` 가 됐다 → **배포 상황이 재현되지 않았다.**
+> `dotenv.load_dotenv` 를 no-op 으로 막아 Railway 를 정확히 재현하니 21/0 통과.
+> **이번 세션 두 번째로 같은 함정이다**(1차: `write_audit` 자체를 터뜨린 건) → **"가짜를 어디에 끼우느냐에 따라 없는 버그가 만들어진다."**
+
+#### 남은 것 — S3b (CORS)
+
+`main.py:53-59` `allow_origins=["*"]` 는 **이번에 건드리지 않았다.**
+⚠️ **모바일 실기기 테스트 관행과 얽혀 있다**(`CLAUDE.md` 모바일 테스트 절 — `api.js` BASE_URL 을 PC 로컬 IP 로 바꿔 폰에서 접속). 잘못 좁히면 **실기기가 안 붙는다.** 별도 판단 사항.
+
 ### 4-1. 신규 실패 모드 1건 (인지 사항, 코드 변경 아님)
 
 세션이 **만료된 상태**에서 신고 버튼을 누르면 이제 401 → `VideoModal.jsx:81-85` catch → `:409` **"오류 발생"** 2초 표시.

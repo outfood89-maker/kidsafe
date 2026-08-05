@@ -10,6 +10,12 @@ CLOVA_VOICE_CLIENT_SECRET=    #   〃
 SUPABASE_URL=                 # Supabase 프로젝트 URL (DB·인증)
 SUPABASE_SECRET_KEY=          # Supabase 서버용 시크릿 키
 
+## 백엔드 — 선택(보안)
+APP_ENV=                      # GD-S0 S3: 'development' 일 때만 /docs·/redoc·/openapi.json 공개.
+                              # ⚠️ 미설정 시 기본 'production' = 문서 닫힘(fail-closed).
+                              #    Railway 엔 .env 가 없으므로 배포는 설정 없이 자동으로 닫힌다.
+                              #    로컬에서 API 문서를 보려면 server/.env 에 development 로 넣을 것.
+
 ## 백엔드 — 선택(모델 오버라이드, 미설정 시 코드 기본값 사용)
 IMAGE_PROMPT_MODEL=           # 그림일기 프롬프트 변환 모델 (기본 claude-sonnet-5)
 OPENAI_IMAGE_MODEL=           # 일반 그림 생성 모델
