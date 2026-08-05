@@ -34,8 +34,12 @@ print("A. 인증 인자가 쿼리 파라미터를 오염시켰는가")
 print("   (user: dict = Depends(...) 를 FastAPI 가 쿼리로 오해하면 422 가 난다 — 고전 함정)")
 print("=" * 82)
 
-prod = json.loads(urllib.request.urlopen(
-    "https://kidsafe-production.up.railway.app/openapi.json", timeout=20).read())
+# ⚠️ 2026-08-05 S3a 로 프로덕션 /openapi.json 을 닫았다 → 404 가 정상.
+#    A·B·C 는 '배포본 대비 변화'를 보는 검증이라 배포 스펙이 없으면 성립하지 않는다.
+#    없으면 그 셋만 건너뛰고, 로컬만으로 되는 검증(파라미터 누출·D·E·F)은 계속한다.
+from _verify_fakes import fetch_prod_openapi
+prod = fetch_prod_openapi()
+HAS_PROD = prod is not None
 
 from main import app
 local = app.openapi()
@@ -52,10 +56,13 @@ def body_ref(spec, method, path):
     return json.dumps(rb.get("content", {}), sort_keys=True, ensure_ascii=False)
 
 
-for m, p in TARGET8:
-    before, after = params_of(prod, m, p), params_of(local, m, p)
-    check(f"{m.upper():5}{p:32} 쿼리 파라미터 동일", before == after,
-          f"before={before} after={after}")
+if HAS_PROD:
+    for m, p in TARGET8:
+        before, after = params_of(prod, m, p), params_of(local, m, p)
+        check(f"{m.upper():5}{p:32} 쿼리 파라미터 동일", before == after,
+              f"before={before} after={after}")
+else:
+    print("  ⏭  배포 대조 건너뜀 (프로덕션 문서 비공개) — 아래 '파라미터 누출' 검사는 로컬만으로 유효")
 
 print("\n  ── 인증 인자 이름이 파라미터로 새어나오지 않았는가 (전 라우트) ──")
 leaked = []
@@ -73,25 +80,31 @@ print("=" * 82)
 print("B. 응답 JSON 형태가 변했는가")
 print("   (CLAUDE.md: 프론트가 {...video, ...safety} 로 spread → 필드 변화는 즉시 사고)")
 print("=" * 82)
-for m, p in TARGET8:
-    b = json.dumps(prod.get("paths", {}).get(p, {}).get(m, {}).get("responses", {}), sort_keys=True)
-    a = json.dumps(local.get("paths", {}).get(p, {}).get(m, {}).get("responses", {}), sort_keys=True)
-    check(f"{m.upper():5}{p:32} 응답 스키마 동일", b == a)
+if HAS_PROD:
+    for m, p in TARGET8:
+        b = json.dumps(prod.get("paths", {}).get(p, {}).get(m, {}).get("responses", {}), sort_keys=True)
+        a = json.dumps(local.get("paths", {}).get(p, {}).get(m, {}).get("responses", {}), sort_keys=True)
+        check(f"{m.upper():5}{p:32} 응답 스키마 동일", b == a)
+else:
+    print("  ⏭  배포 대조 건너뜀 (프로덕션 문서 비공개)")
 
 print()
 print("=" * 82)
 print("C. Pydantic 요청 모델이 변했는가 (Optional 422 사고 재발 방지)")
 print("=" * 82)
-for m, p in TARGET8:
-    if m != "post":
-        continue
-    check(f"{m.upper():5}{p:32} requestBody 동일", body_ref(prod, m, p) == body_ref(local, m, p))
+if HAS_PROD:
+    for m, p in TARGET8:
+        if m != "post":
+            continue
+        check(f"{m.upper():5}{p:32} requestBody 동일", body_ref(prod, m, p) == body_ref(local, m, p))
 
-prod_schemas = prod.get("components", {}).get("schemas", {})
-local_schemas = local.get("components", {}).get("schemas", {})
-diff_schemas = [k for k in set(prod_schemas) | set(local_schemas)
-                if json.dumps(prod_schemas.get(k), sort_keys=True) != json.dumps(local_schemas.get(k), sort_keys=True)]
-check("모든 Pydantic 스키마 무변경", not diff_schemas, f"{diff_schemas}")
+    prod_schemas = prod.get("components", {}).get("schemas", {})
+    local_schemas = local.get("components", {}).get("schemas", {})
+    diff_schemas = [k for k in set(prod_schemas) | set(local_schemas)
+                    if json.dumps(prod_schemas.get(k), sort_keys=True) != json.dumps(local_schemas.get(k), sort_keys=True)]
+    check("모든 Pydantic 스키마 무변경", not diff_schemas, f"{diff_schemas}")
+else:
+    print("  ⏭  배포 대조 건너뜀 (프로덕션 문서 비공개)")
 
 print()
 print("=" * 82)

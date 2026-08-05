@@ -17,10 +17,11 @@ print("=" * 80)
 print("T1. 라우트 전수 대조 — 배포본(1~3단계 반영본) vs 로컬(4~6단계까지)")
 print("=" * 80)
 
-prod = json.loads(urllib.request.urlopen(
-    "https://kidsafe-production.up.railway.app/openapi.json", timeout=20).read())
+# ⚠️ 2026-08-05 S3a 로 프로덕션 /openapi.json 을 닫았다 → 404 가 정상. 없으면 T1 만 건너뛴다.
+from _verify_fakes import fetch_prod_openapi
+prod = fetch_prod_openapi()
 prod_map = {(m.upper(), p): bool(o.get("security"))
-            for p, ops in prod.get("paths", {}).items()
+            for p, ops in (prod or {}).get("paths", {}).items()
             for m, o in ops.items() if m in ("get", "post", "put", "delete", "patch")}
 
 from main import app
@@ -42,10 +43,14 @@ EXPECTED = {("GET", "/search"), ("GET", "/search/recommend"),
             ("POST", "/analyze"), ("POST", "/analyze/batch"),
             ("POST", "/chat"), ("POST", "/feedback")}
 
-print(f"  배포본 {len(prod_map)}개 / 로컬 {len(local_map)}개")
-check("라우트 신설·소실 0", not only_prod and not only_local, f"{sorted(only_prod | only_local)}")
-check("인증 상태가 바뀐 라우트가 정확히 8개", len(changed) == 8, f"실제 {len(changed)}개")
-check("바뀐 8개가 의도한 그 8개", changed == EXPECTED, f"차이: {sorted(changed ^ EXPECTED)}")
+if not prod_map:
+    print(f"  ⏭  배포 대조 건너뜀 — 아래 T2~T4(로컬 요청)로 본 검증은 그대로 수행합니다.")
+    print(f"  📊 로컬 라우트 {len(local_map)}개")
+else:
+    print(f"  배포본 {len(prod_map)}개 / 로컬 {len(local_map)}개")
+    check("라우트 신설·소실 0", not only_prod and not only_local, f"{sorted(only_prod | only_local)}")
+    check("인증 상태가 바뀐 라우트가 정확히 8개", len(changed) == 8, f"실제 {len(changed)}개")
+    check("바뀐 8개가 의도한 그 8개", changed == EXPECTED, f"차이: {sorted(changed ^ EXPECTED)}")
 
 print()
 print("=" * 80)

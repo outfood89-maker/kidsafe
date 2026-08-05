@@ -19,14 +19,16 @@ print("=" * 78)
 print("T1. 라우트 전수 대조 — 의도한 4개만 바뀌었는가 (배포본 openapi vs 로컬 코드)")
 print("=" * 78)
 
-import urllib.request
-prod = json.loads(urllib.request.urlopen(
-    "https://kidsafe-production.up.railway.app/openapi.json", timeout=20).read())
+# ⚠️ 2026-08-05 S3a 로 프로덕션 /openapi.json 을 닫았다 → 404 가 정상이다.
+#    배포 대조는 '있으면 하는 보너스'로 격하하고, 없으면 T1 만 건너뛴다(본 검증은 계속).
+from _verify_fakes import fetch_prod_openapi
+prod = fetch_prod_openapi()
 prod_map = {}
-for path, ops in prod.get("paths", {}).items():
-    for m, o in ops.items():
-        if m in ("get", "post", "put", "delete", "patch"):
-            prod_map[(m.upper(), path)] = bool(o.get("security"))
+if prod:
+    for path, ops in prod.get("paths", {}).items():
+        for m, o in ops.items():
+            if m in ("get", "post", "put", "delete", "patch"):
+                prod_map[(m.upper(), path)] = bool(o.get("security"))
 
 from main import app
 local_map = {}
@@ -45,13 +47,18 @@ changed = {k for k in set(prod_map) & set(local_map) if prod_map[k] != local_map
 EXPECTED = {("POST", "/feedback/pipeline"), ("DELETE", "/analyze/cache/{video_id}"),
             ("GET", "/analyze/{video_id}"), ("GET", "/test-env")}
 
-print(f"  배포본 라우트 {len(prod_map)}개 / 로컬 라우트 {len(local_map)}개")
-check("라우트가 새로 생기거나 사라지지 않음", not only_prod and not only_local,
-      f"only_prod={sorted(only_prod)} only_local={sorted(only_local)}")
-check("인증 상태가 바뀐 라우트가 정확히 4개", len(changed) == 4, f"실제 {len(changed)}개: {sorted(changed)}")
-check("바뀐 4개가 의도한 그 4개", changed == EXPECTED, f"차이: {sorted(changed ^ EXPECTED)}")
-untouched_changed = changed - EXPECTED
-check("의도하지 않은 라우트는 하나도 안 바뀜", not untouched_changed, f"{sorted(untouched_changed)}")
+if not prod_map:
+    print("  ⏭  배포 대조 건너뜀 — 아래 T2~T5(로컬 요청)로 본 검증은 그대로 수행합니다.")
+    print(f"  📊 로컬 라우트 {len(local_map)}개 / 그중 미인증 "
+          f"{sum(1 for v in local_map.values() if not v)}개")
+else:
+    print(f"  배포본 라우트 {len(prod_map)}개 / 로컬 라우트 {len(local_map)}개")
+    check("라우트가 새로 생기거나 사라지지 않음", not only_prod and not only_local,
+          f"only_prod={sorted(only_prod)} only_local={sorted(only_local)}")
+    check("인증 상태가 바뀐 라우트가 정확히 4개", len(changed) == 4, f"실제 {len(changed)}개: {sorted(changed)}")
+    check("바뀐 4개가 의도한 그 4개", changed == EXPECTED, f"차이: {sorted(changed ^ EXPECTED)}")
+    untouched_changed = changed - EXPECTED
+    check("의도하지 않은 라우트는 하나도 안 바뀜", not untouched_changed, f"{sorted(untouched_changed)}")
 
 print()
 print("=" * 78)
@@ -125,6 +132,7 @@ fb.sb_insert = fake_sb_insert
 fb.sb_delete = fake_sb_delete
 fb.load_prompt_rules = fake_load_rules
 fb.save_prompt_rules = fake_save_rules
+_real_write_audit = fb.write_audit  # T5-c 에서 되살리기 위해 원본 보관
 fb.write_audit = fake_write_audit
 
 PAYLOAD = {"videoId": "TESTVID", "title": "t", "category": "violence",
@@ -207,18 +215,27 @@ if AUDIT_CALLS:
     check("target 이 카테고리(violence)", a["target"] == "violence", a["target"])
     check("detail 에 추가된 룰 본문이 담김", bool(a["detail"]), a["detail"])
 
-print("\n[T5-c] 감사로그가 터져도 본 동작은 살아있는가 (audit.py 설계 확인)")
+print("\n[T5-c] 감사로그 DB 가 죽어도 본 동작은 살아있는가 (audit.py 설계 확인)")
+# ⚠️ 2026-08-05 정정: 예전엔 fb.write_audit 을 통째로 예외 던지게 바꿨다. 그 함수는 내부에서
+#    예외를 삼키도록 설계된 물건이라, 방어막까지 제거되어 '없는 버그(500)'가 만들어졌다.
+#    → 원칙 ①(경계에 끼운다): 실제로 터지는 곳인 audit 모듈 안의 sb_insert 를 끼운다.
+#    도구·근거: server/_verify_fakes.py · verify_fakes_catches.py
+import audit as audit_mod
+
+_real_audit_insert = audit_mod.sb_insert
 
 
-async def exploding_audit(*a, **k):
-    raise RuntimeError("감사로그 DB 다운 시뮬레이션")
+async def exploding_sb_insert(table, data):
+    raise RuntimeError("audit_log DB 다운 시뮬레이션")
 
 
-fb.write_audit = exploding_audit
+audit_mod.sb_insert = exploding_sb_insert
+fb.write_audit = _real_write_audit  # 가짜를 걷고 진짜 write_audit 을 되살린다
 with TestClient(app) as c:
     r = c.post("/feedback/pipeline", json=PAYLOAD)
-    check("감사로그 예외 시에도 500 이 아님", r.status_code != 500,
-          f"실제 {r.status_code} — ⚠️ 500이면 write_audit 을 try 안쪽 별도 보호 필요")
+    check("감사로그 DB 가 죽어도 파이프라인은 200", r.status_code == 200,
+          f"실제 {r.status_code} — audit.py 가 내부에서 예외를 삼켜야 정상")
+audit_mod.sb_insert = _real_audit_insert
 
 app.dependency_overrides.clear()
 
