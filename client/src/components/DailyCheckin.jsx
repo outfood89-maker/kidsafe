@@ -256,9 +256,21 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
     prevListeningRef.current = speech.listening;
     if (was && !speech.listening && speakStage === "record") {
       const t = (speech.transcript || "").trim();
-      if (t) { setSpeakMiss(false); setSpeakStage("confirm"); }
+      if (t) {
+        // 🚨 GD-A3: 위기 발화는 '되읽지 않는다'.
+        //    되읽기는 아이 말을 원문 그대로 ①CLOVA(외부)로 합성 전송하고 ②화면 말풍선에 그대로 띄운다.
+        //    스크리닝 전에 그러면 위험한 말이 최소 1회는 반드시 밖으로 나가고, 무엇보다
+        //    "죽고 싶다고 했구나! 맞아?" 처럼 키디가 위기 발화를 되묻는 참사가 난다.
+        //    → confirm 단계를 통째로 건너뛰고 즉시 확정 경로로. 고정 응답·care 신호는
+        //      select/selectFollowup 안의 기존 스크리닝(:341·:477)이 처리한다.
+        //    ⚠️ 되읽기가 '확인' 단계인 이유는 인식 정확도 때문인데, 위기 발화에서는
+        //      확인의 이득보다 되묻기의 해가 훨씬 크다. 오인식으로 위로를 한 번 더 하는 건 안전한 실패다.
+        if (screenText(t)) { acceptSpeech(t); return; }
+        setSpeakMiss(false); setSpeakStage("confirm");
+      }
       else if (!speech.error) setSpeakMiss(true); // 에러(거부 등)는 말풍선 안내가 처리
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speech.listening, speech.transcript, speech.error, speakStage]);
 
   // confirm 진입 → 키디가 TTS로 되읽어 확인. (voice.speak 가 이전 음성 정지 → 겹침 방지)
@@ -429,16 +441,21 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
   };
   // 녹음 종료 → onend 에서 최종 transcript 확정 → 아래 effect 가 confirm/재시도 분기
   const endListen = () => speech.stop();
-  // [응 맞아] → 말한 내용을 실제 답으로 확정. 맥락(target)에 따라 흐름 분기.
-  const confirmSpeech = () => {
-    const t = (speech.transcript || "").trim();
-    if (!t) return;
+  // 말한 내용을 실제 답으로 확정 — 두 경로가 공유한다.
+  //   ① [응 맞아] (되읽기를 듣고 아이가 확인)  ② 위기 발화 자동 확정(되읽기 없이 바로 — GD-A3)
+  const acceptSpeech = (t) => {
     voice.stop();               // 되읽기 음성 정지 → 다음 음성과 안 겹치게
     setSpeakStage(null);
     setSpeakMiss(false);
     speech.reset();
     if (speakTarget === "followup") selectFollowup({ label: t, secret: false }); // 후속 답으로(칩과 동일 처리)
     else select(null, false, t);                                                 // 질문 답으로(기존 select 재사용)
+  };
+  // [응 맞아] → 말한 내용을 실제 답으로 확정. 맥락(target)에 따라 흐름 분기.
+  const confirmSpeech = () => {
+    const t = (speech.transcript || "").trim();
+    if (!t) return;
+    acceptSpeech(t);
   };
   // [다시 말할래] → 초기화 후 record 로
   const retrySpeech = () => {
