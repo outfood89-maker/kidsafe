@@ -24,7 +24,10 @@ scratch/
 _test_out/
 
 # Claude Code 로컬 설정(머신별·비작업물)
-.claude/
+#   ⚠️ .claude/rules/ 만은 커밋한다 — 작업 규칙이라 팀·다른 기기와 공유돼야 한다.
+#      통째로 무시하면 기기를 옮길 때 조용히 사라진다(prompts/ 가 그렇게 유실될 뻔했다).
+.claude/*
+!.claude/rules/
 
 # .env 백업본 — 키가 들어있으므로 절대 커밋 금지
 .env.backup*

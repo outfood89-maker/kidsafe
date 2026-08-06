@@ -77,6 +77,24 @@ if [ -n "$FRONT" ]; then
   [ -d client/node_modules ] || fail "client/node_modules 없음" \
     "npm install 을 먼저 실행하세요."
 
+  # ── 배럴 import 차단 (2026-08-07 장치화) ─────────────────────────────
+  # 아이콘 2개 쓰려고 `from "react-icons/fa"` 를 적으면 **1,611개가 통째로** 딸려온다.
+  # 2026-08-05 실사고: 테스트 import 9.45s → 120.04s, 37개 타임아웃. 동작은 멀쩡해서 안 걸린다.
+  # ⚠️ 기존 17곳은 '유산'으로 인정하고 건드리지 않는다(전면 차단하면 그 파일을 만질 때마다 커밋이 막힌다).
+  #    → **새로 추가되는 줄(+)만** 본다. 늘어나는 것만 막으면 총량은 줄어들 수밖에 없다.
+  NEW_BARREL=$(git diff --cached -U0 -- client/src \
+    | grep -E '^\+[^+]' \
+    | grep -E 'from +"react-icons/[a-z]+"' || true)
+  if [ -n "$NEW_BARREL" ]; then
+    echo "$NEW_BARREL" | sed 's/^/     /'
+    fail "배럴 import 추가 감지 (react-icons)" \
+"위 줄이 아이콘 **1,611개**를 통째로 불러옵니다. 동작은 멀쩡하지만 앱과 테스트가 무거워집니다.
+     (2026-08-05 실사고: 테스트 import 9.45s → 120.04s · 37개 타임아웃)
+
+     대신 **인라인 SVG 로 직접 그리세요.** 선례: ProtectedRoute·AdminRoute 둘 다 react-icons 를 쓰지 않습니다.
+     상세: .claude/rules/frontend.md 「성능 회귀」"
+  fi
+
   # 1차: 병렬(빠름). vitest 는 워커를 코어 수만큼 띄운다.
   (cd client && npx vitest run >/tmp/kd_vitest.log 2>&1) || {
     # ⚠️ 무더기 'Test timed out' 은 코드가 깨진 게 아니라 **머신이 바빠 워커가 굶은 것**일 수 있다.
