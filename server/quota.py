@@ -64,11 +64,57 @@ from fastapi import HTTPException, status
 KST = timezone(timedelta(hours=9))
 
 # ── 한도 표 — 숫자를 바꿀 일이 있으면 여기만 고친다 ────────────────────
-#    (2026-08-06 오너 확정: 서버 5 / 3. 프론트 3 / 1 보다 넉넉한 이유는 위 '소비 시점' 절 참조)
+#    (2026-08-06 오너 확정: 그림 5/3. 프론트 3/1 보다 넉넉한 이유는 위 '소비 시점' 절 참조)
+#
+# ⚠️ 세 칸 모두 필수다. `cost_krw` 는 장식이 아니라 **하루 최대 노출액을 계산하기 위한 입력**이다
+#    (_verify_quota 가 per_day × cost_krw 를 찍는다). 모르면 0 이 아니라 **재고 나서 채울 것**.
 LIMITS = {
-    "diary_gen":      {"per_day": 5, "per_min": 3},   # 그림 자체생성 (gpt-image-1-mini)
-    "diary_continue": {"per_day": 3, "per_min": 3},   # 이어그리기 (gpt-image-1 + fidelity high — 제일 비쌈)
+    # 종류               하루  분당  1회 원가(원)   근거
+    "diary_gen":      {"per_day": 5,  "per_min": 3, "cost_krw": 40},   # gpt-image-1-mini (미측정 · 보수적 추정)
+    "diary_continue": {"per_day": 3,  "per_min": 3, "cost_krw": 90},   # gpt-image-1 + fidelity high (미측정 · 보수적 추정)
+    # 정밀검수: 3 → 20 (2026-08-06 오너 확정). 50 을 검토했으나 계정당 월 25,500원(프리미엄가의 5배) 노출이라 낮췄다.
+    # 정상 사용자는 하루 20편의 '아무도 안 본 새 영상'을 열지 않는다 — 인기 영상은 전부 캐시 히트(적중률 97.2% 실측).
+    "analyze_deep":   {"per_day": 20, "per_min": 3, "cost_krw": 17},   # Haiku Vision — 2026-08-06 실측 16.4원
 }
+
+
+def _validate_limits() -> None:
+    """
+    🔴 하루 한도가 없는 종류를 **만들 수 없게** 한다 (2026-08-06 신설).
+
+    왜 코드가 막는가 — 2026-08-06에 팀장이 "분당만 걸고 하루는 풀자"고 제안했다.
+    같은 날 오전 이 파일에 '분당=얼마나 빨리 / 하루=얼마나 많이'라고 직접 써놓고서다.
+    숫자를 넣어보니 분당 3회만으로 하루 4,320회(계정 1개로 월 200만원)가 통과했다.
+
+    ⚠️ 진짜 원인은 계산 누락이 아니라 **결론이 먼저 있었던 것**이다 —
+       오너가 원하는 방향("검수는 기본 기능")과 유리한 측정치(캐시 97%)가 겹치자
+       '한도를 풀자'로 먼저 기울고, 그 뒤에 근거를 찾았다. 그래서 계산할 생각이 안 들었다.
+       그런 종류의 실수는 다짐으로 못 막는다 → 코드가 막는다.
+    """
+    for kind, lim in LIMITS.items():
+        for field in ("per_day", "per_min", "cost_krw"):
+            if field not in lim:
+                raise RuntimeError(
+                    f"❌ quota.LIMITS['{kind}'] 에 '{field}' 가 없습니다.\n"
+                    f"   분당 제한은 '얼마나 빨리'만 막습니다 — 하루 총량은 per_day 만이 막습니다.\n"
+                    f"   (분당 3회만 두면 하루 4,320회가 그대로 통과합니다)"
+                )
+        if lim["per_day"] < lim["per_min"]:
+            raise RuntimeError(
+                f"❌ quota.LIMITS['{kind}']: per_day({lim['per_day']}) 가 "
+                f"per_min({lim['per_min']}) 보다 작습니다 — 하루 한도가 1분 만에 소진됩니다."
+            )
+
+
+_validate_limits()
+
+
+def worst_daily_krw() -> list[tuple[str, int]]:
+    """계정(또는 프로필) 1개가 하루에 태울 수 있는 최대 금액. 검사가 이 값을 출력한다."""
+    return sorted(
+        ((k, v["per_day"] * v["cost_krw"]) for k, v in LIMITS.items()),
+        key=lambda x: -x[1],
+    )
 
 # 메모리 저장소 — {키: (기준값, 횟수)}
 _day: dict[str, tuple[str, int]] = {}   # 키 -> ("YYYY-MM-DD", 횟수)
@@ -182,6 +228,36 @@ def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> Non
     _bump_day(key, today)
     _sweep(_min, bucket)
     _sweep(_day, today)
+
+
+def check_minute_only(kind: str, profile_id: str = "", user_id: str = "") -> None:
+    """
+    분당(급제동)만 확인·소비한다. 하루 총량을 **다른 곳에서** 세는 경로용.
+
+    쓰는 곳: `/analyze/deep` — 하루 한도는 `usage` 테이블(DB)이 이미 세고 있어
+    재시작에도 살아남는다. 그쪽이 더 강하므로 그대로 두고, 없던 분당만 여기서 얹는다.
+    ⚠️ 그래도 `LIMITS` 에는 `per_day` 를 **반드시** 적어둔다 — `_validate_limits()` 가 요구하고,
+       검사가 그 값으로 '하루 최대 노출액'을 계산한다. 숫자는 DB 쪽과 한 곳에서만 정의된다
+       (analyze.py 가 `LIMITS["analyze_deep"]["per_day"]` 를 그대로 읽어 쓴다).
+    """
+    limit = LIMITS.get(kind)
+    if not limit:
+        raise RuntimeError(f"quota: 알 수 없는 종류 '{kind}' — LIMITS 에 등록하세요")
+
+    key = scope_key(kind, profile_id, user_id)
+    bucket = minute_bucket()
+    used = _read_min(key, bucket)
+    if used >= limit["per_min"]:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "RATE_LIMITED", "kind": kind, "scope": "minute",
+                "limit": limit["per_min"], "used": used,
+                "message": "조금 천천히 해볼까요? 잠시 뒤에 다시 해봐요.",
+            },
+        )
+    _bump_min(key, bucket)
+    _sweep(_min, bucket)
 
 
 def peek(kind: str, profile_id: str = "", user_id: str = "") -> dict:

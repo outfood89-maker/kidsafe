@@ -26,8 +26,8 @@ const VIDEO = {
   videoId: "v1", title: "공룡 탐험 이야기", description: "공룡을 알아봐요",
   channelId: "c1", channelTitle: "키즈채널", thumbnail: "", totalScore: 95, duration: 300,
 };
-const err429 = () => Object.assign(new Error("429"), {
-  response: { status: 429, data: { detail: { code: "DAILY_LIMIT_EXCEEDED", used: 3, limit: 3 } } },
+const err429 = (limit = 20) => Object.assign(new Error("429"), {
+  response: { status: 429, data: { detail: { code: "DAILY_LIMIT_EXCEEDED", used: limit, limit } } },
 });
 
 const renderModal = (props = {}) =>
@@ -70,5 +70,21 @@ describe("S4 — 정밀검수 한도 초과(429) 시 결제 화면 노출 범위
     renderModal({ parentView: true });
     await waitFor(() => expect(H.api.analyzeVideoDeep).toHaveBeenCalled());
     expect(paywallShown()).toBe(false);
+  });
+
+  // ⚠️ 2026-08-06: 서버 한도를 3 → 20 으로 바꿨을 때 화면 문구는 "하루 3회"로 남아 있었다.
+  //    숫자를 프론트에 하드코딩하면 서버가 바뀐 날 화면이 거짓말을 한다(검증 축 4 '사실 왜곡').
+  //    ⚠️ 한도 숫자는 부제와 플랜 항목 두 곳에 나오므로 findAllByText 로 받는다(findByText 는 복수 매칭에서 에러).
+  it("🔴 서버가 알려준 실제 한도를 그대로 표시한다 (프론트에 숫자를 박지 않는다)", async () => {
+    H.api.analyzeVideoDeep.mockRejectedValue(err429(20));
+    renderModal({ parentView: true });
+    expect((await screen.findAllByText(/하루 20회/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/하루 3회/)).toBeNull();   // 옛 하드코딩 값이 남아 있지 않다
+  });
+
+  it("서버 한도가 또 바뀌어도 화면이 따라간다 (7로 와도 7로 뜬다)", async () => {
+    H.api.analyzeVideoDeep.mockRejectedValue(err429(7));
+    renderModal({ parentView: true });
+    expect((await screen.findAllByText(/하루 7회/)).length).toBeGreaterThan(0);
   });
 });

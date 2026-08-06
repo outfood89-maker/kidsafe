@@ -2,15 +2,19 @@ import { useNavigate } from "react-router-dom";
 import { FaTimes, FaLock } from "react-icons/fa";
 
 // reason: "tier2" (AI 정밀검수 한도 초과) | "profile" (프로필 추가 한도 초과)
-export default function PaywallModal({ onClose, reason = "tier2" }) {
+// ⚠️ dailyLimit 은 서버가 429 응답에 실어 보내는 실제 한도(analyze.py 의 detail.limit)를 그대로 받는다.
+//    화면에 숫자를 하드코딩하면 서버가 한도를 바꾼 날 화면이 **거짓말을 한다**
+//    (2026-08-06 실제로 3 → 20 으로 바뀌며 발생. 검증 축 4 '사실 왜곡').
+//    서버가 값을 안 주는 옛 응답만 기본값 3 으로 폴백한다.
+export default function PaywallModal({ onClose, reason = "tier2", dailyLimit = 3 }) {
   const navigate = useNavigate();
 
   const config = {
     tier2: {
       icon: "🤖",
       title: "오늘의 AI 정밀검수를\n모두 사용했어요",
-      subtitle: "무료 플랜은 하루 3회까지 이용 가능해요",
-      freeItem: "AI 정밀검수 하루 3회",
+      subtitle: `무료 플랜은 하루 ${dailyLimit}회까지 이용 가능해요`,
+      freeItem: `AI 정밀검수 하루 ${dailyLimit}회`,
       premiumItem: "AI 정밀검수 무제한",
     },
     profile: {

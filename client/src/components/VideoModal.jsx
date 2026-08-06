@@ -10,7 +10,8 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
   const [visible, setVisible] = useState(false);
   const [deepResult, setDeepResult] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
-  const [paywallOpen, setPaywallOpen] = useState(false);
+  // S4: 한도 초과 안내. null=안 띄움 / 숫자=서버가 알려준 실제 한도 / 0=한도는 모르지만 띄우기
+  const [paywallLimit, setPaywallLimit] = useState(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState("scary");
   const [feedbackReason, setFeedbackReason] = useState("");
@@ -51,7 +52,9 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
           //       deepResult 가 null 이면 화면은 기본 안전도로 그대로 렌더된다(:96 `v = deepResult ? ... : video`).
           //    ③ 아동 안전 기능에서 "돈 내면 더 안전"을 **아이에게** 보이는 구조 자체가 위험하다.
           //    ⚠️ 한도 횟수 자체는 재검토 대상 — 오너 의견 "영상 검수는 기본 기능으로 가고 싶다"(미해결질문 21).
-          if (parentView) setPaywallOpen(true);
+          //    서버가 실은 실제 한도(detail.limit)를 그대로 화면에 넘긴다 — 숫자를 프론트에 하드코딩하면
+          //    서버가 한도를 바꾼 날 화면이 거짓말을 한다(2026-08-06 3→20 변경 시 실제 발생).
+          if (parentView) setPaywallLimit(err?.response?.data?.detail?.limit ?? null);
         } else {
           console.error("AI 정밀 분석 실패:", err);
         }
@@ -96,8 +99,14 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
   if (!video) return null;
 
   // AI 한도 초과 paywall
-  if (paywallOpen) {
-    return <PaywallModal reason="tier2" onClose={() => setPaywallOpen(false)} />;
+  if (paywallLimit !== null) {
+    return (
+      <PaywallModal
+        reason="tier2"
+        {...(paywallLimit ? { dailyLimit: paywallLimit } : {})} // 서버가 안 준 옛 응답이면 PaywallModal 기본값 사용
+        onClose={() => setPaywallLimit(null)}
+      />
+    );
   }
 
   // 정밀 분석 결과가 있으면 점수/요약을 업그레이드해서 표시 (없으면 원본 유지)

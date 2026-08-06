@@ -84,8 +84,45 @@ def cont(client, profile_id=PID_1, drawing=TINY_PNG):
 print("=" * 78)
 print("S2·S4 비용 상한 검증 — 외부 호출 0 · 비용 0 · DB 무변경")
 print("=" * 78)
-print(f"  한도표: {quota.LIMITS}")
 print(f"  오늘(KST): {quota.today_kst()}")
+
+# ══════════════════════════════════════════════════════════════════════
+# 💸 하루 최대 노출액 — 사람이 반드시 보고 지나가게 만드는 자리
+#    2026-08-06: 팀장이 "분당만 걸고 하루는 풀자"고 제안했다가, 숫자를 넣어보니
+#    분당 3회만으로 하루 4,320회(계정 1개 월 200만원)가 통과하는 걸 뒤늦게 발견했다.
+#    → 계산을 '하기로 마음먹는' 대신, 검사가 매번 눈앞에 찍는다.
+# ══════════════════════════════════════════════════════════════════════
+print()
+print("  💸 계정/프로필 1개가 하루에 태울 수 있는 최대 (캐시 0% = 최악 가정)")
+_total = 0
+for _kind, _krw in quota.worst_daily_krw():
+    _l = quota.LIMITS[_kind]
+    _total += _krw
+    print(f"     {_kind:16} 하루 {_l['per_day']:>3}회 × {_l['cost_krw']:>3}원"
+          f" = {_krw:>6,}원/일   (월 {_krw*30:>7,}원)")
+print(f"     {'합계':16} {'':>13} {_total:>8,}원/일   (월 {_total*30:>7,}원)")
+print("     ⚠️ 이 값이 감당 못 할 크기로 보이면 LIMITS 를 고칠 것 — 검사는 판단하지 않는다")
+
+print()
+print("[0] 한도표 자체 검증 — '하루 한도 없는 종류'를 만들 수 없는가")
+_orig_limits = dict(quota.LIMITS)
+for _bad_label, _bad in [
+    ("per_day 누락", {"per_min": 3, "cost_krw": 10}),
+    ("cost_krw 누락", {"per_day": 5, "per_min": 3}),
+    ("per_day < per_min (1분에 소진)", {"per_day": 1, "per_min": 3, "cost_krw": 10}),
+]:
+    quota.LIMITS["_probe"] = _bad
+    try:
+        quota._validate_limits()
+        check(f"🔴 {_bad_label} → 거부한다", False, "통과해버림")
+    except RuntimeError:
+        check(f"🔴 {_bad_label} → 거부한다", True)
+    finally:
+        quota.LIMITS.pop("_probe", None)
+check("   정상 한도표는 통과한다 (대조군)", quota._validate_limits() is None)
+check("   analyze_deep 숫자는 한 곳에서만 정의된다 (analyze.py 가 그대로 읽는다)",
+      __import__("routers.analyze", fromlist=["x"]).FREE_DAILY_DEEP_LIMIT
+      == quota.LIMITS["analyze_deep"]["per_day"])
 
 with TestClient(app) as c:
 

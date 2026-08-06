@@ -26,7 +26,12 @@ router = APIRouter()
 
 # analysis_cache / trusted_channels / channel_scores / usage 는 Phase 3b 에서 DB 로 이전됨.
 # prompt_rules 는 Phase 3c 에서 DB(rules_store) 로 이전됨.
-FREE_DAILY_DEEP_LIMIT = 3
+# 무료 일일 정밀검수 한도 — 숫자는 quota.LIMITS 한 곳에서만 정의한다(두 곳에 적으면 드리프트).
+#   2026-08-06: 3 → 50 완화. 근거는 실측(1회 16.4원 · 분석캐시 적중률 97.2% → 실제 과금은 2.8%뿐).
+#   ⚠️ 그럼에도 한도를 **없애지는 않는다.** 캐시 97%는 정상 사용자 기준이고,
+#      비용을 태우려는 쪽은 매번 새 video_id 를 던져 캐시를 **일부러 피한다**(적중률 0%).
+#      그때 총액을 막는 건 이 하루 한도뿐이다 — 분당 제한은 '얼마나 빨리'만 막는다.
+FREE_DAILY_DEEP_LIMIT = quota.LIMITS["analyze_deep"]["per_day"]
 
 # 자동 신뢰 채널 등록 임계값 (Tier 2에서 90+ 판정을 N번 받으면 자동 등록)
 AUTO_TRUST_THRESHOLD = 3
@@ -784,6 +789,10 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
         #       경로가 관리자 페이지뿐이라(admin_users.py:147) 결제 화면이 없다 — 지금 그걸 끄면
         #       아무도 스스로 프리미엄이 될 수 없어 프로필 개수 제한에 걸린다.
         #    한도 초과는 429. analyze_deep 의 바깥 try 가 `except HTTPException: raise` 라 그대로 나간다(확인함).
+        #    분당 급제동은 프리미엄 여부와 무관하게 먼저 건다 — 하루 한도(아래)는 '얼마나 많이'를,
+        #    이건 '얼마나 빨리'를 막는다. 자동 스크립트는 여기서 죽는다.
+        quota.check_minute_only("analyze_deep", user_id=user["user_id"])
+
         subs = await _supabase_select("subscriptions", {
             "user_id": f"eq.{user['user_id']}",
             "plan": "eq.premium",
