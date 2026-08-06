@@ -138,6 +138,31 @@ describe("V3 — 이어그리기 실패(2연속) → 아이 원본 채택 + 텍�
   });
 });
 
+// ── S2 비용 상한 (2026-08-06) ─────────────────────────────────────────────
+//    이어그리기는 실패 시 자동 재시도가 1회 있다(§0-4). 그런데 429(한도)는 다시 불러도
+//    똑같이 막히므로, 재시도하면 **아무 소득 없는 헛호출**만 한 번 더 만든다.
+describe("V7 — 서버 한도(429): 자동 재시도를 하지 않는다", () => {
+  it("429면 호출은 1번뿐 (진짜 실패일 때의 2번과 대조)", async () => {
+    H.api.continueDiaryImage.mockRejectedValue(Object.assign(new Error("429"), {
+      response: { status: 429, data: { detail: { code: "QUOTA_EXCEEDED" } } },
+    }));
+    renderFlow();
+    await toCanvasDone();
+    await act(async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); });
+    expect(H.api.continueDiaryImage).toHaveBeenCalledTimes(1);   // V3의 2번과 대조
+    expect(await screen.findByText(CONTINUE_FAIL)).toBeTruthy();  // 아이 원본 채택은 그대로
+    expect(diaryStore.getContinueLeft("t1", TODAY)).toBe(1);      // 미소비 불변식 유지
+  });
+
+  it("🔴 profileId를 서버로 보낸다", async () => {
+    renderFlow();
+    await toCanvasDone();
+    expect(H.api.continueDiaryImage).toHaveBeenCalledWith(
+      expect.objectContaining({ profileId: PROFILE.id }),
+    );
+  });
+});
+
 describe("V6 — 찢기 시 원본+완성본 IDB 모두 삭제(회귀)", () => {
   it("tearEntry(both) → deleteImage(imageId)+deleteImage(drawingId)", () => {
     diaryStore.saveEntry("t1", { id: "e1", date: TODAY, sentences: ["문장"], moodEmoji: "🙂", childPick: "", keptAt: TODAY, imageId: "img_e1", drawingId: "draw_e1" });

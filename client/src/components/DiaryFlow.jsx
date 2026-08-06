@@ -331,7 +331,7 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
     }
     setImgState("wait"); // 대기연출(3단 멘트·타이머·enqueue)은 imgState effect가 담당(§3-a)
     try {
-      const res = await generateDiaryImage({ sentences: s, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender });
+      const res = await generateDiaryImage({ sentences: s, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender, profileId: pid });
       if (!mountedRef.current) return;
       if (res && res.ok && res.b64) {
         const url = `data:image/png;base64,${res.b64}`;
@@ -347,11 +347,17 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
         return;
       }
       throw new Error("no-image");
-    } catch {
+    } catch (err) {
       if (!mountedRef.current) return;
+      // S2 서버 한도(429)는 '실패'가 아니라 '오늘 다 썼다'다 — 기존 소진 카피를 그대로 재사용한다.
+      // 정상 사용은 프론트 카운터(REGEN_MAX)에서 먼저 막히므로 여기까지 오는 건 기기·브라우저를 바꾼 경우다.
+      // ⚠️ 하루(day) 소진일 때만이다. 분당(minute) 제한은 1분 뒤 풀리는데 REGEN_OUT은 "내일 또 그려줄게"라
+      //    아이에게 사실이 아닌 말이 된다(검증 축 4 '사실 왜곡'). 그때는 기존 실패 카피를 쓴다.
+      const limit = err?.response?.status === 429 ? err?.response?.data?.detail : null;
+      const line = limit?.scope === "day" ? REGEN_OUT : IMG_FAIL;
       setImgState("fail");
-      setKiddyLine(IMG_FAIL);
-      voice.enqueue(IMG_FAIL, "bright");
+      setKiddyLine(line);
+      voice.enqueue(line, "bright");
     }
   };
 
@@ -389,10 +395,11 @@ export default function DiaryFlow({ profile, today, checkinMood, checkinDidToday
   const runContinue = async (dataUrl, { retried = false } = {}) => {
     if (mountedRef.current) setImgState("wait"); // 4단 대기연출은 imgState effect가 담당(genMode==="me")
     let res = null;
-    try { res = await continueDiaryImage({ drawingB64: dataUrl, sentences, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender }); }
-    catch { res = null; }
+    let limited = false; // S2 서버 한도(429) — 재시도해도 똑같이 막히므로 헛호출을 만들지 않는다
+    try { res = await continueDiaryImage({ drawingB64: dataUrl, sentences, childPick, moodEmoji: checkinMood, weatherKey: weather, profileGender: profile?.gender, profileId: pid }); }
+    catch (err) { res = null; limited = err?.response?.status === 429; }
     const ok = !!(res && res.ok && res.b64);
-    if (!ok && !retried) return runContinue(dataUrl, { retried: true }); // §0-4 자동 재시도 1회(마운트 무관 — 이탈해도 완성 시도)
+    if (!ok && !retried && !limited) return runContinue(dataUrl, { retried: true }); // §0-4 자동 재시도 1회(마운트 무관 — 이탈해도 완성 시도)
     if (mountedRef.current) {
       if (ok) {
         setCompletedUrl(`data:image/png;base64,${res.b64}`);

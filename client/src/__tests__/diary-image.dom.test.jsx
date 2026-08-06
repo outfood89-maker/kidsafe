@@ -33,7 +33,7 @@ vi.mock("../components/Typewriter", () => ({ default: ({ text }) => text }));
 import DiaryFlow from "../components/DiaryFlow";
 import FamilyShelf from "../pages/FamilyShelf";
 import * as diaryStore from "../utils/diaryStore";
-import { KEEP, REGEN, REMAKE, IMG_DONE, IMG_FAIL, IMAGE_PLACEHOLDER, WAIT_SEQ, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy";
+import { KEEP, REGEN, REGEN_OUT, REMAKE, IMG_DONE, IMG_FAIL, IMAGE_PLACEHOLDER, WAIT_SEQ, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy";
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -148,6 +148,43 @@ describe("V4 — 다시 만들기: confirm→yes 삭제+재시작 / no 무변화
     expect(diaryStore.getEntries("t1").length).toBe(0);
     expect(H.img.deleteImage).toHaveBeenCalledWith("img_e1");
     expect(await screen.findByText(SUNNY)).toBeTruthy();
+  });
+});
+
+// ── S2 비용 상한 (2026-08-06) — 서버가 한도로 막았을 때(429) ──────────────
+//    정상 사용은 프론트 카운터(REGEN_MAX)에서 먼저 막히므로, 429까지 오는 건
+//    기기·브라우저를 바꿔 프론트 카운터가 리셋된 경우다. 그때도 '고장'처럼 보이면 안 된다.
+describe("V6 — 서버 한도(429): 소진 카피 + profileId 전달", () => {
+  const err429 = (scope = "day") => Object.assign(new Error("429"), {
+    response: { status: 429, data: { detail: { code: "QUOTA_EXCEEDED", scope } } },
+  });
+
+  it("하루 소진(day)은 '실패'가 아니라 '오늘 다 썼다'로 안내한다 (IMG_FAIL 아님)", async () => {
+    H.api.generateDiaryImage.mockRejectedValue(err429("day"));
+    await runToResult();
+    expect(await screen.findByText(REGEN_OUT)).toBeTruthy();
+    expect(screen.queryByText(IMG_FAIL)).toBeNull();
+  });
+
+  it("🔴 분당 제한(minute)에 '내일 또'라고 말하지 않는다 — 1분 뒤 풀리므로 사실 왜곡", async () => {
+    H.api.generateDiaryImage.mockRejectedValue(err429("minute"));
+    await runToResult();
+    expect(await screen.findByText(IMG_FAIL)).toBeTruthy();
+    expect(screen.queryByText(REGEN_OUT)).toBeNull();
+  });
+
+  it("429가 아닌 진짜 실패는 그대로 IMG_FAIL (회귀 방지)", async () => {
+    H.api.generateDiaryImage.mockRejectedValue(new Error("network"));
+    await runToResult();
+    expect(await screen.findByText(IMG_FAIL)).toBeTruthy();
+    expect(screen.queryByText(REGEN_OUT)).toBeNull();
+  });
+
+  it("🔴 profileId를 서버로 보낸다 — 빠지면 형제자매가 서로의 한도를 깎는다", async () => {
+    await runToResult();
+    expect(H.api.generateDiaryImage).toHaveBeenCalledWith(
+      expect.objectContaining({ profileId: PROFILE.id }),
+    );
   });
 });
 

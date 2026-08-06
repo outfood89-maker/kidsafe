@@ -13,6 +13,7 @@ import httpx
 import anthropic
 from auth import get_current_user, require_admin, _supabase_select  # GD-S0: 캐시 삭제는 관리자 전용
 from db import sb_select, sb_upsert, sb_delete
+import quota  # S2·S4: 날짜 경계(KST) 단일 기준 — 프론트 diaryStore.todayKST 와 맞춘다
 from rules_store import load_prompt_rules, prompt_rules_updated_at
 
 # 자막 추출 라이브러리 — 설치/임포트 실패해도 서버는 떠야 하므로 방어적 import
@@ -69,7 +70,12 @@ KIDS_TOPIC_KEYWORDS = ["children", "child", "kids", "educational", "cartoon", "a
 
 async def check_and_increment_usage(user_id: str):
     """새 정밀검수 시 일일 카운트를 확인하고 증가. 한도 초과 시 HTTP 429. (DB)"""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # ⚠️ 날짜 경계는 KST 여야 한다 (2026-08-06 수정).
+    #    UTC 였을 때는 한도가 자정이 아니라 **한국시간 아침 9시**에 리셋됐다 —
+    #    프론트 카운터(diaryStore.js:16 todayKST)와 어긋나는 상태였다.
+    #    ⚠️ 이 파일의 다른 datetime.now(timezone.utc) 3곳(:168·:177·:576)은 **타임스탬프**라
+    #       UTC 가 맞다. 날짜 '경계'를 정하는 자리만 KST 다.
+    today = quota.today_kst()
     rows = await sb_select("usage", {"user_id": f"eq.{user_id}", "select": "*", "limit": "1"})
     entry = rows[0] if rows else None
     used = entry["deep_count"] if (entry and entry.get("date") == today) else 0
@@ -771,17 +777,22 @@ async def analyze_deep(data: AnalyzeRequest, user: dict = Depends(get_current_us
                     return cached
 
         # 새 분석(캐시 미스)일 때만 일일 한도 체크 — 캐시 히트는 무료, 프리미엄은 무제한
-        # ── 공모전 모드 (오너 지시 2026-07-10): 전 계정 프리미엄 대우 — 일일 한도 미적용 ──
-        #    심사위원이 검색·분석을 자유롭게 체험하도록. 복구 시 아래 주석 해제.
-        # subs = await _supabase_select("subscriptions", {
-        #     "user_id": f"eq.{user['user_id']}",
-        #     "plan": "eq.premium",
-        #     "status": "eq.active",
-        #     "select": "id",
-        #     "limit": "1",
-        # })
-        # if not subs:
-        #     await check_and_increment_usage(user["user_id"])
+        # ── 공모전 모드 해제 (오너 지시 2026-08-06). 2026-07-10~08-06 동안 전 계정 프리미엄 대우로
+        #    이 블록이 주석 처리돼 있었다(심사위원 체험용). 무한 호출 차단(S2·S4)을 위해 되살린다.
+        #    ⚠️ 다시 끄려면 이 블록만 주석 처리하면 된다 — me.py 의 is_premium 과는 별개다.
+        #    ⚠️ me.py:19 의 `is_premium: True` 는 **그대로 둔다.** subscriptions 에 프리미엄을 넣는
+        #       경로가 관리자 페이지뿐이라(admin_users.py:147) 결제 화면이 없다 — 지금 그걸 끄면
+        #       아무도 스스로 프리미엄이 될 수 없어 프로필 개수 제한에 걸린다.
+        #    한도 초과는 429. analyze_deep 의 바깥 try 가 `except HTTPException: raise` 라 그대로 나간다(확인함).
+        subs = await _supabase_select("subscriptions", {
+            "user_id": f"eq.{user['user_id']}",
+            "plan": "eq.premium",
+            "status": "eq.active",
+            "select": "id",
+            "limit": "1",
+        })
+        if not subs:
+            await check_and_increment_usage(user["user_id"])
 
         trusted_set = await trusted_channel_set()
         trusted = bool(channel_id and channel_id in trusted_set)

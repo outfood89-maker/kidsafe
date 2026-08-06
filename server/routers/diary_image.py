@@ -18,6 +18,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from auth import get_current_user  # 컨트롤타워 리뷰 추가: 미인증 호출 차단(키 비용 남용 방지 — 배포 시 필수)
+from routers.profiles import get_owned_profile  # 인가(소유권) — 남의 프로필 번호로 남의 쿼터를 태우는 것 차단
+from quota import check_and_consume  # 비용 상한 S2·S4 (2026-08-06) — 인증만으론 '들어온 계정 1개의 무한 호출'을 못 막는다
 
 router = APIRouter()
 
@@ -97,6 +99,7 @@ class GenerateRequest(BaseModel):
     moodEmoji: Optional[str] = ""
     weatherKey: Optional[str] = ""
     profileGender: Optional[str] = ""  # 기존 프로필 gender("남자"/"여자"). 그 외/빈값 → 중성(성별 추정 금지)
+    profileId: Optional[str] = ""      # S2 한도 집계 단위(프로필당). 빈값이면 계정당으로 폴백 — quota.scope_key 주석 참조
 
 
 def _fallback_prompt(child_pick: str, mood: str, gender: str = "") -> str:
@@ -164,7 +167,16 @@ async def _generate_image_b64(prompt: str) -> Optional[str]:
 @router.post("/generate")
 async def generate(req: GenerateRequest, user: dict = Depends(get_current_user)):
     """일기 → 이미지 프롬프트(Sonnet) → PNG b64(OpenAI). 어느 단계 실패든 { ok: false } (500 금지).
-    인증 필수(get_current_user) — 로그인 토큰 없는 호출은 이미지 생성 불가(외부 키 비용 보호)."""
+    인증 필수(get_current_user) — 로그인 토큰 없는 호출은 이미지 생성 불가(외부 키 비용 보호).
+    한도 초과는 예외적으로 **429**를 던진다(아래 주석 참조)."""
+    # ⚠️ 소유권·한도 검사는 반드시 try 바깥이다.
+    #    이 라우터는 모든 실패를 { ok: False } 로 삼키도록 설계돼 있는데, HTTPException 도
+    #    Exception 의 하위라 try 안에 두면 **429/404 가 그냥 '생성 실패'로 둔갑한다.**
+    #    (에러가 안 나고 화면도 멀쩡해서 아무도 모르는 종류의 새는 실수)
+    if req.profileId:
+        await get_owned_profile(req.profileId, user["user_id"])  # 남의 프로필이면 404
+    check_and_consume("diary_gen", req.profileId or "", user["user_id"])
+
     try:
         prompt = await _to_image_prompt(req)
         b64 = await _generate_image_b64(prompt)
@@ -203,6 +215,7 @@ class ContinueRequest(BaseModel):
     moodEmoji: Optional[str] = ""
     weatherKey: Optional[str] = ""
     profileGender: Optional[str] = ""
+    profileId: Optional[str] = ""  # S2 한도 집계 단위(프로필당). 빈값이면 계정당으로 폴백
 
 
 def _continue_character_block(gender: str) -> str:
@@ -328,11 +341,19 @@ async def _edit_image_b64(prompt: str, drawing: bytes) -> Optional[str]:
 @router.post("/continue")
 async def continue_drawing(req: ContinueRequest, user: dict = Depends(get_current_user)):
     """아이 낙서(b64) + 일기 → 이어 그리기 편집(gpt-image-1). 어느 단계 실패든 { ok: false }(500 금지).
-    인증 필수 · 낙서 b64 상한 방어 · 확정 설정(fidelity:high·quality:medium·size:auto)."""
+    인증 필수 · 낙서 b64 상한 방어 · 확정 설정(fidelity:high·quality:medium·size:auto).
+    한도 초과는 예외적으로 **429**를 던진다."""
+    # ⚠️ 디코드·소유권·한도 검사는 반드시 try 바깥이다 (generate 와 같은 이유 — 429/404 가 삼켜진다).
+    #    디코드를 먼저 하는 이유: 낙서가 깨졌으면 OpenAI 를 부르지 않으니 **돈이 안 나간다.**
+    #    그런 실패로 아이의 하루 한도를 깎지 않는다.
+    drawing = _decode_drawing(req.drawingB64)
+    if drawing is None:  # 빈값·상한 초과·디코드 실패 — 한도 소비 없음
+        return {"ok": False}
+    if req.profileId:
+        await get_owned_profile(req.profileId, user["user_id"])  # 남의 프로필이면 404
+    check_and_consume("diary_continue", req.profileId or "", user["user_id"])
+
     try:
-        drawing = _decode_drawing(req.drawingB64)
-        if drawing is None:  # 빈값·상한 초과·디코드 실패
-            return {"ok": False}
         prompt = await _to_continue_prompt(req)
         b64 = await _edit_image_b64(prompt, drawing)
         if not b64:
