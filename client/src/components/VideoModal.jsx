@@ -43,7 +43,15 @@ export default function VideoModal({ video, onClose, onPlayInApp, onDeepResult, 
       })
       .catch((err) => {
         if (err?.response?.status === 429) {
-          setPaywallOpen(true);
+          // S4 일일 한도 초과 (2026-08-06 공모전 모드 해제로 되살아남).
+          // ⚠️ 아이 화면에는 결제 화면을 띄우지 않는다 — 부모 화면(parentView)에서만 안내한다.
+          //    ① 결제 경로가 없다: subscriptions 를 채우는 건 관리자 페이지뿐(admin_users.py:147)이라
+          //       아이가 "월 4,900원"을 보고 눌러도 갈 곳이 없는 **막다른 길**이다.
+          //    ② 안전이 사라지지 않는다: 검수는 2층 구조라 Tier 0~1 키워드 채점은 계속 동작한다.
+          //       deepResult 가 null 이면 화면은 기본 안전도로 그대로 렌더된다(:96 `v = deepResult ? ... : video`).
+          //    ③ 아동 안전 기능에서 "돈 내면 더 안전"을 **아이에게** 보이는 구조 자체가 위험하다.
+          //    ⚠️ 한도 횟수 자체는 재검토 대상 — 오너 의견 "영상 검수는 기본 기능으로 가고 싶다"(미해결질문 21).
+          if (parentView) setPaywallOpen(true);
         } else {
           console.error("AI 정밀 분석 실패:", err);
         }
