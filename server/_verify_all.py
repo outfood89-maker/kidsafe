@@ -29,6 +29,7 @@ CHECKS = [
     ("인가(소유권) 검증",          "_verify_authz.py"),
     ("🐤 윤리선 카나리아",          "_verify_canary.py"),
     ("💸 비용 상한(레이트리밋)",     "_verify_quota.py"),
+    ("🚨 위기 사전(정탐·오탐·양쪽 동일)", "_verify_lexicon.py"),
     ("가짜 주입 도구 자체 점검",     "_verify_fakes.py"),
 ]
 
