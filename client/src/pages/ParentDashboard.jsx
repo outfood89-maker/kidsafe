@@ -42,7 +42,7 @@ import PinModal from "../components/PinModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 import ParentDiaryShelf from "../components/ParentDiaryShelf"; // AD-6 §2: 부모 가족 책장(열람+도장·편지)
-import { DIARY_V0 } from "../utils/diaryStore"; // AD-6: feature/diary-v0 게이트
+import { DIARY_V0, DIARY_SERVER } from "../utils/diaryStore"; // AD-6: feature/diary-v0 게이트 / B13: 킬스위치
 import { childStem } from "../utils/josa"; // 아이 이름 애칭형 어간(받침 있으면 '이' 붙임: 주혁→주혁이) — 앱 전역 공용
 import TourCoachmark from "../components/TourCoachmark"; // AD-7: 부모 둘러보기 코치마크
 import { startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // P4(오너 7/10): 부모페이지 배경음악
@@ -1168,7 +1168,12 @@ export default function ParentDashboard() {
                   🔴 여기 두는 이유 — 부모가 책장을 보는 순간이 곧 "다른 기기에서도 보고 싶다"가
                   생기는 지점이다. 설정 깊숙이 묻어두면 아무도 못 찾는다.
                   ⚠️ 투어(예시 화면)에서는 숨긴다 — 가짜 프로필로 진짜 동의를 보낼 수 없다. */}
-              {!tourMode && (() => {
+              {/* 🔴 DIARY_SERVER 조건이 반드시 있어야 한다 (2026-08-07 오너 시범테스트로 발견).
+                  킬스위치가 꺼진 상태에서 이 카드를 보이면 **지키지 못할 약속**이 된다 —
+                  부모가 "켜면 내 폰에서도 보여요"를 믿고 켰는데 아무것도 올라가지 않아
+                  자기 폰에서 빈 책장을 본다. 동의만 받고 기능은 안 도는 상태다.
+                  ⇒ 기능을 배포하기 전에는 아예 제안하지 않는다. */}
+              {!tourMode && DIARY_SERVER && (() => {
                 const p = profiles.find((x) => x.id === shelfProfileId);
                 return p ? (
                   <DiaryConsentCard

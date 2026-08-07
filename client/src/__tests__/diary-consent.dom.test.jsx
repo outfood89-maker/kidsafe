@@ -191,6 +191,30 @@ describe("[E] 동의 카드 — 켜기는 묻고, 끄기는 안 묻는다", () =
     await waitFor(() => expect(screen.getByText(/이미 올려둔 일기는 그대로 있어요/)).toBeTruthy());
   });
 
+  it("🔴 끈 뒤 다시 켜려 하면 '껐어요' 안내가 사라진다 (모순 문구 방지)", async () => {
+    // 2026-08-07 오너 시범테스트에서 발견 — "껐어요"와 "켜기 전에 알려드릴게요"가
+    // 한 화면에 같이 떠서 서로 반대되는 말을 하고 있었다.
+    const { rerender } = render(<DiaryConsentCard profile={{ ...KID, diaryServerOn: true }} />);
+    await userEvent.click(toggle());                                  // 끄기
+    await waitFor(() => expect(screen.getByText(/이미 올려둔 일기는 그대로 있어요/)).toBeTruthy());
+
+    rerender(<DiaryConsentCard profile={{ ...KID, diaryServerOn: false }} />);
+    await userEvent.click(toggle());                                  // 다시 켜기 시도
+    expect(screen.getByText("켜기 전에 알려드릴게요")).toBeTruthy();
+    expect(screen.queryByText(/이미 올려둔 일기는 그대로 있어요/), "껐다는 안내가 남아 있다").toBeNull();
+  });
+
+  it("🔴 킬스위치가 꺼져 있으면 부모 화면에 카드를 내놓지 않는다", () => {
+    // 지키지 못할 약속 방지 — "켜면 내 폰에서도 보여요"를 믿고 켰는데
+    // 실제로는 아무것도 안 올라가면 부모는 자기 폰에서 빈 책장을 본다.
+    const dash = readFileSync(resolve(SRC, "pages/ParentDashboard.jsx"), "utf8");
+    const i = dash.indexOf("<DiaryConsentCard");
+    expect(i, "부모 화면에 동의 카드가 없다").toBeGreaterThan(-1);
+    // 카드 바로 앞의 조건절에 킬스위치가 있어야 한다
+    const before = dash.slice(Math.max(0, i - 900), i);
+    expect(before, "DIARY_SERVER 게이트 없이 카드를 렌더한다").toMatch(/DIARY_SERVER\s*&&/);
+  });
+
   it("처리방침으로 가는 길이 확인 화면에 있다", async () => {
     render(<DiaryConsentCard profile={KID} />);
     await userEvent.click(toggle());

@@ -70,7 +70,9 @@ export default function DiaryConsentCard({ profile, onChanged }) {
 
         {/* 토글 — 켤 때만 확인 화면, 끌 때는 바로 */}
         <button
-          onClick={() => (on ? send("revoke") : setSheet(true))}
+          // ⚠️ 켜기 화면을 열 때 이전 안내를 지운다 — 안 지우면 "껐어요"와
+          //    "켜기 전에 알려드릴게요"가 한 화면에 같이 떠서 서로 모순된다(2026-08-07 오너 발견).
+          onClick={() => (on ? send("revoke") : (setNote(""), setSheet(true)))}
           disabled={busy}
           aria-pressed={on}
           aria-label="어디서나 열리는 가족 책장"
