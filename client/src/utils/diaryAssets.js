@@ -13,6 +13,8 @@
 
 import axios from "axios";
 import { postDiaryAsset, getDiaryAssetUrl } from "./api";
+// 인코딩은 imageCodec 한 곳에서만 — 저장(diaryImageStore.putImage)과 업로드가 같은 구현을 쓴다.
+import { reencode } from "./imageCodec";
 
 // 서명 URL 메모리 캐시: key = `${clientAssetId}::${variant}` → { url, exp(ms) }
 // ⚠️ localStorage 에 쓰지 말 것 — 만료된 링크가 캐시에 굳어 영원히 깨진 이미지가 뜬다.
@@ -63,71 +65,16 @@ function dataUrlToBlob(dataUrl) {
   } catch { return null; }
 }
 
-// 🔴 이미지 디코딩에 **반드시 시간 제한을 둔다** (2026-08-07).
-//    onload/onerror 가 끝내 안 뜨는 환경이 실제로 있다(jsdom 이 그렇고, 브라우저에서도
-//    손상된 data URL 이면 둘 다 안 뜰 수 있다). 제한이 없으면 promise 가 영원히 안 풀리고,
-//    이사는 **순차 실행**이라 그 자리에서 전체가 멈춘다. 시간 초과 = 썸네일 포기(원본은 올린다).
-const DECODE_TIMEOUT_MS = 4000;
-
-/** 캔버스로 다시 그릴 수 있는 환경인가. **디코딩보다 먼저** 확인한다 —
- *  그릴 수 없으면 이미지를 읽을 이유가 없고, 괜히 기다리기만 한다(jsdom·구형 환경). */
-function canRaster() {
-  try {
-    if (typeof document === "undefined" || typeof Image === "undefined") return false;
-    const c = document.createElement("canvas");
-    return !!(c.getContext && c.getContext("2d") && c.toBlob);
-  } catch { return false; }
-}
-
-function loadImage(dataUrl) {
-  if (!canRaster()) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (v) => { if (!done) { done = true; clearTimeout(t); resolve(v); } };
-    const t = setTimeout(() => finish(null), DECODE_TIMEOUT_MS);
-    const el = new Image();
-    el.onload = () => finish(el);
-    el.onerror = () => finish(null);
-    el.src = dataUrl;
-  });
-}
-
-/** 긴 변 640px·JPEG q0.8 썸네일 생성. 만들 수 없으면 조용히 null(원본만 올린다). */
-async function makeThumb(dataUrl) {
-  try {
-    const img = await loadImage(dataUrl);
-    if (!img) return null;
-    const long = Math.max(img.width, img.height) || 1;
-    const scale = Math.min(1, 640 / long);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(img.width * scale));
-    canvas.height = Math.max(1, Math.round(img.height * scale));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
-  } catch { return null; }
-}
-
 // 서버 상한과 같은 값(server/routers/diary.py MAX_IMAGE_BYTES). 넘으면 413 이다.
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
-/** 긴 변 2048px·JPEG q0.9 로 다시 굽는다. 상한을 넘겼을 때만 쓴다. */
-async function shrinkOriginal(dataUrl) {
-  try {
-    const img = await loadImage(dataUrl);   // 시간 제한 포함
-    if (!img) return null;
-    const long = Math.max(img.width, img.height) || 1;
-    const scale = Math.min(1, 2048 / long);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(img.width * scale));
-    canvas.height = Math.max(1, Math.round(img.height * scale));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-  } catch { return null; }
-}
+/** 긴 변 640px·JPEG q0.8 썸네일. 만들 수 없으면 null(원본만 올린다). */
+const makeThumb = (dataUrl) => reencode(dataUrl, { maxLong: 640, type: "image/jpeg", quality: 0.8 });
+
+/** 상한을 넘겼을 때만 쓰는 응급 축소 — 긴 변 2048px·JPEG q0.9.
+ *  평상시 압축은 저장 시점(diaryImageStore.putImage)에서 이미 끝나 있다.
+ *  여기는 **옛날에 저장된 큰 PNG** 를 위한 안전망이다. */
+const shrinkOriginal = (dataUrl) => reencode(dataUrl, { maxLong: 2048, type: "image/jpeg", quality: 0.9 });
 
 /** 그림 1장 업로드(원본 + 썸네일). 성공 여부만 반환. */
 export async function uploadImageAsset(pid, clientAssetId, dataUrl, role) {

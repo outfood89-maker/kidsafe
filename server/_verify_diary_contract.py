@@ -350,12 +350,29 @@ def main():
     for role in ('"drawing"', '"completed"', '"memo"', '"letter"'):
         check(role in mig, f"이사 엔진이 role {role} 를 구분한다")
     assets_src = read(os.path.join(CLIENT, "diaryAssets.js"))
-    check("DECODE_TIMEOUT_MS" in assets_src,
+    codec_src = read(os.path.join(CLIENT, "imageCodec.js"))
+    imgst_raw = read(os.path.join(CLIENT, "diaryImageStore.js"))
+    # 인코딩은 imageCodec 한 곳에서만 한다 (2026-08-07 — 저장·업로드가 같은 구현을 써야 한다)
+    check(bool(codec_src), "imageCodec.js 가 있다")
+    check("DECODE_TIMEOUT_MS" in codec_src,
           "🔴 이미지 디코딩에 시간 제한이 있다 (없으면 순차 이사가 그 자리에서 멈춘다)")
-    check("canRaster" in assets_src,
+    check("canRaster" in codec_src,
           "캔버스 지원을 디코딩보다 먼저 확인한다 (못 그리면 읽을 이유가 없다)")
     check("shrinkOriginal" in assets_src,
           "상한 초과 시 줄여서 올린다 (막으면 일기 한 편이 통째로 안 올라간다)")
+    check("reencode" in assets_src and "toBlob" not in strip_comments(assets_src),
+          "diaryAssets 가 인코딩을 다시 구현하지 않는다 (imageCodec 에 위임)")
+    # 🔴 저장 시점 압축 — 그림이 들어오는 길은 여럿이지만 저장은 putImage 하나로 수렴한다
+    check("compressForStorage" in imgst_raw,
+          "🔴 putImage 가 저장 직전에 압축한다 (AI 그림 실측 3.82MB — 상한의 95%)")
+    check("toBlob" not in strip_comments(imgst_raw),
+          "diaryImageStore 가 인코딩을 다시 구현하지 않는다")
+    # 원본 유실 방지 — 압축이 안 되면 원본을 그대로 돌려줘야 한다
+    check("return dataUrl" in codec_src,
+          "🔴 압축 실패 시 원본을 그대로 돌려준다 (압축은 최적화지만 유실은 사고다)")
+    # 해상도 유지 — 앨범 실물 인쇄가 프리미엄 1순위다
+    check("maxLong = 0" in codec_src,
+          "기본이 '해상도 유지'다 (앨범 인쇄 때문에 가로세로는 줄이지 않는다)")
 
     print()
     print("=" * 74)

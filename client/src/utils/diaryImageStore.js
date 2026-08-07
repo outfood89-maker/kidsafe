@@ -12,6 +12,8 @@
 //      hydrateDiary 는 DIARY_SERVER=false 면 첫 줄에서 return 한다
 //      → 플래그가 꺼져 있으면 pid 는 영원히 null 이고 폴백은 자동으로 비활성이다.
 import { getAssetUrl, getAssetProfileId } from "./diaryAssets";
+// 저장 직전 압축 — imageCodec 은 아무것도 import 하지 않는 잎 모듈이라 순환이 없다.
+import { compressForStorage } from "./imageCodec";
 
 const DB_NAME = "diary_v0_images";   // ⚠️ 이름 변경 금지 — 기존 데이터를 계속 읽어야 한다(GD-8c 이사 재료)
 const STORE = "images";
@@ -46,9 +48,16 @@ async function run(mode, fn) {
 }
 
 // 이미지 저장 (id = imageId, data = data URL 문자열). 실패해도 false만(텍스트 저장 불변).
+//
+// 🔴 저장하는 순간 줄인다 (2026-08-07). 그림이 들어오는 길은 여럿이지만(AI 생성·이어그리기·
+//    직접 그리기·서버 복원) **저장은 이 함수 하나로 수렴한다.** 여기서 한 번만 처리한다.
+//    늦게 줄이면 손해가 여러 곳에 쌓인다 — 로컬 할당량(iOS)·스크롤 성능·서버 비용.
+//    해상도는 유지하고 포맷만 바꾼다(앨범 인쇄 때문에). 자세한 이유는 imageCodec.js.
+// ⚠️ 압축이 안 되면 **원본을 그대로 저장한다.** 압축 실패로 아이 그림을 잃지 않는다.
 export async function putImage(id, data) {
   if (!id) return false;
-  try { await run("readwrite", (s) => s.put(data, id)); return true; }
+  const packed = await compressForStorage(data);
+  try { await run("readwrite", (s) => s.put(packed, id)); return true; }
   catch { return false; }
 }
 
