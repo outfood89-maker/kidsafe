@@ -340,6 +340,23 @@ def main():
     check(not re.search(r"(?<![.\w])fetch\s*\(", assets),
           "diaryAssets 가 fetch 를 쓰지 않는다 (CLAUDE.md: Axios만)")
 
+    # ── 업로드는 한 곳에서만 (2026-08-07) ──
+    # 이사 엔진이 업로드를 직접 구현하는 바람에 썸네일 누락 + role 오류가 생겼다.
+    mig = read(os.path.join(CLIENT, "diaryMigrate.js"))
+    check("postDiaryAsset" not in strip_comments(mig),
+          "🔴 이사 엔진이 자산 업로드를 직접 하지 않는다 (두 번 구현하면 계약이 어긋난다)")
+    for fn in ("uploadImageAsset", "uploadAudioAsset"):
+        check(fn in mig, f"이사 엔진이 {fn} 에 위임한다")
+    for role in ('"drawing"', '"completed"', '"memo"', '"letter"'):
+        check(role in mig, f"이사 엔진이 role {role} 를 구분한다")
+    assets_src = read(os.path.join(CLIENT, "diaryAssets.js"))
+    check("DECODE_TIMEOUT_MS" in assets_src,
+          "🔴 이미지 디코딩에 시간 제한이 있다 (없으면 순차 이사가 그 자리에서 멈춘다)")
+    check("canRaster" in assets_src,
+          "캔버스 지원을 디코딩보다 먼저 확인한다 (못 그리면 읽을 이유가 없다)")
+    check("shrinkOriginal" in assets_src,
+          "상한 초과 시 줄여서 올린다 (막으면 일기 한 편이 통째로 안 올라간다)")
+
     print()
     print("=" * 74)
     print("[F] 🔴 MIME 정규화 — 브라우저가 붙이는 ;codecs= 가 업로드를 통째로 막았다")

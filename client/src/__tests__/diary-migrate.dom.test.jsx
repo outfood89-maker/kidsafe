@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const H = vi.hoisted(() => ({
   serverEntries: [],                 // 서버에 이미 있는 엔트리(멱등 판정용)
   assetCalls: [],                    // postDiaryAsset 호출 기록
+  assetMeta: [],                     // 같은 호출의 role·kind·썸네일 여부
   entryCalls: [],                    // postDiaryEntry 호출 기록
   assetFails: new Set(),             // 이 assetId 는 업로드가 실패한다
   img: new Map(),
@@ -24,6 +25,7 @@ vi.mock("../utils/api", () => ({
   postDiaryAsset: vi.fn(async (fd) => {
     const id = fd.get("clientAssetId");
     H.assetCalls.push(id);
+    H.assetMeta.push({ id, role: fd.get("role"), kind: fd.get("kind"), hasThumb: !!fd.get("thumb") });
     if (H.assetFails.has(id)) throw new Error("upload failed");
     return { asset: {} };
   }),
@@ -61,7 +63,7 @@ function seed(n, extra = {}) {
 
 beforeEach(() => {
   localStorage.clear();
-  H.serverEntries = []; H.assetCalls = []; H.entryCalls = [];
+  H.serverEntries = []; H.assetCalls = []; H.entryCalls = []; H.assetMeta = [];
   H.assetFails = new Set(); H.img.clear(); H.aud.clear();
   vi.clearAllMocks();
 });
@@ -222,5 +224,44 @@ describe("[게이트] 🔴 꺼져 있으면 네트워크 0", () => {
     expect(i, "이사 트리거를 못 찾았다").toBeGreaterThan(-1);
     const before = src.slice(Math.max(0, i - 800), i);
     expect(before, "트리거 앞에 DIARY_SERVER 가드가 없다").toMatch(/if\s*\(!DIARY_SERVER\)\s*return/);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// [role] 🔴 이사와 정상 저장이 **같은 계약**으로 올라간다
+// ══════════════════════════════════════════════════════════════════════
+//   2026-08-07 발견: 이사 엔진이 업로드를 직접 구현하는 바람에
+//   낙서를 completed 로, 부모 음성 편지를 memo 로 올리고 있었다(정상 경로는 drawing·letter).
+//   같은 일을 두 번 구현하면 반드시 어긋난다 → diaryAssets 로 위임했다.
+describe("[role] 이사도 정상 저장과 같은 role 로 올린다", () => {
+  it("아이가 직접 그린 그림은 drawing, AI 그림은 completed", async () => {
+    H.img.set("img_a", DATA_URL);
+    diary.saveEntry(PID, { id: "eA", date: TODAY, sentences: ["a"], keptAt: TODAY,
+                           imageId: "img_a", imgSource: "mine" });
+    await migrateProfileDiary(PID);
+    expect(H.assetMeta.find((m) => m.id === "img_a")?.role).toBe("drawing");
+
+    localStorage.clear(); H.assetMeta = []; H.img.set("img_b", DATA_URL);
+    diary.saveEntry(PID, { id: "eB", date: TODAY, sentences: ["b"], keptAt: TODAY,
+                           imageId: "img_b", imgSource: "ai" });
+    await migrateProfileDiary(PID);
+    expect(H.assetMeta.find((m) => m.id === "img_b")?.role).toBe("completed");
+  });
+
+  it("낙서 원본은 drawing", async () => {
+    H.img.set("img_c", DATA_URL); H.img.set("draw_c", DATA_URL);
+    diary.saveEntry(PID, { id: "eC", date: TODAY, sentences: ["c"], keptAt: TODAY,
+                           imageId: "img_c", drawingId: "draw_c", imgSource: "continue" });
+    await migrateProfileDiary(PID);
+    expect(H.assetMeta.find((m) => m.id === "draw_c")?.role).toBe("drawing");
+  });
+
+  it("🔴 아이 음성 메모는 memo, 부모 음성 편지는 letter", async () => {
+    H.aud.set("vm_d", new Blob(["x"])); H.aud.set("vl_d", new Blob(["y"]));
+    diary.saveEntry(PID, { id: "eD", date: TODAY, sentences: ["d"], keptAt: TODAY, voiceId: "vm_d" });
+    diary.setStamp(PID, "eD", { emoji: "💛", letter: "", voiceId: "vl_d", voiceMs: 1000 });
+    await migrateProfileDiary(PID);
+    expect(H.assetMeta.find((m) => m.id === "vm_d")?.role).toBe("memo");
+    expect(H.assetMeta.find((m) => m.id === "vl_d")?.role).toBe("letter");
   });
 });

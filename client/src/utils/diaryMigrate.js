@@ -25,7 +25,9 @@ import { getImage } from "./diaryImageStore";       // 읽기 전용
 import { getAudio } from "./diaryAudioStore";       // 읽기 전용
 // ⚠️ 얇은 어댑터 — 브리프는 `diaryServer.js` 를 전제했으나 GD-8a 산출물은 api.js 에 있다.
 //    계약(성질)은 동일하다: 목록 조회 / upsert / 결정적 경로 덮어쓰기.
-import { getDiaryEntries, postDiaryEntry, postDiaryAsset } from "./api";
+import { getDiaryEntries, postDiaryEntry } from "./api";
+// 🔴 자산 업로드는 여기로 위임한다 — 썸네일·role·크기 처리를 한 곳에 모은다(정상 push 와 동일 계약).
+import { uploadImageAsset, uploadAudioAsset } from "./diaryAssets";
 
 const MIG_KEY = (pid) => `diary_v0_migrate_${pid}`;
 
@@ -52,24 +54,6 @@ export function needsMigration(pid) {
     const st = readState(pid);
     return !st || st.status !== "done";
   } catch { return false; }
-}
-
-/** data URL → Blob. ⚠️ fetch(dataUrl) 금지 — CLAUDE.md(Axios만) + jsdom 에서 안 돈다. */
-function dataUrlToBlob(dataUrl) {
-  try {
-    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) return null;
-    const comma = dataUrl.indexOf(",");
-    if (comma < 0) return null;
-    const header = dataUrl.slice(5, comma);
-    const isB64 = header.endsWith(";base64");
-    const mime = (isB64 ? header.slice(0, -7) : header) || "application/octet-stream";
-    const body = dataUrl.slice(comma + 1);
-    if (!isB64) return new Blob([decodeURIComponent(body)], { type: mime });
-    const bin = atob(body);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  } catch { return null; }
 }
 
 /** 🚨 화이트리스트 복사 — 이 목록 밖의 키는 절대 서버로 보내지 않는다.
@@ -102,27 +86,24 @@ function pickEntry(e) {
   return out;
 }
 
-/** 자산 1건 업로드. 성공 여부 반환(예외 없음). */
-async function uploadOne(pid, entryId, assetId, kind) {
+/** 자산 1건 업로드. 성공 여부 반환(예외 없음).
+ *
+ * 🔴 업로드는 **diaryAssets 한 곳에서만** 한다 (2026-08-07 정정).
+ *    처음엔 여기서 FormData 를 직접 만들었는데, 같은 일을 두 번 구현한 대가로 두 가지가 어긋났다:
+ *      ① **썸네일을 안 만들었다** — 이사된 그림은 책장에서 3.8MB 원본을 받아야 했다
+ *      ② **role 이 전부 틀렸다** — 낙서를 completed 로, 부모 편지를 memo 로 올렸다
+ *    정상 push 경로(diaryStore.pushEntryToServer)와 계약이 달라지면 안 된다. 위임한다.
+ */
+async function uploadOne(pid, assetId, kind, role) {
   try {
-    let blob = null;
     if (kind === "image") {
       const dataUrl = await getImage(assetId);
       if (!dataUrl) return true;            // IDB 에 없음 → 조용히 건너뛴다(텍스트라도 살린다)
-      blob = dataUrlToBlob(dataUrl);
-    } else {
-      blob = await getAudio(assetId);
-      if (!blob) return true;               // 동일
+      return await uploadImageAsset(pid, assetId, dataUrl, role);
     }
-    if (!blob) return true;
-    const fd = new FormData();
-    fd.append("profileId", pid);
-    fd.append("clientAssetId", assetId);
-    fd.append("kind", kind);
-    fd.append("role", kind === "image" ? "completed" : "memo");
-    fd.append("file", blob, kind === "image" ? "orig.png" : "orig.webm");
-    await postDiaryAsset(fd);
-    return true;
+    const blob = await getAudio(assetId);
+    if (!blob) return true;                 // 동일
+    return await uploadAudioAsset(pid, assetId, blob, role);
   } catch { return false; }
 }
 
@@ -192,14 +173,18 @@ export async function migrateProfileDiary(pid, opts = {}) {
 
     // ② 자산 먼저 — 하나라도 실패하면 putEntry 를 부르지 않는다.
     //    그래야 "서버에 엔트리가 있다 = 자산까지 완료" 가 참이 된다.
+    // role 은 정상 push 경로(diaryStore.pushEntryToServer)와 **글자까지 같아야** 한다.
+    //   imgSource==="mine" = 아이가 직접 그린 것 → drawing
     const assets = [
-      [e.imageId, "image"], [e.drawingId, "image"],
-      [e.voiceId, "audio"], [e.stamp?.voiceId, "audio"],
+      [e.imageId, "image", e.imgSource === "mine" ? "drawing" : "completed"],
+      [e.drawingId, "image", "drawing"],
+      [e.voiceId, "audio", "memo"],
+      [e.stamp?.voiceId, "audio", "letter"],
     ].filter(([id]) => !!id);
 
     let assetOk = true;
-    for (const [assetId, kind] of assets) {
-      if (!(await uploadOne(pid, e.id, assetId, kind))) { assetOk = false; break; }
+    for (const [assetId, kind, role] of assets) {
+      if (!(await uploadOne(pid, assetId, kind, role))) { assetOk = false; break; }
     }
     if (!assetOk) {
       failed.push({ id: e.id, reason: "asset", tries: triesOf(e.id) + 1 });
