@@ -71,6 +71,19 @@ export const getDiaryAssetUrl = async (assetId, params) => {
   const res = await axios.get(`${BASE_URL}/diary/assets/${encodeURIComponent(assetId)}/url`, { params })
   return res.data
 }
+// GD-8b: 삭제의 서버 관철. 아이가 '지우기'를 누르면 서버에서도 사라진다.
+export const deleteDiaryEntry = async (entryId, profileId) => {
+  const res = await axios.delete(`${BASE_URL}/diary/entries/${encodeURIComponent(entryId)}`, {
+    params: { profileId },
+  })
+  return res.data
+}
+// 🚨 부모용 책장 — 아이가 공유하기로 한 일기만 온다(서버가 쿼리 레벨에서 거른다).
+//    아이용 getDiaryEntries 와 **다른 엔드포인트**다. 부모 화면에서 이걸 쓰지 않으면 비공개가 샌다.
+export const getDiaryShelf = async (profileId) => {
+  const res = await axios.get(`${BASE_URL}/diary/shelf`, { params: { profileId } })
+  return res.data
+}
 
 // 키워드로 YouTube 영상 검색
 export const searchVideos = async (keyword) => {

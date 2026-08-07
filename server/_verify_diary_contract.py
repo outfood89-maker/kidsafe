@@ -64,6 +64,26 @@ def strip_py_comments(src):
     return re.sub(r"#[^\n]*", "", src)
 
 
+def body_py(src, name):
+    """파이썬 `def name(...):` 의 본문을 들여쓰기 기준으로 뜯는다.
+
+    데코레이터(@router.delete 등)는 포함하지 않는다 — 본문 안의 호출 순서만 보기 위함.
+    """
+    m = re.search(r"^(async\s+)?def\s+" + re.escape(name) + r"\s*\(", src, re.M)
+    if not m:
+        return ""
+    start = src.find("\n", m.end())
+    if start < 0:
+        return ""
+    lines = src[start + 1:].split("\n")
+    out = []
+    for ln in lines:
+        if ln.strip() and not ln.startswith((" ", "\t")):
+            break                      # 들여쓰기가 풀리면 함수 끝
+        out.append(ln)
+    return "\n".join(out)
+
+
 def body_of(src, name):
     """`export function name(...) { ... }` 또는 `export async function` 의 본문을 중괄호 매칭으로 뜯는다."""
     m = re.search(r"export\s+(?:async\s+)?function\s+" + re.escape(name) + r"\s*\([^)]*\)\s*\{", src)
@@ -152,8 +172,11 @@ def main():
     for label, src in (("서버 라우터", router), ("storage.py", storage),
                        ("diaryAssets.js", assets)):
         check("object/public" not in src, f"{label} 에 공개 URL 문자열이 없다")
-    check("@router.delete" not in router, "🔴 라우터에 DELETE 가 없다 (삭제는 GD-8b)")
-    check("sb_storage_remove" not in storage, "storage.py 에 삭제 함수가 없다 (GD-8b)")
+    # GD-8b 이전에는 "DELETE 가 **없어야** 한다"를 지켰다(삭제 없이 저장만 켜면 아이가 찢은 일기가 남는다).
+    # 2026-08-07 GD-8b 착수로 단계가 넘어갔다 → 이제는 "**있어야** 한다"를 지킨다. 방향이 반대다.
+    check("@router.delete" in router, "🔴 삭제 엔드포인트가 있다 (GD-8b — 아이의 '지우기'가 서버까지 간다)")
+    check("sb_storage_remove" in storage, "storage.py 에 파일 삭제 함수가 있다")
+    check("sb_storage_list" in storage, "storage.py 에 목록 조회가 있다 (경로 유실 안전망)")
     check("get_owned_profile" in router, "라우터가 소유권 검사를 쓴다")
     n_auth = router.count("Depends(get_current_user)")
     n_owned = router.count("get_owned_profile(")
@@ -161,6 +184,56 @@ def main():
     check(n_owned >= 9, f"소유권 검사가 엔드포인트 수만큼 있다 ({n_owned}개)")
     check("_CLIENT_ID_RE" in router and "[A-Za-z0-9_-]" in router,
           "🔴 경로 주입 차단 정규식이 있다 (이 값이 Storage 경로에 들어간다)")
+
+    print()
+    print("=" * 74)
+    print("[F] GD-8b 삭제 관철 — '지웠어'를 참으로 만드는 계약")
+    print("=" * 74)
+    sql7 = read(os.path.join(SERVER, "sql", "007_diary_deletion_guarantee.sql"))
+    check(bool(sql7), "007 SQL 파일이 있다")
+    # 🔴 tombstone 에 FK 를 걸면 삭제가 롤백되거나(23503) 명세서가 함께 지워진다.
+    tomb = ""
+    m = re.search(r"create table if not exists public\.diary_deletions\s*\((.*?)\n\);", sql7, re.S)
+    if m:
+        tomb = m.group(1)
+    check(bool(tomb), "diary_deletions 정의를 찾았다")
+    check("references" not in tomb.lower(),
+          "🔴 tombstone 에 FK 가 없다 (있으면 삭제가 롤백되거나 명세서가 함께 지워진다)")
+    check("FK 를 절대 걸지 마라" in sql7 or "FK를 절대 걸지 마라" in sql7,
+          "FK 금지 사유가 SQL 주석에 남아 있다 (다음 사람이 붙이는 걸 막는 유일한 방법)")
+    check("after delete on public.diary_entries" in sql7.lower(),
+          "AFTER DELETE 트리거가 있다 (명세서 작성과 행 삭제가 한 트랜잭션)")
+    check("security definer" in sql7.lower() and "set search_path" in sql7.lower(),
+          "트리거 함수가 search_path 를 고정한다 (권한 상승 경로 차단)")
+    check("right(kv.key, 5) = '_path'" in sql7 or "right(key, 5) = '_path'" in sql7,
+          "경로 수집이 이름 규칙(_path)으로 자동화됐다 — like '%_path' 는 '_' 와일드카드 함정")
+    check("share_with_parent" in sql7 and "default true" in sql7.lower(),
+          "share_with_parent 가 default true (기존 동작 무변경)")
+
+    # 🔴 순서 — DB 먼저, 파일 나중. 반대면 '그림 깨진 페이지'가 남는다.
+    dele = body_py(router, "delete_entry")
+    check(bool(dele), "delete_entry 본문을 찾았다")
+    i_del = dele.find("sb_delete")
+    i_sweep = dele.find("_sweep_for_entry")
+    check(i_del != -1 and i_sweep != -1 and i_del < i_sweep,
+          "🔴 행 삭제가 파일 정리보다 **먼저**다 (반대면 지웠다고 말한 뒤 깨진 페이지가 남는다)")
+    check("return {\"ok\": True" in dele or "return {'ok': True" in dele,
+          "Storage 실패해도 200 을 반환한다 (행이 사라진 순간 이미 '사라졌다'가 참)")
+
+    print()
+    print("=" * 74)
+    print("[G] 비공개 게이트 — 부모는 아이가 공유한 것만 본다")
+    print("=" * 74)
+    shelf = body_py(router, "list_shelf_for_parent")
+    check(bool(shelf), "부모용 엔드포인트(/diary/shelf)가 있다")
+    check('"share_with_parent": "eq.true"' in shelf,
+          "🔴 쿼리에 share_with_parent=true 가 **상수로** 박혀 있다")
+    # ① 플래그 분기 금지 ② 프론트 필터 금지 ③ 클라이언트 값 신뢰 금지
+    check("role" not in shelf.replace("profile_id", "").replace("_role", ""),
+          "?role=parent 같은 플래그 분기가 없다 (빠뜨리면 전량이 샌다)")
+    entries_body = body_py(router, "list_entries")
+    check("share_with_parent" not in entries_body,
+          "아이용 조회는 게이트를 걸지 않는다 (아이는 자기 일기를 다 본다)")
 
     print()
     print("=" * 74)

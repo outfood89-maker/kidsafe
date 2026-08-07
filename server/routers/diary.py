@@ -18,18 +18,20 @@
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
-from auth import get_current_user
-from db import sb_select, sb_upsert, sb_update
+from auth import get_current_user, require_admin
+from db import sb_delete, sb_select, sb_upsert, sb_update
 from routers.profiles import get_owned_profile
 from storage import (
     ORIGINAL_TTL_SEC,
     THUMB_TTL_SEC,
+    sb_storage_list,
+    sb_storage_remove,
     sb_storage_sign,
     sb_storage_sign_many,
     sb_storage_upload,
@@ -198,6 +200,59 @@ async def list_entries(profileId: str, user: dict = Depends(get_current_user)):
             item["thumbUrl"] = url
             item["expiresIn"] = THUMB_TTL_SEC
         asset_map[key] = item
+
+    return {"entries": [_entry_to_api(r) for r in rows], "assets": asset_map}
+
+
+@router.get("/shelf")
+async def list_shelf_for_parent(profileId: str, user: dict = Depends(get_current_user)):
+    """🚨 부모용 책장 — **아이가 공유하기로 한 일기만** 반환한다 (GD-8b §1-4).
+
+    윤리선 코드 강제: 부모 경로는 비공개 일기에 **쿼리 레벨에서** 도달할 수 없다.
+      계보: reports.py:599 가 `"select": "mood,checkin_date"` 로 answers 접근 자체를 막은 것과 같은 문법.
+
+    🔴 왜 엔드포인트를 물리적으로 나누는가 — 셋 다 실제 사고 패턴이다:
+      ① `?role=parent` 플래그로 분기하지 않는다 — 플래그는 빠뜨리기 쉽고, 빠뜨린 순간 **전량이 샌다.**
+      ② 프론트에서 필터하지 않는다 — `_mask_private_answers` 가 서버에 있는 이유가 그것이다
+         (checkins.py:179 "save_checkin 이 유일한 저장 지점이라 서버가 강제한다").
+      ③ share_with_parent 를 **클라이언트가 보낸 값으로 판단하지 않는다.** 아래는 상수다.
+
+    ⚠️ 계속 반환해야 하는 것(설계 의도 — 막지 마라):
+       문장 · 그림 서명 URL · **아이 음성 메모**(ParentDiaryShelf.jsx:272 "아이→부모 히어로") · 도장/편지
+    """
+    await get_owned_profile(profileId, user["user_id"])
+    rows = await sb_select(
+        "diary_entries",
+        {
+            "profile_id": f"eq.{profileId}",
+            "share_with_parent": "eq.true",   # 🚨 상수다. 파라미터로 받지 마라.
+            "select": "*",
+            "order": "entry_date.desc",
+        },
+    )
+    # 공유분이 참조하는 자산만 서명한다 — 비공개 일기의 그림 URL 이 새지 않게.
+    shared_ids = set()
+    for r in rows:
+        for k in ("image_client_id", "drawing_client_id", "voice_client_id", "stamp_voice_client_id"):
+            if r.get(k):
+                shared_ids.add(r[k])
+
+    asset_map: dict = {}
+    if shared_ids:
+        assets = await sb_select("diary_assets", {"profile_id": f"eq.{profileId}", "select": "*"})
+        assets = [a for a in assets if a.get("client_asset_id") in shared_ids]
+        paths = [a.get("thumb_path") for a in assets if a.get("kind") == "image" and a.get("thumb_path")]
+        signed = await sb_storage_sign_many(paths, THUMB_TTL_SEC) if paths else {}
+        for a in assets:
+            key = a.get("client_asset_id")
+            if not key:
+                continue
+            item = _asset_to_api(a)
+            url = signed.get(a.get("thumb_path") or "")
+            if url:
+                item["thumbUrl"] = url
+                item["expiresIn"] = THUMB_TTL_SEC
+            asset_map[key] = item
 
     return {"entries": [_entry_to_api(r) for r in rows], "assets": asset_map}
 
@@ -436,3 +491,154 @@ async def get_asset_url(clientAssetId: str, profileId: str, variant: str = "thum
     ttl = THUMB_TTL_SEC if (want_thumb and row.get("thumb_path")) else ORIGINAL_TTL_SEC
     url = await sb_storage_sign(path, ttl)
     return {"url": url, "expiresIn": ttl}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 삭제 (GD-8b) — "지웠어"를 참으로 만드는 경로
+# ══════════════════════════════════════════════════════════════════════
+# 🔴 순서가 곧 약속이다 (GD-8b §0-3):
+#      ① 명세서 작성 + ② 행 삭제 ← DB 트리거가 한 트랜잭션으로 묶는다(둘 중 하나만 되는 경우 없음)
+#      ③ Storage 파일 삭제      ← 여기만 최종 일관성. 실패하면 명세서가 pending 으로 남아 재시도 큐가 된다
+#    **②가 끝난 순간부터 "사라졌다"가 참**이다 — 아이·부모 어느 API 로도 조회되지 않는다.
+#    그래서 ③이 실패해도 **200 을 반환**한다. 아이에게 '지웠어'라고 말하는 것은 그 시점에 이미 정직하다.
+#
+# ⚠️ 파일을 먼저 지우면 안 된다 — 중간 실패 시 **행이 남아 '그림 깨진 페이지'** 가 책장에 남는다.
+#    "지웠어"라고 말한 직후에 그게 보이는 것이 최악이다.
+
+
+async def _sweep_one(row: dict) -> bool:
+    """명세서 1건 처리 — Storage 파일 삭제 후 done/재시도 갱신. 성공 여부 반환."""
+    paths = list(row.get("paths") or [])
+    prefix = row.get("prefix") or ""
+    # 안전망: 명세서에 경로가 없거나 일부만 있으면 prefix 아래를 훑어 보충한다.
+    #   경로를 놓쳐 파일이 영구 고아가 되는 것을 막는 두 번째 그물.
+    if prefix:
+        try:
+            for p in await sb_storage_list(prefix):
+                if p not in paths:
+                    paths.append(p)
+        except Exception:
+            pass
+
+    ok = await sb_storage_remove(paths)
+    now = _now_iso()
+    if ok:
+        # ⚠️ 행을 지우지 않는다 — "무엇이 언제 지워졌는가"의 원장으로 남긴다(GD-8b §0-5).
+        #    개인정보 최소보관 원칙에 따라 paths·prefix 만 비운다.
+        await sb_update(
+            "diary_deletions",
+            {"state": "done", "done_at": now, "paths": [], "prefix": None, "last_error": None},
+            {"id": f"eq.{row.get('id')}"},
+        )
+        return True
+
+    attempts = int(row.get("attempts") or 0) + 1
+    # 지수 백오프(2·4·8…분, 최대 60분). 8회 실패하면 사람이 봐야 한다.
+    delay_min = min(2 ** attempts, 60)
+    nxt = datetime.now(timezone.utc) + timedelta(minutes=delay_min)
+    await sb_update(
+        "diary_deletions",
+        {
+            "state": "failed" if attempts >= 8 else "pending",
+            "attempts": attempts,
+            "last_error": "storage remove failed"[:300],
+            "next_retry_at": nxt.isoformat(),
+        },
+        {"id": f"eq.{row.get('id')}"},
+    )
+    return False
+
+
+async def _sweep_for_entry(entry_uuid: str) -> None:
+    """방금 삭제한 엔트리의 명세서를 인라인으로 1회 처리한다(빠른 정리).
+
+    실패해도 조용히 넘어간다 — 큐에 남아 sweeper 가 다시 집는다.
+    """
+    try:
+        rows = await sb_select(
+            "diary_deletions",
+            {"entry_id": f"eq.{entry_uuid}", "state": "eq.pending", "select": "*", "limit": "5"},
+        )
+        for r in rows:
+            await _sweep_one(r)
+    except Exception:
+        pass
+
+
+@router.delete("/entries/{clientEntryId}")
+async def delete_entry(clientEntryId: str, profileId: str,
+                       user: dict = Depends(get_current_user)):
+    """일기 1편 삭제 — 아이의 '지우기'가 서버까지 관철되는 지점.
+
+    ⚠️ Storage 정리가 실패해도 **200** 이다. 행이 사라진 순간 아이·부모 어느 경로로도 조회되지 않으며,
+       남은 파일은 명세서(pending)에 남아 재시도된다. 여기서 500 을 내면
+       화면은 '지워졌는데' 앱은 '실패'라고 말하는 더 나쁜 불일치가 생긴다.
+    """
+    await get_owned_profile(profileId, user["user_id"])
+    cid = _check_client_id(clientEntryId, "일기 id")
+
+    rows = await sb_select(
+        "diary_entries",
+        {"profile_id": f"eq.{profileId}", "client_entry_id": f"eq.{cid}", "select": "id", "limit": "1"},
+    )
+    if not rows:
+        return {"ok": True, "deleted": 0}     # 이미 없음 = 목적 달성(멱등)
+
+    entry_uuid = rows[0].get("id")
+    # ①② 트리거가 명세서를 쓰고 행이 사라진다 — 한 트랜잭션
+    await sb_delete("diary_entries",
+                    {"profile_id": f"eq.{profileId}", "client_entry_id": f"eq.{cid}"})
+    # ③ 파일 정리 인라인 1회 시도(실패해도 큐에 남는다)
+    await _sweep_for_entry(entry_uuid)
+    return {"ok": True, "deleted": 1}
+
+
+@router.delete("/entries")
+async def delete_all_entries(profileId: str, user: dict = Depends(get_current_user)):
+    """그 아이의 일기 **전량** 삭제 (부모 요청 대응). 프로필 자체는 유지한다.
+
+    행마다 트리거가 돌아 명세서가 전량 생성된다.
+    """
+    await get_owned_profile(profileId, user["user_id"])
+    rows = await sb_select(
+        "diary_entries", {"profile_id": f"eq.{profileId}", "select": "id"},
+    )
+    if not rows:
+        return {"ok": True, "deleted": 0}
+
+    await sb_delete("diary_entries", {"profile_id": f"eq.{profileId}"})
+    for r in rows:
+        await _sweep_for_entry(r.get("id"))
+    return {"ok": True, "deleted": len(rows)}
+
+
+@router.post("/admin/sweep")
+async def sweep_deletions(limit: int = 50, admin: dict = Depends(require_admin)):
+    """밀린 삭제 큐를 수동 배출한다(오너용).
+
+    ⚠️ 낙관적 리스: 집어올 때 next_retry_at 을 미래로 밀어 다른 요청과 겹치지 않게 한다.
+       Storage 삭제는 멱등이라 중복 처리돼도 손해는 로그 중복뿐이다.
+    """
+    now = datetime.now(timezone.utc)
+    rows = await sb_select(
+        "diary_deletions",
+        {"state": "eq.pending", "next_retry_at": f"lte.{now.isoformat()}",
+         "select": "*", "order": "next_retry_at.asc", "limit": str(max(1, min(limit, 200)))},
+    )
+    done = 0
+    failed = 0
+    for r in rows:
+        # 리스 — 2분 미래로 밀어 둔다
+        leased = await sb_update(
+            "diary_deletions",
+            {"next_retry_at": (now + timedelta(minutes=2)).isoformat()},
+            {"id": f"eq.{r.get('id')}", "state": "eq.pending",
+             "next_retry_at": f"lte.{now.isoformat()}"},
+        )
+        if not leased:
+            continue                       # 다른 요청이 이미 집어갔다
+        if await _sweep_one(r):
+            done += 1
+        else:
+            failed += 1
+    return {"ok": True, "picked": len(rows), "done": done, "failed": failed}

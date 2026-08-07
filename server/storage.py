@@ -11,8 +11,8 @@ Supabase Storage 접근 공용 헬퍼 (GD-8a) — 그림일기 자산(그림·�
    - 서명은 **백엔드가 service(secret) key로만** 발급한다. 프론트에 Storage 클라이언트를 붙이지 말 것
      (`client/src/utils/supabase.js` 는 8줄짜리 Auth 전용 — 확장 금지).
 
-⚠️ 삭제(`sb_storage_remove`)는 **여기 없다 — GD-8b**. 삭제 경로가 준비되기 전에 만들어 두면
-   "지웠다고 믿는데 안 지워지는" 상태가 조용히 생긴다. 필요해지는 브리프에서 함께 만든다.
+삭제(`sb_storage_remove`)는 **GD-8b 에서 추가됐다**(2026-08-07). GD-8a 때 일부러 비워 뒀던 자리다 —
+   삭제 경로가 준비되기 전에 만들어 두면 "지웠다고 믿는데 안 지워지는" 상태가 조용히 생기기 때문이다.
 
 관례는 `db.py` 를 그대로 따른다:
   - 전역 httpx 클라이언트 재사용(`db._get_client()`) — 새 클라이언트 생성 금지(TLS 핸드셰이크 ~500ms)
@@ -142,4 +142,62 @@ async def sb_storage_sign_many(paths: list[str], expires_in: int) -> dict[str, s
         key = row.get("path") or ""
         if signed and key:
             out[key] = f"{SUPABASE_URL}/storage/v1{signed}"
+    return out
+
+
+# ── 삭제 (GD-8b) ──────────────────────────────────────────────────────
+# 🔴 여기서 True/False 를 정직하게 돌려주는 것이 이 모듈의 계약이다.
+#    호출부(sweeper)는 이 반환값으로 명세서를 done 처리할지 재시도 큐에 남길지 정한다.
+#    실패를 성공으로 보고하면 **"지웠다고 믿는데 파일이 남는" 상태**가 조용히 굳는다.
+#    그래서 이 두 함수만은 예외를 던지지 않고 **결과를 값으로** 돌려준다.
+
+async def sb_storage_remove(paths: list[str]) -> bool:
+    """비공개 버킷에서 파일 여러 개를 지운다. 성공 여부를 반환(예외 없음).
+
+    ⚠️ 멱등하다 — 이미 없는 경로를 지워도 Storage 는 성공으로 답한다.
+       재시도가 안전한 이유이며, sweeper 의 낙관적 리스가 중복 처리돼도 손해가 없는 이유다.
+    """
+    if not paths:
+        return True                      # 지울 게 없으면 성공으로 친다(자산 없는 일기)
+    try:
+        r = await _get_client().request(
+            "DELETE",
+            f"{SUPABASE_URL}/storage/v1/object/{BUCKET}",
+            headers=_headers({"Content-Type": "application/json"}),
+            json={"prefixes": paths},
+            timeout=_TIMEOUT,
+        )
+        return r.status_code < 300
+    except HTTPException:
+        return False                     # 설정 누락도 여기서는 '실패'로 값 처리(큐에 남긴다)
+    except Exception:
+        return False
+
+
+async def sb_storage_list(prefix: str) -> list[str]:
+    """prefix 아래 남은 객체 경로를 나열한다. 실패 시 빈 리스트.
+
+    쓰임: 명세서의 `paths` 가 비었거나 일부만 적힌 경우의 **안전망**.
+    경로를 놓쳐 파일이 영구 고아가 되는 것을 막는 두 번째 그물이다.
+    """
+    if not prefix:
+        return []
+    try:
+        r = await _get_client().post(
+            f"{SUPABASE_URL}/storage/v1/object/list/{BUCKET}",
+            headers=_headers({"Content-Type": "application/json"}),
+            json={"prefix": prefix, "limit": 100},
+            timeout=_TIMEOUT,
+        )
+        r.raise_for_status()
+        rows = r.json() or []
+    except HTTPException:
+        return []
+    except Exception:
+        return []
+    out: list[str] = []
+    for row in rows if isinstance(rows, list) else []:
+        name = (row or {}).get("name") if isinstance(row, dict) else None
+        if name:
+            out.append(f"{prefix.rstrip('/')}/{name}")
     return out

@@ -15,6 +15,7 @@ import { uploadImageAsset, uploadAudioAsset, primeAssetUrls } from "./diaryAsset
 import {
   getDiaryEntries, postDiaryEntry, patchDiaryImage, patchDiaryStamp,
   patchDiaryStampSeen, getDiaryMeta, putDiaryMeta,
+  deleteDiaryEntry, // GD-8b
 } from "./api"; // GD-8a
 
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
@@ -90,6 +91,11 @@ export function tearEntry(pid, entryId) {
   if (torn?.drawingId) { try { deleteImage(torn.drawingId); } catch { /* 무시 */ } } // AD-8: 원본 낙서도 완전삭제
   if (torn?.stamp?.voiceId) { try { deleteAudio(torn.stamp.voiceId); } catch { /* 무시 */ } } // B08a: 부모 음성 편지도 완전삭제(모든 삭제 경로=tearEntry로 수렴: doTear·doShelfDelete·doRemake)
   if (torn?.voiceId) { try { deleteAudio(torn.voiceId); } catch { /* 무시 */ } } // B08b: 아이 음성 메모도 완전삭제(orphan 0 — 부모 편지와 별개 축)
+  // GD-8b: 서버에서도 지운다. ⚠️ 위 5줄은 한 글자도 안 바뀌었다 —
+  //   서버 이전 뒤에도 **과거 기기의 잔존물을 지우는 유일한 코드**라 그대로 살아 있어야 한다.
+  //   ⚠️ tearEntry 를 async 로 만들지 않는다 — 호출부 3곳(FamilyShelf:215,224,295)이
+  //      setEntries 로 즉시 화면을 갱신하는 UX 에 의존한다. 아이는 기다리면 안 된다.
+  if (DIARY_SERVER) { void deleteEntryOnServer(pid, entryId); }
 }
 
 // ── 회전 질문 dedup (최근 3일 사용 qid 회피) ──
@@ -396,5 +402,58 @@ export async function hydrateDiary(pid) {
       // pendingContinue 는 서버에 없는 로컬 전용 키 — 서버 값으로 덮어쓰면 이탈 복구가 사라진다
       writeJson(META_KEY(pid), { ...localMeta, ...metaRes.meta, pendingContinue: localMeta.pendingContinue });
     }
+
+    // GD-8b: 밀린 삭제가 있으면 이 기회에 마저 보낸다(오프라인에서 지운 것 복구).
+    void flushPendingDeletes(pid);
   } catch { /* 캐시만으로도 화면은 그대로 뜬다 */ }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// GD-8b: 삭제의 서버 관철
+// ══════════════════════════════════════════════════════════════════════
+// 순서 고정: ① 로컬 즉시(아이의 약속 — 오프라인에서도 이행) → ② 큐 적재 → ③ 서버 전송
+//   ③이 실패해도 아이 화면에서는 이미 사라졌다. 큐에 남겨 다음 책장 진입 때 다시 보낸다.
+//   ⚠️ 큐에는 **entryId 만** 담는다. 문장·그림 같은 내용은 담지 않는다 —
+//      "지우려던 것"의 내용을 남기는 건 삭제의 취지에 반한다.
+const PENDING_DEL_KEY = (pid) => `diary_v0_pending_del_${pid}`;
+
+function queuePendingDelete(pid, entryId) {
+  try {
+    const list = readJson(PENDING_DEL_KEY(pid), []);
+    if (!list.includes(entryId)) {
+      list.push(entryId);
+      writeJson(PENDING_DEL_KEY(pid), list);
+    }
+  } catch { /* 무시 */ }
+}
+
+function unqueuePendingDelete(pid, entryId) {
+  try {
+    const list = readJson(PENDING_DEL_KEY(pid), []).filter((x) => x !== entryId);
+    if (list.length) writeJson(PENDING_DEL_KEY(pid), list);
+    else localStorage.removeItem(PENDING_DEL_KEY(pid));
+  } catch { /* 무시 */ }
+}
+
+/** 서버에서 일기 1편 삭제. 실패하면 큐에 남긴다(다음 hydrate 가 재시도). */
+export async function deleteEntryOnServer(pid, entryId) {
+  if (!DIARY_SERVER || !pid || !entryId) return;
+  queuePendingDelete(pid, entryId);      // 먼저 적재 — 전송 중 창을 닫아도 남는다
+  try {
+    await deleteDiaryEntry(entryId, pid);
+    unqueuePendingDelete(pid, entryId);  // 성공했을 때만 큐에서 뺀다
+  } catch { /* 큐에 남는다 */ }
+}
+
+/** 밀린 삭제 재전송 — 책장 진입 시 hydrateDiary 가 부른다. */
+export async function flushPendingDeletes(pid) {
+  if (!DIARY_SERVER || !pid) return;
+  let list = [];
+  try { list = readJson(PENDING_DEL_KEY(pid), []); } catch { return; }
+  for (const entryId of list) {
+    try {
+      await deleteDiaryEntry(entryId, pid);
+      unqueuePendingDelete(pid, entryId);
+    } catch { /* 다음 기회에 */ }
+  }
 }
