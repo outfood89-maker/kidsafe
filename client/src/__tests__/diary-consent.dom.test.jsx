@@ -215,6 +215,13 @@ describe("[E] 동의 카드 — 켜기는 묻고, 끄기는 안 묻는다", () =
     expect(before, "DIARY_SERVER 게이트 없이 카드를 렌더한다").toMatch(/DIARY_SERVER\s*&&/);
   });
 
+  it("설명은 '같은 아이디면 어디서든' 하나만 말한다 (한계 설명으로 시작하지 않는다)", () => {
+    // 기능으로 파는 자리다. "지금은 기기에만 있어요"로 시작하면 변명처럼 읽힌다(2026-08-07 오너).
+    render(<DiaryConsentCard profile={KID} />);
+    expect(screen.getByText(/같은 아이디로 로그인하면 어느 기기에서든/)).toBeTruthy();
+    expect(screen.queryByText(/기기에만 있어요/), "한계 설명이 카드 첫 문장에 남아 있다").toBeNull();
+  });
+
   it("처리방침으로 가는 길이 확인 화면에 있다", async () => {
     render(<DiaryConsentCard profile={KID} />);
     await userEvent.click(toggle());

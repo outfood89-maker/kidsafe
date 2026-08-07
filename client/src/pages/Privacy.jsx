@@ -180,7 +180,7 @@ export default function Privacy() {
               //    안심 카드 안에 단서를 숨겨두면 읽는 사람이 못 본다.
               ["🤫", "아이의 비밀은 지킵니다", "아이가 “비밀이야”라고 표시한 답은 저장하지 않습니다. 되돌려도 복구되지 않습니다 — 부작용이 아니라 그렇게 만든 것입니다."],
               ["📓", "그림일기는 기기에 있습니다", DIARY_SERVER_LIVE
-                ? "보호자가 ‘가족과 함께 보기’에 동의하신 경우에만 서버에 저장됩니다."
+                ? "보호자가 ‘어디서나 열리는 가족 책장’을 켜신 아이만, 같은 아이디로 로그인한 기기에서 볼 수 있게 서버에 저장됩니다."
                 : "지금은 아이 기기 안에만 저장되며 서버로 보내지 않습니다."],
               ["🗑️", "지우면 정말 지워집니다", "그림일기 페이지를 지우면 그림·음성까지 즉시 완전히 삭제되며 복구할 수 없습니다."],
             ].map(([emoji, t, d]) => (
@@ -205,7 +205,7 @@ export default function Privacy() {
           <p><strong style={{ color: C.text }}>마음 기록(오늘의 체크인)</strong> — 그날의 기분과 날짜는 항상 저장됩니다. <strong style={{ color: C.muted }}>아이가 고른 답변 내용은 아이가 “같이 보기”를 선택했을 때만 저장</strong>되고, “비밀이야”라고 표시하면 저장되지 않습니다.</p>
           <p><strong style={{ color: C.text }}>보호 신호</strong> — 아이의 말에서 걱정되는 신호가 감지되면 보호자에게 알리기 위해 <strong style={{ color: C.muted }}>‘신호가 있었다’는 사실과 날짜만</strong> 남깁니다. 어떤 말이었는지는 저장할 수 있는 항목 자체를 두지 않았습니다.</p>
           <p><strong style={{ color: C.text }}>기기에만 남는 것</strong> — 그림일기 본문·그림·녹음, 로그인 상태, 앱 설정. {DIARY_SERVER_LIVE
-            ? "그림일기는 보호자가 ‘가족과 함께 보기’에 동의하신 경우에만 서버에도 저장됩니다."
+            ? "그림일기는 보호자가 ‘어디서나 열리는 가족 책장’을 켜신 아이만 서버에도 저장됩니다."
             : "이 정보들은 키디 서버로 올라가지 않습니다."}</p>
         </Section>
 
@@ -251,13 +251,24 @@ export default function Privacy() {
         </Section>
 
         <Section n="5" title="그림일기는 어떻게 다루나요">
+          {/* ⚠️ 기능 이름은 앱 화면(DiaryConsentCard)과 **글자까지 같아야** 한다.
+              다른 이름으로 적으면 보호자가 방침에서 그 항목을 찾지 못한다. */}
           {DIARY_SERVER_LIVE ? (
             <>
-              <p>그림일기는 기본적으로 <strong style={{ color: C.text }}>아이 기기 안에만</strong> 저장됩니다. 보호자가 <strong style={{ color: C.text }}>‘가족과 함께 보기’에 동의</strong>하신 경우에만 본문·그림·녹음이 서버에 저장되어, 보호자의 다른 기기에서도 보실 수 있습니다.</p>
-              <p><strong style={{ color: C.text }}>동의하지 않으셔도 그림일기 기능은 그대로 쓰실 수 있습니다.</strong> 다만 보호자의 다른 기기에서는 열람할 수 없습니다. 동의는 설정에서 언제든 철회하실 수 있습니다.</p>
+              <p>그림일기는 기본적으로 <strong style={{ color: C.text }}>아이 기기 안에만</strong> 저장됩니다. 보호자가 <strong style={{ color: C.text }}>‘어디서나 열리는 가족 책장’</strong>을 켜신 경우에만 본문·그림·녹음이 서버에 저장되어, <strong style={{ color: C.muted }}>같은 아이디로 로그인한 어느 기기에서든</strong> 보실 수 있습니다.</p>
+              <p><strong style={{ color: C.text }}>아이 한 명씩 따로 정하십니다.</strong> 첫째만 켜고 둘째는 끄실 수 있습니다. 동의하신 시각과 어떤 방침에 동의하셨는지를 기록으로 남깁니다.</p>
+              <p><strong style={{ color: C.text }}>동의하지 않으셔도 그림일기 기능은 그대로 쓰실 수 있습니다.</strong> 다만 그 아이의 일기는 쓴 기기에서만 보입니다.</p>
+              <Card>
+                <div className="mb-1.5 text-[13.5px] font-bold" style={{ color: C.text }}>끄시면 어떻게 되나요</div>
+                <ul className="space-y-1.5 text-[13px]" style={{ color: C.muted }}>
+                  <li>• <strong style={{ color: C.text }}>새로 쓰는 일기는 더 이상 올라가지 않습니다.</strong> 그 즉시 멈춥니다.</li>
+                  <li>• <strong style={{ color: C.text }}>이미 올려둔 일기는 지워지지 않고 그대로 있습니다.</strong> 저희가 임의로 지우면, 기기를 바꾸신 뒤 끄셨을 때 아이 일기가 통째로 사라지기 때문입니다.</li>
+                  <li>• 지우고 싶으시면 <strong style={{ color: C.text }}>각 페이지를 지워 주세요.</strong> 끄신 뒤에도 지우는 것은 언제든 하실 수 있습니다.</li>
+                </ul>
+              </Card>
             </>
           ) : (
-            <p><strong style={{ color: C.text }}>그림일기는 지금 아이 기기 안에만 저장되며 키디 서버로 보내지 않습니다.</strong> 앞으로 보호자의 다른 기기에서도 볼 수 있는 기능을 준비하고 있으며, 그때는 <strong style={{ color: C.muted }}>먼저 여쭙고 동의하신 경우에만</strong> 서버에 저장합니다. 동의 없이 먼저 올리는 일은 없습니다.</p>
+            <p><strong style={{ color: C.text }}>그림일기는 지금 아이 기기 안에만 저장되며 키디 서버로 보내지 않습니다.</strong> 같은 아이디로 로그인한 어느 기기에서든 볼 수 있는 <strong style={{ color: C.muted }}>‘어디서나 열리는 가족 책장’</strong>을 준비하고 있으며, 그때는 <strong style={{ color: C.muted }}>먼저 여쭙고 동의하신 경우에만</strong> 서버에 저장합니다. 동의 없이 먼저 올리는 일은 없습니다.</p>
           )}
           <Card>
             <div className="mb-1.5 text-[13.5px] font-bold" style={{ color: C.text }}>저장하지 않는 것</div>

@@ -61,10 +61,12 @@ export default function DiaryConsentCard({ profile, onChanged }) {
           <div className="text-sm font-semibold mb-1" style={{ color: C.text }}>
             📖 어디서나 열리는 가족 책장
           </div>
+          {/* ⚠️ 한 줄만 쓴다 (2026-08-07 오너).
+              "지금은 기기에만 있어요" 같은 **한계 설명으로 시작하지 않는다** — 기능으로 파는 자리인데
+              변명처럼 읽힌다. 한계는 처리방침이 맡는다.
+              전할 것은 하나다: **같은 아이디면 어느 기기에서든 같은 책장이 열린다.** */}
           <div className="text-xs leading-relaxed" style={{ color: C.muted }}>
-            {on
-              ? `${name}의 그림일기를 부모님 휴대전화에서도 보실 수 있어요. 기기를 바꿔도 따라옵니다.`
-              : `지금 ${name}의 그림일기는 ${name}이 쓴 기기에만 있어요. 켜시면 부모님 휴대전화에서도 보실 수 있어요.`}
+            같은 아이디로 로그인하면 어느 기기에서든 {name}의 그림일기를 볼 수 있어요.
           </div>
         </div>
 

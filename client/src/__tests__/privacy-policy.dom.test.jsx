@@ -134,6 +134,25 @@ describe("[E] 불편한 사실이 맨 위에 있다", () => {
   });
 });
 
+describe("[F] 🔴 기능 이름이 방침과 화면에서 같다", () => {
+  // 2026-08-07 발견 — 방침은 '가족과 함께 보기', 화면은 '어디서나 열리는 가족 책장' 이었다.
+  // 이름이 다르면 부모가 방침에서 그 항목을 찾지 못한다. 고지했다고 말할 수 없다.
+  const FEATURE = "어디서나 열리는 가족 책장";
+
+  it.each([
+    ["pages/Privacy.jsx", "처리방침"],
+    ["components/DiaryConsentCard.jsx", "동의 카드"],
+  ])("%s 가 '어디서나 열리는 가족 책장' 이라 부른다 (%s)", (file) => {
+    expect(read(file)).toContain(FEATURE);
+  });
+
+  it("옛 이름('가족과 함께 보기')이 남아 있지 않다", () => {
+    for (const f of ["pages/Privacy.jsx", "components/DiaryConsentCard.jsx", "pages/ParentDashboard.jsx"]) {
+      expect(read(f), `${f} 에 옛 이름이 남아 있다`).not.toContain("가족과 함께 보기");
+    }
+  });
+});
+
 describe("[D] 방침에 닿는 길이 있다", () => {
   it.each([
     ["pages/Landing.jsx", "랜딩 푸터 — 로그인 전 경로"],
