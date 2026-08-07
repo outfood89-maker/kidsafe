@@ -50,7 +50,8 @@ import { TOUR_SEED, TOUR_SCHEDULES, TOUR_GREETING, TOUR_ALERTS, TOUR_CARE_SIGNAL
 import { TOUR_DEMO_SEED, TOUR_DEMO_IMAGES } from "../utils/tourDemoData"; // AD-7: 주혁 정적 데모(있으면 우선·캐시 무관)
 import { exportDemoFile } from "../utils/tourDemoSeed"; // AD-7: '데모 파일 만들기'(정적 파일 내보내기·다운로드)
 import { putImage } from "../utils/diaryImageStore"; // AD-7: 정적 데모 그림 base64 → IDB 하이드레이트
-import { PARENT_TOUR } from "../utils/diaryCopy"; // AD-7: 투어 카피(팀장 §5 스탬프)
+import { PARENT_TOUR, DIARY_MIGRATE } from "../utils/diaryCopy"; // AD-7: 투어 카피 / GD-8c: 이사 카피
+import { migrateAllProfiles } from "../utils/diaryMigrate"; // GD-8c: 기기 데이터 → 서버 이사
 
 const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 
@@ -171,6 +172,7 @@ export default function ParentDashboard() {
   const [reportTab, setReportTab] = useState(scopedId || "all");
   const [kiddyTab, setKiddyTab] = useState(scopedId || ""); // 키디의 한 주 — 아이별(전체 없음)
   const [shelfTab, setShelfTab] = useState(scopedId || ""); // AD-6: 가족 책장 — 아이별(전체 없음, kiddyTab 패턴)
+  const [mig, setMig] = useState(null); // GD-8c: 이사 진행 { phase, profileName, done, total, uploaded, failed }
   const [scheduleTab, setScheduleTab] = useState(scopedId || ""); // 스케줄 — 아이별(전체 없음)
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showProfilePaywall, setShowProfilePaywall] = useState(false);
@@ -411,6 +413,25 @@ export default function ParentDashboard() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourMode]);
+
+  // GD-8c: 기기에 쌓인 그림일기 → 서버 이사. '가족 책장' 탭 진입 시, 투어·로딩 중엔 안 함.
+  //   🔴 아이 화면에서는 절대 돌지 않는다(설계 ⑤) — 대량 업로드가 그림일기 플로우를 막고,
+  //      아이는 이 과정을 이해할 수 없다. 진행·실패를 보여줄 수 있는 화면은 부모 화면뿐이다.
+  //   🔴 로컬은 지우지 않는다(설계 ④) — 이 effect 에 삭제 호출 0.
+  useEffect(() => {
+    if (!DIARY_V0) return;
+    if (tourMode) return;              // 투어 시드가 서버로 새지 않게(AD-7 계보)
+    if (mainTab !== "shelf") return;   // 트리거는 '가족 책장' 탭 1곳뿐
+    if (loading) return;               // profiles 미도착
+    if (!profiles.length) return;
+    let aborted = false;
+    migrateAllProfiles(profiles, {
+      onProgress: (p) => { if (!aborted) setMig(p); },
+      isAborted: () => aborted,
+    }).catch(() => { /* 이사 실패는 화면을 막지 않는다 */ });
+    return () => { aborted = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainTab, loading, profiles.length, tourMode]);
 
   // 시청 분석 탭 진입/프로필 전환 시 서버 심화 분석(조인+pandas) 조회
   useEffect(() => {
@@ -1141,6 +1162,33 @@ export default function ParentDashboard() {
                 <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>가족 책장</h2>
                 <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>아이가 간직한 그림일기를 함께 봐요</span>
               </div>
+
+              {/* GD-8c: 이사 진행/결과 — 부모에게만 보인다. 화면을 막지 않는 얇은 알림 줄. */}
+              {mig && mig.total > 0 && (
+                <div
+                  className="mb-4 px-3 py-2.5 text-xs leading-relaxed"
+                  style={{
+                    borderRadius: "10px",
+                    backgroundColor: "rgba(24,196,154,0.08)",
+                    border: "1px solid rgba(24,196,154,0.2)",
+                    color: "#EAF5F1",
+                  }}
+                >
+                  {mig.phase !== "finished" ? (
+                    <span>{DIARY_MIGRATE.running(mig.profileName || "아이", mig.done, mig.total)}</span>
+                  ) : mig.failed > 0 ? (
+                    <span>{DIARY_MIGRATE.partial(mig.uploaded, mig.failed)}</span>
+                  ) : (
+                    <span>{DIARY_MIGRATE.done(mig.uploaded)}</span>
+                  )}
+                  {/* 🔴 이 안내가 없으면 부모는 "다 옮겨졌다"고 오해한다 */}
+                  {mig.phase === "finished" && (
+                    <span className="block mt-1" style={{ color: "#90A9A8" }}>
+                      {DIARY_MIGRATE.otherDevice}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* 아이 선택 탭 — 스코프 잠금 시 숨김 (아이별, 전체 없음) */}
               {!scopedId && profiles.length > 0 && (

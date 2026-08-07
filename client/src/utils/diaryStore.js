@@ -334,6 +334,18 @@ export async function pushEntryToServer(pid, entry) {
   } catch { /* 캐시가 정본 역할을 계속한다. 다음 hydrate 가 재푸시한다. */ }
 }
 
+// 소량 복구 상한 — 이보다 많으면 '이사'의 영역이다(부모 화면 엔진이 진행률을 보여주며 처리).
+//   여기서 수십 편을 밀어 올리면 아이가 책장을 여는 동안 앱이 느려진다.
+const REPUSH_MAX = 3;
+
+/** 밀린 엔트리를 **한 편씩 순차로** 올린다. 동시 발사 금지(용량이 크다). */
+async function repushSequentially(pid, entries) {
+  for (const e of entries) {
+    try { await pushEntryToServer(pid, e); }
+    catch { /* 다음 진입 때 다시 시도 */ }
+  }
+}
+
 async function pushEntryImageToServer(pid, entryId, imageId) {
   try { await patchDiaryImage(entryId, { profileId: pid, imageId: imageId || null }); }
   catch { /* 무시 */ }
@@ -391,10 +403,16 @@ export async function hydrateDiary(pid) {
         byId.set(se.id, se);                      // 서버 우선
       }
       writeJson(ENTRIES_KEY(pid), Array.from(byId.values()));
-      // 로컬에만 있던 것 = 지난번 push 실패분 → 다시 밀어 올린다
-      for (const le of local) {
-        if (le?.id && !serverIds.has(le.id)) void pushEntryToServer(pid, le);
-      }
+      // 로컬에만 있던 것 = 지난번 push 실패분 → 다시 밀어 올린다.
+      //
+      // 🔴 여기는 **소량 복구 전용**이다 (2026-08-07 정정).
+      //    처음엔 `for (…) void pushEntryToServer(…)` 로 전량을 동시에 발사했는데,
+      //    일기가 수십 편이면 그림·음성 업로드가 **한꺼번에** 터져 나간다.
+      //    GD-8c 브리프가 `Promise.all 금지 — 용량이 크다` 라고 명시적으로 금지한 바로 그 패턴이었다.
+      //    → ① 한 번에 최대 REPUSH_MAX 편 ② 순차(await) 로 바꿨다.
+      //    대량 이사는 이 경로가 아니라 **부모 화면의 이사 엔진**(diaryMigrate.js)이 맡는다.
+      const stale = local.filter((le) => le?.id && !serverIds.has(le.id));
+      void repushSequentially(pid, stale.slice(0, REPUSH_MAX));
     }
 
     if (metaRes?.meta && typeof metaRes.meta === "object") {

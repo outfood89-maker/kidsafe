@@ -237,6 +237,64 @@ def main():
 
     print()
     print("=" * 74)
+    print("[H] GD-8c 이사 엔진 — 옮기기만 한다, 지우지 않는다")
+    print("=" * 74)
+    mig_raw = read(os.path.join(CLIENT, "diaryMigrate.js"))
+    mig = strip_comments(mig_raw)      # ⚠️ 주석의 '금지어 경고문'을 위반으로 세지 않기 위해
+    check(bool(mig_raw), "diaryMigrate.js 가 있다")
+    # 🔴 설계 ④ — 유실 사고는 되돌릴 수 없다. 로컬 정리는 GD-8b 범위이며 별건이다.
+    for pat, label in (
+        (r"\btearEntry\b", "tearEntry"), (r"\bdeleteImage\b", "deleteImage"),
+        (r"\bdeleteAudio\b", "deleteAudio"), (r"\.removeItem\(", "removeItem"),
+        (r"deleteDatabase", "deleteDatabase"), (r"\.clear\(\)", ".clear()"),
+    ):
+        check(not re.search(pat, mig), f"🔴 이사 엔진에 {label} 이 없다 (로컬을 지우지 않는다)")
+    # 설계 ④ — 그림·음성이 함께 올라가 용량이 크다. 동시 발사 금지.
+    check(not re.search(r"Promise\.all", mig), "🔴 Promise.all 이 없다 (엔트리는 한 편씩 순차)")
+    check("for (const e of targets)" in mig, "엔트리 루프가 순차(for…of + await)다")
+    # 설계 ⑥ — 메타는 그 기기의 그날 운영 상태다. 옮기면 다른 기기에서 깨진 배너가 뜬다.
+    check(not re.search(r"diary_v0_meta|getMeta|setMeta", mig), "메타를 옮기지 않는다 (설계 ⑥)")
+    check(not re.search(r"(?<![.\w])fetch\s*\(", mig), "fetch 를 쓰지 않는다 (CLAUDE.md: Axios만)")
+    # 화이트리스트 — transcript 등 원문이 서버로 가지 않는다
+    check("function pickEntry" in mig, "pickEntry 화이트리스트가 있다")
+    check("transcript" not in mig, "transcript 를 다루지 않는다 (불변식②③)")
+    # 🔴 소량 복구 경로가 대량 발사로 되돌아가지 않았는가
+    check("REPUSH_MAX" in store and "repushSequentially" in store,
+          "🔴 hydrate 재푸시가 순차·상한 방식이다 (전량 동시 발사로 되돌아가면 아이 화면이 멈춘다)")
+    hyd = body_of(store, "hydrateDiary")
+    check("void pushEntryToServer" not in hyd,
+          "hydrate 안에서 엔트리를 직접 동시 발사하지 않는다")
+
+    # 🔴 설계 ⑤ — 아이 화면 무접촉. 대량 업로드가 그림일기 플로우를 막으면 안 되고,
+    #    아이는 이 과정을 이해할 수 없다(윤리선: 아이에게 시스템 사정을 설명하지 않는다).
+    CLIENT_SRC = os.path.dirname(CLIENT)
+    kid_screens = [
+        ("components/DiaryFlow.jsx", "그림일기"), ("pages/FamilyShelf.jsx", "가족책장(아이)"),
+        ("pages/KidHome.jsx", "아이 홈"), ("pages/KiddyRoom.jsx", "키디의 방"),
+        ("components/KiddyFab.jsx", "키디 버튼"),
+    ]
+    for rel, label in kid_screens:
+        src = strip_comments(read(os.path.join(CLIENT_SRC, rel)))
+        check(not re.search(r"diaryMigrate|migrateAll|migrateProfile", src),
+              f"🔴 {label} 이 이사 엔진을 부르지 않는다")
+    # 호출부는 부모 화면 1곳뿐이어야 한다
+    callers = []
+    for root, _dirs, files in os.walk(CLIENT_SRC):
+        if "__tests__" in root:
+            continue
+        for fn in files:
+            # ⚠️ 엔진 자신은 제외 — migrateAllProfiles 가 내부에서 migrateProfileDiary 를 부른다.
+            #    이걸 안 빼면 검사가 "호출부 2곳"이라고 거짓 경보를 낸다.
+            if not fn.endswith((".jsx", ".js")) or fn == "diaryMigrate.js":
+                continue
+            body = strip_comments(read(os.path.join(root, fn)))
+            if re.search(r"migrateAllProfiles\s*\(|migrateProfileDiary\s*\(", body):
+                callers.append(fn)
+    check(callers == ["ParentDashboard.jsx"],
+          f"🔴 이사 트리거는 부모 화면 1곳뿐이다 (현재: {callers or '없음'})")
+
+    print()
+    print("=" * 74)
     print("[E] 순환 import 방지 — 의존은 한 방향")
     print("=" * 74)
     # diaryStore → diaryImageStore/diaryAudioStore → diaryAssets → api
