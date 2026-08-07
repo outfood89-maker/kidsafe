@@ -136,13 +136,19 @@ export default function Privacy() {
                 more: "제6조에서 자세히",
               },
               {
+                // ⚠️ 이 항목을 '아이폰 7일' 로 쓰지 말 것 — 그러면 아이폰만의 문제로 읽힌다.
+                //    기기 간 미연동은 iOS·안드로이드·PC 전부 해당하는 구조적 한계이고, 이쪽이 더 중요하다.
                 to: "#s5",
-                t: "iPhone·iPad는 7일 안 쓰면 그림일기가 사라집니다",
-                d: "아이폰 브라우저가 오래 안 쓴 사이트의 저장 내용을 자동으로 지웁니다. 키디가 막을 수 없습니다. " +
-                   "기기를 바꾸거나 초기화하실 때도 마찬가지로 복구할 방법이 없습니다.",
+                t: "그림일기는 지금 이 기기에서만 보입니다",
+                d: "아이폰이든 안드로이드든 PC든 마찬가지입니다. 브라우저는 저장한 내용을 다른 기기와 공유하지 않습니다.",
+                li: [
+                  "아이가 태블릿에 쓴 일기는 보호자 휴대전화에서 보이지 않습니다",
+                  "기기를 바꾸거나 초기화하면 따라오지 않고, 복구할 방법도 없습니다",
+                  "iPhone·iPad는 7일 동안 안 쓰면 아예 지워집니다 (아이폰 자체 정책)",
+                ],
                 more: "제5조에서 자세히",
               },
-            ].map(({ to, t, d, more }) => (
+            ].map(({ to, t, d, li, more }) => (
               <a
                 key={t}
                 href={to}
@@ -151,6 +157,11 @@ export default function Privacy() {
               >
                 <div className="mb-1.5 text-[13.5px] font-bold leading-[1.5]" style={{ color: "#f4a935" }}>{t}</div>
                 <div className="text-[12.5px] leading-[1.75]" style={{ color: "#c9b18a" }}>{d}</div>
+                {li && (
+                  <ul className="mt-2 space-y-1 text-[12.5px] leading-[1.7]" style={{ color: "#c9b18a" }}>
+                    {li.map((x) => <li key={x}>• {x}</li>)}
+                  </ul>
+                )}
                 <div className="mt-2 text-[12px] font-medium" style={{ color: "#f0c67a" }}>{more} →</div>
               </a>
             ))}
@@ -258,10 +269,15 @@ export default function Privacy() {
           </Card>
           <p><strong style={{ color: C.text }}>지우면 정말 지워집니다.</strong> 그림일기 페이지를 지우면 글·그림·녹음이 함께 즉시 삭제되며 복구할 수 없습니다.</p>
           <p className="text-[12.5px] rounded-[12px] p-3" style={{ color: C.dim, backgroundColor: "rgba(255,255,255,0.03)" }}>
-            ⚠️ <strong style={{ color: C.muted }}>기기에만 저장할 때의 한계</strong><br />
-            아이폰·아이패드 브라우저는 <strong style={{ color: C.muted }}>7일 동안 한 번도 쓰지 않은 사이트의 저장 내용을 자동으로 지웁니다.</strong> 키디가 막을 수 없는 아이폰 자체 정책입니다.
-            홈 화면에 추가해 쓰시면 이 자동 삭제는 피하실 수 있지만, <strong style={{ color: C.muted }}>기기를 바꾸거나 초기화하시면 여전히 복구할 수 없고, 보호자의 다른 기기에서도 보실 수 없습니다.</strong>
-            기기 안의 데이터를 꺼내어 따로 보관하는 방법도 제공되지 않습니다(브라우저 보안 구조상 불가).
+            ⚠️ <strong style={{ color: C.muted }}>기기에만 저장할 때의 한계 — 아이폰·안드로이드·PC 모두 해당합니다</strong>
+            <br /><br />
+            <strong style={{ color: C.muted }}>① 다른 기기와 연동되지 않습니다.</strong> 브라우저는 저장한 내용을 다른 기기와 공유하지 않습니다.
+            아이가 태블릿에 쓴 일기는 <strong style={{ color: C.muted }}>보호자 휴대전화에서 보이지 않습니다.</strong> 이는 특정 기기의 문제가 아니라 모든 브라우저에 공통된 구조입니다.
+            <br /><br />
+            <strong style={{ color: C.muted }}>② 기기를 바꾸면 따라오지 않습니다.</strong> 기기 교체·초기화 시 복구할 방법이 없으며, 기기 안의 데이터를 꺼내어 따로 보관하는 방법도 제공되지 않습니다(브라우저 보안 구조상 불가).
+            <br /><br />
+            <strong style={{ color: C.muted }}>③ iPhone·iPad는 7일 동안 안 쓰면 지워집니다.</strong> 아이폰 브라우저가 오래 안 쓴 사이트의 저장 내용을 자동으로 정리하는 정책이며 키디가 막을 수 없습니다.
+            홈 화면에 추가해 쓰시면 이 자동 삭제는 피하실 수 있지만, <strong style={{ color: C.muted }}>①·②는 그대로 남습니다.</strong>
           </p>
         </Section>
 

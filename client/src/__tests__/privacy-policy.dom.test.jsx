@@ -103,7 +103,19 @@ describe("[E] 불편한 사실이 맨 위에 있다", () => {
     expect(screen.getByText("먼저 알려드립니다")).toBeTruthy();
     expect(screen.getByText(/저장하지 않아도 외부로 전송됩니다/)).toBeTruthy();
     expect(screen.getByText(/‘그날의 기분’은 보호자에게 보입니다/)).toBeTruthy();
-    expect(screen.getByText(/7일 안 쓰면 그림일기가 사라집니다/)).toBeTruthy();
+    expect(screen.getByText(/이 기기에서만 보입니다/)).toBeTruthy();
+  });
+
+  it("🔴 기기 간 미연동을 아이폰만의 문제로 쓰지 않는다", () => {
+    // 7일 삭제는 iOS 한정이지만, '다른 기기에서 안 보인다'는 안드로이드·PC 도 똑같다.
+    // 아이폰만 언급하면 안드로이드 쓰는 부모가 자기는 해당 없다고 읽는다.
+    render(<MemoryRouter><Privacy /></MemoryRouter>);
+    expect(screen.getByText(/아이폰이든 안드로이드든 PC든 마찬가지입니다/)).toBeTruthy();
+    expect(screen.getAllByText(/아이폰·안드로이드·PC 모두 해당합니다/).length).toBeGreaterThan(0);
+    // 세 가지 손실 경로가 다 적혀 있어야 한다 (하나만 적으면 나머지를 안전하다고 읽는다)
+    expect(screen.getAllByText(/보호자 휴대전화에서 보이지 않습니다/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/기기를 바꾸/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/7일/).length).toBeGreaterThan(0);
   });
 
   it("🔴 요약의 앵커가 실제 조문을 가리킨다 (조문 번호가 바뀌면 링크가 헛돈다)", () => {
