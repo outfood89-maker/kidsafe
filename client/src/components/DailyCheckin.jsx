@@ -132,6 +132,9 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
   const [closing, setClosing] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // GD-8b §0-6㉠(오너 승인 2026-08-07): 아이가 고른 공유 여부를 상태로 보관한다.
+  //   그림일기로 이어서 들어갈 때 '비밀이야'를 존중하기 위한 것 — 아래 diaryDidToday 참조.
+  const [sharedWithParent, setSharedWithParent] = useState(true);
 
   // 공유 질문 문구는 마운트 시 한 번 고정 (랜덤이 리렌더마다 안 바뀌게)
   const [shareLine] = useState(() => shareQuestionLine(name));
@@ -544,6 +547,7 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
     setError("");
     try {
       await saveCheckin({ profileId: profile.id, mood, moodEmoji, answers, shareWithParent });
+      setSharedWithParent(shareWithParent); // GD-8b §0-6㉠: 일기 진입 시 '비밀이야'를 존중하기 위해 보관
       // '비밀이야'(share=false)면 키디가 비밀 약속 멘트로 마무리 — closing만 분기하면 reward의 표시(Typewriter)·음성(voice.speak)이 자동 처리.
       // ⭐ 보상(별)은 공유 여부와 무관하게 그대로(보상은 '체크인을 했다'에만 — 공유 선택에 상·벌 없음, 불가침 원칙).
       setClosing(shareWithParent ? closingLine(name) : SECRET_PROMISE_LINE);
@@ -559,7 +563,24 @@ export default function DailyCheckin({ profile, onComplete, onSkip, diaryIntent 
   // AD-2 §1: 날짜는 diaryStore.todayKST() 로 승격(단일 소스). 기존 로컬 함수는 보존용 주석.
   // const diaryToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   // AD-10 재개정: DiaryFlow 마운트(ⓑ 연속)가 사용 → 복구.
+  // 🔴 GD-8b §0-6㉠ (오너 승인 2026-08-07) — 비공개 답이 일기로 새던 구멍 봉합
+  //
+  //   같은 아이·같은 날·같은 답인데 **들어온 경로에 따라 결과가 달랐다**:
+  //     · 책장에서 자발 진입  → 서버가 이미 비공개 답을 지워서(`checkins.py:180` _mask_private_answers)
+  //                             일기에 '한 일' 문장이 안 들어갔다 ✅
+  //     · 체크인 직후 이어서  → 여기 컴포넌트 **메모리의 answers** 를 그대로 읽어
+  //                             비밀이라 한 답이 일기 문장이 되고 **부모 책장에 떴다** 🔴
+  //
+  //   로컬 저장 시절엔 "같은 브라우저"라 피해가 갇혀 있었지만, 서버로 옮기면 부모가 어디서든 본다.
+  //   ⚠️ 새 정책이 아니라 **누락 봉합**이다 — 서버는 이미 "비공개는 저장하지 않는다"를 강제하고 있고,
+  //      한쪽 경로만 그 규칙을 안 타고 있었을 뿐이다.
+  //   ⚠️ 기분(checkinMood)은 손대지 않는다 — C2 결정(DECISIONS.md:78)으로 유지 확정.
+  //
+  //   [보존] 봉합 전 본문 2줄:
+  //     const a = answers.find((x) => x.qId === "what_did_today");
+  //     return a?.answer || "";
   const diaryDidToday = () => {
+    if (!sharedWithParent) return ""; // 🤫 비밀이라 했으면 일기에도 안 쓴다
     const a = answers.find((x) => x.qId === "what_did_today"); // 하루 = 오늘 한 일 (양성 필터 — 질문 증설 시 방어)
     return a?.answer || "";
   };
