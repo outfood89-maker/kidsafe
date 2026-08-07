@@ -421,6 +421,10 @@ export default function ParentDashboard() {
   //   🔴 로컬은 지우지 않는다(설계 ④) — 이 effect 에 삭제 호출 0.
   useEffect(() => {
     if (!DIARY_V0) return;
+    // 🔴 킬스위치 (2026-08-07 추가). 없던 동안 이 effect 가 게이트를 우회해
+    //    책장 탭 진입마다 서버 업로드를 시도했다. 엔진 안에도 게이트가 있지만(2중),
+    //    여기서 먼저 끊어야 진행 배너("일기 N편을 보관했어요")가 아예 안 뜬다.
+    if (!DIARY_SERVER) return;
     if (tourMode) return;              // 투어 시드가 서버로 새지 않게(AD-7 계보)
     if (mainTab !== "shelf") return;   // 트리거는 '가족 책장' 탭 1곳뿐
     if (loading) return;               // profiles 미도착

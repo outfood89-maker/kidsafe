@@ -13,7 +13,12 @@ const H = vi.hoisted(() => ({
     deleteHistoryItem: vi.fn(), deleteAllHistory: vi.fn(), getReportInsights: vi.fn(), getReportCoach: vi.fn(),
     getCareSignals: vi.fn(), markCareSignalRead: vi.fn(), getCheckinReport: vi.fn(),
   },
-  diary: { getEntries: vi.fn(() => []), setStamp: vi.fn(), todayKST: vi.fn(() => "2026-07-08"), DIARY_V0: true },
+  // ⚠️ DIARY_SERVER·isDiaryServerOn 은 **false 로 두는 것이 이 파일의 검증 대상**이다.
+  //    투어(예시 화면)에서 서버 호출이 0이어야 하므로, 켜진 값으로 바꾸지 말 것.
+  diary: {
+    getEntries: vi.fn(() => []), setStamp: vi.fn(), todayKST: vi.fn(() => "2026-07-08"),
+    DIARY_V0: true, DIARY_SERVER: false, isDiaryServerOn: vi.fn(() => false),
+  },
   img: { getImage: vi.fn(() => Promise.resolve(null)), putImage: vi.fn(() => Promise.resolve(true)), deleteImage: vi.fn() },
   params: {}, // useParams 목값(스코프 페이지 테스트에서 { profileId } 로 교체)
   navigate: vi.fn(), // 항목2-②: '아이 화면 미리보기' 런처 navigate 스파이

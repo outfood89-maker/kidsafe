@@ -20,7 +20,7 @@
 //    ⑤ 트리거는 부모 화면 1곳. 아이 화면 무접촉.
 //    ⑥ 메타(diary_v0_meta_*)는 옮기지 않는다 — 그 기기의 그날 운영 상태다.
 
-import { getEntries } from "./diaryStore";          // 읽기 전용
+import { getEntries, isDiaryServerOn } from "./diaryStore";  // 읽기 전용 + 🔴 게이트(B13)
 import { getImage } from "./diaryImageStore";       // 읽기 전용
 import { getAudio } from "./diaryAudioStore";       // 읽기 전용
 // ⚠️ 얇은 어댑터 — 브리프는 `diaryServer.js` 를 전제했으나 GD-8a 산출물은 api.js 에 있다.
@@ -132,6 +132,17 @@ async function uploadOne(pid, entryId, assetId, kind) {
  */
 export async function migrateProfileDiary(pid, opts = {}) {
   const { onProgress, isAborted, force } = opts;
+
+  // 🔴 게이트 (2026-08-07 오너 시범테스트로 발견 — 그 전까지 **여기에 게이트가 0건이었다**).
+  //    이 파일은 diaryStore 의 push 경로를 거치지 않고 api 를 **직접** 부른다.
+  //    그래서 diaryStore 에 아무리 게이트를 걸어도 이 경로는 그냥 통과했다 —
+  //    킬스위치가 꺼져 있고 동의도 없는데 부모가 책장 탭에 들어갈 때마다 업로드를 시도했다.
+  //    ⚠️ 새 경로를 만들 때는 **api 를 직접 부르는 곳마다** 게이트를 다시 확인할 것.
+  //       "저장 함수에 걸었으니 됐다" 가 이 사고의 원인이었다.
+  if (!isDiaryServerOn(pid)) {
+    return { ok: true, status: "off", uploaded: 0, skipped: 0, failed: [], total: 0, reason: "gate" };
+  }
+
   const local = (() => { try { return getEntries(pid); } catch { return []; } })();
 
   // 0편이면 서버를 찌르지 않는다(매 진입마다 소음 방지)

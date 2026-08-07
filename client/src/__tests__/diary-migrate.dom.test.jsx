@@ -29,6 +29,13 @@ vi.mock("../utils/api", () => ({
   }),
   postDiaryEntry: vi.fn(async (payload) => { H.entryCalls.push(payload); return { entry: {} }; }),
 }));
+// B13: 이사 엔진은 isDiaryServerOn 게이트 뒤에 있다. 배포 플래그가 꺼져 있어 항상 false 이므로,
+//   **게이트만** true 로 갈아끼워 이사 로직 자체를 검증한다(나머지 구현은 진짜).
+//   ⚠️ 게이트가 실제로 막는지는 아래 '[게이트]' 블록에서 진짜 모듈로 따로 확인한다.
+vi.mock("../utils/diaryStore", async (importOriginal) => ({
+  ...(await importOriginal()),
+  isDiaryServerOn: () => true,
+}));
 vi.mock("../utils/diaryImageStore", () => ({
   getImage: vi.fn(async (id) => H.img.get(id) ?? null),
 }));
@@ -169,5 +176,51 @@ describe("GD-8c 중단·상태", () => {
     await migrateProfileDiary(PID);
     expect(getMigrateState(PID).status).toBe("done");
     expect(needsMigration(PID)).toBe(false);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// [게이트] 🔴 B13 — 이사 엔진이 게이트를 우회하지 않는다
+// ══════════════════════════════════════════════════════════════════════
+//   2026-08-07 오너 시범테스트로 발견한 실제 사고:
+//   이 파일은 diaryStore 의 push 경로를 거치지 않고 api 를 **직접** 부른다.
+//   그래서 diaryStore 에 게이트를 아무리 걸어도 이사 경로는 그냥 통과했고,
+//   킬스위치가 꺼져 있는데도 부모가 책장 탭에 들어갈 때마다 업로드를 시도했다.
+//   ⚠️ 위 describe 들은 게이트를 true 로 모킹한 상태다. 여기서는 **진짜 판정**을 쓴다.
+describe("[게이트] 🔴 꺼져 있으면 네트워크 0", () => {
+  it("isDiaryServerOn 이 false 면 서버를 한 번도 부르지 않는다", async () => {
+    vi.resetModules();
+    vi.doMock("../utils/api", () => ({
+      getDiaryEntries: vi.fn(async () => ({ entries: [], assets: {} })),
+      postDiaryAsset: vi.fn(async () => ({})),
+      postDiaryEntry: vi.fn(async () => ({})),
+    }));
+    vi.doMock("../utils/diaryStore", async (importOriginal) => ({
+      ...(await importOriginal()),
+      isDiaryServerOn: () => false,          // 🔴 꺼짐
+    }));
+    const api = await import("../utils/api");
+    const { migrateProfileDiary } = await import("../utils/diaryMigrate");
+
+    const r = await migrateProfileDiary(PID);
+
+    expect(r.status).toBe("off");
+    expect(r.reason).toBe("gate");
+    expect(api.getDiaryEntries).not.toHaveBeenCalled();   // 🔴 목록 조회조차 안 한다
+    expect(api.postDiaryAsset).not.toHaveBeenCalled();
+    expect(api.postDiaryEntry).not.toHaveBeenCalled();
+    vi.resetModules();
+  });
+
+  it("부모 화면 트리거에도 킬스위치가 걸려 있다 (배너 자체가 안 뜬다)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const src = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "../pages/ParentDashboard.jsx"), "utf8");
+    const i = src.indexOf("migrateAllProfiles(profiles");
+    expect(i, "이사 트리거를 못 찾았다").toBeGreaterThan(-1);
+    const before = src.slice(Math.max(0, i - 800), i);
+    expect(before, "트리거 앞에 DIARY_SERVER 가드가 없다").toMatch(/if\s*\(!DIARY_SERVER\)\s*return/);
   });
 });
