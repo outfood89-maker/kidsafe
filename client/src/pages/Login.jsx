@@ -207,6 +207,17 @@ export default function Login() {
       >
         로그인 없이 둘러보기 →
       </button>
+
+      {/* B1: 처리방침 링크.
+          ⚠️ "가입 = 동의로 봅니다" 라고 쓰지 않는다 — 동의 절차·동의 기록이 아직 구현되지 않았고,
+             구현 전에 그렇게 쓰면 받지도 않은 동의를 받았다고 주장하는 셈이 된다(부록 B2). */}
+      <Link
+        to="/privacy"
+        className="relative z-10 mt-4 text-xs underline underline-offset-4"
+        style={{ color: "rgba(255,255,255,0.38)" }}
+      >
+        개인정보 처리방침
+      </Link>
     </div>
   )
 }

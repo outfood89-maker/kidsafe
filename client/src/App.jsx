@@ -16,6 +16,7 @@ import Favorites from './pages/Favorites'
 import BadgeCollection from './pages/BadgeCollection'
 import MiniGame from './pages/MiniGame'
 import AdminPage from './pages/AdminPage'
+import Privacy from './pages/Privacy' // B1: 개인정보 처리방침 — 🔴 로그인 없이 열려야 한다(가입 전 열람)
 
 // 앱 전역 세로 고정 헬퍼 (VideoPlayer에서도 사용)
 export const lockPortrait = () => {
@@ -37,6 +38,10 @@ function App() {
           {/* 공개 라우트 */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          {/* B1: 처리방침. 🔴 ProtectedRoute 로 감싸지 말 것 — 가입 전에 못 보면 동의가 성립하지 않는다.
+              /privacy-policy 는 흔히 쓰이는 별칭이라 함께 받는다(외부 링크·스토어 심사 대비). */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
 
           {/* 회원 전용 라우트 (비로그인 시 /login으로) */}
           {/* 통합 부모페이지 폐기 → 프로필 선택으로 리다이렉트 (부모페이지는 아이별 /parent/:profileId 만) */}

@@ -230,6 +230,15 @@ export default function Account() {
                 </button>
               </div>
             </div>
+
+            {/* B1: 처리방침 — 보호자가 언제든 다시 볼 수 있어야 한다 */}
+            <button
+              onClick={() => navigate("/privacy")}
+              className="w-full p-4 rounded-2xl text-left text-sm font-medium transition hover:brightness-110"
+              style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(255,255,255,0.08)", color: "#90A9A8" }}
+            >
+              🛡️ 개인정보 처리방침 <span style={{ color: "#4a5548" }}>— 어떤 정보를 어떻게 다루는지</span>
+            </button>
           </div>
         )}
 

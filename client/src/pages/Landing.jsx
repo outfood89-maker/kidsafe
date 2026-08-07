@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import {
   FaChevronDown, FaUserPlus,
   FaFilter, FaCheckCircle, FaRobot,
@@ -1081,7 +1081,11 @@ export default function Landing() {
           <span className="font-bold text-white">Kiddy</span>
         </div>
         <p className="text-xs" style={{ color: "#90A9A8" }}>아이의 첫 영상 친구, 키디</p>
-        <p className="mt-1 text-xs" style={{ color: "#4a5548" }}>© 2026 Kiddy. All rights reserved.</p>
+        {/* B1: 처리방침은 로그인 전에도 닿을 수 있어야 한다 */}
+        <Link to="/privacy" className="mt-3 inline-block text-xs underline underline-offset-4" style={{ color: "#90A9A8" }}>
+          개인정보 처리방침
+        </Link>
+        <p className="mt-2 text-xs" style={{ color: "#4a5548" }}>© 2026 Kiddy. All rights reserved.</p>
       </footer>
 
     </div>
