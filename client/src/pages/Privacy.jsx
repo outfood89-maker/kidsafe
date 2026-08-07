@@ -52,7 +52,8 @@ const C = {
 
 function Section({ n, title, children }) {
   return (
-    <section className="mb-7">
+    // scroll-mt: 헤더가 sticky 라 앵커로 뛰면 제목이 헤더 뒤에 숨는다
+    <section id={`s${n}`} className="mb-7 scroll-mt-20">
       <h2 className="mb-2.5 text-[15px] font-bold" style={{ color: C.text }}>
         <span style={{ color: C.accent }}>{n}.</span> {title}
       </h2>
@@ -108,13 +109,65 @@ export default function Privacy() {
           </div>
         )}
 
+        {/* ── 먼저 알려드립니다 ──
+            🔴 이 블록의 존재 이유: 아래 '한눈에 보기' 는 전부 좋은 소식이다(광고 없음·비밀 지킴·삭제 가능).
+               좋은 소식만 요약하면 그건 고지가 아니라 홍보다.
+               부모가 놀라지 않으려면 **불편한 사실**이 먼저 와야 한다.
+            ⚠️ 항목을 늘리지 말 것 — 늘리면 아무도 안 읽는다. 정말 놀랄 만한 것만 남긴다. */}
+        <div className="mb-6">
+          <h2 className="mb-3 text-[15px] font-bold" style={{ color: C.text }}>
+            먼저 알려드립니다
+            <span className="ml-2 text-[12px] font-medium" style={{ color: C.dim }}>나중에 놀라지 않으시도록</span>
+          </h2>
+          <div className="space-y-2.5">
+            {[
+              {
+                to: "#s4",
+                t: "아이의 말은 저장하지 않아도 외부로 전송됩니다",
+                d: "키디가 대답을 만들려면 아이의 말을 미국 AI 회사(Anthropic)로 보내야 합니다. 아이가 “비밀이야”를 골랐다는 건 " +
+                   "‘키디 서버에 남기지 않는다’는 뜻이지, ‘아무 데도 보내지 않는다’는 뜻이 아닙니다.",
+                more: "제4조에서 자세히",
+              },
+              {
+                to: "#s6",
+                t: "아이가 비밀로 해도 ‘그날의 기분’은 보호자에게 보입니다",
+                d: "무슨 이야기를 했는지는 감춰지지만, 기뻤는지 슬펐는지는 주간 리포트에 남습니다. " +
+                   "‘비밀로 한 날이 있다’는 사실도 표시됩니다. 이건 아이에게도 미리 알려줍니다 — 몰래 보는 게 아닙니다.",
+                more: "제6조에서 자세히",
+              },
+              {
+                to: "#s5",
+                t: "iPhone·iPad는 7일 안 쓰면 그림일기가 사라집니다",
+                d: "아이폰 브라우저가 오래 안 쓴 사이트의 저장 내용을 자동으로 지웁니다. 키디가 막을 수 없습니다. " +
+                   "기기를 바꾸거나 초기화하실 때도 마찬가지로 복구할 방법이 없습니다.",
+                more: "제5조에서 자세히",
+              },
+            ].map(({ to, t, d, more }) => (
+              <a
+                key={t}
+                href={to}
+                className="block rounded-[14px] p-4 transition hover:brightness-110"
+                style={{ backgroundColor: "rgba(244,169,53,0.07)", border: "1px solid rgba(244,169,53,0.22)" }}
+              >
+                <div className="mb-1.5 text-[13.5px] font-bold leading-[1.5]" style={{ color: "#f4a935" }}>{t}</div>
+                <div className="text-[12.5px] leading-[1.75]" style={{ color: "#c9b18a" }}>{d}</div>
+                <div className="mt-2 text-[12px] font-medium" style={{ color: "#f0c67a" }}>{more} →</div>
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* 한눈에 보기 */}
         <div className="mb-8">
-          <h2 className="mb-3 text-[15px] font-bold" style={{ color: C.text }}>한눈에 보기</h2>
+          <h2 className="mb-3 text-[15px] font-bold" style={{ color: C.text }}>
+            그리고 지키는 것들
+          </h2>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {[
               ["🚫", "광고도, 추적도 없습니다", "광고 식별자·위치정보·연락처·외부 분석도구를 일절 쓰지 않습니다. 아이에게 광고를 보여주지 않습니다."],
-              ["🤫", "아이의 비밀은 지킵니다", "아이가 “비밀이야”라고 표시한 답은 저장하지 않습니다. 다만 그날의 기분은 보호자에게 보이며, 이 사실을 아이에게도 알려줍니다."],
+              // ⚠️ '다만 기분은 보인다' 는 위 '먼저 알려드립니다' 로 올렸다.
+              //    안심 카드 안에 단서를 숨겨두면 읽는 사람이 못 본다.
+              ["🤫", "아이의 비밀은 지킵니다", "아이가 “비밀이야”라고 표시한 답은 저장하지 않습니다. 되돌려도 복구되지 않습니다 — 부작용이 아니라 그렇게 만든 것입니다."],
               ["📓", "그림일기는 기기에 있습니다", DIARY_SERVER_LIVE
                 ? "보호자가 ‘가족과 함께 보기’에 동의하신 경우에만 서버에 저장됩니다."
                 : "지금은 아이 기기 안에만 저장되며 서버로 보내지 않습니다."],
@@ -169,6 +222,14 @@ export default function Privacy() {
               <li><strong style={{ color: C.text }}>Vercel · Railway</strong> (미국) — 앱과 서버가 돌아가는 곳.</li>
             </ul>
           </Card>
+          {/* 부록 A #3 — "저장하지 않음" 과 "전송함" 을 함께 쓰면 오해가 생긴다. 그래서 눈에 띄게 분리해 둔다. */}
+          <div className="rounded-[14px] p-4 text-[13px] leading-[1.75]"
+               style={{ backgroundColor: "rgba(244,169,53,0.07)", border: "1px solid rgba(244,169,53,0.22)", color: "#c9b18a" }}>
+            <strong className="block mb-1" style={{ color: "#f4a935" }}>‘비밀이야’와 ‘전송’은 다른 이야기입니다</strong>
+            아이가 “비밀이야”를 고르면 그 답변은 <strong style={{ color: "#f0c67a" }}>키디 서버에 저장되지 않습니다.</strong>
+            하지만 키디가 대답을 만들려면 아이의 말이 <strong style={{ color: "#f0c67a" }}>저장 여부와 관계없이 이미 Anthropic으로 전송된 뒤</strong>입니다.
+            기술적으로 피할 수 없는 구조라 숨기지 않고 적습니다.
+          </div>
           <p className="text-[12.5px]" style={{ color: C.dim }}>
             ※ 주간 리포트를 만들 때는 아이의 <strong>실제 이름을 보내지 않고</strong> 빈칸으로 처리한 뒤 기기에서 다시 채웁니다.
             ※ 걱정되는 신호로 감지된 말은 <strong>AI를 부르지 않고</strong> 사람이 미리 검토한 답변으로 응답하므로 외부로 나가지 않습니다.
@@ -197,8 +258,10 @@ export default function Privacy() {
           </Card>
           <p><strong style={{ color: C.text }}>지우면 정말 지워집니다.</strong> 그림일기 페이지를 지우면 글·그림·녹음이 함께 즉시 삭제되며 복구할 수 없습니다.</p>
           <p className="text-[12.5px] rounded-[12px] p-3" style={{ color: C.dim, backgroundColor: "rgba(255,255,255,0.03)" }}>
-            ⚠️ <strong style={{ color: C.muted }}>iPhone·iPad에서 알아두실 점</strong> — 아이폰의 브라우저는 <strong style={{ color: C.muted }}>7일 동안 한 번도 쓰지 않은 사이트의 저장 내용을 자동으로 지웁니다.</strong>
-            키디가 막을 수 없는 아이폰 자체 정책입니다. <strong style={{ color: C.muted }}>홈 화면에 추가</strong>해서 쓰시면 이 삭제 대상에서 빠집니다.
+            ⚠️ <strong style={{ color: C.muted }}>기기에만 저장할 때의 한계</strong><br />
+            아이폰·아이패드 브라우저는 <strong style={{ color: C.muted }}>7일 동안 한 번도 쓰지 않은 사이트의 저장 내용을 자동으로 지웁니다.</strong> 키디가 막을 수 없는 아이폰 자체 정책입니다.
+            홈 화면에 추가해 쓰시면 이 자동 삭제는 피하실 수 있지만, <strong style={{ color: C.muted }}>기기를 바꾸거나 초기화하시면 여전히 복구할 수 없고, 보호자의 다른 기기에서도 보실 수 없습니다.</strong>
+            기기 안의 데이터를 꺼내어 따로 보관하는 방법도 제공되지 않습니다(브라우저 보안 구조상 불가).
           </p>
         </Section>
 
@@ -206,7 +269,15 @@ export default function Privacy() {
           <p>아이는 스스로 가입할 수 없고, 개인정보 처리에 대한 동의는 <strong style={{ color: C.text }}>보호자</strong>가 합니다.</p>
           <p>키디는 <strong style={{ color: C.text }}>개인정보를 준 대가로 아이에게 보상을 주지 않습니다.</strong> 체크인·미니게임의 보상은 ‘참여했다’는 사실에만 지급되며, 무엇을 답했는지는 보상에 영향을 주지 않습니다.</p>
           <p><strong style={{ color: C.text }}>아이에게도 알기 쉬운 말로 따로 설명합니다.</strong> 무엇이 보호자에게 보이고 무엇이 안 보이는지를 아이에게 숨기지 않습니다.</p>
-          <p>아이가 ‘비밀’로 표시한 내용은 보호자에게 전달되지 않습니다. <strong style={{ color: C.muted }}>다만 아이의 안전이 걱정되는 신호가 있을 때는, 그런 신호가 있었다는 사실을 보호자에게 알립니다.</strong></p>
+          <p>아이가 ‘비밀’로 표시한 <strong style={{ color: C.text }}>내용</strong>은 보호자에게 전달되지 않습니다. 다만 아래 두 가지는 보호자에게 보입니다.</p>
+          <Card>
+            <ul className="space-y-1.5 text-[13px]" style={{ color: C.muted }}>
+              <li>• <strong style={{ color: C.text }}>그날의 기분</strong> — 무슨 이야기를 했는지는 감춰지지만, 기뻤는지 슬펐는지는 주간 리포트의 감정 흐름에 남습니다.</li>
+              <li>• <strong style={{ color: C.text }}>‘비밀로 한 날이 있다’는 사실</strong> — 그 기간에 공유하지 않은 날이 있다는 것 자체는 표시됩니다.</li>
+            </ul>
+          </Card>
+          <p><strong style={{ color: C.text }}>이 두 가지는 아이에게도 미리 알려줍니다.</strong> 아이가 이해한 ‘비밀’과 실제가 어긋나지 않아야 하기 때문입니다. 아이에게는 이렇게 설명합니다 — <em style={{ color: C.dim }}>“비밀로 해도 기분은 보여. 몰래 하는 거 아니야, 먼저 말해주는 거야.”</em></p>
+          <p><strong style={{ color: C.muted }}>또한 아이의 안전이 걱정되는 신호가 있을 때는, 그런 신호가 있었다는 사실을 보호자에게 알립니다</strong>(어떤 말이었는지는 알리지 않습니다).</p>
         </Section>
 
         <Section n="7" title="보호자의 권리">

@@ -95,6 +95,33 @@ describe("[C] 받지 않은 동의를 받았다고 하지 않는다", () => {
   });
 });
 
+describe("[E] 불편한 사실이 맨 위에 있다", () => {
+  // 요약이 좋은 소식만 담으면 그건 고지가 아니라 홍보다.
+  // 부모가 나중에 놀랄 만한 3가지가 첫 화면에 있어야 한다.
+  it("‘먼저 알려드립니다’ 3가지가 있다", () => {
+    render(<MemoryRouter><Privacy /></MemoryRouter>);
+    expect(screen.getByText("먼저 알려드립니다")).toBeTruthy();
+    expect(screen.getByText(/저장하지 않아도 외부로 전송됩니다/)).toBeTruthy();
+    expect(screen.getByText(/‘그날의 기분’은 보호자에게 보입니다/)).toBeTruthy();
+    expect(screen.getByText(/7일 안 쓰면 그림일기가 사라집니다/)).toBeTruthy();
+  });
+
+  it("🔴 요약의 앵커가 실제 조문을 가리킨다 (조문 번호가 바뀌면 링크가 헛돈다)", () => {
+    const { container } = render(<MemoryRouter><Privacy /></MemoryRouter>);
+    const anchors = [...container.querySelectorAll('a[href^="#s"]')].map((a) => a.getAttribute("href"));
+    expect(anchors.length, "요약 앵커가 하나도 없다").toBeGreaterThan(0);
+    for (const href of anchors) {
+      expect(container.querySelector(`#${href.slice(1)}`), `${href} 가 가리키는 조문이 없다`).toBeTruthy();
+    }
+  });
+
+  it("‘비밀이야 = 저장 안 함’ 과 ‘전송됨’ 을 구분해 적는다 (부록 A #3)", () => {
+    render(<MemoryRouter><Privacy /></MemoryRouter>);
+    expect(screen.getByText(/‘비밀이야’와 ‘전송’은 다른 이야기입니다/)).toBeTruthy();
+    expect(screen.getByText(/저장 여부와 관계없이 이미 Anthropic으로 전송된 뒤/)).toBeTruthy();
+  });
+});
+
 describe("[D] 방침에 닿는 길이 있다", () => {
   it.each([
     ["pages/Landing.jsx", "랜딩 푸터 — 로그인 전 경로"],
