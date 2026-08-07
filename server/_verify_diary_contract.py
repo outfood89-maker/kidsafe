@@ -342,6 +342,36 @@ def main():
 
     print()
     print("=" * 74)
+    print("[F] 🔴 MIME 정규화 — 브라우저가 붙이는 ;codecs= 가 업로드를 통째로 막았다")
+    print("=" * 74)
+    # 2026-08-07 실사고: MediaRecorder 가 'audio/webm;codecs=opus' 를 돌려주는 바람에
+    #   ① 확장자 사전에 없어 orig.bin ② 버킷 allowed_mime_types 와 불일치 → 4회 연속 업로드 실패.
+    #   자산 실패라 엔트리까지 안 올라갔고, 서버엔 고아 자산만 남았다.
+    from routers.diary import _base_mime
+    EXT = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp",
+           "audio/webm": "webm", "audio/mp4": "m4a", "audio/ogg": "ogg"}
+    cases = [
+        ("audio/webm;codecs=opus", "audio/webm", "webm"),   # 🔴 크롬 MediaRecorder 실측
+        ("audio/webm; codecs=opus", "audio/webm", "webm"),  # 공백 있는 변형
+        ("audio/mp4;codecs=mp4a.40.2", "audio/mp4", "m4a"), # iOS Safari
+        ("AUDIO/WEBM", "audio/webm", "webm"),               # 대문자
+        ("audio/webm", "audio/webm", "webm"),               # 대조군(무회귀)
+        ("image/png", "image/png", "png"),                  # 대조군
+    ]
+    for raw, want, want_ext in cases:
+        got = _base_mime(raw)
+        check(got == want, f"{raw!r} → {want!r} (실제 {got!r})")
+        check(EXT.get(got) == want_ext, f"{raw!r} 의 확장자가 {want_ext} 다 (bin 이면 사고)")
+    check(_base_mime(None) == "", "None 이면 빈 문자열 (호출부가 기본값으로 넘어간다)")
+    # 버킷 허용 목록과 실제로 맞는지 — 006 SQL 을 근거로 대조
+    sql = read(os.path.join(SERVER, "sql", "006_diary_server_v1.sql"))
+    for want in ("audio/webm", "audio/mp4", "image/png"):
+        check(f"'{want}'" in sql, f"버킷 allowed_mime_types 에 {want} 가 있다")
+    check("_base_mime(file.content_type)" in router,
+          "🔴 upload_asset 이 정규화를 거친다 (raw content_type 을 그대로 쓰면 재발한다)")
+
+    print()
+    print("=" * 74)
     if fails:
         print(f"❌ 실패 {len(fails)}건")
         for f in fails:

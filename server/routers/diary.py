@@ -95,6 +95,15 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _base_mime(value: Optional[str]) -> str:
+    """'audio/webm;codecs=opus' → 'audio/webm'. 파라미터·대소문자·공백을 정규화한다.
+
+    Storage 버킷의 allowed_mime_types 는 **정확히 일치**를 본다. 브라우저가 붙이는
+    `;codecs=…` 하나 때문에 업로드 전체가 거부된다. 여기서 한 번만 정규화한다.
+    """
+    return (value or "").split(";")[0].strip().lower()
+
+
 def _check_client_id(value: str, what: str) -> str:
     v = (value or "").strip()
     if not _CLIENT_ID_RE.match(v):
@@ -456,7 +465,14 @@ async def upload_asset(
             detail="파일이 너무 커요",
         )
 
-    mime = file.content_type or ("image/png" if kind == "image" else "audio/webm")
+    # 🔴 MIME 파라미터를 반드시 떼어낸다 (2026-08-07 실사고).
+    #    MediaRecorder 는 "audio/webm" 을 넣어도 recorder.mimeType 으로
+    #    **"audio/webm;codecs=opus"** 를 돌려주고, 그게 Blob.type → 업로드 Content-Type 까지 그대로 온다.
+    #    떼지 않으면 두 가지가 동시에 깨진다:
+    #      ① 확장자 사전에 없어 orig.bin 으로 저장된다
+    #      ② 버킷 allowed_mime_types(= 'audio/webm') 와 글자가 달라 Storage 가 거부한다
+    #    실제로 이것 때문에 음성 메모가 4회 연속 업로드 실패했고, 자산 실패라 엔트리까지 안 올라갔다.
+    mime = _base_mime(file.content_type) or ("image/png" if kind == "image" else "audio/webm")
     ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp",
            "audio/webm": "webm", "audio/mp4": "m4a", "audio/ogg": "ogg"}.get(mime, "bin")
     base = f"{user['user_id']}/{profileId}/{aid}"
