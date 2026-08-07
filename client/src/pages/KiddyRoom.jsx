@@ -30,7 +30,10 @@ const LINE_LISTENING = "키디가 듣고 있어! 다 말하면 다시 콕 눌러
 const LINE_ERROR = "키디가 잠깐 쉬고 있어. 조금 뒤에 다시 말해줘!"; // §9 ④
 const FALLBACK_UNSUPPORTED = "여기서는 말하기 연습이 잘 안 돼. 어른에게 부탁해봐!"; // §9 ⑤ (반말·'브라우저' 삭제)
 // m7·마이크 거부 — 기존 KidHome 검증 카피 재사용(신규 카피 금지)
-const LINE_NOSPEECH = "아무 소리도 안 들렸어요. 다시 눌러서 말해봐요!"; // KidHome.jsx:429
+// GD-38 §1: 못 알아들은 건 키디 탓으로 말한다(아이 탓 아님). 선례 `diaryCopy.js` REASK.retry(오너 개정 7/8).
+//   ⚠️ 빈 인식 결과는 '아이가 말을 안 한 것'만이 아니다 — iOS 오디오 세션 고착으로 마이크에 소리가
+//      안 들어오던 우리 버그도 같은 증상이었다(`useKiddyVoice.js:302`). 원인을 아이가 알 방법이 없다.
+const LINE_NOSPEECH = "어? 잘 못 들었어. 한 번만 더 말해줄래?"; // KidHome.jsx:587 과 동일 카피
 const LINE_MIC_DENIED = "마이크를 쓸 수 없어요. 어른에게 부탁해봐! 🎤"; // KidHome.jsx:430
 
 // Z §3(B·예외): 배경 데코 — CSS만(에셋 0). 에메랄드 글로우 + 별/방울 반짝임 + 하단 비네트.

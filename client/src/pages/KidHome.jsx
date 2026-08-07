@@ -584,7 +584,11 @@ export default function KidHome() {
     recognition.onstart = () => { setError(""); setIsListening(true); };
     recognition.onerror = (e) => {
       setIsListening(false);
-      if (e.error === "no-speech") setError("아무 소리도 안 들렸어요. 다시 눌러서 말해봐요!");
+      // GD-38 §1: 못 알아들은 건 키디 탓으로 말한다(아이 탓 아님). 선례 `diaryCopy.js` REASK.retry(오너 개정 7/8).
+      //   ⚠️ no-speech 는 '아이가 말을 안 한 것'만이 아니다 — iOS 오디오 세션 고착으로 마이크에 소리가
+      //      안 들어오던 우리 버그도 이 에러로 나왔다(`useKiddyVoice.js:302`). 원인을 아이가 알 방법이 없는 자리에서
+      //      "아무 소리도 안 들렸어요"는 아이를 지목한다.
+      if (e.error === "no-speech") setError("어? 잘 못 들었어. 한 번만 더 말해줄래?");
       else if (e.error === "not-allowed") setError("마이크를 쓸 수 없어요. 어른에게 부탁해봐! 🎤");
       else if (e.error !== "aborted") { console.warn("음성 인식 오류:", e.error); setError("지금은 잘 안 들려. 잠깐 뒤에 다시 해볼래?"); }
     };
