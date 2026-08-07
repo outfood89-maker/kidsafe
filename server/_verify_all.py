@@ -30,6 +30,7 @@ CHECKS = [
     ("🐤 윤리선 카나리아",          "_verify_canary.py"),
     ("💸 비용 상한(레이트리밋)",     "_verify_quota.py"),
     ("🚨 위기 사전(정탐·오탐·양쪽 동일)", "_verify_lexicon.py"),
+    ("📓 그림일기 저장 계약(GD-8a)", "_verify_diary_contract.py"),
     ("가짜 주입 도구 자체 점검",     "_verify_fakes.py"),
 ]
 

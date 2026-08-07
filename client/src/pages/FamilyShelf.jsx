@@ -139,6 +139,9 @@ export default function FamilyShelf() {
       if (p) {
         setProfile(p);
         setEntries(diary.getEntries(p.id));
+        // GD-8a: 캐시를 먼저 그리고(위 줄) 서버에서 채운 뒤 다시 그린다.
+        //   DIARY_SERVER=false 면 hydrateDiary 는 첫 줄에서 return 한다(네트워크 0).
+        void diary.hydrateDiary(p.id).then(() => setEntries(diary.getEntries(p.id)));
         diary.recordShelfVisit(p.id); // R8: 자발 방문 → 기본 빈도 복귀
         // AD-8b: 복귀 시 pendingContinue 점검 — 오늘분이면 배너, 만료(다른 날)면 청소(meta 제거 + orphan IDB 삭제). 별도 스케줄러 불필요.
         const pc = diary.getPendingContinue(p.id);

@@ -75,7 +75,12 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
     setOpenId(null); setOpenMonth(null);
     // 투어 주입(AD-7): entriesProp 있으면 diaryStore 무접촉 — 메모리 시드만 렌더(실경로는 기존대로 diary.getEntries).
     if (entriesProp) { setEntries(entriesProp); return; }
-    try { setEntries(profileId ? diary.getEntries(profileId) : []); }
+    try {
+      setEntries(profileId ? diary.getEntries(profileId) : []);
+      // GD-8a: 캐시 먼저 → 서버로 채운 뒤 다시 그린다. ⚠️ 위 투어 early return **뒤**에 둔다 —
+      //   앞에 두면 투어에서 서버를 호출하게 된다(투어는 서버 호출 0이 원칙).
+      if (profileId) void diary.hydrateDiary(profileId).then(() => setEntries(diary.getEntries(profileId)));
+    }
     catch { setEntries([]); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId]);

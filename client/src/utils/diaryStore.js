@@ -5,13 +5,24 @@
 //   ④찢기=페이지 단위 즉시 완전 삭제(복구 불가) ⑤배지·보상·알림 연결 금지.
 // ⚠️ feature/diary-v0 브랜치 전용.
 
+// GD-8a: 서버(Supabase) 정본 + 로컬 캐시 구조 도입. 읽기는 동기 캐시 그대로(호출부 28곳 무변경),
+//        쓰기만 캐시→서버 push. DIARY_SERVER=false 동안 동작은 v0과 100% 동일.
+
 import { ROTATING_QUESTIONS } from "./diaryCopy"; // AD-4 §4: getTodayQuestion 선정 풀(단방향 의존)
-import { deleteImage } from "./diaryImageStore"; // AD-5: 찢기 시 IDB 이미지 완전삭제(브라우저 전용, 노드선 no-op)
-import { deleteAudio } from "./diaryAudioStore"; // B08a: 음성 편지 orphan·완전삭제(브라우저 전용, 노드선 no-op)
+import { deleteImage, getImage } from "./diaryImageStore"; // AD-5: 찢기 시 IDB 이미지 완전삭제 / GD-8a: push 시 원본 읽기
+import { deleteAudio, getAudio } from "./diaryAudioStore"; // B08a: 음성 편지 orphan·완전삭제 / GD-8a: push 시 음성 읽기
+import { uploadImageAsset, uploadAudioAsset, primeAssetUrls } from "./diaryAssets"; // GD-8a
+import {
+  getDiaryEntries, postDiaryEntry, patchDiaryImage, patchDiaryStamp,
+  patchDiaryStampSeen, getDiaryMeta, putDiaryMeta,
+} from "./api"; // GD-8a
 
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
 //   → main엔 이 브랜치 diff가 없어야 하므로 플래그로 신규 UI 전체를 게이트한다.
 export const DIARY_V0 = true;
+// GD-8a: 서버 저장 게이트. 🔴 GD-8b(삭제 경로) 완료 + 오너 승인 전까지 false 고정 —
+//   찢기가 서버에 관철되지 않으면 불변식④가 깨진다(아이가 찢은 일기가 서버에 남는다).
+export const DIARY_SERVER = false;
 // 오늘 날짜(KST, YYYY-MM-DD) — 날짜 계산 중복 신설 금지, 신규 3곳(타일·홈·브릿지) 모두 이것만 사용.
 export const todayKST = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 
@@ -36,7 +47,9 @@ const writeJson = (key, val) => {
 
 const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0, lastProposalDate: null, todayQ: null, teaserDate: null, regen: null, continueUsed: null, pendingContinue: null });
 const getMeta = (pid) => ({ ...defaultMeta(), ...readJson(META_KEY(pid), {}) });
-const setMeta = (pid, meta) => writeJson(META_KEY(pid), meta);
+// GD-8a: 캐시 기록은 그대로(동기). 서버 push 는 400ms 디바운스 — recordQid·recordRegen·recordShelfVisit 등
+//   고빈도 호출부가 많아 매번 올리면 왕복이 폭증한다. 마지막 값만 올리면 충분하다(메타는 상태 스냅샷).
+const setMeta = (pid, meta) => { writeJson(META_KEY(pid), meta); if (DIARY_SERVER) queueMetaPush(pid, meta); };
 
 // ── 엔트리 (일기 페이지) ──
 export const getEntries = (pid) => readJson(ENTRIES_KEY(pid), []);
@@ -62,6 +75,9 @@ export function saveEntry(pid, entry) {
   if (entry.voiceMs) clean.voiceMs = entry.voiceMs;
   entries.push(clean);
   writeJson(ENTRIES_KEY(pid), entries);
+  // GD-8a: 캐시에 먼저 쓰고(위) 서버로는 뒤늦게 밀어 올린다. ⚠️ async 로 바꾸지 말 것 —
+  //   이 함수의 동기 반환에 호출부가 의존한다. void = 응답을 기다리지 않는다(아이가 느끼는 지연 0).
+  if (DIARY_SERVER) { void pushEntryToServer(pid, clean); }
   return clean;
 }
 
@@ -167,7 +183,10 @@ export function markTeaserShown(pid, today) {
 export function setEntryImage(pid, entryId, imageId) {
   const entries = getEntries(pid);
   const e = entries.find((x) => x.id === entryId);
-  if (e) { e.imageId = imageId; writeJson(ENTRIES_KEY(pid), entries); }
+  if (e) {
+    e.imageId = imageId; writeJson(ENTRIES_KEY(pid), entries);
+    if (DIARY_SERVER) void pushEntryImageToServer(pid, entryId, imageId); // GD-8a
+  }
 }
 
 // ── AD-5 §3: 그림 다시 그리기 하루 2회 한도 (meta.regen {date,count}, 날짜 바뀌면 리셋) ──
@@ -250,16 +269,132 @@ export function setStamp(pid, entryId, { emoji, letter, voiceId, voiceMs } = {})
   writeJson(ENTRIES_KEY(pid), entries);
   // B08a: 옛 음성 orphan 삭제 — 새 voiceId와 다르거나(재녹음) 음성 제거 시. fire-and-forget(diaryStore async 방지).
   if (prevVoiceId && prevVoiceId !== voiceId) { try { deleteAudio(prevVoiceId); } catch { /* 무시 */ } }
+  if (DIARY_SERVER) void pushStampToServer(pid, entryId, e.stamp); // GD-8a
 }
 // 아이가 상세를 열어 확인 → seenAt 기록(알림 자연 소멸용).
 export function markStampSeen(pid, entryId) {
   const entries = getEntries(pid);
   const e = entries.find((x) => x.id === entryId);
-  if (e && e.stamp) { e.stamp.seenAt = todayKST(); writeJson(ENTRIES_KEY(pid), entries); }
+  if (e && e.stamp) {
+    e.stamp.seenAt = todayKST(); writeJson(ENTRIES_KEY(pid), entries);
+    if (DIARY_SERVER) void pushStampSeenToServer(pid, entryId); // GD-8a
+  }
 }
 // 미확인 도장 목록(도장 있고 seenAt 없음) → 아이 홈 알림 분기(도장만 vs 편지 vs 음성). B08a: hasVoice 파생 추가(음성 최우선).
 export function getUnseenStamps(pid) {
   return getEntries(pid)
     .filter((e) => e.stamp && !e.stamp.seenAt)
     .map((e) => ({ entryId: e.id, hasLetter: !!(e.stamp.letter && e.stamp.letter.trim()), hasVoice: !!e.stamp.voiceId }));
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// GD-8a: 서버 동기화 (DIARY_SERVER=false 인 동안 아래 전부 호출되지 않는다)
+// ══════════════════════════════════════════════════════════════════════
+// ⚠️ 전 함수 async + try-catch, **절대 throw 하지 않는다.** 캐시에는 이미 저장돼 있으므로
+//    서버가 실패해도 아이 일기는 안전하다. 여기서 예외가 올라가면 멀쩡한 저장 흐름이 깨진다.
+// ⚠️ 위쪽 동기 함수들의 시그니처는 한 글자도 바뀌지 않았다 — 호출부 28곳 무변경(§0-3).
+
+/** 🚨 불변식① 관철 지점 — 업로드는 여기서만 일어난다.
+ *
+ *  putImage/putAudio 에 업로드를 붙이지 않은 이유가 이것이다: 그 함수들은 **아이가 간직하기 전**에도
+ *  불린다(AI 그림 생성 직후 DiaryFlow.jsx:340, 이탈 보존 pendingContinue :380-381).
+ *  거기 붙이면 **아이가 버린 그림이 서버로 샌다.**
+ *  이 함수는 엔트리에 실제로 얹힌 id 만 알고 있으므로 '간직된 것'만 올라간다 — 구조로 강제된다.
+ */
+export async function pushEntryToServer(pid, entry) {
+  try {
+    if (!DIARY_SERVER || !pid || !entry?.id) return;
+    // ① 그림 — 완성본과 원본 낙서
+    if (entry.imageId) {
+      const data = await getImage(entry.imageId);
+      // imgSource==="mine" 이면 아이가 직접 그린 것 → role=drawing
+      if (data) await uploadImageAsset(pid, entry.imageId, data, entry.imgSource === "mine" ? "drawing" : "completed");
+    }
+    if (entry.drawingId) {
+      const data = await getImage(entry.drawingId);
+      if (data) await uploadImageAsset(pid, entry.drawingId, data, "drawing");
+    }
+    // ② 음성 — 아이 메모 / 부모 편지
+    if (entry.voiceId) {
+      const blob = await getAudio(entry.voiceId);
+      if (blob) await uploadAudioAsset(pid, entry.voiceId, blob, "memo");
+    }
+    if (entry.stamp?.voiceId) {
+      const blob = await getAudio(entry.stamp.voiceId);
+      if (blob) await uploadAudioAsset(pid, entry.stamp.voiceId, blob, "letter");
+    }
+    // ③ 엔트리 본문
+    await postDiaryEntry({ profileId: pid, ...entry });
+  } catch { /* 캐시가 정본 역할을 계속한다. 다음 hydrate 가 재푸시한다. */ }
+}
+
+async function pushEntryImageToServer(pid, entryId, imageId) {
+  try { await patchDiaryImage(entryId, { profileId: pid, imageId: imageId || null }); }
+  catch { /* 무시 */ }
+}
+
+async function pushStampToServer(pid, entryId, stamp) {
+  try { await patchDiaryStamp(entryId, { profileId: pid, stamp: stamp || null }); }
+  catch { /* 무시 */ }
+}
+
+async function pushStampSeenToServer(pid, entryId) {
+  try { await patchDiaryStampSeen(entryId, { profileId: pid }); }
+  catch { /* 무시 */ }
+}
+
+// 메타 push 디바운스 — 프로필별 타이머. 마지막 값만 올린다.
+const metaTimers = {};
+function queueMetaPush(pid, meta) {
+  try {
+    if (!DIARY_SERVER || !pid) return;
+    clearTimeout(metaTimers[pid]);
+    metaTimers[pid] = setTimeout(() => {
+      // 🚨 pendingContinue(미채택물)는 올리지 않는다 — 불변식①. 서버도 한 번 더 거른다(이중 방어).
+      const { pendingContinue, ...clean } = meta || {};
+      void putDiaryMeta({ profileId: pid, data: clean }).catch(() => {});
+    }, 400);
+  } catch { /* 무시 */ }
+}
+
+/** 서버 → 로컬 캐시 채우기. 책장 진입 시 호출(§1-10, 2곳).
+ *
+ *  병합 규칙: 키는 entry.id.
+ *    · 양쪽에 있으면 **서버 우선**(다른 기기에서 고친 게 이깁니다)
+ *    · 서버에만 있으면 캐시에 추가 (= 기기 교체 후 복구)
+ *    · 🔴 **로컬에만 있는 것은 지우지 않는다.** 지난 세션에서 push 가 실패한 것일 수 있으므로
+ *      남겨두고 재푸시한다. "서버에 없으니 지운다"로 만들면 유실이 조용히 일어난다.
+ */
+export async function hydrateDiary(pid) {
+  try {
+    if (!DIARY_SERVER || !pid) return;           // 플래그 off → 네트워크 0
+    const [entriesRes, metaRes] = await Promise.all([
+      getDiaryEntries(pid).catch(() => null),
+      getDiaryMeta(pid).catch(() => null),
+    ]);
+    if (entriesRes?.assets) primeAssetUrls(pid, entriesRes.assets);
+
+    const serverEntries = Array.isArray(entriesRes?.entries) ? entriesRes.entries : [];
+    if (serverEntries.length || entriesRes) {
+      const local = getEntries(pid);
+      const byId = new Map(local.map((e) => [e.id, e]));
+      const serverIds = new Set();
+      for (const se of serverEntries) {
+        if (!se?.id) continue;
+        serverIds.add(se.id);
+        byId.set(se.id, se);                      // 서버 우선
+      }
+      writeJson(ENTRIES_KEY(pid), Array.from(byId.values()));
+      // 로컬에만 있던 것 = 지난번 push 실패분 → 다시 밀어 올린다
+      for (const le of local) {
+        if (le?.id && !serverIds.has(le.id)) void pushEntryToServer(pid, le);
+      }
+    }
+
+    if (metaRes?.meta && typeof metaRes.meta === "object") {
+      const localMeta = getMeta(pid);
+      // pendingContinue 는 서버에 없는 로컬 전용 키 — 서버 값으로 덮어쓰면 이탈 복구가 사라진다
+      writeJson(META_KEY(pid), { ...localMeta, ...metaRes.meta, pendingContinue: localMeta.pendingContinue });
+    }
+  } catch { /* 캐시만으로도 화면은 그대로 뜬다 */ }
 }

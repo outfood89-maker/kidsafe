@@ -5,7 +5,13 @@
 //   IDB 불가 환경(사파리 프라이빗 등)은 조용히 실패 → 글 편지 흐름 불변(음성은 보조).
 // ⚠️ feature/diary-v0 브랜치 전용. 외부 의존 0(raw IndexedDB).
 
-const DB_NAME = "kidsafe_diary_audio_v0";
+// GD-8a: 서버 업로드는 saveEntry/setStamp 의 push 경로에서만 일어난다(불변식① — putAudio 에 붙이지 않는다).
+//   이 파일이 하는 건 IDB 캐시 + 미스 시 Blob 폴백뿐이다.
+//   ⚠️ diaryStore 를 import 하지 않는다(순환). 플래그 대신 getAssetProfileId() 로 판정 —
+//      근거는 diaryImageStore 상단 주석 참조.
+import { fetchAssetBlob, getAssetProfileId } from "./diaryAssets";
+
+const DB_NAME = "kidsafe_diary_audio_v0";   // ⚠️ 이름 변경 금지 — 기존 데이터 유지(GD-8c 이사 재료)
 const STORE = "audio";
 
 function openDB() {
@@ -45,10 +51,20 @@ export async function putAudio(id, blob) {
 }
 
 // 음성 조회 → Blob(없거나 실패 시 null)
+// GD-8a: IDB 미스 시 서버 폴백. 🔴 **반드시 Blob 을 반환할 것** —
+//   호출부가 URL.createObjectURL(blob) 을 쓴다(FamilyShelf:353-356, ParentDiaryShelf:194-197).
+//   서명 URL 문자열을 그대로 돌려주면 재생이 조용히 깨진다.
 export async function getAudio(id) {
   if (!id) return null;
-  try { return (await run("readonly", (s) => s.get(id))) ?? null; }
-  catch { return null; }
+  try {
+    const hit = (await run("readonly", (s) => s.get(id))) ?? null;
+    if (hit) return hit;
+  } catch { /* 아래 폴백으로 */ }
+  try {
+    const pid = getAssetProfileId();
+    if (!pid) return null;              // 컨텍스트 없음(=플래그 off 포함) → v0 동작 그대로
+    return await fetchAssetBlob(pid, id);
+  } catch { return null; }
 }
 
 // 음성 삭제 (재도장 orphan·완전삭제 불변식)

@@ -30,6 +30,48 @@ export const continueDiaryImage = async (payload) => {
   return response.data
 }
 
+// ── GD-8a: 그림일기 서버 저장 (엔트리·메타·자산) ──────────────────────
+// ⚠️ 이 함수들은 diaryStore 의 DIARY_SERVER 게이트 뒤에서만 호출된다. 플래그가 false 면 아무도 안 부른다.
+// 인증 필수 — 위 인터셉터가 토큰 자동 첨부. 경로 파라미터는 반드시 encodeURIComponent.
+export const getDiaryEntries = async (profileId) => {
+  const res = await axios.get(`${BASE_URL}/diary/entries`, { params: { profileId } })
+  return res.data
+}
+export const postDiaryEntry = async (payload) => {
+  const res = await axios.post(`${BASE_URL}/diary/entries`, payload)
+  return res.data
+}
+export const patchDiaryImage = async (entryId, payload) => {
+  const res = await axios.patch(`${BASE_URL}/diary/entries/${encodeURIComponent(entryId)}/image`, payload)
+  return res.data
+}
+export const patchDiaryStamp = async (entryId, payload) => {
+  const res = await axios.patch(`${BASE_URL}/diary/entries/${encodeURIComponent(entryId)}/stamp`, payload)
+  return res.data
+}
+export const patchDiaryStampSeen = async (entryId, payload) => {
+  const res = await axios.patch(`${BASE_URL}/diary/entries/${encodeURIComponent(entryId)}/stamp-seen`, payload)
+  return res.data
+}
+export const getDiaryMeta = async (profileId) => {
+  const res = await axios.get(`${BASE_URL}/diary/meta`, { params: { profileId } })
+  return res.data
+}
+export const putDiaryMeta = async (payload) => {
+  const res = await axios.put(`${BASE_URL}/diary/meta`, payload)
+  return res.data
+}
+// ⚠️ multipart — Content-Type 을 직접 세팅하지 말 것. boundary 는 axios 가 붙인다
+//    (선례 주석: server/routers/diary_image.py:313).
+export const postDiaryAsset = async (formData) => {
+  const res = await axios.post(`${BASE_URL}/diary/assets`, formData)
+  return res.data
+}
+export const getDiaryAssetUrl = async (assetId, params) => {
+  const res = await axios.get(`${BASE_URL}/diary/assets/${encodeURIComponent(assetId)}/url`, { params })
+  return res.data
+}
+
 // 키워드로 YouTube 영상 검색
 export const searchVideos = async (keyword) => {
   const response = await axios.get(`${BASE_URL}/search`, {
