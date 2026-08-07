@@ -7,3 +7,4 @@ pydantic==2.12.5
 youtube-transcript-api==0.6.2
 PyJWT[crypto]==2.13.0
 pandas==2.2.3
+python-multipart==0.0.20  # GD-8a: /diary/assets multipart 업로드용(FastAPI File/Form 전제). 이미지 라이브러리 아님.
