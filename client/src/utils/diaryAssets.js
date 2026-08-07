@@ -14,7 +14,7 @@
 import axios from "axios";
 import { postDiaryAsset, getDiaryAssetUrl } from "./api";
 // 인코딩은 imageCodec 한 곳에서만 — 저장(diaryImageStore.putImage)과 업로드가 같은 구현을 쓴다.
-import { reencode } from "./imageCodec";
+import { reencode, compressForStorage } from "./imageCodec";
 
 // 서명 URL 메모리 캐시: key = `${clientAssetId}::${variant}` → { url, exp(ms) }
 // ⚠️ localStorage 에 쓰지 말 것 — 만료된 링크가 캐시에 굳어 영원히 깨진 이미지가 뜬다.
@@ -80,7 +80,13 @@ const shrinkOriginal = (dataUrl) => reencode(dataUrl, { maxLong: 2048, type: "im
 export async function uploadImageAsset(pid, clientAssetId, dataUrl, role) {
   try {
     if (!pid || !clientAssetId || !dataUrl) return false;
-    let blob = dataUrlToBlob(dataUrl);
+
+    // 🔴 올리기 전에도 한 번 줄인다 (2026-08-07 실측 후 추가).
+    //    putImage 가 저장 시점에 줄이지만, **그 전에 저장된 큰 PNG 는 그대로 남아 있다.**
+    //    실측: 기기에 3.82MB 짜리가 이미 있었고, 그건 4MB 미만이라 아래 응급 축소에도 안 걸린다.
+    //    → 압축 대상이면 여기서 줄고(3.82MB → 0.68MB 실측), 아니면 원본이 그대로 지나간다.
+    const packed = await compressForStorage(dataUrl);
+    let blob = dataUrlToBlob(packed);
     if (!blob) return false;
 
     // 🔴 상한을 넘으면 **실패시키지 않고 줄여서 올린다** (2026-08-07).
@@ -88,7 +94,7 @@ export async function uploadImageAsset(pid, clientAssetId, dataUrl, role) {
     //    여기서 막으면 자산 실패 → 엔트리 미저장 → **일기 한 편이 통째로 안 올라간다.**
     //    화질보다 "아이 일기가 남는 것"이 우선이다.
     if (blob.size > MAX_IMAGE_BYTES) {
-      const smaller = await shrinkOriginal(dataUrl);
+      const smaller = await shrinkOriginal(packed);
       if (smaller && smaller.size < blob.size) blob = smaller;
       if (blob.size > MAX_IMAGE_BYTES) return false;   // 줄여도 안 되면 포기(다음 회차 재시도)
     }
@@ -98,8 +104,8 @@ export async function uploadImageAsset(pid, clientAssetId, dataUrl, role) {
     fd.append("kind", "image");
     fd.append("role", role || "completed");
     // 파일명은 표시용이다 — 서버는 Content-Type 으로 확장자를 정한다(줄이면 jpeg 가 된다).
-    fd.append("file", blob, blob.type === "image/jpeg" ? "orig.jpg" : "orig.png");
-    const thumb = await makeThumb(dataUrl);
+    fd.append("file", blob, { "image/jpeg": "orig.jpg", "image/webp": "orig.webp" }[blob.type] || "orig.png");
+    const thumb = await makeThumb(packed);   // 줄인 쪽에서 만든다(같은 그림, 인코딩 한 번 덜 한다)
     if (thumb) fd.append("thumb", thumb, "thumb.jpg");
     await postDiaryAsset(fd);
     return true;
