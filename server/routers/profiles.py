@@ -38,6 +38,10 @@ def _to_api(row: dict) -> dict:
         "continuousPlay": row.get("continuous_play") or False,  # 연속재생 (부모 토글, 기본 꺼짐)
         "interests": row.get("interests") or [],  # 관심사 씨앗(F0) — 체크인 '볼 것' 선택지 재료
         "interestSource": row.get("interest_source"),  # parent / child (누가 골랐는지)
+        # B14: 그림일기를 서버에 보관하는가. 보호자 동의로만 true 가 된다.
+        # 🔴 or False 가 중요하다 — 008 미적용 DB 에서는 이 키가 없어 None 이 오는데,
+        #    프론트에서 undefined 는 "모름"이라 판정이 흔들린다. 없으면 '꺼짐'이 안전한 기본값이다.
+        "diaryServerOn": bool(row.get("diary_server_on") or False),
         "createdAt": row.get("created_at"),
     }
 
@@ -196,6 +200,56 @@ async def pin_verify(profile_id: str, body: PinVerify, user: dict = Depends(get_
     if not stored:
         return {"ok": False, "hasPin": False}
     return {"ok": verify_pin(body.pin, stored), "hasPin": True}
+
+
+# ── B13: 그림일기 서버 저장 동의 ─────────────────────────────────────
+# 🔴 방침 버전은 **서버가 찍는다.** 클라이언트가 보낸 값을 그대로 저장하면
+#    "무엇에 동의했는지"를 클라이언트가 위조할 수 있다. 동의 기록의 의미가 사라진다.
+DIARY_POLICY_VERSION = "2026-08-07-draft"
+
+
+class DiaryConsent(BaseModel):
+    action: str  # 'grant' | 'revoke'
+
+
+# POST /profiles/{id}/diary-consent
+@router.post("/{profile_id}/diary-consent")
+async def diary_consent(profile_id: str, body: DiaryConsent, user: dict = Depends(get_current_user)):
+    """그림일기 서버 저장 동의/철회.
+
+    🔴 **순서가 곧 약속이다** (008_diary_consent.sql 참조).
+       DB 호출 두 번 사이엔 트랜잭션이 없다. 중간에 끊겼을 때 어느 쪽으로 실패할지를 고른다.
+         · grant  : 장부 먼저 → 켜기.  중간 실패 = 기록만 있고 안 올라감 ✅
+                    (반대면 동의 기록 없이 올라간다 = 🔴 무단 수집)
+         · revoke : 끄기 먼저 → 장부.  중간 실패 = 이미 꺼짐 ✅
+                    (반대면 기록만 남고 계속 올라간다 = 🔴 철회 무력화)
+       두 경우 모두 **안 올라가는 쪽을 먼저** 한다.
+
+    ⚠️ 철회는 '더 올리지 않는다'까지다. 이미 저장된 그림일기는 지우지 않는다 —
+       기기를 바꾼 뒤 철회한 가정은 로컬 사본이 없어 통째로 잃는다(부록 A #22, 전문가 답변 대기).
+       삭제를 원하면 기존 삭제 기능(DELETE /diary/entries/{id})을 쓴다.
+    """
+    if body.action not in ("grant", "revoke"):
+        raise HTTPException(status_code=400, detail="action 은 grant 또는 revoke 여야 해요")
+
+    await get_owned_profile(profile_id, user["user_id"])  # 소유권 확인
+    ledger = {
+        "user_id": user["user_id"],
+        "profile_id": profile_id,
+        "action": body.action,
+        "policy_version": DIARY_POLICY_VERSION,
+    }
+    flag = {"diary_server_on": body.action == "grant"}
+    scope = {"id": f"eq.{profile_id}", "user_id": f"eq.{user['user_id']}"}
+
+    if body.action == "grant":
+        await sb_insert("diary_consents", ledger)   # ① 장부
+        await sb_update("profiles", scope, flag)    # ② 켜기
+    else:
+        await sb_update("profiles", scope, flag)    # ① 끄기
+        await sb_insert("diary_consents", ledger)   # ② 장부
+
+    return {"diaryServerOn": body.action == "grant", "policyVersion": DIARY_POLICY_VERSION}
 
 
 # DELETE /profiles/{id}

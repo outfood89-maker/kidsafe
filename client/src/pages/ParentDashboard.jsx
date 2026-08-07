@@ -52,6 +52,7 @@ import { exportDemoFile } from "../utils/tourDemoSeed"; // AD-7: '데모 파일 
 import { putImage } from "../utils/diaryImageStore"; // AD-7: 정적 데모 그림 base64 → IDB 하이드레이트
 import { PARENT_TOUR, DIARY_MIGRATE } from "../utils/diaryCopy"; // AD-7: 투어 카피 / GD-8c: 이사 카피
 import { migrateAllProfiles } from "../utils/diaryMigrate"; // GD-8c: 기기 데이터 → 서버 이사
+import DiaryConsentCard from "../components/DiaryConsentCard"; // B13: '어디서나 열리는 가족 책장' 동의
 
 const AGE_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
 
@@ -1162,6 +1163,22 @@ export default function ParentDashboard() {
                 <h2 className="text-base font-medium" style={{ color: "#EAF5F1" }}>가족 책장</h2>
                 <span className="ml-auto text-xs" style={{ color: "#90A9A8" }}>아이가 간직한 그림일기를 함께 봐요</span>
               </div>
+
+              {/* B13: '어디서나 열리는 가족 책장' 동의 토글.
+                  🔴 여기 두는 이유 — 부모가 책장을 보는 순간이 곧 "다른 기기에서도 보고 싶다"가
+                  생기는 지점이다. 설정 깊숙이 묻어두면 아무도 못 찾는다.
+                  ⚠️ 투어(예시 화면)에서는 숨긴다 — 가짜 프로필로 진짜 동의를 보낼 수 없다. */}
+              {!tourMode && (() => {
+                const p = profiles.find((x) => x.id === shelfProfileId);
+                return p ? (
+                  <DiaryConsentCard
+                    profile={p}
+                    onChanged={(pid, on) =>
+                      setProfiles((prev) => prev.map((x) => (x.id === pid ? { ...x, diaryServerOn: on } : x)))
+                    }
+                  />
+                ) : null;
+              })()}
 
               {/* GD-8c: 이사 진행/결과 — 부모에게만 보인다. 화면을 막지 않는 얇은 알림 줄. */}
               {mig && mig.total > 0 && (

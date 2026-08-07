@@ -84,6 +84,21 @@ def body_py(src, name):
     return "\n".join(out)
 
 
+def py_body_of(src, name):
+    """파이썬 `async def name(...)` 본문을 **다음 최상위 정의 직전까지** 잘라낸다.
+
+    ⚠️ body_of 는 JS 전용(`export function`)이라 파이썬 라우터에는 빈 문자열을 준다.
+       빈 본문에 `"X" not in body` 를 걸면 **항상 참**이 되어 검사가 거짓 통과한다.
+       그래서 호출부에서 반드시 비어 있지 않음을 먼저 확인한다.
+    """
+    m = re.search(r"^(?:async\s+)?def\s+" + re.escape(name) + r"\s*\(", src, re.M)
+    if not m:
+        return ""
+    rest = src[m.end():]
+    nxt = re.search(r"^(?:@router|(?:async\s+)?def\s)", rest, re.M)
+    return rest[: nxt.start()] if nxt else rest
+
+
 def body_of(src, name):
     """`export function name(...) { ... }` 또는 `export async function` 의 본문을 중괄호 매칭으로 뜯는다."""
     m = re.search(r"export\s+(?:async\s+)?function\s+" + re.escape(name) + r"\s*\([^)]*\)\s*\{", src)
@@ -179,9 +194,29 @@ def main():
     check("sb_storage_list" in storage, "storage.py 에 목록 조회가 있다 (경로 유실 안전망)")
     check("get_owned_profile" in router, "라우터가 소유권 검사를 쓴다")
     n_auth = router.count("Depends(get_current_user)")
-    n_owned = router.count("get_owned_profile(")
+    # B13 이후 소유권 검사는 두 갈래다 — 둘 다 내부적으로 get_owned_profile 을 부른다.
+    #   쓰기·읽기 → get_consented_profile (소유권 + 동의)  /  삭제 → get_owned_profile (소유권만)
+    # 🔴 `await ` 를 붙여 세는 이유: 접두사 없이 세면 get_consented_profile 의 **정의부**와
+    #    그 안의 get_owned_profile 호출까지 잡혀 실제보다 부풀어 오른다.
+    n_owned = router.count("await get_owned_profile(") + router.count("await get_consented_profile(")
     check(n_auth >= 9, f"인증 의존성이 엔드포인트 수만큼 있다 ({n_auth}개)")
     check(n_owned >= 9, f"소유권 검사가 엔드포인트 수만큼 있다 ({n_owned}개)")
+
+    # ── B13: 동의 게이트가 올바른 곳에만 걸려 있는가 ──
+    # 🔴 삭제에 동의를 요구하면 "철회하면 지울 수 없다"가 되어 정반대가 된다.
+    check("get_consented_profile" in router, "🔴 동의 게이트가 있다 (동의 없이는 서버에 안 올라간다)")
+    check("diary_server_on" in router, "동의 판정이 profiles.diary_server_on 을 본다")
+    for fn in ("delete_entry", "delete_all_entries"):
+        b = py_body_of(router, fn)
+        # 🔴 본문을 못 뜯으면 아래 'not in' 이 무조건 참이 된다 — 먼저 존재를 확인한다.
+        check(bool(b.strip()), f"{fn} 본문을 찾았다 (못 찾으면 아래 검사가 거짓 통과한다)")
+        check("get_consented_profile" not in b,
+              f"🔴 {fn} 은 동의를 요구하지 않는다 (철회 후에도 지울 길이 열려 있어야 한다)")
+        check("get_owned_profile" in b, f"{fn} 은 소유권은 확인한다")
+    for fn in ("upsert_entry", "upload_asset", "list_entries"):
+        b = py_body_of(router, fn)
+        check(bool(b.strip()), f"{fn} 본문을 찾았다")
+        check("get_consented_profile" in b, f"{fn} 은 동의를 확인한다")
     check("_CLIENT_ID_RE" in router and "[A-Za-z0-9_-]" in router,
           "🔴 경로 주입 차단 정규식이 있다 (이 값이 Storage 경로에 들어간다)")
 

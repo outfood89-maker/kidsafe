@@ -1,10 +1,14 @@
 """
 그림일기 서버 저장 — 엔트리·메타·자산 (GD-8a)
 
-🔴 이 라우터가 켜져도 앱은 아직 쓰지 않는다. 프론트 `DIARY_SERVER = false` 게이트가 잠겨 있고,
-   그 플래그는 **GD-8b(삭제 경로) 완료 + 오너 승인** 전까지 false 고정이다.
-   이유: 삭제가 서버에 관철되지 않은 채 저장만 켜면 **아이가 찢은 일기가 서버에 남는다.**
-   아이에게 "없앴어"라고 말하고 서버엔 남기는 것은 이 제품이 절대 해선 안 되는 거짓말이다(불변식④).
+🔴 두 겹의 게이트가 걸려 있다 (B13, 2026-08-07).
+   ① **전역 킬스위치** — 프론트 `DIARY_SERVER`. 기능 자체의 배포 여부.
+   ② **보호자 동의**   — `profiles.diary_server_on`. 아이 한 명 단위.
+   ①은 우리가 켜는 것이고 ②는 **보호자가 켜는 것**이다. 둘 다 true 여야 저장된다.
+
+   ⚠️ 프론트 게이트는 보장이 아니다 — 토큰만 있으면 이 라우터를 직접 부를 수 있다.
+      그래서 쓰기·읽기 경로는 `get_consented_profile` 로 **서버에서 한 번 더** 막는다.
+      단 **삭제 경로는 `get_owned_profile` 그대로다** — 철회 후에도 지울 길은 열려 있어야 한다.
 
 🚨 불변식 (그림일기 대본 §6 / `client/src/utils/diaryStore.js:4`)
    ① '간직' 선택분만 저장 — 업로드는 프론트의 saveEntry/setStamp push 경로에서만 일어난다.
@@ -12,9 +16,13 @@
    ② 음성 원문(transcript) 미저장 — 그런 컬럼 자체가 없다(006 스키마).
    ③ 위기 텍스트 유입 없음 — 화이트리스트 모델에 그 자리가 없다.
 
-⚠️ DELETE 엔드포인트를 만들지 말 것 — GD-8b. 지금 만들면 "지웠다고 믿는데 안 지워지는" 상태가 생긴다.
+   ④ 찢기 = 즉시 완전 삭제 — GD-8b 에서 DELETE 2종 + tombstone 으로 관철했다.
+      (GD-8a 시점의 "DELETE 를 만들지 말 것" 경고는 해소됨 — 삭제가 없는 채로 저장만 켜면
+       아이가 찢은 일기가 서버에 남기 때문이었다.)
 
-권한 등급: 👤 회원 (`Depends(get_current_user)`) + **인가**(`get_owned_profile`) 전 경로 필수.
+권한 등급: 👤 회원 (`Depends(get_current_user)`) + **인가** 전 경로 필수.
+   · 쓰기·읽기 → `get_consented_profile` (소유권 + 동의)
+   · 삭제      → `get_owned_profile`     (소유권만 — 위 ⚠️ 참조)
 """
 
 import re
@@ -38,6 +46,28 @@ from storage import (
 )
 
 router = APIRouter()
+
+
+# ── B13: 동의 게이트 ──────────────────────────────────────────────────
+async def get_consented_profile(profile_id: str, user_id: str) -> dict:
+    """소유권 + **보호자 동의**까지 확인한 뒤 프로필 row 를 반환한다.
+
+    🔴 왜 서버가 확인해야 하나 — 클라이언트 플래그는 보장이 아니다.
+       프론트에서 `isDiaryServerOn(pid)` 로 막아도, 그건 **우리 앱이 안 부른다**는 뜻일 뿐
+       "동의 없이는 저장되지 않는다"를 보장하지 않는다. 토큰만 있으면 직접 부를 수 있다.
+       **동의 없이 아동 데이터가 저장되면 무단 수집**이므로 여기서 한 번 더 막는다.
+
+    ⚠️ 삭제 경로에는 이걸 쓰지 않는다 — `get_owned_profile` 그대로다.
+       철회한 뒤에도 **이미 올라간 것을 지울 길은 열려 있어야 한다.**
+       여기에 동의를 요구하면 "철회하면 지울 수 없다"가 되어 정반대가 된다.
+    """
+    row = await get_owned_profile(profile_id, user_id)
+    if not row.get("diary_server_on"):
+        raise HTTPException(
+            status_code=403,
+            detail="그림일기 서버 보관에 동의하지 않은 프로필이에요. 설정에서 '가족과 함께 보기'를 켜주세요.",
+        )
+    return row
 
 # 🔴 경로 주입 차단 — 이 값들이 Storage 경로에 그대로 들어간다.
 #    `..` 나 `/` 가 통과하면 버킷 밖으로 쓸 수 있다.
@@ -175,7 +205,7 @@ async def list_entries(profileId: str, user: dict = Depends(get_current_user)):
 
     책장 진입 시 한 번 부르는 경로다. 자산이 수십 개일 수 있어 **서명은 일괄**로 받는다.
     """
-    await get_owned_profile(profileId, user["user_id"])
+    await get_consented_profile(profileId, user["user_id"])
     rows = await sb_select(
         "diary_entries",
         {"profile_id": f"eq.{profileId}", "select": "*", "order": "entry_date.desc"},
@@ -220,7 +250,7 @@ async def list_shelf_for_parent(profileId: str, user: dict = Depends(get_current
     ⚠️ 계속 반환해야 하는 것(설계 의도 — 막지 마라):
        문장 · 그림 서명 URL · **아이 음성 메모**(ParentDiaryShelf.jsx:272 "아이→부모 히어로") · 도장/편지
     """
-    await get_owned_profile(profileId, user["user_id"])
+    await get_consented_profile(profileId, user["user_id"])
     rows = await sb_select(
         "diary_entries",
         {
@@ -260,7 +290,7 @@ async def list_shelf_for_parent(profileId: str, user: dict = Depends(get_current
 @router.post("/entries")
 async def upsert_entry(body: EntryIn, user: dict = Depends(get_current_user)):
     """엔트리 upsert. 같은 (profile_id, client_entry_id)면 덮어쓴다(재시도 멱등)."""
-    await get_owned_profile(body.profileId, user["user_id"])
+    await get_consented_profile(body.profileId, user["user_id"])
     cid = _check_client_id(body.id, "일기 id")
     for v, what in ((body.imageId, "imageId"), (body.drawingId, "drawingId"), (body.voiceId, "voiceId")):
         if v:
@@ -302,7 +332,7 @@ async def upsert_entry(body: EntryIn, user: dict = Depends(get_current_user)):
 async def patch_entry_image(clientEntryId: str, body: ImagePatchIn,
                             user: dict = Depends(get_current_user)):
     """setEntryImage 대응 — image_client_id 만 갱신."""
-    await get_owned_profile(body.profileId, user["user_id"])
+    await get_consented_profile(body.profileId, user["user_id"])
     cid = _check_client_id(clientEntryId, "일기 id")
     if body.imageId:
         _check_client_id(body.imageId, "imageId")
@@ -324,7 +354,7 @@ async def patch_entry_stamp(clientEntryId: str, body: StampPatchIn,
     ⚠️ stamp_seen_at 은 **null 로 리셋**한다 — 새 편지가 왔으니 '아직 안 봄' 상태로 돌아가야 한다
        (앱 diaryStore.js:247 과 동일 동작).
     """
-    await get_owned_profile(body.profileId, user["user_id"])
+    await get_consented_profile(body.profileId, user["user_id"])
     cid = _check_client_id(clientEntryId, "일기 id")
     s = body.stamp
     if s and s.voiceId:
@@ -350,7 +380,7 @@ async def patch_entry_stamp(clientEntryId: str, body: StampPatchIn,
 @router.patch("/entries/{clientEntryId}/stamp-seen")
 async def patch_entry_stamp_seen(clientEntryId: str, body: StampSeenIn,
                                  user: dict = Depends(get_current_user)):
-    await get_owned_profile(body.profileId, user["user_id"])
+    await get_consented_profile(body.profileId, user["user_id"])
     cid = _check_client_id(clientEntryId, "일기 id")
     rows = await sb_update(
         "diary_entries",
@@ -365,7 +395,7 @@ async def patch_entry_stamp_seen(clientEntryId: str, body: StampSeenIn,
 # ── 메타 ──────────────────────────────────────────────────────────────
 @router.get("/meta")
 async def get_meta(profileId: str, user: dict = Depends(get_current_user)):
-    await get_owned_profile(profileId, user["user_id"])
+    await get_consented_profile(profileId, user["user_id"])
     rows = await sb_select(
         "diary_meta", {"profile_id": f"eq.{profileId}", "select": "*", "limit": "1"},
     )
@@ -380,7 +410,7 @@ async def put_meta(body: MetaIn, user: dict = Depends(get_current_user)):
        그건 '아직 간직하지 않은' 생성물이라 서버로 가면 불변식①이 깨진다.
        프론트가 실수로 통째로 보내도 여기서 걸린다(이중 방어).
     """
-    await get_owned_profile(body.profileId, user["user_id"])
+    await get_consented_profile(body.profileId, user["user_id"])
     clean = {k: v for k, v in (body.data or {}).items() if k in _META_KEYS}
     saved = await sb_upsert(
         "diary_meta",
@@ -411,7 +441,7 @@ async def upload_asset(
     Storage 경로 규칙(고정): {user_id}/{profile_id}/{client_asset_id}/orig.{ext}
                              {user_id}/{profile_id}/{client_asset_id}/thumb.jpg
     """
-    await get_owned_profile(profileId, user["user_id"])
+    await get_consented_profile(profileId, user["user_id"])
     aid = _check_client_id(clientAssetId, "자산 id")
     if kind not in _KINDS:
         raise HTTPException(status_code=400, detail="kind 가 올바르지 않아요")
@@ -474,7 +504,7 @@ async def get_asset_url(clientAssetId: str, profileId: str, variant: str = "thum
     ⚠️ 썸네일이 없는 자산(오디오·썸네일 생성 실패)은 원본 경로로 서명한다 —
        그러지 않으면 오디오 재생이 통째로 막힌다.
     """
-    await get_owned_profile(profileId, user["user_id"])
+    await get_consented_profile(profileId, user["user_id"])
     aid = _check_client_id(clientAssetId, "자산 id")
     rows = await sb_select(
         "diary_assets",

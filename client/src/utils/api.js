@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { supabase } from './supabase'
+// B13: 동의 캐시. diaryConsent 는 아무것도 import 하지 않는 잎 모듈이라 순환이 생기지 않는다.
+import { setDiaryConsentFromProfiles, setDiaryConsentOne } from './diaryConsent'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -182,9 +184,22 @@ export const deleteAllHistory = async (profileId) => {
 }
 
 // 프로필 전체 조회
+// ⚠️ B13: 여기서 **동의 캐시를 함께 갱신한다.** 호출부가 4곳(ParentDashboard·ProfileSelect·
+//    KidHome·BadgeCollection)이라 각자 갱신하게 두면 하나 빠뜨리는 순간 캐시가 어긋난다.
+//    "프로필을 받으면 동의 상태도 최신"이 항상 참이 되도록 단일 지점에 심는다.
 export const getProfiles = async () => {
   const response = await axios.get(`${BASE_URL}/profiles`)
-  return response.data.profiles
+  const profiles = response.data.profiles
+  setDiaryConsentFromProfiles(profiles)
+  return profiles
+}
+
+// B13: 그림일기 서버 저장 동의/철회. action = 'grant' | 'revoke'
+//   방침 버전은 **서버가 찍는다** — 클라이언트가 보내면 위조할 수 있다.
+export const postDiaryConsent = async (profileId, action) => {
+  const response = await axios.post(`${BASE_URL}/profiles/${profileId}/diary-consent`, { action })
+  setDiaryConsentOne(profileId, response.data?.diaryServerOn === true)
+  return response.data
 }
 
 // 프로필 생성

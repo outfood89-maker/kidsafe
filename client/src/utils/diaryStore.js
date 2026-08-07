@@ -12,6 +12,7 @@ import { ROTATING_QUESTIONS } from "./diaryCopy"; // AD-4 §4: getTodayQuestion 
 import { deleteImage, getImage } from "./diaryImageStore"; // AD-5: 찢기 시 IDB 이미지 완전삭제 / GD-8a: push 시 원본 읽기
 import { deleteAudio, getAudio } from "./diaryAudioStore"; // B08a: 음성 편지 orphan·완전삭제 / GD-8a: push 시 음성 읽기
 import { uploadImageAsset, uploadAudioAsset, primeAssetUrls } from "./diaryAssets"; // GD-8a
+import { isDiaryConsented } from "./diaryConsent"; // B13 — 동기 판정(순환 없음: 저쪽은 아무것도 import 안 함)
 import {
   getDiaryEntries, postDiaryEntry, patchDiaryImage, patchDiaryStamp,
   patchDiaryStampSeen, getDiaryMeta, putDiaryMeta,
@@ -21,9 +22,17 @@ import {
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
 //   → main엔 이 브랜치 diff가 없어야 하므로 플래그로 신규 UI 전체를 게이트한다.
 export const DIARY_V0 = true;
-// GD-8a: 서버 저장 게이트. 🔴 GD-8b(삭제 경로) 완료 + 오너 승인 전까지 false 고정 —
-//   찢기가 서버에 관철되지 않으면 불변식④가 깨진다(아이가 찢은 일기가 서버에 남는다).
+
+// ── 서버 저장 게이트는 두 겹이다 (B13, 2026-08-07) ──────────────────
+// ① DIARY_SERVER      — **전역 킬스위치.** 기능 자체를 배포했는가. 우리가 켠다.
+// ② isDiaryConsented  — **보호자 동의.** 아이 한 명 단위. 보호자가 켠다.
+// 둘 다 참이어야 서버로 나간다. 아래 isDiaryServerOn(pid) 하나만 쓰면 된다.
+//
+// 🔴 여전히 false 다 — 008_diary_consent.sql 적용 + 동의 UI 확인 + 오너 승인 전까지.
 export const DIARY_SERVER = false;
+
+/** 이 프로필의 그림일기를 서버로 보내도 되는가. **동기**(호출부 시그니처 유지). */
+export const isDiaryServerOn = (pid) => DIARY_SERVER && isDiaryConsented(pid);
 // 오늘 날짜(KST, YYYY-MM-DD) — 날짜 계산 중복 신설 금지, 신규 3곳(타일·홈·브릿지) 모두 이것만 사용.
 export const todayKST = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 
@@ -50,7 +59,7 @@ const defaultMeta = () => ({ recentQids: [], recentClosings: [], rejectStreak: 0
 const getMeta = (pid) => ({ ...defaultMeta(), ...readJson(META_KEY(pid), {}) });
 // GD-8a: 캐시 기록은 그대로(동기). 서버 push 는 400ms 디바운스 — recordQid·recordRegen·recordShelfVisit 등
 //   고빈도 호출부가 많아 매번 올리면 왕복이 폭증한다. 마지막 값만 올리면 충분하다(메타는 상태 스냅샷).
-const setMeta = (pid, meta) => { writeJson(META_KEY(pid), meta); if (DIARY_SERVER) queueMetaPush(pid, meta); };
+const setMeta = (pid, meta) => { writeJson(META_KEY(pid), meta); if (isDiaryServerOn(pid)) queueMetaPush(pid, meta); };
 
 // ── 엔트리 (일기 페이지) ──
 export const getEntries = (pid) => readJson(ENTRIES_KEY(pid), []);
@@ -78,7 +87,7 @@ export function saveEntry(pid, entry) {
   writeJson(ENTRIES_KEY(pid), entries);
   // GD-8a: 캐시에 먼저 쓰고(위) 서버로는 뒤늦게 밀어 올린다. ⚠️ async 로 바꾸지 말 것 —
   //   이 함수의 동기 반환에 호출부가 의존한다. void = 응답을 기다리지 않는다(아이가 느끼는 지연 0).
-  if (DIARY_SERVER) { void pushEntryToServer(pid, clean); }
+  if (isDiaryServerOn(pid)) { void pushEntryToServer(pid, clean); }
   return clean;
 }
 
@@ -191,7 +200,7 @@ export function setEntryImage(pid, entryId, imageId) {
   const e = entries.find((x) => x.id === entryId);
   if (e) {
     e.imageId = imageId; writeJson(ENTRIES_KEY(pid), entries);
-    if (DIARY_SERVER) void pushEntryImageToServer(pid, entryId, imageId); // GD-8a
+    if (isDiaryServerOn(pid)) void pushEntryImageToServer(pid, entryId, imageId); // GD-8a
   }
 }
 
@@ -275,7 +284,7 @@ export function setStamp(pid, entryId, { emoji, letter, voiceId, voiceMs } = {})
   writeJson(ENTRIES_KEY(pid), entries);
   // B08a: 옛 음성 orphan 삭제 — 새 voiceId와 다르거나(재녹음) 음성 제거 시. fire-and-forget(diaryStore async 방지).
   if (prevVoiceId && prevVoiceId !== voiceId) { try { deleteAudio(prevVoiceId); } catch { /* 무시 */ } }
-  if (DIARY_SERVER) void pushStampToServer(pid, entryId, e.stamp); // GD-8a
+  if (isDiaryServerOn(pid)) void pushStampToServer(pid, entryId, e.stamp); // GD-8a
 }
 // 아이가 상세를 열어 확인 → seenAt 기록(알림 자연 소멸용).
 export function markStampSeen(pid, entryId) {
@@ -283,7 +292,7 @@ export function markStampSeen(pid, entryId) {
   const e = entries.find((x) => x.id === entryId);
   if (e && e.stamp) {
     e.stamp.seenAt = todayKST(); writeJson(ENTRIES_KEY(pid), entries);
-    if (DIARY_SERVER) void pushStampSeenToServer(pid, entryId); // GD-8a
+    if (isDiaryServerOn(pid)) void pushStampSeenToServer(pid, entryId); // GD-8a
   }
 }
 // 미확인 도장 목록(도장 있고 seenAt 없음) → 아이 홈 알림 분기(도장만 vs 편지 vs 음성). B08a: hasVoice 파생 추가(음성 최우선).
@@ -309,7 +318,7 @@ export function getUnseenStamps(pid) {
  */
 export async function pushEntryToServer(pid, entry) {
   try {
-    if (!DIARY_SERVER || !pid || !entry?.id) return;
+    if (!isDiaryServerOn(pid) || !entry?.id) return;
     // ① 그림 — 완성본과 원본 낙서
     if (entry.imageId) {
       const data = await getImage(entry.imageId);
@@ -365,7 +374,7 @@ async function pushStampSeenToServer(pid, entryId) {
 const metaTimers = {};
 function queueMetaPush(pid, meta) {
   try {
-    if (!DIARY_SERVER || !pid) return;
+    if (!isDiaryServerOn(pid)) return;
     clearTimeout(metaTimers[pid]);
     metaTimers[pid] = setTimeout(() => {
       // 🚨 pendingContinue(미채택물)는 올리지 않는다 — 불변식①. 서버도 한 번 더 거른다(이중 방어).
@@ -385,7 +394,12 @@ function queueMetaPush(pid, meta) {
  */
 export async function hydrateDiary(pid) {
   try {
-    if (!DIARY_SERVER || !pid) return;           // 플래그 off → 네트워크 0
+    if (!DIARY_SERVER || !pid) return;                 // 킬스위치 off → 네트워크 0
+    // 🔴 밀린 삭제를 **동의 확인보다 먼저** 보낸다.
+    //    동의를 철회하면 아래 게이트에서 빠져나가는데, 삭제 큐가 그 뒤에 있으면
+    //    "철회했더니 서버의 일기를 영영 못 지운다"가 된다. 지우기는 언제나 열려 있어야 한다.
+    void flushPendingDeletes(pid);
+    if (!isDiaryServerOn(pid)) return;                 // 동의 없음 → 읽기·쓰기 없음           // 플래그 off → 네트워크 0
     const [entriesRes, metaRes] = await Promise.all([
       getDiaryEntries(pid).catch(() => null),
       getDiaryMeta(pid).catch(() => null),
@@ -421,8 +435,7 @@ export async function hydrateDiary(pid) {
       writeJson(META_KEY(pid), { ...localMeta, ...metaRes.meta, pendingContinue: localMeta.pendingContinue });
     }
 
-    // GD-8b: 밀린 삭제가 있으면 이 기회에 마저 보낸다(오프라인에서 지운 것 복구).
-    void flushPendingDeletes(pid);
+    // (밀린 삭제는 위 동의 게이트 **앞**에서 이미 보냈다 — B13)
   } catch { /* 캐시만으로도 화면은 그대로 뜬다 */ }
 }
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { supabase } from "../utils/supabase"
 import { getUserStatus } from "../utils/api"
+import { clearDiaryConsent } from "../utils/diaryConsent" // B13: 로그아웃 시 동의 캐시 비우기
 
 // 로그인 상태를 앱 전역에서 공유하는 컨텍스트
 const AuthContext = createContext(null)
@@ -70,6 +71,10 @@ export function AuthProvider({ children }) {
 
   // 로그아웃
   const signOut = async () => {
+    // 🔴 B13: 동의 캐시를 먼저 지운다. 남겨두면 **다음에 로그인한 계정의 아이**가
+    //    이전 계정의 동의 플래그로 켜진 것처럼 판정될 수 있다(pid 가 겹치지 않아도
+    //    캐시가 남아 있다는 사실 자체가 위험하다). 로그아웃 실패와 무관하게 먼저 지운다.
+    clearDiaryConsent()
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
