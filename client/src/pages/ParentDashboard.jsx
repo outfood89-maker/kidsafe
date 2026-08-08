@@ -1238,7 +1238,9 @@ export default function ParentDashboard() {
               {profiles.length === 0 ? (
                 <p className="py-8 text-center text-sm" style={{ color: "#90A9A8" }}>먼저 자녀 프로필을 만들어주세요.</p>
               ) : (
-                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} tourOpenEntryId={tourMode && TOUR_STATIONS[tourStep]?.tab === "shelf" ? tourStampTargetId : undefined} />
+                // ⚠️ 여기는 삼항의 표현식 자리다 — {/* */} 주석을 넣으면 형제가 둘이 되어 파싱이 깨진다.
+                //    B16: childName 은 빈 책장 안내에 아이 이름을 넣기 위한 것("○○의 그림일기는 …").
+                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} childName={profiles.find((x) => x.id === shelfProfileId)?.name} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} tourOpenEntryId={tourMode && TOUR_STATIONS[tourStep]?.tab === "shelf" ? tourStampTargetId : undefined} />
               )}
             </section>
           );

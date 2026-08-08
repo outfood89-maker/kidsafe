@@ -141,6 +141,13 @@ export default function FamilyShelf() {
         setEntries(diary.getEntries(p.id));
         // GD-8a: 캐시를 먼저 그리고(위 줄) 서버에서 채운 뒤 다시 그린다.
         //   DIARY_SERVER=false 면 hydrateDiary 는 첫 줄에서 return 한다(네트워크 0).
+        // ⚠️ B16 (2026-08-09) — 여기서 getProfiles() 로 동의 캐시를 갱신하려다 **되돌렸다.**
+        //    이유: 프로필 선택 화면(ProfileSelect)이 이미 getProfiles() 를 부르고,
+        //    그 안에서 동의 캐시가 서버 값으로 교체된다(api.js:199).
+        //    즉 "다른 기기에서 켰는데 안 보인다" 는 **새로고침 한 번**으로 풀리는 일이었다.
+        //    그걸 위해 아이 책장 진입마다 프로필을 다시 받는 것은 대가가 크고(테스트 9개가 깨졌다),
+        //    아이 화면에 서버 왕복을 하나 더 얹는 일이기도 하다.
+        //    → 부모가 이유를 알 수 있게 하는 쪽(ParentDiaryShelf 빈 상태 안내)으로 대신한다.
         void diary.hydrateDiary(p.id).then(() => setEntries(diary.getEntries(p.id)));
         diary.recordShelfVisit(p.id); // R8: 자발 방문 → 기본 빈도 복귀
         // AD-8b: 복귀 시 pendingContinue 점검 — 오늘분이면 배너, 만료(다른 날)면 청소(meta 제거 + orphan IDB 삭제). 별도 스케줄러 불필요.

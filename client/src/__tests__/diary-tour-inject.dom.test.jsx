@@ -12,6 +12,11 @@ const H = vi.hoisted(() => ({
     getEntries: vi.fn(() => []),
     setStamp: vi.fn(),
     todayKST: vi.fn(() => "2026-07-08"),
+    // B16(2026-08-09): 부모 책장이 빈 상태의 '이유'를 판정하며 이 둘을 본다.
+    //   ⚠️ hydrateDiary 는 결과({ok})를 돌려주므로 가짜도 그 모양이어야 한다.
+    //      undefined 를 돌려주면 호출부의 r?.ok 가 undefined → loadFailed 판정이 흐려진다.
+    DIARY_SERVER: false,
+    hydrateDiary: vi.fn(async () => ({ ok: true, reason: "off" })),
   },
 }));
 vi.mock("../utils/api", () => H.api);

@@ -430,17 +430,26 @@ const hydratedAt = new Map();
 /** 아이 화면들이 공유하는 hydrate 유예. 화면을 오가도 30초 안에는 한 번만 조회한다. */
 export const DIARY_HYDRATE_TTL_MS = 30_000;
 
+/**
+ * @returns {Promise<{ok: boolean, reason: string}>} 조회 성공 여부.
+ *   🔴 B16(2026-08-09) — 이 함수는 실패를 **전부 삼킨다**(화면을 막지 않으려고).
+ *      그래서 호출부가 "서버를 못 읽었다"와 "정말 0편이다"를 구분할 수 없었고,
+ *      부모는 빈 책장을 보고 고장으로 읽었다. 이제 결과를 돌려준다.
+ *   ⚠️ 기존 호출부 3곳은 반환값을 쓰지 않으므로 동작이 바뀌지 않는다.
+ */
 export async function hydrateDiary(pid, { maxAgeMs = 0 } = {}) {
   try {
-    if (!DIARY_SERVER || !pid) return;                 // 킬스위치 off → 네트워크 0
+    if (!DIARY_SERVER || !pid) return { ok: true, reason: "off" };   // 킬스위치 off → 네트워크 0
     // 🔴 밀린 삭제를 **동의 확인보다 먼저** 보낸다.
     //    동의를 철회하면 아래 게이트에서 빠져나가는데, 삭제 큐가 그 뒤에 있으면
     //    "철회했더니 서버의 일기를 영영 못 지운다"가 된다. 지우기는 언제나 열려 있어야 한다.
     // ⚠️ 아래 TTL 보다 **위**에 둔다 — 삭제는 캐시로 건너뛰면 안 된다.
     void flushPendingDeletes(pid);
-    if (!isDiaryServerOn(pid)) return;                 // 동의 없음 → 읽기·쓰기 없음           // 플래그 off → 네트워크 0
+    if (!isDiaryServerOn(pid)) return { ok: true, reason: "no-consent" };  // 동의 없음 → 읽기·쓰기 없음
     // 짧은 시간 안의 중복 조회만 건너뛴다(기본 0 = 건너뛰지 않음).
-    if (maxAgeMs > 0 && Date.now() - (hydratedAt.get(pid) || 0) < maxAgeMs) return;
+    if (maxAgeMs > 0 && Date.now() - (hydratedAt.get(pid) || 0) < maxAgeMs) {
+      return { ok: true, reason: "cached" };
+    }
     hydratedAt.set(pid, Date.now());
     const [entriesRes, metaRes, delRes] = await Promise.all([
       getDiaryEntries(pid).catch(() => null),
@@ -505,7 +514,12 @@ export async function hydrateDiary(pid, { maxAgeMs = 0 } = {}) {
     }
 
     // (밀린 삭제는 위 동의 게이트 **앞**에서 이미 보냈다 — B13)
-  } catch { /* 캐시만으로도 화면은 그대로 뜬다 */ }
+    // 🔴 entriesRes 가 null = 조회가 실패했다는 뜻(위에서 .catch(() => null) 로 삼켰다).
+    //    "정말 0편" 과 "못 읽었다" 는 화면에서 다르게 말해야 한다.
+    return entriesRes ? { ok: true, reason: "" } : { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "error" };   /* 캐시만으로도 화면은 그대로 뜬다 */
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════

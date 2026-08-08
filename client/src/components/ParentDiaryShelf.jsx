@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import * as diary from "../utils/diaryStore";
+import { isDiaryConsented } from "../utils/diaryConsent"; // B16: 빈 책장의 '이유' 판정(동기·잎 모듈)
 import { getImage } from "../utils/diaryImageStore";
 import { putAudio, getAudio } from "../utils/diaryAudioStore"; // B08a 저장 · B08b 아이 메모 재생(IDB)
 import { startVoiceRecording, isVoiceRecordingSupported, VOICE_MAX_MS } from "../utils/voiceRecorder"; // B08a: 음성 녹음 공용 유틸(10초)
@@ -7,7 +8,7 @@ import DiaryLightbox from "./DiaryLightbox";
 import VoiceBar from "./VoiceBar"; // B08a: 녹음/재생 진행 바(공용)
 import {
   SHELF_NAME, IMAGE_PLACEHOLDER, SHELF_FOOTER, monthBookTitle, monthBookMeta,
-  STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT, VOICE_LETTER, VOICE_MEMO,
+  STAMP_EMOJIS, LETTER_PLACEHOLDER, LETTER_NUDGE, BLANK_SHELF_PARENT, BLANK_SHELF_WHY, VOICE_LETTER, VOICE_MEMO,
 } from "../utils/diaryCopy";
 
 // ── AD-6 §2: 부모 '가족 책장' — 읽기전용 열람 + 도장·짧은 편지 쓰기 ──
@@ -44,7 +45,7 @@ const StampMark = ({ emoji, size = 64 }) => (
 
 // AD-7 투어 주입(선택): entriesProp 있으면 diaryStore 무접촉(메모리 시드만) / onStamp 있으면 도장도 메모리·부모콜백만.
 //   tourOpenEntryId: 있으면 그 일기를 자동으로 열어 도장 UI를 화면에 노출(③ 정거장 스포트라이트 대상).
-export default function ParentDiaryShelf({ profileId, entries: entriesProp, onStamp, tourOpenEntryId }) {
+export default function ParentDiaryShelf({ profileId, childName, entries: entriesProp, onStamp, tourOpenEntryId }) {
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [openMonth, setOpenMonth] = useState(null);
@@ -70,16 +71,24 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
   const [memoProgress, setMemoProgress] = useState(0); // 0~1 (분모=entry.voiceMs)
   const memoAudioRef = useRef(null);                   // 아이 메모 재생 Audio(유령 오디오 차단)
   const memoReqRef = useRef(0);                        // 상세 전환 토큰(getAudio 비동기 레이스 가드)
+  const [loadFailed, setLoadFailed] = useState(false); // B16: 서버 조회 실패 — 빈 책장의 '이유' 판정에 쓴다
 
   useEffect(() => {
     setOpenId(null); setOpenMonth(null);
     // 투어 주입(AD-7): entriesProp 있으면 diaryStore 무접촉 — 메모리 시드만 렌더(실경로는 기존대로 diary.getEntries).
     if (entriesProp) { setEntries(entriesProp); return; }
+    setLoadFailed(false);   // B16: 프로필이 바뀌면 이전 실패 표시를 지운다
     try {
       setEntries(profileId ? diary.getEntries(profileId) : []);
       // GD-8a: 캐시 먼저 → 서버로 채운 뒤 다시 그린다. ⚠️ 위 투어 early return **뒤**에 둔다 —
       //   앞에 두면 투어에서 서버를 호출하게 된다(투어는 서버 호출 0이 원칙).
-      if (profileId) void diary.hydrateDiary(profileId).then(() => setEntries(diary.getEntries(profileId)));
+      // B16: 조회 실패를 기억한다 — "정말 0편" 과 "못 읽었다" 를 화면이 다르게 말해야 한다.
+      if (profileId) {
+        void diary.hydrateDiary(profileId).then((r) => {
+          setEntries(diary.getEntries(profileId));
+          setLoadFailed(r?.ok === false);
+        });
+      }
     }
     catch { setEntries([]); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -411,7 +420,27 @@ export default function ParentDiaryShelf({ profileId, entries: entriesProp, onSt
 
   // ── 월별 '한 권' 2열 그리드(홈) ──
   if (entries.length === 0) {
-    return <p className="py-16 text-center text-sm" style={{ color: "#90A9A8" }}>{BLANK_SHELF_PARENT}</p>;
+    // 🔴 B16 (2026-08-09) — 빈 책장의 **이유**를 구분해서 말한다.
+    //    셋이 같은 문장이면 부모는 고장으로 읽는다. 오너가 실제로 두 번 헷갈렸다:
+    //      ① 동의가 꺼진 아이를 보고 있었다  ② 다른 기기의 동의 캐시가 옛 값이었다
+    //    ⚠️ 순서가 중요하다 — 못 읽은 경우를 **먼저** 본다.
+    //       조회 실패인데 "동의를 켜세요" 라고 하면 이미 켠 부모를 두 번 헷갈리게 만든다.
+    //    ⚠️ 투어(entriesProp)에서는 실제 상태를 모르므로 기존 문구만 쓴다.
+    const why = entriesProp ? null
+      : loadFailed ? BLANK_SHELF_WHY.loadFailed
+      : (diary.DIARY_SERVER && !isDiaryConsented(profileId))
+        ? BLANK_SHELF_WHY.noConsent(childName || "아이")
+        : null;
+    return (
+      <div className="py-16 text-center">
+        <p className="text-sm" style={{ color: "#90A9A8" }}>{BLANK_SHELF_PARENT}</p>
+        {why && (
+          <p className="mx-auto mt-3 max-w-sm px-4 text-[12.5px] leading-[1.75]" style={{ color: "#6d8281" }}>
+            {why}
+          </p>
+        )}
+      </div>
+    );
   }
   return (
     <>
