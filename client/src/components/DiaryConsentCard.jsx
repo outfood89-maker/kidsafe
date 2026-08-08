@@ -106,7 +106,9 @@ export default function DiaryConsentCard({ profile, onChanged }) {
           </div>
           <ul className="space-y-1.5 text-xs leading-relaxed mb-3" style={{ color: C.muted }}>
             <li>• {name}이 <strong style={{ color: C.text }}>간직하기로 고른 일기</strong>의 글·그림·녹음이 키디 서버에 저장돼요.</li>
-            <li>• 저장은 <strong style={{ color: C.text }}>미국에 있는 서버</strong>(Supabase)에서 이뤄져요. 파일은 비공개로 보관되고, 열어볼 때마다 10분짜리 임시 주소를 새로 만들어요.</li>
+            {/* ⚠️ 나라를 추측해서 쓰지 말 것. 2026-08-08 실측 전까지 '미국'이라고 잘못 적혀 있었다.
+                실제 리전은 ap-northeast-2(서울)다. 부모에게 보여주는 동의 화면의 사실 오류였다. */}
+            <li>• 저장은 <strong style={{ color: C.text }}>한국(서울)에 있는 서버</strong>(Supabase)에서 이뤄져요. 파일은 비공개로 보관되고, 열어볼 때마다 10분짜리 임시 주소를 새로 만들어요.</li>
             <li>• <strong style={{ color: C.text }}>{name}의 목소리를 글자로 옮기지 않아요.</strong> 그런 항목 자체가 없어요.</li>
             <li>• 일기를 지우시면 <strong style={{ color: C.text }}>서버에서도 함께 지워져요.</strong></li>
             <li>• <strong style={{ color: C.text }}>언제든 다시 끄실 수 있어요.</strong> 끄면 새 일기가 더는 올라가지 않아요.</li>

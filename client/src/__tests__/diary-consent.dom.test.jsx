@@ -158,7 +158,10 @@ describe("[E] 동의 카드 — 켜기는 묻고, 끄기는 안 묻는다", () =
     expect(H.calls, "확인도 없이 동의를 보냈다").toHaveLength(0);
     expect(screen.getByText("켜기 전에 알려드릴게요")).toBeTruthy();
     // 정직해야 할 3가지가 확인 화면에 있다
-    expect(screen.getByText(/미국에 있는 서버/)).toBeTruthy();
+    // ⚠️ 나라 이름을 검사에 박지 않는다 (2026-08-08).
+    //    '미국에 있는 서버'로 박혀 있었고, 실제 리전은 서울이었다 —
+    //    **검사가 틀린 사실을 지키고 있었다.** 지금은 '어디에 저장되는지 말하는가'만 본다.
+    expect(screen.getByText(/에 있는 서버$/)).toBeTruthy();   // <strong> 안의 '한국(서울)에 있는 서버'
     expect(screen.getByText(/글자로 옮기지 않아요/)).toBeTruthy();
     expect(screen.getByText(/서버에서도 함께 지워져요/)).toBeTruthy();
   });

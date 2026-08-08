@@ -229,7 +229,7 @@ export default function Privacy() {
               <li><strong style={{ color: C.text }}>OpenAI</strong> (미국) — 그림일기 AI 그림 만들기. 그림 설명문과, ‘이어 그리기’를 쓰실 때는 아이가 그린 그림이 전달됩니다. <strong style={{ color: C.muted }}>쓰지 않으시면 전달되지 않습니다.</strong></li>
               <li><strong style={{ color: C.text }}>네이버클라우드 (CLOVA Voice)</strong> (대한민국) — 키디 목소리 만들기. 키디가 읽을 문장이 전달됩니다.</li>
               <li><strong style={{ color: C.text }}>Google (YouTube)</strong> (미국) — 영상 검색. 검색어가 전달됩니다.</li>
-              <li><strong style={{ color: C.text }}>Supabase</strong> — 회원 인증과 데이터 보관.</li>
+              <li><strong style={{ color: C.text }}>Supabase</strong> (미국 법인 · <strong style={{ color: C.muted }}>데이터는 한국(서울) 서버에 보관</strong>) — 회원 인증과 데이터 보관.</li>
               <li><strong style={{ color: C.text }}>Vercel · Railway</strong> (미국) — 앱과 서버가 돌아가는 곳.</li>
             </ul>
           </Card>
