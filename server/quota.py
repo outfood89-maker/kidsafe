@@ -77,6 +77,39 @@ LIMITS = {
     "analyze_deep":   {"per_day": 20, "per_min": 3, "cost_krw": 17},   # Haiku Vision — 2026-08-06 실측 16.4원
 }
 
+# ── 🔴 계정 전체 총량 (2026-08-09 오너 확정 — 안 B) ──────────────────────────
+#
+# 왜 필요한가:
+#   위 LIMITS 는 **아이 한 명당** 이다. 프로필은 최대 4개까지 만들 수 있으므로,
+#   아이를 늘릴 때마다 한도가 통째로 하나씩 더 생긴다 → 최악이 4배가 된다.
+#     아이 1명: 5×40 + 3×90 =   470원/일 →  14,100원/월
+#     아이 4명:                1,880원/일 →  56,400원/월  ← 계정당 상한이 없어서
+#   여기에 **계정 총량**을 하나 더 걸면 아이가 몇 명이든 총액이 고정된다.
+#     안 B:    6×40 + 3×90 =   510원/일 →  15,300원/월
+#
+# ⚠️ 조이는 쪽에는 반대 위험이 있다 — **아이가 그림을 못 그린다.**
+#    그건 조용히 일어나고 아무도 신고하지 않는다. 그래서 정상 사용을 먼저 쟀다:
+#      아이 4명이 각자 일기 1편 = 그림 4회 → 여유 2회 (다시 그리기 가능)
+#    ⚠️ 다만 이 '정상 사용'은 **추정이다**. 아이가 실제로 몇 번 다시 그리는지는 아직 미측정.
+#       막히는 사례가 보이면 **좁히지 말고 넓히는 쪽**으로 조정할 것.
+#
+# ⚠️ 여기 없는 종류는 계정 총량이 없다(= 아이별 한도만). analyze_deep 이 그렇다 —
+#    같은 구멍이 있으나 이번 결정 범위 밖이라 그대로 두었다. 미해결 항목이다.
+ACCOUNT_LIMITS = {
+    "diary_gen":      {"per_day": 6},   # 그림 만들기 — 아이 4명 각자 1편 + 여유 2
+    "diary_continue": {"per_day": 3},   # 이어 그리기 — 1회 90원으로 가장 비싸다
+    # 영상 정밀분석 — 아이별 20 이라 4명이면 80회(월 40,800원)까지 열려 있었다.
+    #   20 으로 조이면 한 아이가 몰아 쓸 때 나머지 셋이 아예 못 본다 → 30 으로 둔다(오너 확정).
+    #   ⚠️ 이건 **아무도 안 본 새 영상**에만 든다. 인기 영상은 캐시(실측 적중률 97.2%)라 0원이다.
+    "analyze_deep":   {"per_day": 30},
+}
+
+# 계정당 만들 수 있는 아이 프로필 수. 🔴 `routers/profiles.py` 의 상한과 **같은 값**이어야 한다.
+#   여기서만 쓰이는 게 아니라 위 계정 총량이 의미 있는지 판정하는 기준이 된다
+#   (_validate_limits 가 '아이별 × MAX_PROFILES' 를 상한으로 본다).
+#   ⚠️ 두 곳이 갈라지면 검사가 헛돈다 → _verify_quota.py 가 두 값을 실제로 비교한다.
+MAX_PROFILES = 4
+
 
 def _validate_limits() -> None:
     """
@@ -99,6 +132,30 @@ def _validate_limits() -> None:
                     f"   분당 제한은 '얼마나 빨리'만 막습니다 — 하루 총량은 per_day 만이 막습니다.\n"
                     f"   (분당 3회만 두면 하루 4,320회가 그대로 통과합니다)"
                 )
+    # 🔴 계정 총량도 같은 방식으로 못박는다 (2026-08-09).
+    for kind, acc in ACCOUNT_LIMITS.items():
+        if kind not in LIMITS:
+            raise RuntimeError(
+                f"❌ quota.ACCOUNT_LIMITS['{kind}'] 이 LIMITS 에 없습니다 — 오타면 조용히 무시됩니다."
+            )
+        if "per_day" not in acc:
+            raise RuntimeError(f"❌ quota.ACCOUNT_LIMITS['{kind}'] 에 'per_day' 가 없습니다.")
+        # 🔴 양쪽 끝을 다 막는다. 처음엔 "계정 > 아이별이면 무의미" 라고 썼다가 이 검사에 잡혔다 —
+        #    계정 총량의 목적은 **여러 아이의 합**을 막는 것이라, 아이별보다 커도 의미가 있다.
+        #    (아이 4명이 각자 5회 = 20회를, 계정 6회가 막는다)
+        per_child = LIMITS[kind]["per_day"]
+        if acc["per_day"] < per_child:
+            raise RuntimeError(
+                f"❌ quota.ACCOUNT_LIMITS['{kind}'] per_day={acc['per_day']} 가\n"
+                f"   아이별 한도 {per_child} 보다 작습니다 — **아이 한 명도 자기 몫을 다 못 씁니다.**\n"
+                f"   조이는 쪽 실수는 조용히 일어난다: 아이가 그림을 못 그려도 아무도 신고하지 않는다."
+            )
+        if acc["per_day"] >= per_child * MAX_PROFILES:
+            raise RuntimeError(
+                f"❌ quota.ACCOUNT_LIMITS['{kind}'] per_day={acc['per_day']} 가\n"
+                f"   아이별 {per_child} × 최대 프로필 {MAX_PROFILES} = {per_child * MAX_PROFILES} 이상입니다.\n"
+                f"   그러면 아이별 한도가 먼저 걸리므로 계정 총량이 **아무것도 막지 못합니다.**"
+            )
         if lim["per_day"] < lim["per_min"]:
             raise RuntimeError(
                 f"❌ quota.LIMITS['{kind}']: per_day({lim['per_day']}) 가 "
@@ -110,11 +167,23 @@ _validate_limits()
 
 
 def worst_daily_krw() -> list[tuple[str, int]]:
-    """계정(또는 프로필) 1개가 하루에 태울 수 있는 최대 금액. 검사가 이 값을 출력한다."""
-    return sorted(
-        ((k, v["per_day"] * v["cost_krw"]) for k, v in LIMITS.items()),
-        key=lambda x: -x[1],
-    )
+    """**계정 하나**가 하루에 태울 수 있는 최대 금액. 검사가 이 값을 출력한다.
+
+    🔴 2026-08-09 정정 — 예전에는 `per_day × cost_krw` 만 곱했다. 그건 **아이 한 명** 값이다.
+       프로필은 최대 MAX_PROFILES 개까지 만들 수 있으므로 실제 최악은 그 배수였고,
+       표가 실제보다 작은 숫자를 보여주고 있었다. 이 표는 '사람이 보고 지나가는 자리'라
+       틀린 값이 적혀 있는 것이 값이 없는 것보다 나쁘다.
+
+    계산: 계정 총량이 있으면 그것이 상한, 없으면 아이별 × 프로필 수.
+    """
+    out = []
+    for k, v in LIMITS.items():
+        per_account = v["per_day"] * MAX_PROFILES          # 계정 총량이 없으면 이만큼 열려 있다
+        acc = ACCOUNT_LIMITS.get(k)
+        if acc:
+            per_account = min(per_account, acc["per_day"])
+        out.append((k, per_account * v["cost_krw"]))
+    return sorted(out, key=lambda x: -x[1])
 
 # 메모리 저장소 — {키: (기준값, 횟수)}
 _day: dict[str, tuple[str, int]] = {}   # 키 -> ("YYYY-MM-DD", 횟수)
@@ -181,6 +250,20 @@ def scope_key(kind: str, profile_id: str = "", user_id: str = "") -> str:
     return f"{kind}:u:{(user_id or '').strip()}"
 
 
+def account_scope(kind: str, profile_id: str = "", user_id: str = "") -> tuple:
+    """계정 전체 총량을 셀 키와 하루 한도. 해당 없으면 (None, 0).
+
+    🔴 profile_id 가 **없을 때는 None 을 준다.** 그때는 scope_key 가 이미 계정 키를 쓰므로,
+       여기서 또 세면 **한 번 요청에 2회가 소비된다**(= 한도가 절반으로 줄어 아이가 일찍 막힌다).
+    """
+    acc = ACCOUNT_LIMITS.get(kind)
+    pid = (profile_id or "").strip()
+    uid = (user_id or "").strip()
+    if not acc or not pid or not uid:
+        return None, 0
+    return f"{kind}:u:{uid}", acc["per_day"]
+
+
 def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> None:
     """
     한도를 확인하고 **즉시 1회 소비**한다. 초과면 `HTTPException(429)`.
@@ -224,8 +307,27 @@ def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> Non
             },
         )
 
+    # ③ 🔴 계정 총량 — 아이별 한도만 있으면 프로필을 늘릴수록 최악이 배가된다(최대 4배).
+    #    아이별·계정 **둘 다 통과해야** 소비한다. 하나만 소비하고 다른 데서 막히면 카운터가 어긋난다.
+    acct_key, acct_day = account_scope(kind, profile_id, user_id)
+    if acct_key:
+        used_acct = _read_day(acct_key, today)
+        if used_acct >= acct_day:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    # ⚠️ 아이에게 보이는 말은 아이별 한도와 **같게** 둔다.
+                    #    "형이 다 썼어" 라고 말할 수는 없다 — 아이 잘못이 아니다.
+                    "code": "QUOTA_EXCEEDED", "kind": kind, "scope": "account",
+                    "limit": acct_day, "used": used_acct,
+                    "message": "오늘은 그림을 많이 그렸어요. 내일 또 그려요!",
+                },
+            )
+
     _bump_min(key, bucket)
     _bump_day(key, today)
+    if acct_key:
+        _bump_day(acct_key, today)
     _sweep(_min, bucket)
     _sweep(_day, today)
 
@@ -264,8 +366,15 @@ def peek(kind: str, profile_id: str = "", user_id: str = "") -> dict:
     """남은 횟수 조회 — 소비하지 않는다. (검증·디버깅용. 라우터에서 쓰지 않는다)"""
     limit = LIMITS.get(kind) or {"per_day": 0, "per_min": 0}
     key = scope_key(kind, profile_id, user_id)
+    today = today_kst()
+    day_left = limit["per_day"] - _read_day(key, today)
+    # 🔴 계정 총량이 더 빡빡하면 **그쪽이 실제 잔량**이다.
+    #    아이별 잔량만 보여주면 "3번 남았어요" 라고 해놓고 막힌다 — 화면이 거짓말을 한다.
+    acct_key, acct_day = account_scope(kind, profile_id, user_id)
+    if acct_key:
+        day_left = min(day_left, acct_day - _read_day(acct_key, today))
     return {
-        "day_left": max(0, limit["per_day"] - _read_day(key, today_kst())),
+        "day_left": max(0, day_left),
         "min_left": max(0, limit["per_min"] - _read_min(key, minute_bucket())),
     }
 

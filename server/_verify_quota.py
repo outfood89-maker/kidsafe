@@ -93,13 +93,21 @@ print(f"  오늘(KST): {quota.today_kst()}")
 #    → 계산을 '하기로 마음먹는' 대신, 검사가 매번 눈앞에 찍는다.
 # ══════════════════════════════════════════════════════════════════════
 print()
-print("  💸 계정/프로필 1개가 하루에 태울 수 있는 최대 (캐시 0% = 최악 가정)")
+print(f"  💸 **계정 1개**가 하루에 태울 수 있는 최대 (캐시 0% · 아이 {quota.MAX_PROFILES}명 = 최악 가정)")
 _total = 0
 for _kind, _krw in quota.worst_daily_krw():
     _l = quota.LIMITS[_kind]
     _total += _krw
-    print(f"     {_kind:16} 하루 {_l['per_day']:>3}회 × {_l['cost_krw']:>3}원"
-          f" = {_krw:>6,}원/일   (월 {_krw*30:>7,}원)")
+    # 🔴 계정 기준 횟수로 보여준다. 아이별 per_day 를 그대로 찍으면
+    #    "20회 × 17원 = 1,360원" 처럼 곱셈이 안 맞아 표 자체를 못 믿게 된다.
+    _acc = quota.ACCOUNT_LIMITS.get(_kind)
+    _n = _l["per_day"] * quota.MAX_PROFILES
+    _how = f"아이별 {_l['per_day']}×{quota.MAX_PROFILES}명"
+    if _acc:
+        _n = min(_n, _acc["per_day"])
+        _how = f"계정 총량 {_acc['per_day']}"
+    print(f"     {_kind:16} 하루 {_n:>3}회 × {_l['cost_krw']:>3}원"
+          f" = {_krw:>6,}원/일   (월 {_krw*30:>7,}원)  ← {_how}")
 print(f"     {'합계':16} {'':>13} {_total:>8,}원/일   (월 {_total*30:>7,}원)")
 print("     ⚠️ 이 값이 감당 못 할 크기로 보이면 LIMITS 를 고칠 것 — 검사는 판단하지 않는다")
 
@@ -196,6 +204,51 @@ with TestClient(app) as c:
     sibling = gen(c, PID_2).status_code
     check("첫째가 소진돼도(429)", blocked == 429, f"{blocked}")
     check("🔴 둘째는 여전히 그릴 수 있다(200)", sibling == 200, f"{sibling}")
+
+    # ══════════════════════════════════════════════════════════════════
+    print("\n[D-2] 🔴 계정 총량 — 아이를 늘려도 총액이 고정된다 (2026-08-09 신설)")
+    # ══════════════════════════════════════════════════════════════════
+    #   LIMITS 는 **아이 한 명당**이라, 프로필(최대 4개)을 늘리면 최악이 4배가 된다.
+    #     아이 4명 × (5×40 + 3×90) = 1,880원/일 → 월 56,400원
+    #   계정 총량(diary_gen 6 · diary_continue 3)이 이걸 510원/일 → 월 15,300원으로 묶는다.
+    #   ⚠️ 조이는 쪽 실수는 조용히 일어난다(아이가 못 그려도 아무도 신고하지 않는다)
+    #      → 막는 것보다 **대조군을 먼저** 본다.
+    quota._reset_all()
+    rec.clear()
+    fake_db.select_returns = [{"id": PID_1, "user_id": USER_A}]
+    first = []
+    for _ in range(5):
+        quota._min.clear()
+        first.append(gen(c, PID_1).status_code)
+    check("🔴 대조군 — 첫째가 자기 몫 5회를 다 쓴다", first == [200] * 5, f"{first}")
+    quota._min.clear()
+    second_1 = gen(c, PID_2).status_code
+    check("🔴 대조군 — 둘째의 첫 장도 그려진다 (계정 6번째)", second_1 == 200, f"{second_1}")
+
+    quota._min.clear()
+    rec.clear()
+    r_acc = gen(c, PID_2)
+    check("🔴 계정 7번째는 막힌다 (아이별로는 둘째의 2번째일 뿐인데도)",
+          r_acc.status_code == 429, f"{r_acc.status_code}")
+    _d = (r_acc.json() or {}).get("detail") or {}
+    check("   사유가 account 로 구분된다", _d.get("scope") == "account", f"{_d.get('scope')}")
+    check("🔴 막힌 뒤 OpenAI 호출 0회 (= 돈이 안 나간다)", rec.assert_not_called("http.post"))
+
+    quota._min.clear()
+    third = gen(c, "dddddddd-dddd-dddd-dddd-dddddddddddd").status_code
+    check("🔴 아이를 새로 만들어도 우회되지 않는다", third == 429, f"{third}")
+
+    # 화면이 "몇 번 남았어요" 라고 거짓말하면 안 된다 — 계정 잔량이 더 빡빡하면 그쪽이 진짜다
+    _left = quota.peek("diary_gen", PID_2, USER_A)["day_left"]
+    check("남은 횟수 표시가 계정 잔량을 반영한다 (0)", _left == 0, f"{_left}")
+
+    # 🔴 MAX_PROFILES 가 실제 상한과 갈라지면 위 계산 전체가 헛돈다 → 실물로 비교한다
+    import re as _re
+    _pf_src = open("routers/profiles.py", encoding="utf-8").read()
+    _m = _re.search(r"최대\s*(\d+)\s*개", _pf_src)
+    check("MAX_PROFILES 가 profiles.py 의 상한과 같다",
+          bool(_m) and int(_m.group(1)) == quota.MAX_PROFILES,
+          f"quota={quota.MAX_PROFILES} / profiles.py={_m.group(1) if _m else '못 찾음'}")
 
     # ══════════════════════════════════════════════════════════════════
     print("\n[E] 인가 — 남의 프로필 번호로 남의 쿼터를 태울 수 없다")
