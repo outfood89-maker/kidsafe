@@ -700,7 +700,10 @@ async def sweep_orphan_assets(
          "order": "created_at.asc", "limit": str(max(1, min(limit, 500)))},
     )
     if not assets:
-        return {"ok": True, "scanned": 0, "orphans": 0, "swept": 0, "dryRun": dryRun}
+        # ⚠️ 응답 모양은 어느 분기에서나 같아야 한다 — graceDays 가 여기서만 빠져 있었다.
+        #    호출부가 res.graceDays 를 읽으면 이 경우에만 undefined 가 된다.
+        return {"ok": True, "scanned": 0, "orphans": 0, "swept": 0,
+                "dryRun": dryRun, "graceDays": grace}
 
     # 참조 판정 — 프로필 단위로 엔트리를 모아 한 번에 본다(자산마다 조회하면 왕복이 폭증한다).
     ref: dict[str, set] = {}

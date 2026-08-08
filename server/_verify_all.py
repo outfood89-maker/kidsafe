@@ -31,6 +31,8 @@ CHECKS = [
     ("💸 비용 상한(레이트리밋)",     "_verify_quota.py"),
     ("🚨 위기 사전(정탐·오탐·양쪽 동일)", "_verify_lexicon.py"),
     ("📓 그림일기 저장 계약(GD-8a)", "_verify_diary_contract.py"),
+    # 계약검사는 '코드가 그렇게 생겼는가'까지다. 아래는 '실제로 맞게 판정하는가'를 본다.
+    ("🧹 고아 자산 판정(GD-8b)", "_verify_orphan_sweep.py"),
     ("가짜 주입 도구 자체 점검",     "_verify_fakes.py"),
 ]
 
