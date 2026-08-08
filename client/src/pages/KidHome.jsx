@@ -372,12 +372,36 @@ export default function KidHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 🔴 GD-8 킬스위치 이후 신설 (2026-08-08 오너 시범테스트에서 발견)
+  //    아래 두 판정(hasDiaryToday·티저)은 getEntries — **로컬 캐시만 읽는 동기 함수**다.
+  //    다른 기기에서 열면 로컬이 비어 있어 "오늘 안 썼네"가 되고, **아이가 일기를 두 번 쓴다.**
+  //    켜기 전에는 "다른 기기에서 안 보인다"가 당연해 드러나지 않던 문제다.
+  //    ⚠️ 이것은 이사 엔진(migrateAllProfiles)이 아니라 **읽기**다.
+  //       '아이 화면 무접촉'은 이사 트리거에 대한 원칙이고, hydrate 는 아이 책장(FamilyShelf)도 이미 부른다.
+  //    ⚠️ 실패해도 반드시 true 로 넘긴다 — 오프라인에서 티저가 영영 안 뜨면 그것도 회귀다.
+  //    ⚠️ 킬스위치가 꺼져 있으면 hydrateDiary 는 첫 줄에서 return 한다(네트워크 0·기존 동작 그대로).
+  const [diaryHydrated, setDiaryHydrated] = useState(false);
+  useEffect(() => {
+    if (!DIARY_V0 || !selectedProfile?.id) { setDiaryHydrated(true); return; }
+    // 🔴 투어(미리보기)는 **데모 프로필**이다 — 진짜 서버를 부르면 안 된다.
+    //    티저 effect 가 같은 가드를 쓰는 이유와 동일(AD-7 계보). 테스트가 '서버호출 0'을 못박고 있다.
+    if (searchParams.get("tour") === "1") { setDiaryHydrated(true); return; }
+    let alive = true;
+    setDiaryHydrated(false);
+    diaryStore.hydrateDiary(selectedProfile.id, { maxAgeMs: diaryStore.DIARY_HYDRATE_TTL_MS })
+      .catch(() => { /* 네트워크 실패 = 로컬 캐시 그대로 진행 */ })
+      .finally(() => { if (alive) setDiaryHydrated(true); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProfile?.id]);
+
   // AD-2 §2: 오늘 그림일기 작성 여부 — 타일 상태(제목 vs 완료) 전환용. 체크인 열림/닫힘·프로필 변화 시만 재계산(과도한 localStorage 파싱 방지).
+  //   + diaryHydrated: 서버에서 받아온 뒤 한 번 더 계산해야 다른 기기의 오늘 일기가 반영된다.
   const hasDiaryToday = useMemo(() => {
     if (!DIARY_V0 || !selectedProfile?.id) return false;
     try { return diaryStore.getEntries(selectedProfile.id).some((e) => e.date === todayKST()); }
     catch { return false; }
-  }, [selectedProfile?.id, checkinOpen]);
+  }, [selectedProfile?.id, checkinOpen, diaryHydrated]);
 
   // AD-6 §4: 진입 시 부모 도장 미확인 알림 계산 — 있으면 인앱 카드(도장만/편지 포함 분기). 푸시·뱃지·숫자 없음.
   //   확인(=책장 상세 열람 → markStampSeen)하면 다음 접속 시 자연 소멸. 닫기(✕)는 이번 세션만, 다음 접속 재노출.
@@ -396,6 +420,10 @@ export default function KidHome() {
     if (!DIARY_V0 || !selectedProfile?.id) return;
     if (searchParams.get("tour") === "1") return; // 항목2-②: 미리보기(데모 프로필)는 티저 localStorage 기록·표시 생략(무오염)
     if (checkinOpen) return; // 몰입 중 보류(체크인 닫히면 checkinOpen 변화로 재실행)
+    // 🔴 서버에서 받아오기 전에 판정하면 안 된다 (2026-08-08).
+    //    다른 기기에서 이미 쓴 일기를 못 보고 "오늘 안 썼네"로 티저를 띄운다.
+    //    ⚠️ 여기서 return 할 때 teaserTriedRef 를 건드리지 않는다 — 건드리면 hydrate 후 재실행이 막힌다.
+    if (!diaryHydrated) return;
     try {
       const today = todayKST();
       // AD-6 §4: 도장 알림이 티저보다 우선 — 미확인 도장 있으면 티저 보류(동시표시 금지)
@@ -409,7 +437,7 @@ export default function KidHome() {
       setDiaryTeaser(q?.ask || null);
       teaserTimerRef.current = setTimeout(() => setDiaryTeaser(null), 3500); // 3~4초 자동 소멸
     } catch { /* 무시 */ }
-  }, [selectedProfile?.id, checkinOpen]);
+  }, [selectedProfile?.id, checkinOpen, diaryHydrated]);
   useEffect(() => () => { if (teaserTimerRef.current) clearTimeout(teaserTimerRef.current); }, []);
 
   const fetchSearchHistory = async (profileId) => {

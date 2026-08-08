@@ -31,6 +31,12 @@ vi.mock("../utils/diaryStore", () => ({
   getTeaserDate: () => "2026-07-09", // 오늘 이미 티저 → 티저 스킵(setTimeout 회피)
   getTodayQuestion: () => null,
   markTeaserShown: vi.fn(),
+  // 🔴 2026-08-08 — KidHome 이 진입 시 hydrate 를 부른다(다른 기기의 오늘 일기를 반영).
+  //    가짜를 안 끼우면 vitest 가 "No export defined" 로 막는다.
+  //    ⚠️ 여기서는 **불려도 된다** — 이 투어는 진짜 프로필이다.
+  //       데모 프로필(?tour=1)은 KidHome 안에서 가드로 걸러 서버를 부르지 않는다.
+  hydrateDiary: vi.fn(async () => {}),
+  DIARY_HYDRATE_TTL_MS: 30000,
 }));
 vi.mock("react-router-dom", () => ({
   useNavigate: () => H.navigate,

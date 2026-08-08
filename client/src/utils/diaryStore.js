@@ -405,14 +405,29 @@ function queueMetaPush(pid, meta) {
  *    · 🔴 **로컬에만 있는 것은 지우지 않는다.** 지난 세션에서 push 가 실패한 것일 수 있으므로
  *      남겨두고 재푸시한다. "서버에 없으니 지운다"로 만들면 유실이 조용히 일어난다.
  */
-export async function hydrateDiary(pid) {
+/**
+ * 최근 hydrate 시각 (프로필별). 메모리 전용 — 새로고침하면 비워진다.
+ * 🔴 2026-08-08 신설. 아이 화면 3곳(홈·키디의 방·플로팅 버튼)이 "오늘 썼나"를 판정하려고
+ *    각자 hydrate 를 부르게 되면서, 화면을 오갈 때마다 같은 조회가 반복된다.
+ *    ⚠️ 기본값 maxAgeMs=0 = 항상 실행 → **기존 호출부(부모·아이 책장)는 동작이 바뀌지 않는다.**
+ */
+const hydratedAt = new Map();
+
+/** 아이 화면들이 공유하는 hydrate 유예. 화면을 오가도 30초 안에는 한 번만 조회한다. */
+export const DIARY_HYDRATE_TTL_MS = 30_000;
+
+export async function hydrateDiary(pid, { maxAgeMs = 0 } = {}) {
   try {
     if (!DIARY_SERVER || !pid) return;                 // 킬스위치 off → 네트워크 0
     // 🔴 밀린 삭제를 **동의 확인보다 먼저** 보낸다.
     //    동의를 철회하면 아래 게이트에서 빠져나가는데, 삭제 큐가 그 뒤에 있으면
     //    "철회했더니 서버의 일기를 영영 못 지운다"가 된다. 지우기는 언제나 열려 있어야 한다.
+    // ⚠️ 아래 TTL 보다 **위**에 둔다 — 삭제는 캐시로 건너뛰면 안 된다.
     void flushPendingDeletes(pid);
     if (!isDiaryServerOn(pid)) return;                 // 동의 없음 → 읽기·쓰기 없음           // 플래그 off → 네트워크 0
+    // 짧은 시간 안의 중복 조회만 건너뛴다(기본 0 = 건너뛰지 않음).
+    if (maxAgeMs > 0 && Date.now() - (hydratedAt.get(pid) || 0) < maxAgeMs) return;
+    hydratedAt.set(pid, Date.now());
     const [entriesRes, metaRes] = await Promise.all([
       getDiaryEntries(pid).catch(() => null),
       getDiaryMeta(pid).catch(() => null),
