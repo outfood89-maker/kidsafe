@@ -340,6 +340,26 @@ def main():
     check(not re.search(r"(?<![.\w])fetch\s*\(", assets),
           "diaryAssets 가 fetch 를 쓰지 않는다 (CLAUDE.md: Axios만)")
 
+    # ── 🔴 sb_update 인자 순서 (2026-08-08 실사고) ──
+    # sb_update(table, **필터**, **패치**) 인데 diary.py 6곳이 전부 뒤집혀 있었다.
+    # PostgREST 가 필터를 값으로 UPDATE 하려 들어 502 로 죽는다.
+    # 플래그가 꺼져 있어 아무도 안 불렀고, 오너가 sweep 을 돌려서야 드러났다.
+    # → 테이블명 바로 뒤 인자(= 두 번째 인자)에 'eq.' 같은 필터 연산자가 있어야 한다.
+    router_raw = read(os.path.join(SERVER, "routers", "diary.py"))
+    # ⚠️ 중괄호 한 겹을 허용해야 한다 — 필터가 f"eq.{cid}" 처럼 f-string 을 쓴다.
+    #    [^{}]* 로만 잡으면 **한 건도 못 찾고** 검사가 조용히 통과한다(실제로 그랬다).
+    pat = re.compile(r'sb_update\(\s*"(\w+)",\s*(\{(?:[^{}]|\{[^{}]*\})*\})', re.S)
+    calls = pat.findall(router_raw)
+    check(len(calls) >= 6, f"sb_update 호출을 찾았다 ({len(calls)}건 — 못 찾으면 검사가 헛돈다)")
+    bad = [f"{t}: {arg.strip()[:60]}" for t, arg in calls if "eq." not in arg]
+    check(not bad, f"🔴 sb_update 두 번째 인자가 전부 필터다 (뒤집히면 502 — 위반 {len(bad)}건)")
+    for b in bad:
+        print(f"       ↳ {b}")
+    # 대조군 — 올바른 관례가 실제로 있는지(검사가 헛돌지 않게)
+    prof = read(os.path.join(SERVER, "routers", "profiles.py"))
+    check(bool(pat.search(prof)) and "eq." in (pat.search(prof).group(2) if pat.search(prof) else ""),
+          "대조군 — profiles.py 는 필터를 먼저 넘긴다")
+
     # ── 업로드는 한 곳에서만 (2026-08-07) ──
     # 이사 엔진이 업로드를 직접 구현하는 바람에 썸네일 누락 + role 오류가 생겼다.
     mig = read(os.path.join(CLIENT, "diaryMigrate.js"))

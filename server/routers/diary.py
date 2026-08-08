@@ -33,6 +33,8 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
 from auth import get_current_user, require_admin
+# ⚠️ sb_update(table, **필터**, **패치**) — 순서를 헷갈리면 PostgREST 가 필터를 값으로 UPDATE 하려 들어
+#    502 로 죽는다. 2026-08-08 에 이 파일 6곳이 전부 뒤집혀 있었다(플래그가 꺼져 있어 아무도 안 불렀다).
 from db import sb_delete, sb_select, sb_upsert, sb_update
 from routers.profiles import get_owned_profile
 from storage import (
@@ -347,8 +349,8 @@ async def patch_entry_image(clientEntryId: str, body: ImagePatchIn,
         _check_client_id(body.imageId, "imageId")
     rows = await sb_update(
         "diary_entries",
-        {"image_client_id": body.imageId, "updated_at": _now_iso()},
         {"profile_id": f"eq.{body.profileId}", "client_entry_id": f"eq.{cid}"},
+        {"image_client_id": body.imageId, "updated_at": _now_iso()},
     )
     if not rows:
         raise HTTPException(status_code=404, detail="일기를 찾을 수 없어요")
@@ -370,6 +372,7 @@ async def patch_entry_stamp(clientEntryId: str, body: StampPatchIn,
         _check_client_id(s.voiceId, "stamp voiceId")
     rows = await sb_update(
         "diary_entries",
+        {"profile_id": f"eq.{body.profileId}", "client_entry_id": f"eq.{cid}"},
         {
             "stamp_emoji": s.emoji if s else None,
             "stamp_letter": s.letter if s else None,
@@ -379,7 +382,6 @@ async def patch_entry_stamp(clientEntryId: str, body: StampPatchIn,
             "stamp_voice_ms": s.voiceMs if s else None,
             "updated_at": _now_iso(),
         },
-        {"profile_id": f"eq.{body.profileId}", "client_entry_id": f"eq.{cid}"},
     )
     if not rows:
         raise HTTPException(status_code=404, detail="일기를 찾을 수 없어요")
@@ -393,8 +395,8 @@ async def patch_entry_stamp_seen(clientEntryId: str, body: StampSeenIn,
     cid = _check_client_id(clientEntryId, "일기 id")
     rows = await sb_update(
         "diary_entries",
-        {"stamp_seen_at": datetime.now(timezone.utc).date().isoformat(), "updated_at": _now_iso()},
         {"profile_id": f"eq.{body.profileId}", "client_entry_id": f"eq.{cid}"},
+        {"stamp_seen_at": datetime.now(timezone.utc).date().isoformat(), "updated_at": _now_iso()},
     )
     if not rows:
         raise HTTPException(status_code=404, detail="일기를 찾을 수 없어요")
@@ -573,8 +575,8 @@ async def _sweep_one(row: dict) -> bool:
         #    개인정보 최소보관 원칙에 따라 paths·prefix 만 비운다.
         await sb_update(
             "diary_deletions",
-            {"state": "done", "done_at": now, "paths": [], "prefix": None, "last_error": None},
             {"id": f"eq.{row.get('id')}"},
+            {"state": "done", "done_at": now, "paths": [], "prefix": None, "last_error": None},
         )
         return True
 
@@ -584,13 +586,13 @@ async def _sweep_one(row: dict) -> bool:
     nxt = datetime.now(timezone.utc) + timedelta(minutes=delay_min)
     await sb_update(
         "diary_deletions",
+        {"id": f"eq.{row.get('id')}"},
         {
             "state": "failed" if attempts >= 8 else "pending",
             "attempts": attempts,
             "last_error": "storage remove failed"[:300],
             "next_retry_at": nxt.isoformat(),
         },
-        {"id": f"eq.{row.get('id')}"},
     )
     return False
 
@@ -677,9 +679,9 @@ async def sweep_deletions(limit: int = 50, admin: dict = Depends(require_admin))
         # 리스 — 2분 미래로 밀어 둔다
         leased = await sb_update(
             "diary_deletions",
-            {"next_retry_at": (now + timedelta(minutes=2)).isoformat()},
             {"id": f"eq.{r.get('id')}", "state": "eq.pending",
              "next_retry_at": f"lte.{now.isoformat()}"},
+            {"next_retry_at": (now + timedelta(minutes=2)).isoformat()},
         )
         if not leased:
             continue                       # 다른 요청이 이미 집어갔다
