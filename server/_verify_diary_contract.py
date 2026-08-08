@@ -360,6 +360,24 @@ def main():
     check(bool(pat.search(prof)) and "eq." in (pat.search(prof).group(2) if pat.search(prof) else ""),
           "대조군 — profiles.py 는 필터를 먼저 넘긴다")
 
+    # ── 🧹 고아 자산 청소기 (2026-08-08) ──
+    # 실사고: 음성 업로드가 실패해 3.82MB 그림 하나가 영구 고아로 남았다.
+    # 트리거도 sweep 도 못 지운다 — 방아쇠가 diary_entries 삭제인데 그 행이 없다.
+    ob = py_body_of(router, "sweep_orphan_assets")
+    check(bool(ob.strip()), "고아 청소기가 있다 (못 찾으면 아래 검사가 거짓 통과한다)")
+    check("ORPHAN_GRACE_DAYS" in router,
+          "🔴 유예 기간 상수가 있다 (없으면 **방금 올라간 그림**을 지운다 — 자산 먼저·엔트리 나중이라 정상 흐름도 잠시 고아처럼 보인다)")
+    check("dryRun" in ob and "dryRun: bool = True" in router,
+          "🔴 기본이 dryRun 이다 (되돌릴 수 없는 일은 눈으로 먼저 본다)")
+    check("require_admin" in router[router.find("sweep-orphans"):router.find("sweep-orphans") + 400],
+          "고아 청소기는 관리자 전용이다")
+    # 순서 — 명세서 먼저, 행 나중 (경로를 잃지 않는다)
+    i_ins, i_del = ob.find("sb_insert"), ob.find("sb_delete")
+    check(i_ins > -1 and i_del > -1 and i_ins < i_del,
+          "🔴 명세서(sb_insert)가 행 삭제(sb_delete)보다 **먼저**다 (반대면 경로를 잃어 파일이 영영 남는다)")
+    check("_path" in ob,
+          "경로를 `_path` 접미사 규칙으로 모은다 (007 트리거와 같은 관례 — 미디어가 늘어도 따라온다)")
+
     # ── 업로드는 한 곳에서만 (2026-08-07) ──
     # 이사 엔진이 업로드를 직접 구현하는 바람에 썸네일 누락 + role 오류가 생겼다.
     mig = read(os.path.join(CLIENT, "diaryMigrate.js"))

@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional
 from auth import get_current_user, require_admin
 # ⚠️ sb_update(table, **필터**, **패치**) — 순서를 헷갈리면 PostgREST 가 필터를 값으로 UPDATE 하려 들어
 #    502 로 죽는다. 2026-08-08 에 이 파일 6곳이 전부 뒤집혀 있었다(플래그가 꺼져 있어 아무도 안 불렀다).
-from db import sb_delete, sb_select, sb_upsert, sb_update
+from db import sb_delete, sb_insert, sb_select, sb_upsert, sb_update
 from routers.profiles import get_owned_profile
 from storage import (
     ORIGINAL_TTL_SEC,
@@ -658,6 +658,102 @@ async def delete_all_entries(profileId: str, user: dict = Depends(get_current_us
     for r in rows:
         await _sweep_for_entry(r.get("id"))
     return {"ok": True, "deleted": len(rows)}
+
+
+# 🔴 고아 자산 유예 기간 — 이보다 오래된 것만 건드린다.
+#    이사·저장은 **자산 먼저, 엔트리 나중**이라(GD-8c 설계 ②) 그 사이에는 정상적으로 고아처럼 보인다.
+#    유예가 없으면 **지금 막 올라간 그림을 청소기가 지운다.** 며칠 여유가 반드시 필요하다.
+ORPHAN_GRACE_DAYS = 7
+
+
+@router.post("/admin/sweep-orphans")
+async def sweep_orphan_assets(
+    olderThanDays: int = ORPHAN_GRACE_DAYS,
+    limit: int = 100,
+    dryRun: bool = True,
+    admin: dict = Depends(require_admin),
+):
+    """어떤 엔트리도 참조하지 않는 자산을 정리한다.
+
+    🔴 왜 필요한가 (2026-08-08 실사고로 확인):
+       업로드는 **자산 먼저, 엔트리 나중**이다. 그래야 "엔트리가 있다 = 자산까지 완료"가 참이 된다.
+       그런데 그 사이에 끊기면 **엔트리 없는 자산**이 남고, 이건 아무도 못 지운다 —
+       삭제 트리거는 `diary_entries` 삭제가 방아쇠인데 그 행이 없고,
+       `/admin/sweep` 은 명세서(diary_deletions)만 훑는다.
+       실제로 음성 업로드가 실패해 3.82MB 그림 하나가 영구 고아로 남았고, 손으로 치웠다.
+
+    설계상 고아는 **일시적**이어야 한다(다음 회차 재시도 → 엔트리가 붙는다).
+    영구화되는 경로는 셋이다: 영구 실패(5회 초과) · 로컬 일기 삭제 · 동의 철회.
+
+    ⚠️ 순서는 삭제 관철과 같다 — **명세서 먼저, 행 나중, 파일 마지막.**
+       명세서를 먼저 써야 경로를 잃지 않는다(007 SQL 의 그 원칙).
+
+    ⚠️ 기본이 dryRun=True 다. **되돌릴 수 없는 일은 눈으로 먼저 본다.**
+       실제로 지우려면 ?dryRun=false 를 명시해야 한다.
+    """
+    grace = max(1, min(int(olderThanDays), 365))     # 하루 미만으로는 못 줄인다
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=grace)).isoformat()
+
+    assets = await sb_select(
+        "diary_assets",
+        {"created_at": f"lt.{cutoff}", "select": "*",
+         "order": "created_at.asc", "limit": str(max(1, min(limit, 500)))},
+    )
+    if not assets:
+        return {"ok": True, "scanned": 0, "orphans": 0, "swept": 0, "dryRun": dryRun}
+
+    # 참조 판정 — 프로필 단위로 엔트리를 모아 한 번에 본다(자산마다 조회하면 왕복이 폭증한다).
+    ref: dict[str, set] = {}
+    for pid in {a.get("profile_id") for a in assets if a.get("profile_id")}:
+        rows = await sb_select(
+            "diary_entries",
+            {"profile_id": f"eq.{pid}",
+             "select": "image_client_id,drawing_client_id,voice_client_id,stamp_voice_client_id"},
+        )
+        used = set()
+        for r in rows:
+            for k in ("image_client_id", "drawing_client_id",
+                      "voice_client_id", "stamp_voice_client_id"):
+                if r.get(k):
+                    used.add(r[k])
+        ref[pid] = used
+
+    orphans = [a for a in assets
+               if a.get("client_asset_id") not in ref.get(a.get("profile_id"), set())]
+
+    if dryRun:
+        return {
+            "ok": True, "scanned": len(assets), "orphans": len(orphans),
+            "swept": 0, "dryRun": True, "graceDays": grace,
+            "sample": [{"clientAssetId": a.get("client_asset_id"), "kind": a.get("kind"),
+                        "bytes": a.get("bytes"), "createdAt": a.get("created_at")}
+                       for a in orphans[:20]],
+        }
+
+    swept = 0
+    for a in orphans:
+        # ① 명세서 먼저 — 경로를 잃지 않는다. `_path` 접미사 규칙으로 모은다(007 트리거와 동일 관례).
+        paths = [v for k, v in a.items() if k.endswith("_path") and v]
+        if not paths:
+            continue
+        try:
+            await sb_insert("diary_deletions", {
+                "entry_id": a.get("id"),          # 원래 엔트리가 없다 → 자산 id 로 대신한다(FK 없음)
+                "profile_id": a.get("profile_id"),
+                "user_id": a.get("user_id"),
+                "paths": paths,
+                "prefix": f"{a.get('user_id')}/{a.get('profile_id')}/{a.get('client_asset_id')}/",
+                "state": "pending",
+            })
+            # ② 행 나중 — 여기서 실패해도 손해가 작다. 고아 행은 어차피 아무도 도달하지 못한다.
+            await sb_delete("diary_assets", {"id": f"eq.{a.get('id')}"})
+            swept += 1
+        except Exception:
+            continue                              # 한 건 실패가 나머지를 막지 않는다
+
+    return {"ok": True, "scanned": len(assets), "orphans": len(orphans),
+            "swept": swept, "dryRun": False, "graceDays": grace,
+            "next": "POST /diary/admin/sweep 로 파일까지 지운다"}
 
 
 @router.post("/admin/sweep")
