@@ -8,6 +8,13 @@
 #
 # 로그: ~/.claude/instruction-load.log
 #   보는 법:  tail -20 ~/.claude/instruction-load.log
+#
+# 🔴 2026-08-08 판정 — InstructionsLoaded 는 **한 번도 불리지 않았다**(로그 0바이트).
+#    스크립트는 정상이다(수동 주입 시 즉시 기록됨) → 그 이벤트가 이 버전에 없거나 안 걸린다.
+#    그래서 SessionStart 를 함께 걸었다. 다음 세션에 어떻게 찍히는지로 갈린다:
+#      · SessionStart 만 찍힘  → 훅 배선은 살아 있고 InstructionsLoaded 가 없는 것
+#      · 둘 다 안 찍힘        → 훅 배선 자체가 안 먹는 것(settings.local.json 위치·형식 확인)
+#      · 둘 다 찍힘          → InstructionsLoaded 도 작동. rules 로드 여부를 그 줄로 확인
 input=$(cat)
 LOG="$HOME/.claude/instruction-load.log"
 
