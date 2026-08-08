@@ -17,6 +17,7 @@ import {
   getDiaryEntries, postDiaryEntry, patchDiaryImage, patchDiaryStamp,
   patchDiaryStampSeen, getDiaryMeta, putDiaryMeta,
   deleteDiaryEntry, // GD-8b
+  getDiaryDeletions, // GD-8d: 다른 기기에서 지워진 목록
 } from "./api"; // GD-8a
 
 // AD-2 §1: 그림일기 진입 플래그·날짜 헬퍼 단일 소스(승격). DailyCheckin·KidHome·FamilyShelf가 모두 여기서 import.
@@ -105,16 +106,29 @@ export function saveEntry(pid, entry) {
 }
 
 // 찢기 — 페이지 단위 즉시 완전 삭제(AD5, 복구 불가). 부모 삭제 기능 없음. AD-5/AD-8: IDB 이미지(완성본+원본) 함께 삭제.
+/**
+ * 엔트리에 딸린 **로컬 자산(IDB)** 만 정리한다. 서버는 건드리지 않는다.
+ *
+ * 🔴 2026-08-08 추출 — tearEntry(내가 찢음)와 hydrate(다른 기기에서 지워짐)가 같은 일을 한다.
+ *    같은 일을 두 번 구현하면 반드시 어긋난다(2026-08-07 하루에 3번 겪었다) → 한 곳으로 모은다.
+ *    ⚠️ 자산 종류가 늘어나면 **여기만** 고치면 된다. 호출부에 따로 적지 말 것.
+ */
+function purgeEntryAssetsLocal(e) {
+  if (!e) return;
+  if (e.imageId) { try { deleteImage(e.imageId); } catch { /* 무시 */ } }   // 채택본 완전삭제
+  if (e.drawingId) { try { deleteImage(e.drawingId); } catch { /* 무시 */ } } // AD-8: 원본 낙서도 완전삭제
+  if (e.stamp?.voiceId) { try { deleteAudio(e.stamp.voiceId); } catch { /* 무시 */ } } // B08a: 부모 음성 편지
+  if (e.voiceId) { try { deleteAudio(e.voiceId); } catch { /* 무시 */ } }   // B08b: 아이 음성 메모(부모 편지와 별개 축)
+}
+
 export function tearEntry(pid, entryId) {
   const all = getEntries(pid);
   const torn = all.find((e) => e.id === entryId);
   writeJson(ENTRIES_KEY(pid), all.filter((e) => e.id !== entryId));
-  if (torn?.imageId) { try { deleteImage(torn.imageId); } catch { /* 무시 */ } } // 채택본 완전삭제
-  if (torn?.drawingId) { try { deleteImage(torn.drawingId); } catch { /* 무시 */ } } // AD-8: 원본 낙서도 완전삭제
-  if (torn?.stamp?.voiceId) { try { deleteAudio(torn.stamp.voiceId); } catch { /* 무시 */ } } // B08a: 부모 음성 편지도 완전삭제(모든 삭제 경로=tearEntry로 수렴: doTear·doShelfDelete·doRemake)
-  if (torn?.voiceId) { try { deleteAudio(torn.voiceId); } catch { /* 무시 */ } } // B08b: 아이 음성 메모도 완전삭제(orphan 0 — 부모 편지와 별개 축)
-  // GD-8b: 서버에서도 지운다. ⚠️ 위 5줄은 한 글자도 안 바뀌었다 —
-  //   서버 이전 뒤에도 **과거 기기의 잔존물을 지우는 유일한 코드**라 그대로 살아 있어야 한다.
+  // ⚠️ 아래 한 줄이 옛 4줄(imageId·drawingId·stamp.voiceId·voiceId)을 **그대로** 대신한다.
+  //    성질은 바뀌지 않았다 — 서버 이전 뒤에도 **과거 기기의 잔존물을 지우는 유일한 코드**다.
+  purgeEntryAssetsLocal(torn);
+  // GD-8b: 서버에서도 지운다.
   //   ⚠️ tearEntry 를 async 로 만들지 않는다 — 호출부 3곳(FamilyShelf:215,224,295)이
   //      setEntries 로 즉시 화면을 갱신하는 UX 에 의존한다. 아이는 기다리면 안 된다.
   if (DIARY_SERVER) { void deleteEntryOnServer(pid, entryId); }
@@ -428,9 +442,12 @@ export async function hydrateDiary(pid, { maxAgeMs = 0 } = {}) {
     // 짧은 시간 안의 중복 조회만 건너뛴다(기본 0 = 건너뛰지 않음).
     if (maxAgeMs > 0 && Date.now() - (hydratedAt.get(pid) || 0) < maxAgeMs) return;
     hydratedAt.set(pid, Date.now());
-    const [entriesRes, metaRes] = await Promise.all([
+    const [entriesRes, metaRes, delRes] = await Promise.all([
       getDiaryEntries(pid).catch(() => null),
       getDiaryMeta(pid).catch(() => null),
+      // 🔴 GD-8d: 실패하면 null → 아래에서 **아무것도 지우지 않는다.**
+      //    지우는 일은 되돌릴 수 없으므로, 모르면 남긴다.
+      getDiaryDeletions(pid).catch(() => null),
     ]);
     if (entriesRes?.assets) primeAssetUrls(pid, entriesRes.assets);
 
@@ -444,6 +461,29 @@ export async function hydrateDiary(pid, { maxAgeMs = 0 } = {}) {
         serverIds.add(se.id);
         byId.set(se.id, se);                      // 서버 우선
       }
+      // ── 🔴 GD-8d: 다른 기기에서 지운 일기를 여기서도 지운다 (2026-08-08 사고) ──
+      //
+      //   아래 repush 는 "서버엔 없고 로컬엔 있다" 를 **푸시 실패분**으로 본다.
+      //   그런데 **다른 기기에서 찢은 것**도 똑같이 보인다 — 둘을 구분할 표식이 없어서
+      //   지운 일기가 화면에 되살아나고, 재푸시로 서버에 부활까지 했다.
+      //   방침 제5조("지우면 정말 지워집니다")를 어기는 자리라 서버의 삭제 명세서로 판정한다.
+      //
+      //   ⚠️ 판정 근거는 **서버가 '지웠다'고 명시한 것뿐**이다.
+      //      "서버 목록에 없으면 지운다"로 만들면 서버가 빈 응답을 주는 사고 한 번에
+      //      아이 일기가 통째로 날아간다. 조회 실패(null)·빈 목록이면 아무 일도 하지 않는다.
+      const deletedIds = new Set(
+        (Array.isArray(delRes?.deletions) ? delRes.deletions : [])
+          .map((d) => d?.clientEntryId)
+          .filter(Boolean),
+      );
+      for (const id of deletedIds) {
+        if (serverIds.has(id)) continue;   // 같은 id 로 다시 올라와 있다 → 서버가 정본. 지우지 않는다.
+        const gone = byId.get(id);
+        if (!gone) continue;
+        purgeEntryAssetsLocal(gone);       // 그림·음성도 이 기기에서 정리
+        byId.delete(id);
+      }
+
       writeJson(ENTRIES_KEY(pid), Array.from(byId.values()));
       // 로컬에만 있던 것 = 지난번 push 실패분 → 다시 밀어 올린다.
       //
@@ -453,7 +493,8 @@ export async function hydrateDiary(pid, { maxAgeMs = 0 } = {}) {
       //    GD-8c 브리프가 `Promise.all 금지 — 용량이 크다` 라고 명시적으로 금지한 바로 그 패턴이었다.
       //    → ① 한 번에 최대 REPUSH_MAX 편 ② 순차(await) 로 바꿨다.
       //    대량 이사는 이 경로가 아니라 **부모 화면의 이사 엔진**(diaryMigrate.js)이 맡는다.
-      const stale = local.filter((le) => le?.id && !serverIds.has(le.id));
+      // 🔴 deletedIds 를 반드시 뺀다 — 안 빼면 방금 지운 일기를 다시 밀어 올려 **부활시킨다.**
+      const stale = local.filter((le) => le?.id && !serverIds.has(le.id) && !deletedIds.has(le.id));
       void repushSequentially(pid, stale.slice(0, REPUSH_MAX));
     }
 

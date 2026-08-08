@@ -613,6 +613,44 @@ async def _sweep_for_entry(entry_uuid: str) -> None:
         pass
 
 
+@router.get("/deletions")
+async def list_deletions(profileId: str, limit: int = 500, user: dict = Depends(get_current_user)):
+    """이 프로필에서 **지워진** 일기의 클라이언트 id 목록 (GD-8d · 2026-08-08 신설).
+
+    🔴 왜 필요한가 — 오너 시범테스트에서 드러난 사고
+      기기 A 에서 일기를 찢으면 서버에서는 제대로 지워진다. 그런데 기기 B 는 그 사실을 알 길이 없었다.
+      hydrateDiary 가 "서버엔 없는데 로컬엔 있다" 를 **푸시 실패분**으로 오판해
+      로컬에 남겨두고 **다시 밀어 올렸다.** 지운 일기가 부활한 것이다.
+      처리방침 제5조에 "지우면 정말 지워집니다" 라고 적어둔 자리다.
+
+    🔴 왜 동의(get_consented_profile)를 요구하지 않는가
+      삭제 계열과 **같은 취급**이다. 동의를 철회한 뒤에도 "이미 지운 것" 은 반영돼야 한다.
+      여기에 동의 게이트를 끼우면, 철회하는 순간 다른 기기에 지운 일기가 영원히 남는다.
+      (delete_entry·delete_all_entries 가 동의를 안 보는 것과 같은 이유 — 계약검사가 못박고 있다)
+
+    ⚠️ 새로 만든 것만 의미가 있다. client_entry_id 는 009 부터 기록되므로
+       그 이전 tombstone 은 null 이고, 아래 필터에서 자연히 빠진다.
+    """
+    await get_owned_profile(profileId, user["user_id"])
+    rows = await sb_select(
+        "diary_deletions",
+        {
+            "profile_id": f"eq.{profileId}",
+            "client_entry_id": "not.is.null",
+            "select": "client_entry_id,created_at",
+            "order": "created_at.desc",
+            "limit": str(max(1, min(int(limit or 500), 1000))),
+        },
+    )
+    return {
+        "deletions": [
+            {"clientEntryId": r.get("client_entry_id"), "deletedAt": r.get("created_at")}
+            for r in rows
+            if r.get("client_entry_id")
+        ]
+    }
+
+
 @router.delete("/entries/{clientEntryId}")
 async def delete_entry(clientEntryId: str, profileId: str,
                        user: dict = Depends(get_current_user)):

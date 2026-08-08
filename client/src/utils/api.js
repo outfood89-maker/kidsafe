@@ -39,6 +39,12 @@ export const getDiaryEntries = async (profileId) => {
   const res = await axios.get(`${BASE_URL}/diary/entries`, { params: { profileId } })
   return res.data
 }
+// GD-8d: 다른 기기에서 지워진 일기 목록. hydrate 가 "지운 것"과 "푸시 실패분"을 구분하는 유일한 근거다.
+//   ⚠️ 실패하면 절대 삭제로 해석하지 말 것 — 호출부(diaryStore)가 null 이면 아무것도 지우지 않는다.
+export const getDiaryDeletions = async (profileId) => {
+  const res = await axios.get(`${BASE_URL}/diary/deletions`, { params: { profileId } })
+  return res.data
+}
 export const postDiaryEntry = async (payload) => {
   const res = await axios.post(`${BASE_URL}/diary/entries`, payload)
   return res.data

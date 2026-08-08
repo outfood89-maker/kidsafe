@@ -200,6 +200,38 @@ def main():
 
     print()
     print("=" * 74)
+    print("[C-2] 🔴 다른 기기에서 지운 일기가 되살아나지 않는가 (GD-8d)")
+    print("=" * 74)
+    # 2026-08-08 오너 시범테스트 사고: 기기 A 에서 찢은 일기가 기기 B 에서 부활했다.
+    #   hydrate 가 "서버엔 없고 로컬엔 있다"를 **푸시 실패분**으로 오판해 되살리고 재푸시까지 했다.
+    #   방침 제5조("지우면 정말 지워집니다")를 어기는 자리라 장치로 고정한다.
+    hy_ns = re.sub(r"\s+", "", hydrate)
+    check(bool(hydrate), "hydrateDiary 본문을 찾았다 (못 찾으면 아래가 전부 거짓 통과한다)")
+    check("getDiaryDeletions" in hydrate, "서버의 삭제 명세서를 조회한다")
+    check("deletedIds" in hydrate, "명시적 삭제 목록으로 판정한다")
+    # 🔴 유실 방지 — 조회 실패를 삭제로 해석하면 아이 일기가 통째로 날아간다.
+    check("getDiaryDeletions(pid).catch(()=>null)" in hy_ns,
+          "삭제 목록 조회가 실패하면 null 이다 (= 아무것도 지우지 않는다)")
+    # 🔴 재푸시 제외 — 안 빼면 방금 지운 일기를 다시 밀어 올려 서버에 부활시킨다.
+    m_stale = re.search(r"conststale=local\.filter\(\(le\)=>[^;]*", hy_ns)
+    check(m_stale is not None, "stale 계산식을 찾았다 (못 찾으면 아래가 거짓 통과한다)")
+    if m_stale:
+        check("!deletedIds.has(le.id)" in m_stale.group(0),
+              "재푸시 대상에서 삭제된 것을 뺀다 (안 빼면 지운 일기가 서버에 부활한다)")
+    # 자산 정리는 한 벌이어야 한다 — 두 번 구현하면 어긋난다(2026-08-07 하루 3회).
+    check(store.count("function purgeEntryAssetsLocal") == 1,
+          "로컬 자산 정리가 한 곳에만 정의돼 있다")
+    check("purgeEntryAssetsLocal" in body_of(store, "tearEntry"), "tearEntry 가 그 함수를 쓴다")
+    check("purgeEntryAssetsLocal" in hydrate, "hydrate 도 같은 함수로 자산을 정리한다")
+    # 서버 — 삭제 목록 조회는 동의를 요구하지 않는다(철회 후에도 지운 사실은 전파돼야 한다).
+    dele = py_body_of(router, "list_deletions")
+    check(bool(dele), "list_deletions 본문을 찾았다")
+    check("get_owned_profile" in dele, "삭제 목록 조회도 소유권은 확인한다")
+    check("get_consented_profile" not in dele,
+          "🔴 삭제 목록 조회는 동의를 요구하지 않는다 (철회하면 영영 못 지우게 되는 것을 막는다)")
+
+    print()
+    print("=" * 74)
     print("[D] 비공개 원칙 — 공개 URL 0건 · 삭제 경로 없음(GD-8b)")
     print("=" * 74)
     for label, src in (("서버 라우터", router), ("storage.py", storage),
