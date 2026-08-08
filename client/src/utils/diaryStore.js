@@ -31,6 +31,12 @@ export const DIARY_V0 = true;
 // 🔴 여전히 false 다 — 008_diary_consent.sql 적용 + 동의 UI 확인 + 오너 승인 전까지.
 export const DIARY_SERVER = false;
 
+// ⚠️ 그림일기에는 '비밀로 하기'가 없다 (2026-08-08 오너 확정).
+//    diary_entries.share_with_parent 는 default true 이고 false 로 만드는 코드가 0건이다.
+//    「가족 책장」은 이름 그대로 가족이 함께 보는 곳이라, 넣는 행위가 곧 공유다.
+//    체크인의 '비밀이야'와 다른 점: 그건 **저장을 안 해서** 비밀이 되는데,
+//    그림일기는 저장이 목적이라 같은 방법을 쓸 수 없다. 자세히는 007 SQL 주석.
+
 /** 이 프로필의 그림일기를 서버로 보내도 되는가. **동기**(호출부 시그니처 유지). */
 export const isDiaryServerOn = (pid) => DIARY_SERVER && isDiaryConsented(pid);
 // 오늘 날짜(KST, YYYY-MM-DD) — 날짜 계산 중복 신설 금지, 신규 3곳(타일·홈·브릿지) 모두 이것만 사용.

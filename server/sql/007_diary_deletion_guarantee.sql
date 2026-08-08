@@ -157,6 +157,21 @@ select tc.constraint_name, tc.table_name, rc.delete_rule
 alter table public.diary_entries
   add column if not exists share_with_parent boolean not null default true;
 
+-- 🔴 현재 상태 (2026-08-08 실측): **이 값을 false 로 만드는 코드가 0건이다.**
+--    upsert_entry 도 이 컬럼을 건드리지 않고, 클라이언트에도 설정 UI 가 없다.
+--    즉 **모든 그림일기가 항상 부모에게 공유된다.** /diary/shelf 의 `share_with_parent=eq.true`
+--    필터는 지금 아무것도 걸러내지 않는다.
+--
+--    ⚠️ 이건 버그가 아니라 **설계다** (오너 확정 2026-08-08):
+--      · 「가족 책장」은 이름 그대로 가족이 함께 보는 곳이다. 넣는 행위가 곧 공유다.
+--      · **비공개 그림일기는 성립하지 않는다** — 아이 기기는 부모도 만지는 기기다.
+--        앱 안에서 숨겨도 부모가 아이 프로필로 들어가면 다 보인다.
+--        체크인의 '비밀이야'가 진짜 비밀인 이유는 **저장 자체를 안 하기 때문**인데,
+--        그림일기는 저장이 목적이라 같은 방법을 쓸 수 없다.
+--
+--    🔴 그러니 이 컬럼을 보고 "비공개 일기는 부모에게 안 보이는구나" 라고 읽지 말 것.
+--       **그런 일기를 만들 수가 없다.** 컬럼은 앞으로를 위한 자리이지 작동하는 게이트가 아니다.
+
 -- 부모 책장 조회용 인덱스 (공개분만 훑는다)
 create index if not exists idx_diary_entries_shared
   on public.diary_entries (profile_id, entry_date desc) where share_with_parent;
