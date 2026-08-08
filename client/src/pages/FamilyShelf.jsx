@@ -9,6 +9,7 @@ import VoiceBar from "../components/VoiceBar"; // B08a: 음성 편지 재생 진
 import useKiddyVoice, { holdMediaChannelForTTS, releaseMediaChannelHold, startKiddyBgm, stopKiddyBgm } from "../hooks/useKiddyVoice"; // B08c §2: 무음 스위치 우회(편지 낭독 — 마이크 없는 화면 전용) / P4: 책장 배경음악
 import * as diary from "../utils/diaryStore";
 import { getTodayCheckin, generateDiaryImage } from "../utils/api";
+import HoldToConfirm from "../components/HoldToConfirm"; // 지우기는 2초 길게 눌러야 실행된다(실수 방지)
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
 import { getAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 재생(IDB)
 import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, VOICE_LETTER, VOICE_MEMO, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy"; // B08c: LETTER_READ_VOICE 사용처 제거(안내 TTS 폐지) → import 정리. 카피는 diaryCopy 보존.
@@ -676,7 +677,9 @@ export default function FamilyShelf() {
               <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{TEAR.desc}</p>
             </div>
             <div className="flex flex-col gap-2.5">
-              <button onClick={doTear} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{TEAR.yes}</button>
+              {/* 🔴 2026-08-09: 클릭 한 번 → **2초 길게 누르기**. 확인 화면이 있어도 아이는
+                  '응'을 습관적으로 누른다. 되돌리기는 만들 수 없으므로(방침 제5조) 실수를 줄인다. */}
+              <HoldToConfirm onConfirm={doTear} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{TEAR.yes}</HoldToConfirm>
               <button onClick={() => setTearing(false)} className="rounded-2xl py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}>{TEAR.no}</button>
             </div>
           </div>
@@ -692,7 +695,8 @@ export default function FamilyShelf() {
               <p className="text-sm text-center" style={{ color: "#90A9A8" }}>{SHELF_DELETE.desc}</p>
             </div>
             <div className="flex flex-col gap-2.5">
-              <button onClick={doShelfDelete} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{SHELF_DELETE.yes}</button>
+              {/* 부모 삭제도 같은 무게로 — 문구가 "아이가 직접 만든 일기예요" 인 자리다 */}
+              <HoldToConfirm onConfirm={doShelfDelete} className="rounded-2xl py-3 text-base font-bold" style={{ backgroundColor: "rgba(242,101,92,0.15)", color: "#F2655C", border: "1.5px solid rgba(242,101,92,0.4)" }}>{SHELF_DELETE.yes}</HoldToConfirm>
               <button onClick={() => setDeleteTarget(null)} className="rounded-2xl py-3 text-base font-bold" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", color: "#08160F" }}>{SHELF_DELETE.no}</button>
             </div>
           </div>

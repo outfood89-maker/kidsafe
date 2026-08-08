@@ -40,6 +40,7 @@ import FamilyShelf from "../pages/FamilyShelf";
 import * as diaryStore from "../utils/diaryStore";
 import { RESPONSE_HIGH_SELF } from "../utils/safetyLexicon";
 import { CRISIS_RETURN_HINT, SHELF_DELETE, FLOW_STOP, CONTINUE_CHIP, monthBookTitle } from "../utils/diaryCopy"; // AD-9 후속: 아이 지우기 제거로 TEAR 미사용
+import { HOLD_MS } from "../components/HoldToConfirm"; // 지우기는 2초 길게 눌러야 실행된다(2026-08-09)
 
 const PROFILE = { id: "t1", name: "해인", age: 7 };
 const TODAY = diaryStore.todayKST();
@@ -181,7 +182,12 @@ describe("AD-9 — 앨범 그리드 + 부모 수정(삭제)", () => {
     expect(diaryStore.getEntries("t1").length).toBe(2);
     fireEvent.click(screen.getAllByText("🗑")[0]);         // 첫 타일 삭제 배지
     expect(screen.getByText(SHELF_DELETE.desc)).toBeTruthy(); // '아이가 직접 만든 일기예요…'(팀장 스탬프)
-    fireEvent.click(screen.getByText(SHELF_DELETE.yes));   // '지우기'
+    // 🔴 2026-08-09: '지우기'는 클릭 한 번이 아니라 **2초 길게 누르기**가 됐다(실수 방지).
+    //    검사를 약하게 만든 게 아니라 **조작 방법만** 바꾼다 — 확인하는 것은 그대로 "1건 감소"다.
+    //    ⚠️ 클릭 한 번으로 되돌아가면 아래가 실패한다(그게 이 줄의 역할이다).
+    const delBtn = screen.getByText(SHELF_DELETE.yes).closest("button");
+    fireEvent.pointerDown(delBtn);
+    await new Promise((r) => setTimeout(r, HOLD_MS + 120));  // 실제 시간으로 채운다(rAF 그대로)
     expect(diaryStore.getEntries("t1").length).toBe(1);    // 1건 감소(tearEntry)
   });
 });
