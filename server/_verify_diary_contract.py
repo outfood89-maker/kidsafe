@@ -232,6 +232,40 @@ def main():
 
     print()
     print("=" * 74)
+    print("[C-3] 🔴 '오늘 썼나' 를 판정하는 화면은 서버를 먼저 본다")
+    print("=" * 74)
+    # 2026-08-08 사고 — 다른 기기에서 열면 로컬 캐시가 비어 "오늘 안 썼음"이 되고,
+    #   키디가 이미 쓴 아이에게 "또 만들자"고 권유했다.
+    #   🔴 아이 홈만 고쳤다가 **키디의 방에서 그대로 재발**했다. 목록을 손으로 적으면 또 빠뜨린다.
+    #   → 화면 이름이 아니라 **패턴**으로 찾는다. 새 화면이 생겨도 자동으로 걸린다.
+    CLIENT_SRC_ALL = os.path.dirname(CLIENT)
+    JUDGE_PAT = re.compile(r"getEntries\([^)]*\)[\s\S]{0,140}?todayKST\(\)")
+    # 예외 1건 — KiddyFab 은 **다른 화면 안에 렌더**되므로 그 화면의 hydrate 후 리렌더로 따라온다.
+    #   (조건부 return 이 훅보다 앞에 있어 훅을 넣을 수 없는 구조이기도 하다)
+    JUDGE_EXEMPT = {"components/KiddyFab.jsx"}
+    judged = []
+    for sub in ("pages", "components"):
+        d = os.path.join(CLIENT_SRC_ALL, sub)
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not fn.endswith(".jsx"):
+                continue
+            rel = f"{sub}/{fn}"
+            src_j = strip_comments(read(os.path.join(d, fn)))
+            if not JUDGE_PAT.search(src_j):
+                continue
+            judged.append(rel)
+            if rel in JUDGE_EXEMPT:
+                continue
+            check("hydrateDiary" in src_j,
+                  f"{rel} 이 판정 전에 hydrateDiary 를 부른다")
+    # 🔴 0건을 찾고도 통과하는 사고를 막는다 (2026-08-08 에 두 번 겪었다).
+    check(len(judged) >= 3,
+          f"'오늘 썼나' 판정 화면을 {len(judged)}개 찾았다: {judged} (2개 이하면 패턴이 헛돈 것이다)")
+
+    print()
+    print("=" * 74)
     print("[D] 비공개 원칙 — 공개 URL 0건 · 삭제 경로 없음(GD-8b)")
     print("=" * 74)
     for label, src in (("서버 라우터", router), ("storage.py", storage),

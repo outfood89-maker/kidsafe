@@ -81,26 +81,33 @@ describe("V2 — KiddyFab 숨김", () => {
 });
 
 describe("V5 — 방 인사 초대 변주", () => {
-  it("미작성 입장 → INVITE + 버튼 2개 / '좋아!' → navigate('/family-shelf',{state:{startWrite:true}})", () => {
+  // 🔴 2026-08-08 — 권유 판정이 **비동기**가 됐다.
+  //    getEntries 는 로컬 캐시만 봐서, 다른 기기에서 오늘 일기를 써도 "안 썼음"이 됐다
+  //    (오너 시범테스트에서 두 번 재현). 이제 hydrate 를 먼저 기다린 뒤 판정한다.
+  //    → 검사를 약하게 만든 게 아니라 **기다리기만** 한다. 찾는 대상·단언은 그대로다.
+  it("미작성 입장 → INVITE + 버튼 2개 / '좋아!' → navigate('/family-shelf',{state:{startWrite:true}})", async () => {
     render(<MemoryRouter><KiddyRoom /></MemoryRouter>);
-    expect(screen.getByText(ROOM_INVITE.line)).toBeTruthy();
+    expect(await screen.findByText(ROOM_INVITE.line)).toBeTruthy();
     expect(screen.getByText(ROOM_INVITE.go)).toBeTruthy();
     expect(screen.getByText(ROOM_INVITE.later)).toBeTruthy();
-    expect(H.voice.speak).toHaveBeenCalledWith(ROOM_INVITE.line, "bright"); // 초대 인사 음성은 유지(미작성 하루 유혹)
+    expect(H.voice.speak).toHaveBeenCalledWith(ROOM_INVITE.line, "bright"); // 권유 음성은 유지(미작성 하루 유혹)
     fireEvent.click(screen.getByText(ROOM_INVITE.go));
     expect(H.nav).toHaveBeenCalledWith("/family-shelf", { state: { startWrite: true } });
   });
-  it("'나중에' → GREETING 전환 + 기록 0", () => {
+  it("'나중에' → GREETING 전환 + 기록 0", async () => {
     render(<MemoryRouter><KiddyRoom /></MemoryRouter>);
-    fireEvent.click(screen.getByText(ROOM_INVITE.later));
+    fireEvent.click(await screen.findByText(ROOM_INVITE.later));
     expect(screen.queryByText(ROOM_INVITE.line)).toBeNull();
     expect(screen.getByText(new RegExp(GREETING_HINT))).toBeTruthy();
     expect(diaryStore.getEntries("t1").length).toBe(0);
     expect(H.nav).not.toHaveBeenCalled();
   });
-  it("오늘 작성 완료 입장 → 초대 없이 기존 GREETING(텍스트만·음성 억제)", () => {
+  it("오늘 작성 완료 입장 → 초대 없이 기존 GREETING(텍스트만·음성 억제)", async () => {
     saveToday();
     render(<MemoryRouter><KiddyRoom /></MemoryRouter>);
+    // 🔴 판정이 비동기가 됐으므로 **끝난 뒤에** 확인해야 한다.
+    //    그냥 두면 "아직 안 뜬 것"을 "안 뜨는 것"으로 읽어 거짓 통과한다.
+    await new Promise((r) => setTimeout(r, 0));
     expect(screen.queryByText(ROOM_INVITE.line)).toBeNull();
     expect(screen.getByText(new RegExp(GREETING_HINT))).toBeTruthy();      // 안내는 텍스트로 유지
     expect(H.voice.speak).not.toHaveBeenCalled();                          // 오너 지시: 입장 GREETING 음성 억제(과반복 제거)

@@ -145,17 +145,34 @@ export default function KiddyRoom() {
     mountedRef.current = true;
     // AD-4 §5: 오늘 그림일기 미작성이면 초대 인사 변주, 아니면 기존 GREETING.
     //   profile state는 아직 null일 수 있어 localStorage를 동기로 읽어 판정(입장 인사 타이밍 유지).
-    let invite = false;
-    try {
-      const p = JSON.parse(localStorage.getItem("selectedProfile") || "null");
-      if (diary.DIARY_V0 && p?.id) invite = !diary.getEntries(p.id).some((e) => e.date === diary.todayKST());
-    } catch { /* 무시 */ }
-    if (invite) { setInviteMode(true); setKiddyLine(ROOM_INVITE.line); voice.speak(ROOM_INVITE.line, "bright"); }
+    // 🔴 2026-08-08 — 판정 **전에** 서버에서 받아온다 (오너 시범테스트에서 두 번 확인).
+    //    getEntries 는 로컬 캐시만 본다. 다른 기기에서 오늘 일기를 이미 썼어도
+    //    새 기기는 캐시가 비어 있어 "안 썼음"이 되고, 키디가 "또 만들자"고 권유한다.
+    //    ⚠️ 입장 인사가 조금 늦어지지만 **틀린 권유보다 낫다.**
+    //       아이 홈에서 이미 받아왔으면 유예(30초) 안이라 즉시 돌아온다.
+    //    ⚠️ GREETING 음성은 원래 억제돼 있어(아래 주석) 늦은 발화가 다른 음성과 겹치지 않는다.
+    let cancelled = false;
+    (async () => {
+      let p = null;
+      try { p = JSON.parse(localStorage.getItem("selectedProfile") || "null"); } catch { /* 무시 */ }
+      if (diary.DIARY_V0 && p?.id) {
+        try {
+          await diary.hydrateDiary(p.id, { maxAgeMs: diary.DIARY_HYDRATE_TTL_MS });
+        } catch { /* 네트워크 실패 = 로컬 캐시로 진행(기존 동작) */ }
+      }
+      if (cancelled || !mountedRef.current) return;   // 이미 방을 나갔으면 말하지 않는다
+      let invite = false;
+      try {
+        if (diary.DIARY_V0 && p?.id) invite = !diary.getEntries(p.id).some((e) => e.date === diary.todayKST());
+      } catch { /* 무시 */ }
+      if (invite) { setInviteMode(true); setKiddyLine(ROOM_INVITE.line); voice.speak(ROOM_INVITE.line, "bright"); }
+    })();
     // 오너 지시(7/8): 일기 쓴 상태에선 이 방('말하기 연습')이 사실상 기본 화면 → 매 진입마다 GREETING 음성이 과하게 반복됨.
     //   입장 GREETING '음성'만 억제(화면 안내는 kiddyLine=GREETING 초기 state 텍스트로 유지). 초대 인사(미작성 시 하루 유혹)는 음성 존치.
     //   ⚠️ 아래는 의도적 제거(삭제 아님) — 기존: else { voice.speak(GREETING, "bright"); }
     const t = setTimeout(() => finishSession({ silent: lastReplyCareRef.current }), SESSION_MS);
     return () => {
+      cancelled = true;                 // 🔴 늦게 도착한 hydrate 가 떠난 뒤 말하지 않게
       mountedRef.current = false;
       clearTimeout(t);
       if (farewellTimerRef.current) clearTimeout(farewellTimerRef.current);
