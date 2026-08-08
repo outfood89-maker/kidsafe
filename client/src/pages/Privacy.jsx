@@ -245,8 +245,17 @@ export default function Privacy() {
             ※ 주간 리포트를 만들 때는 아이의 <strong>실제 이름을 보내지 않고</strong> 빈칸으로 처리한 뒤 기기에서 다시 채웁니다.
             ※ 걱정되는 신호로 감지된 말은 <strong>AI를 부르지 않고</strong> 사람이 미리 검토한 답변으로 응답하므로 외부로 나가지 않습니다.
           </p>
+          {/* 2026-08-08 공개 약관 실조사로 확인된 사실. 확인 전까지는 "학습에 사용되지 않음"을
+              쓰지 않기로 했던 항목이다(B1 초안 제6조 주석). 이제 근거가 있다. */}
+          <div className="rounded-[14px] p-4 text-[13px] leading-[1.75]"
+               style={{ backgroundColor: "rgba(24,196,154,0.08)", border: "1px solid rgba(24,196,154,0.22)", color: C.muted }}>
+            <strong className="block mb-1" style={{ color: C.accent }}>AI 회사들이 아이 데이터로 무엇을 하나</strong>
+            <strong style={{ color: C.text }}>Anthropic·OpenAI 모두 전달된 내용을 자사 모델 학습에 사용하지 않습니다.</strong>
+            오·남용 확인 목적으로 <strong style={{ color: C.text }}>최대 30일</strong> 보관한 뒤 삭제합니다.
+            <span className="block mt-1 text-[12px]" style={{ color: C.dim }}>각 사의 공개 약관 기준(2026-08-08 확인). 약관이 바뀌면 이 안내도 함께 고칩니다.</span>
+          </div>
           <p className="text-[12.5px]" style={{ color: C.dim }}>
-            위 회사들의 정확한 소재지·연락처·보관 기간과 국외 이전에 관한 자세한 사항은 {PENDING}합니다.
+            위 회사들의 정확한 소재지·연락처는 {PENDING}합니다.
           </p>
         </Section>
 
