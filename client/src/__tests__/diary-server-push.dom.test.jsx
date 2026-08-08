@@ -76,10 +76,15 @@ beforeEach(() => {
 });
 afterEach(() => { vi.resetModules(); });
 
-describe("GD-8a V2 — 플래그 OFF 면 네트워크 0 (현재 배포 상태)", () => {
+// 🔴 2026-08-08 — 원래 이 describe 는 "플래그 OFF 면 네트워크 0 (현재 배포 상태)" 였고
+//    첫 줄에서 `expect(DIARY_SERVER).toBe(false)` 로 켜는 것을 막는 자물쇠였다(GD-8b 전 금지).
+//    조건이 충족돼 켰으므로 자물쇠를 **없애지 않고 승격**한다:
+//    이 파일은 동의를 심지 않는다(beforeEach 의 localStorage.clear) → 킬스위치가 켜져도 동의는 전부 꺼짐.
+//    ⇒ 이제 지키는 명제는 **"동의가 없으면 네트워크 0"** 이다. 킬스위치 상태와 무관하게 참이어야 한다.
+//    ⚠️ 여기서 netCalls() 가 0이 아니게 되면, 동의 게이트를 빠뜨린 경로가 새로 생긴 것이다.
+describe("GD-8a V2 — 동의가 없으면 네트워크 0 (킬스위치와 무관하게)", () => {
   it("저장·조회·도장 어느 것도 서버를 부르지 않는다", async () => {
     const diary = await import("../utils/diaryStore");
-    expect(diary.DIARY_SERVER).toBe(false);   // 🔴 이게 true 로 바뀌면 GD-8b 전에 켠 것이다
 
     diary.saveEntry(PID, { id: "e1", date: TODAY, sentences: ["오늘은 바다"], imageId: "img_e1" });
     diary.setEntryImage(PID, "e1", "img_e2");

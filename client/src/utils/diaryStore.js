@@ -28,8 +28,15 @@ export const DIARY_V0 = true;
 // ② isDiaryConsented  — **보호자 동의.** 아이 한 명 단위. 보호자가 켠다.
 // 둘 다 참이어야 서버로 나간다. 아래 isDiaryServerOn(pid) 하나만 쓰면 된다.
 //
-// 🔴 여전히 false 다 — 008_diary_consent.sql 적용 + 동의 UI 확인 + 오너 승인 전까지.
-export const DIARY_SERVER = false;
+// 🔴 2026-08-08 켰다 (오너 승인). 켜기 전에 갖춰진 것:
+//    ① 008_diary_consent.sql 적용 · 동의 UI 오너 시범테스트 완료
+//    ② GD-8b 삭제 경로 + 고아 자산 청소기 (지울 방법 없이 받지 않는다)
+//    ③ 처리방침 시행 — 보호책임자·시행일 기재, DIARY_SERVER_LIVE 동반 전환
+//    ④ Supabase 이메일 인증(Confirm email) ON — 신원 미확인 계정 차단
+// ⚠️ 되돌리려면 이 한 줄만 false 로. 그러면 네트워크가 0이 되고,
+//    Privacy.jsx 의 DIARY_SERVER_LIVE 도 함께 false 로 돌려야 한다(검사가 강제한다).
+// ⏳ 남은 숙제: 업로드 한도(quota 미등록) — **공개 출시 전까지** 반드시. 지금은 일기가 하루 1편이라 유예.
+export const DIARY_SERVER = true;
 
 // ⚠️ 그림일기에는 '비밀로 하기'가 없다 (2026-08-08 오너 확정).
 //    diary_entries.share_with_parent 는 default true 이고 false 로 만드는 코드가 0건이다.

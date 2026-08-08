@@ -167,13 +167,31 @@ def main():
 
     print()
     print("=" * 74)
-    print("[C] 게이트 — GD-8b 전까지 DIARY_SERVER = false")
+    print("[C] 게이트 — 켰다면 '지울 방법'이 실재해야 한다")
     print("=" * 74)
     m = re.search(r"export\s+const\s+DIARY_SERVER\s*=\s*(true|false)", store)
     check(m is not None, "DIARY_SERVER 플래그가 존재한다")
-    if m:
-        check(m.group(1) == "false",
-              "🔴 DIARY_SERVER = false — 삭제 경로(GD-8b) 없이 켜면 아이가 찢은 일기가 서버에 남는다")
+    # 🔴 2026-08-08 — 원래 이 자리는 `== "false"` 자물쇠였다:
+    #    "삭제 경로(GD-8b) 없이 켜면 아이가 찢은 일기가 서버에 남는다."
+    #    GD-8b 가 끝나 켰으므로 자물쇠를 **없애지 않고 지키는 대상을 바꾼다** —
+    #    이제 지키는 명제: **켤 거면 찢은 일기를 실제로 지울 수 있어야 한다.**
+    #    되돌려 false 로 두면 아래는 건너뛴다(지킬 게 없으므로). 그게 맞다.
+    if m and m.group(1) == "true":
+        # ⚠️ 이 파일의 관례는 **긍정문**이다 ("✅ ~이다"로 읽혀야 한다).
+        #    실패 문구로 적으면 통과했을 때 "✅ ~이 없다" 가 되어 로그가 거꾸로 읽힌다.
+        for fn in ("deleteEntryOnServer", "flushPendingDeletes"):
+            check(re.search(rf"function\s+{fn}\s*\(", store) is not None,
+                  f"{fn} 이 있다 — 서버에서 지울 방법이 존재한다")
+        tear = body_of(store, "tearEntry")
+        check(bool(tear), "tearEntry 본문을 찾았다")
+        check("deleteEntryOnServer" in tear,
+              "tearEntry 가 서버 삭제를 부른다 (화면에서만 사라지지 않는다)")
+        check("isDiaryServerOn" not in tear,
+              "삭제는 동의 게이트를 보지 않는다 (철회해도 지울 수 있다)")
+        check(re.search(r'@router\.delete\(\s*"/entries', router) is not None,
+              "서버에 삭제 엔드포인트가 있다")
+    else:
+        check(True, "DIARY_SERVER = false — 네트워크 0 (되돌린 상태라 삭제 경로 검사는 건너뛴다)")
     # 게이트가 실제로 쓰이는가 (선언만 하고 안 쓰면 무의미)
     check(store.count("DIARY_SERVER") >= 5,
           f"게이트가 저장 경로 전반에 걸려 있다 (참조 {store.count('DIARY_SERVER')}회)")

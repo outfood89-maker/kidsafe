@@ -28,6 +28,16 @@ function stripComments(s) {
   return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
+/** 소스에서 `const NAME = true|false` 를 읽는다. [B]·[C] 양쪽이 쓰므로 모듈 최상단에 둔다. */
+const flagOf = (src, name) => {
+  const m = stripComments(src).match(new RegExp(`${name}\\s*=\\s*(true|false)`));
+  expect(m, `${name} 상수를 못 찾았다 — 이름이 바뀌었으면 이 검사도 함께 고쳐라`).toBeTruthy();
+  return m[1] === "true";
+};
+
+/** 서버 저장이 켜져 있는가. 방침 문구가 갈리는 자리들의 기준점. */
+const SERVER_LIVE = () => flagOf(STORE, "DIARY_SERVER");
+
 describe("[A] 🔴 처리방침은 로그인 없이 열려야 한다", () => {
   it("/privacy 라우트가 존재한다", () => {
     expect(APP).toMatch(/path="\/privacy"/);
@@ -48,12 +58,6 @@ describe("[A] 🔴 처리방침은 로그인 없이 열려야 한다", () => {
 });
 
 describe("[B] 🔴 서버 저장 플래그와 방침 문구는 함께 움직인다", () => {
-  const flagOf = (src, name) => {
-    const m = stripComments(src).match(new RegExp(`${name}\\s*=\\s*(true|false)`));
-    expect(m, `${name} 상수를 못 찾았다 — 이름이 바뀌었으면 이 검사도 함께 고쳐라`).toBeTruthy();
-    return m[1] === "true";
-  };
-
   it("Privacy.DIARY_SERVER_LIVE === diaryStore.DIARY_SERVER", () => {
     const live = flagOf(PRIVACY, "DIARY_SERVER_LIVE");
     const real = flagOf(STORE, "DIARY_SERVER");
@@ -71,6 +75,30 @@ describe("[B] 🔴 서버 저장 플래그와 방침 문구는 함께 움직인�
     // 요약 카드와 제5조 두 곳에 나온다(의도된 중복 — 훑어보는 사람과 읽는 사람 둘 다 봐야 한다)
     expect(screen.getAllByText(/서버로 보내지 않습니다/).length).toBeGreaterThan(0);
   });
+
+  // 🔴 2026-08-08 신설 — 기존 검사는 '요약 카드'와 '제5조' 두 곳만 봤다.
+  //    그런데 방침 **맨 위**의 「먼저 알려드립니다」 는 분기 없이 하드코딩돼 있었다.
+  //    켰다면 맨 위는 "이 기기에서만 보입니다" 라고 단정하는데 제5조는 "서버에 저장됩니다" 라고 한다.
+  //    같은 문서가 서로 다른 말을 하는 것이라, 부모가 먼저 읽는 쪽이 거짓이 된다.
+  //    ⇒ 문구가 갈리는 자리를 **빠짐없이** 검사한다. 자리를 새로 만들면 여기에도 추가할 것.
+  it("🔴 '먼저 알려드립니다'(맨 위)도 함께 움직인다 — 제5조와 다른 말을 하면 안 된다", () => {
+    render(<MemoryRouter><Privacy /></MemoryRouter>);
+    if (SERVER_LIVE()) {
+      expect(
+        screen.queryByText(/^그림일기는 지금 이 기기에서만 보입니다$/),
+        "🔴 서버 저장을 켰는데 방침 맨 위는 여전히 '지금 이 기기에서만'이라고 단정한다 — 제5조와 모순이다",
+      ).toBeNull();
+      expect(
+        screen.getAllByText(/켜지 않으면 그림일기는 이 기기에서만/).length,
+        "켠 상태의 안내('켜지 않으면 이 기기에서만')가 맨 위에 없다",
+      ).toBeGreaterThan(0);
+    } else {
+      expect(
+        screen.getAllByText(/^그림일기는 지금 이 기기에서만 보입니다$/).length,
+        "꺼진 상태인데 맨 위에 '지금 이 기기에서만'이 없다",
+      ).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("[C] 받지 않은 동의를 받았다고 하지 않는다", () => {
@@ -81,17 +109,36 @@ describe("[C] 받지 않은 동의를 받았다고 하지 않는다", () => {
     }
   });
 
-  it("확정되지 않은 항목을 지어내지 않는다 (운영주체·보호책임자·시행일은 비어 있어야 한다)", () => {
+  // 🔴 2026-08-08 전환 — 원래는 "셋 다 null 이어야 한다"(지어내기 금지)였다.
+  //    방침을 시행하면서 오너 확정값으로 채웠으므로 검사를 **뒤집는다**: 켰다면 비어 있으면 안 된다.
+  //    법 제30조는 보호책임자(성명 **또는** 담당부서 명칭)와 연락처를 필수 기재사항으로 정한다.
+  //    ⚠️ '지어내기 금지'가 사라진 게 아니다 — 값은 오너가 정한 것이고(2026-08-08 '실명 없이'),
+  //       바꾸려면 오너 확인을 다시 받아야 한다. 특히 없는 부서 이름을 만들지 말 것.
+  it("🔴 서버 저장을 켰다면 보호책임자·시행일이 비어 있으면 안 된다 (법 제30조)", () => {
     const body = stripComments(PRIVACY);
-    for (const name of ["OPERATOR_NAME", "DPO_NAME", "EFFECTIVE_DATE"]) {
-      expect(body, `${name} 이 임의로 채워졌다 — 실제로 확정된 값인지 확인하고 이 검사를 갱신하라`)
-        .toMatch(new RegExp(`${name}\\s*=\\s*null`));
+    const isNull = (name) => new RegExp(`${name}\\s*=\\s*null`).test(body);
+    if (SERVER_LIVE()) {
+      expect(isNull("DPO_NAME"), "🔴 보호책임자가 비어 있다 — 법정 필수 기재사항이다").toBe(false);
+      expect(isNull("EFFECTIVE_DATE"), "🔴 시행일이 비어 있다 — '준비 중' 배너가 뜬 채로 서버 저장이 도는 셈이다").toBe(false);
+      expect(isNull("OPERATOR_NAME"), "🔴 운영 주체가 비어 있다").toBe(false);
     }
+    // 켜든 껐든 연락처는 항상 있어야 한다 — 없으면 열람·삭제 요구를 넣을 곳이 없다(법 제35·36조)
+    expect(body, "문의 연락처가 비어 있다").toMatch(/CONTACT_EMAIL\s*=\s*"[^"]+@[^"]+"/);
   });
 
-  it("시행일이 없으면 '준비 중'이라고 화면에 밝힌다", () => {
+  // 🔴 2026-08-08 — 시행일을 채우면서 **양방향** 검사로 바꿨다.
+  //    배너는 `{!EFFECTIVE_DATE && ...}` 라 시행일이 생기면 자동으로 사라진다.
+  //    한 방향만 검사하면 반대 사고(시행일을 적어놓고 '준비 중'이라고도 하는 것)를 못 잡는다.
+  it("시행일 유무와 '준비 중' 배너가 어긋나지 않는다", () => {
+    const noDate = /EFFECTIVE_DATE\s*=\s*null/.test(stripComments(PRIVACY));
     render(<MemoryRouter><Privacy /></MemoryRouter>);
-    expect(screen.getByText(/준비 중인 방침입니다/)).toBeTruthy();
+    if (noDate) {
+      expect(screen.getByText(/준비 중인 방침입니다/),
+        "시행일이 없는데 '준비 중'이라고 밝히지 않았다 — 시행 중인 방침처럼 보인다").toBeTruthy();
+    } else {
+      expect(screen.queryByText(/준비 중인 방침입니다/),
+        "🔴 시행일을 적어놓고 '준비 중'이라고도 한다 — 어느 쪽이 참인지 부모가 알 수 없다").toBeNull();
+    }
   });
 });
 
@@ -110,7 +157,9 @@ describe("[E] 불편한 사실이 맨 위에 있다", () => {
     // 7일 삭제는 iOS 한정이지만, '다른 기기에서 안 보인다'는 안드로이드·PC 도 똑같다.
     // 아이폰만 언급하면 안드로이드 쓰는 부모가 자기는 해당 없다고 읽는다.
     render(<MemoryRouter><Privacy /></MemoryRouter>);
-    expect(screen.getByText(/아이폰이든 안드로이드든 PC든 마찬가지입니다/)).toBeTruthy();
+    // ⚠️ 문장의 끝맺음("마찬가지입니다" / "아래가 그대로 적용됩니다")은 서버 저장 on·off 로 갈린다.
+    //    이 검사가 지키는 것은 어미가 아니라 **세 기기를 나란히 적었는가** 다. 거기까지만 못박는다.
+    expect(screen.getByText(/아이폰이든 안드로이드든 PC든/)).toBeTruthy();
     expect(screen.getAllByText(/아이폰·안드로이드·PC 모두 해당합니다/).length).toBeGreaterThan(0);
     // 세 가지 손실 경로가 다 적혀 있어야 한다 (하나만 적으면 나머지를 안전하다고 읽는다)
     expect(screen.getAllByText(/보호자 휴대전화에서 보이지 않습니다/).length).toBeGreaterThan(0);

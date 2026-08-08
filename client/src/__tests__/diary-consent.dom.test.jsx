@@ -109,9 +109,18 @@ describe("[C] 게이트는 두 겹 — 킬스위치 AND 동의", () => {
     expect(isDiaryServerOn("p1")).toBe(false);
   });
 
-  it("🔴 현재 배포 상태 — 킬스위치는 꺼져 있다", () => {
-    // 008 SQL 적용 + 동의 UI 확인 + 오너 승인 전까지 false 여야 한다.
-    expect(DIARY_SERVER).toBe(false);
+  // 🔴 2026-08-08 — 이 자리는 원래 `expect(DIARY_SERVER).toBe(false)` 였다.
+  //    "008 SQL + 동의 UI + 오너 승인 전까지 켜지 마라"는 자물쇠였고, 셋 다 충족돼 켰다.
+  //    자물쇠를 **없애지 않고 지키는 대상을 바꾼다** — 이제는 '켠 채로 무너지면 안 되는 것'을 지킨다.
+  //    다시 끄면 아래는 조용히 통과한다(지킬 게 없으므로). 그게 맞다.
+  it("🔴 켠 상태에서도 동의 없는 아이는 서버로 안 간다", () => {
+    if (!DIARY_SERVER) return;
+    setDiaryConsentFromProfiles([{ id: "kidYes", diaryServerOn: true }]);
+    // 대조군 — 이게 false 면 막은 게 아니라 기능이 죽은 것이다(아이가 일기를 못 옮긴다)
+    expect(isDiaryServerOn("kidYes"), "동의한 아이가 막혔다 — 기능이 죽었다").toBe(true);
+    // 정탐 — 목록에 아예 없는 아이, 그리고 잘못된 입력
+    expect(isDiaryServerOn("kidNo"), "🔴 동의 없는 아이가 열렸다").toBe(false);
+    expect(isDiaryServerOn(null), "🔴 빈 프로필ID가 열렸다").toBe(false);
   });
 });
 
