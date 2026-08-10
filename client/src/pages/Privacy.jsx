@@ -342,9 +342,12 @@ export default function Privacy() {
               <li>• 찜 목록·일정·차단 키워드 삭제</li>
               <li>• 그림일기 페이지 삭제</li>
               <li>• 보호자 닉네임·비밀번호 변경</li>
+              {/* B4(2026-08-10): 탈퇴가 '연락처로 요청'에서 '앱에서 바로'로 바뀌었다 */}
+              <li>• <strong style={{ color: C.text }}>회원 탈퇴</strong> <span style={{ color: C.dim }}>(내 계정 → 회원 탈퇴)</span></li>
             </ul>
           </Card>
-          <p>그 밖의 요청이나 <strong style={{ color: C.text }}>회원 탈퇴</strong>는 아래 연락처로 알려주시면 처리해 드립니다.</p>
+          <p><strong style={{ color: C.text }}>회원 탈퇴</strong>는 앱 안에서 바로 하실 수 있습니다. 탈퇴하시면 아이 프로필·시청기록·마음 체크인·주간 리포트와 <strong style={{ color: C.text }}>그림일기의 그림·음성 파일까지</strong> 지웁니다. <span style={{ color: C.dim }}>되돌릴 수 없고, 유예 기간을 두지 않습니다 — 법이 “지체 없이” 지우도록 정하고 있기 때문입니다.</span></p>
+          <p>그 밖의 요청은 아래 연락처로 알려주시면 처리해 드립니다.</p>
         </Section>
 
         <Section n="8" title="안전하게 지키기 위해 하는 일">

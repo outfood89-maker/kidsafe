@@ -594,6 +594,14 @@ export const verifyParentPin = async (profileId, pin) => {
   return response.data // { ok, hasPin }
 }
 
+// ── B4 회원 탈퇴 ─────────────────────────────────────────────
+// 🔴 되돌릴 수 없다. 부르기 전에 화면이 ①"탈퇴" 입력 ②비밀번호 재확인 둘 다 통과시켜야 한다.
+//    비밀번호는 여기로 넘기지 않는다 — 재확인은 Supabase 에 직접 하고, 서버는 토큰만 본다.
+export const deleteAccount = async () => {
+  const response = await axios.post(`${BASE_URL}/account/delete`, { confirm: "탈퇴" })
+  return response.data // { ok, deleted, files, tombstones }
+}
+
 // ── 관리자 전용 ──────────────────────────────────────────────
 
 export const getAdminFeedbacks = async () => {

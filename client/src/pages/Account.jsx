@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { FaArrowLeft, FaShieldAlt, FaUser, FaEnvelope, FaLock, FaSignOutAlt, FaTrash } from "react-icons/fa"
 import { useAuth } from "../contexts/AuthContext"
 import { supabase } from "../utils/supabase"
+import { deleteAccount } from "../utils/api"
 
 export default function Account() {
   const navigate = useNavigate()
@@ -22,9 +23,13 @@ export default function Account() {
   const [pwStatus, setPwStatus] = useState("idle")
   const [pwError, setPwError] = useState("")
 
-  // 탈퇴
+  // 탈퇴 (B4)
+  // 🔴 되돌릴 수 없다. 문턱을 둘 둔다 — ①"탈퇴" 입력 ②비밀번호 재확인.
+  //    ②가 필요한 이유: 로그인한 기기를 잠깐 빌린 사람(아이 포함)이 계정을 지울 수 있으면 안 된다.
   const [deleteConfirm, setDeleteConfirm] = useState("")
-  const [deleteStatus, setDeleteStatus] = useState("idle")
+  const [deletePw, setDeletePw] = useState("")
+  const [deleteStatus, setDeleteStatus] = useState("idle") // idle | loading | done
+  const [deleteError, setDeleteError] = useState("")
 
   useEffect(() => {
     setDisplayName(user?.user_metadata?.display_name || "")
@@ -74,15 +79,35 @@ export default function Account() {
   }
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirm !== "탈퇴") return
+    if (deleteConfirm !== "탈퇴" || !deletePw) return
+    setDeleteError("")
     try {
       setDeleteStatus("loading")
-      // service_role 키가 있어야 삭제 가능 — 현재는 백엔드 엔드포인트가 없으므로 임시 안내
-      alert("회원 탈퇴는 현재 관리자에게 문의해주세요. (outfood89@gmail.com)")
+
+      // ── ① 비밀번호 재확인 — Supabase 에 직접 한다 ──
+      //    🔴 비밀번호를 우리 서버로 보내지 않는다. 서버는 토큰만 본다.
+      const { error: pwErr } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: deletePw,
+      })
+      if (pwErr) {
+        setDeleteStatus("idle")
+        setDeleteError("비밀번호가 맞지 않아요.")
+        return
+      }
+
+      // ── ② 실제 삭제 (되돌릴 수 없는 지점) ──
+      await deleteAccount()
+
+      // ── ③ 세션 정리 후 첫 화면으로 ──
+      //    계정이 이미 없으므로 signOut 이 실패해도 무시한다 — 화면은 반드시 빠져나가야 한다.
+      setDeleteStatus("done")
+      try { await signOut() } catch { /* 계정이 사라진 뒤라 실패할 수 있다 */ }
+      navigate("/", { replace: true })
+    } catch (err) {
       setDeleteStatus("idle")
-      setDeleteConfirm("")
-    } catch {
-      setDeleteStatus("idle")
+      // 서버가 이유를 준 경우 그대로 보여준다(400 확인문구·502 등)
+      setDeleteError(err?.response?.data?.detail || "탈퇴 처리 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.")
     }
   }
 
@@ -210,23 +235,39 @@ export default function Account() {
             {/* 회원 탈퇴 */}
             <div className="p-5 rounded-2xl" style={{ backgroundColor: "#0E2A2A", border: "1px solid rgba(242,101,92,0.3)" }}>
               <h2 className="text-base font-semibold mb-1" style={{ color: "#F2655C" }}>회원 탈퇴</h2>
-              <p className="text-xs mb-4" style={{ color: "#90A9A8" }}>탈퇴하면 모든 자녀 프로필·시청기록이 삭제되며 복구할 수 없어요.</p>
-              <div className="flex gap-2">
+              {/* ⚠️ 무엇이 지워지는지 사실대로 적는다. '시청기록'만 적으면 아이 그림·음성이 남는 줄 안다 */}
+              <p className="text-xs mb-1.5" style={{ color: "#90A9A8" }}>
+                탈퇴하면 <strong style={{ color: "#EAF5F1" }}>아이 프로필·시청기록·마음 체크인·주간 리포트, 그리고 그림일기의 그림과 음성까지</strong> 모두 지워집니다.
+              </p>
+              <p className="text-xs mb-4" style={{ color: "#6B7E7C" }}>
+                되돌릴 수 없어요. 남기고 싶은 그림이 있다면 먼저 저장해 주세요.
+              </p>
+              <div className="flex flex-col gap-2">
                 <input
                   type="text"
                   value={deleteConfirm}
                   onChange={(e) => setDeleteConfirm(e.target.value)}
-                  placeholder='"탈퇴" 입력 후 버튼 클릭'
-                  className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
+                  placeholder='확인을 위해 "탈퇴" 를 입력해주세요'
+                  className="rounded-xl px-3 py-2.5 text-sm outline-none"
                   style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)", color: "#EAF5F1" }}
                 />
+                {/* 문턱 ② — 로그인된 기기를 잠깐 빌린 사람이 계정을 지울 수 없게 한다 */}
+                <input
+                  type="password"
+                  value={deletePw}
+                  onChange={(e) => setDeletePw(e.target.value)}
+                  placeholder="비밀번호를 한 번 더 입력해주세요"
+                  className="rounded-xl px-3 py-2.5 text-sm outline-none"
+                  style={{ backgroundColor: "#163635", border: "1px solid rgba(255,255,255,0.08)", color: "#EAF5F1" }}
+                />
+                {deleteError && <p className="text-xs px-1" style={{ color: "#F2655C" }}>⚠️ {deleteError}</p>}
                 <button
                   onClick={handleDeleteAccount}
-                  disabled={deleteConfirm !== "탈퇴" || deleteStatus === "loading"}
+                  disabled={deleteConfirm !== "탈퇴" || !deletePw || deleteStatus !== "idle"}
                   className="rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-40"
                   style={{ backgroundColor: "#F2655C", color: "white" }}
                 >
-                  탈퇴
+                  {deleteStatus === "loading" ? "지우는 중..." : deleteStatus === "done" ? "완료" : "탈퇴하기"}
                 </button>
               </div>
             </div>

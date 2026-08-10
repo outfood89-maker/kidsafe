@@ -44,6 +44,7 @@ ensure_data_files()
 from routers import search, analyze, chat, history, profiles, search_history, badges, favorites, blocked_keywords, alerts, game_bonus, feedback, admin_users, admin_stats, admin_audit, me, recommend, reports, checkins, schedules, kiddy_greeting, tts, care_signals
 from routers import diary_image  # AD-5: 그림일기 이미지 파이프라인 (feature/diary-v0 브랜치 전용)
 from routers import diary  # GD-8a: 그림일기 서버 저장(엔트리·메타·자산)
+from routers import account  # B4: 회원 탈퇴 (법 제36·38조 — 지체 없이 파기)
 from auth import require_admin  # GD-S0: /test-env 관리자 잠금용 (라우터와 동일 시점 import)
 
 # ── GD-S0 S3(2026-08-05): API 문서 공개 범위 ─────────────────────────────
@@ -99,6 +100,7 @@ app.include_router(tts.router, prefix="/tts")
 app.include_router(care_signals.router, prefix="/care-signals")
 app.include_router(diary_image.router, prefix="/diary-image")  # AD-5 (브랜치 전용)
 app.include_router(diary.router, prefix="/diary")  # GD-8a
+app.include_router(account.router, prefix="/account")  # B4 회원 탈퇴
 
 
 # GD-S0(2026-08-05) 판정: 🌐 공개 유지. Railway 헬스체크가 이 응답으로 서버 생존을 판단한다
