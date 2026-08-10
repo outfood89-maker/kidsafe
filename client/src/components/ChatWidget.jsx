@@ -31,6 +31,15 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
   const voice = useKiddyVoice();
   const prevListeningRef = useRef(false);   // listening true→false 전환 감지(자동 전송)
 
+  // 💸 TTS 한도(2026-08-10) — 걸리면 키디가 조용해진다. 이유를 말풍선으로 한 번 남긴다.
+  //   ⚠️ 반쪽이다: 4~7세는 글을 못 읽는다(미해결 질문). 그래도 침묵보다는 낫다.
+  const quotaShownRef = useRef(false);
+  useEffect(() => {
+    if (!voice.quotaNotice || quotaShownRef.current) return;
+    quotaShownRef.current = true;
+    setChatMessages((prev) => [...prev, { role: "assistant", content: voice.quotaNotice }]);
+  }, [voice.quotaNotice]);
+
   // 대화 수준 + 키디 음성 on/off — 상단 컨트롤. UI 취향이라 localStorage에 유지(오디오/대화는 저장 안 함).
   const [level, setLevel] = useState(() => {
     try { return localStorage.getItem("kidsafe_chat_level") || "beginner"; } catch { return "beginner"; }

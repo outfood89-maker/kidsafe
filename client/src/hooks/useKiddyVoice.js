@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { synthesizeKiddyVoice } from "../utils/api";
+import { synthesizeKiddyVoice, TTSQuotaError } from "../utils/api";
 
 // ── iOS 오디오 언락 풀 (오너 리포트 7/10: iOS에서 키디 음성 전부 무음) ──
 //   iOS 사파리는 '사용자 제스처 직후'가 아니면 Audio.play()를 차단한다. 키디 TTS는
@@ -370,6 +370,11 @@ export default function useKiddyVoice() {
   const genRef = useRef(0);          // 세대 — speak만 증가(이전 그룹의 늦은 합성응답 폐기)
   const lastKeyRef = useRef(null);   // 중복 호출 방지 키 (tone::text)
   const [hasAudio, setHasAudio] = useState(false);
+  // 💸 TTS 한도(429)에 걸렸을 때 서버가 준 아이용 문구 (2026-08-10).
+  //   🔴 그전까지 한도 실패가 null 로 뭉개져 **키디가 조용해지고 아무도 이유를 몰랐다.**
+  //   ⚠️ 이걸 말풍선으로 띄우는 것만으로는 반쪽이다 — 4~7세는 글을 못 읽는다.
+  //      제대로 알리려면 아이용 안내 설계가 따로 필요하다(미해결 질문).
+  const [quotaNotice, setQuotaNotice] = useState("");
 
   const stopCurrent = useCallback(() => {
     const s = srcNodeRef.current;
@@ -518,7 +523,14 @@ export default function useKiddyVoice() {
       clipsRef.current.push({ status: "pending", url: null });
     }
 
-    const blob = await synthesizeKiddyVoice({ text, tone });
+    let blob = null;
+    try {
+      blob = await synthesizeKiddyVoice({ text, tone });
+    } catch (e) {
+      // 한도면 이유를 남긴다. 다른 실패는 기존대로 조용히 넘어간다(음성은 보조 기능).
+      if (e instanceof TTSQuotaError || e?.quotaMessage) setQuotaNotice(e.quotaMessage || "");
+      blob = null;
+    }
     if (myGen !== genRef.current) return;          // 그새 새 대사(speak)로 갈아탐 → 폐기
 
     // WebAudio 기본 경로: mp3 → AudioBuffer 디코드(미지원/실패 시 엘리먼트 폴백용 Blob URL)
@@ -575,5 +587,5 @@ export default function useKiddyVoice() {
     elRef.current = null;
   }, [stopCurrent, revokeClips]);
 
-  return { speak, enqueue, replay, stop, hasAudio };
+  return { speak, enqueue, replay, stop, hasAudio, quotaNotice };
 }

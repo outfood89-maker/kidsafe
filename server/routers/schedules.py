@@ -21,6 +21,7 @@ import anthropic
 
 from auth import get_current_user
 from db import sb_select, sb_insert, sb_update, sb_delete
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-10)
 from routers.profiles import get_owned_profile
 
 router = APIRouter()
@@ -497,6 +498,11 @@ async def agent_create(data: AgentRequest, user: dict = Depends(get_current_user
     profile = await get_owned_profile(data.profileId, user["user_id"])
     profile_name = profile.get("name", "아이")
     uid = user["user_id"]
+
+    # 💸 비용 상한 (2026-08-10) — 자연어 일정 명령마다 Haiku(900토큰)를 부른다.
+    #   여기 한도가 없던 동안 무제한이었다. 부모가 쓰는 기능이라 하루 20회면 넉넉하다.
+    #   ⚠️ 소유권 검증 뒤 · LLM 호출 전. try 블록 바깥이라 429 가 삼켜지지 않는다.
+    check_and_consume("schedule_ai", data.profileId, uid)
 
     # 상대날짜 기준일: 클라이언트가 준 오늘(로컬), 없으면 서버 KST
     today = data.today if _valid_ymd(data.today) else datetime.now(KST).strftime("%Y-%m-%d")

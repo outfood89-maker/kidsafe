@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
 from auth import get_current_user
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-10)
 from services.tts import synthesize, strip_emoji, TTSConfigError
 
 router = APIRouter()
@@ -45,6 +46,12 @@ async def kiddy_tts(data: KiddyTTSRequest, user: dict = Depends(get_current_user
     # 빈 텍스트(또는 이모지만) → 읽을 게 없음. 프론트는 음성 없이 진행.
     if not strip_emoji(data.text or ""):
         return Response(status_code=204)
+
+    # 💸 비용 상한 (2026-08-10). ⚠️ 204(읽을 것 없음) **뒤**다 — 빈 텍스트로 한도를 태우지 않는다.
+    #   CLOVA 는 글자 수로 과금된다(월 100만 자 무료). 이 한도는 그 선을 넘지 않기 위한 것.
+    #   🔴 막히면 화면이 조용해진다 → useKiddyVoice 가 429 문구를 말풍선으로 띄운다.
+    #   profileId 를 받지 않아 계정 단위로 센다(scope_key 폴백).
+    check_and_consume("tts", "", user["user_id"])
 
     emotion = _TONE_EMOTION.get((data.tone or "bright").lower(), 2)
 

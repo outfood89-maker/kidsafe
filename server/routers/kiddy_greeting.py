@@ -15,6 +15,7 @@ import anthropic
 
 from auth import get_current_user
 from db import sb_select
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-10)
 from routers.profiles import get_owned_profile
 
 router = APIRouter()
@@ -81,6 +82,10 @@ async def get_kiddy_greeting(
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY 없음")
+
+    # 💸 비용 상한 (2026-08-10) — 화면 진입마다 불려서 무제한이면 반복 호출이 그대로 비용이다.
+    #   `try` 바깥에 둔다 — 안에 두면 except 가 429 를 삼킨다(backend.md).
+    check_and_consume("greeting", profileId, user["user_id"])
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
 

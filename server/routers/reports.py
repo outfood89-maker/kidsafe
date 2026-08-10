@@ -24,6 +24,7 @@ import anthropic
 from auth import get_current_user
 from db import sb_select, sb_insert, sb_delete
 from routers.analyze import get_cache_entries, parse_claude_json
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-10)
 from routers.profiles import get_owned_profile
 
 router = APIRouter()
@@ -288,6 +289,11 @@ async def get_coach(profileId: Optional[str] = "all", user: dict = Depends(get_c
         if prof:
             child_name = prof[0].get("name") or child_name
             child_age = prof[0].get("age") or 7
+
+    # 💸 비용 상한 (2026-08-10) — 여기서 **Sonnet** 을 부른다. 우리 경로 중 1회 원가가 제일 크다.
+    #   ⚠️ 캐시 히트는 위에서 이미 return 했다 → **여기 오면 진짜로 돈이 나간다.** 그 자리에 건다.
+    #   ⚠️ `try` 바깥 — 안에 두면 except 가 429 를 502 로 둔갑시킨다.
+    check_and_consume("report_coach", (scope_key if scope_key != "all" else ""), user_id)
 
     try:
         coach = await generate_coach(child_name, child_age, insights)
@@ -654,6 +660,11 @@ async def get_checkin_report(
     counts = _build_mood_counts(checkins)
     highlights = _build_highlights(checkins)
     total = len(checkins)
+
+    # 💸 비용 상한 (2026-08-10) — 여기서 **Sonnet** 을 부른다.
+    #   ⚠️ 캐시 히트는 위 3)에서 이미 return 했다 → 여기 오면 진짜로 돈이 나간다.
+    #   ⚠️ `try` 바깥 — 안에 두면 아래 except 가 429 를 502 로 둔갑시킨다(backend.md).
+    check_and_consume("report_weekly", profile_id, user_id)
 
     try:
         gen = await _generate_report_message(child_name, start, end, counts, total, highlights)

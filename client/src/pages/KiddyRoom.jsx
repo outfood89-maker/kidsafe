@@ -116,6 +116,13 @@ export default function KiddyRoom() {
     return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
   }, []);
 
+  // 💸 TTS 한도(2026-08-10) — 걸리면 키디가 **조용해진다.** 이유를 대사 자리에 남긴다.
+  //   ⚠️ 반쪽인 조치다: 4~7세는 글을 못 읽는다. 아이용 안내는 따로 설계해야 한다(미해결 질문).
+  //      그래도 아무 표시도 없는 것보다는 낫다 — 부모가 옆에 있으면 읽어줄 수 있다.
+  useEffect(() => {
+    if (voice.quotaNotice && mountedRef.current && !endedRef.current) setKiddyLine(voice.quotaNotice);
+  }, [voice.quotaNotice]);
+
   // 프로필 — localStorage '읽기'만 (KidHome 패턴). 대화는 저장하지 않는다.
   const [profile, setProfile] = useState(null);
   useEffect(() => {
@@ -228,6 +235,7 @@ export default function KiddyRoom() {
       // 💸 한도(429)면 서버가 준 아이용 문구를 그대로 (2026-08-10).
       //    "오류"로 뭉개면 아이는 고장난 줄 안다 — 한도는 고장이 아니다.
       const quotaMsg = e?.response?.status === 429 ? e?.response?.data?.detail?.message : null;
+      // 💸 TTS 한도는 voice.quotaNotice 로 따로 온다(챗봇 429 와 별개 경로).
       if (!endedRef.current && mountedRef.current) {
         setKiddyLine(quotaMsg || LINE_ERROR);
         setPhase("idle");

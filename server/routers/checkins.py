@@ -28,6 +28,7 @@ import anthropic
 from auth import get_current_user
 from db import sb_select, sb_upsert, sb_update
 from routers.profiles import get_owned_profile
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-10)
 from safety_lexicon import screen_text, fixed_response, is_high
 
 router = APIRouter()
@@ -403,6 +404,14 @@ async def react_to_answer(data: ReactRequest, user: dict = Depends(get_current_u
     crisis = screen_text(data.answer)
     if crisis:
         return {"reaction": fixed_response(crisis), "care": ("high" if is_high(crisis) else "soft")}
+
+    # 💸 비용 상한 (2026-08-10) — 여기 한도가 없던 동안 무제한이었다.
+    #   ⚠️ 위기 스크리닝 **뒤**다: 위기 발화는 LLM 을 안 부르므로 돈이 안 나간다.
+    #      앞에 두면 한도가 다 찼을 때 **아이 안전 응답이 막힌다.**
+    #   ⚠️ `try` **바깥**이다: 안에 두면 아래 except 가 429 를 502 로 둔갑시킨다(backend.md).
+    #   ReactRequest 에 profileId 가 없어 계정 단위로 센다(scope_key 폴백).
+    check_and_consume("checkin_react", "", user["user_id"])
+
     try:
         client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         response = await client.messages.create(

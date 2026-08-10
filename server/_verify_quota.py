@@ -404,6 +404,65 @@ with TestClient(app) as c:
     check("🔴 위기 응답도, 막힌 요청도 LLM 을 부르지 않았다",
           rec.count("anthropic") == before, f"{before} → {rec.count('anthropic')}")
 
+# ══════════════════════════════════════════════════════════════════════
+# 🔒 한도 커버리지 — **LLM·외부 API 를 부르는 경로에 한도가 다 걸렸는가**
+#
+# 🔴 이 검사가 이 파일에서 제일 중요하다. 2026-08-10 에 챗봇이 무제한인 걸 발견했는데,
+#    그때까지 검사는 **quota 를 쓰는 경로만** 봤다. 안 쓰는 경로는 존재조차 몰랐다
+#    (같은 날 care_signals 가 SQL 파일에 없어서 안 보였던 것과 같은 종류).
+#    ⇒ 이제 **라우터 전수**를 훑어 "돈 쓰는 코드가 있는데 한도가 없는 파일"을 찾는다.
+#       새 LLM 경로를 만들면 여기서 자동으로 걸린다.
+# ══════════════════════════════════════════════════════════════════════
+print("\n[K] 🔒 한도 커버리지 — 돈 쓰는 경로에 한도가 빠진 곳이 있는가")
+
+import os as _os      # noqa: E402
+import re as _re      # noqa: E402
+
+_ROUTERS = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "routers")
+
+# 돈이 나가는 신호 (외부 유료 API 호출)
+_SPEND = ("AsyncAnthropic", "anthropic.", "openai.com", "services.tts import", "synthesize(")
+
+# 한도가 없어도 되는 파일 — **이유를 함께 적는다.** 이유 없는 면제는 구멍이다.
+_EXEMPT = {
+    "analyze.py":  "usage 표(DB)로 하루 한도를 센다 — quota 보다 강하다(재시작에도 살아남음)",
+    "feedback.py": "관리자 전용(require_admin). 아이·부모가 못 부른다",
+}
+
+_missing, _covered = [], []
+for _fn in sorted(_os.listdir(_ROUTERS)):
+    if not _fn.endswith(".py") or _fn == "__init__.py":
+        continue
+    _src = open(_os.path.join(_ROUTERS, _fn), encoding="utf-8").read()
+    if not any(sig in _src for sig in _SPEND):
+        continue                                    # 돈을 안 쓰는 라우터
+    if "check_and_consume(" in _src:
+        _covered.append(_fn)
+    elif _fn in _EXEMPT:
+        pass
+    else:
+        _missing.append(_fn)
+
+check(f"돈 쓰는 라우터를 {len(_covered) + len(_missing) + len(_EXEMPT)}개 찾았다 (파서가 헛돌지 않았다)",
+      len(_covered) >= 4, f"한도 있음: {_covered}")
+check("🔴 한도가 빠진 라우터 0개 — 새 LLM 경로를 만들면 여기서 걸린다",
+      not _missing, f"발견: {_missing} · 면제: {sorted(_EXEMPT)}")
+
+# 🔴 대조군 — 면제 목록이 실제로 그 이유를 갖고 있는가 (이유 없는 면제 = 구멍)
+for _f, _why in sorted(_EXEMPT.items()):
+    _p = _os.path.join(_ROUTERS, _f)
+    check(f"면제 {_f} 가 실재한다 — {_why}", _os.path.exists(_p))
+
+# 🔴 새 종류를 LIMITS 에 넣고 라우터에 안 걸면? 반대 방향도 본다
+_used = set()
+for _fn in _os.listdir(_ROUTERS):
+    if _fn.endswith(".py"):
+        _used |= set(_re.findall(r'check_and_consume\(\s*"([a-z_]+)"',
+                                 open(_os.path.join(_ROUTERS, _fn), encoding="utf-8").read()))
+_declared = set(quota.LIMITS) - {"analyze_deep"}   # analyze_deep 은 analyze.py 가 DB 로 센다
+check("🔴 LIMITS 에 선언만 하고 아무도 안 쓰는 종류가 없다",
+      not (_declared - _used), f"안 쓰이는 종류: {sorted(_declared - _used)}")
+
 app.dependency_overrides.clear()
 quota._reset_all()
 

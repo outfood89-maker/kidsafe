@@ -316,6 +316,22 @@ export const reactToCheckinStream = async (payload, onChunk) => {
 //  - tone: 'calm'(😢😡 위로=차분) | 'bright'(😄🙂😐 밝게)
 // ⚠️ 다시듣기는 받은 Blob을 메모리에 들고 재생(추가 호출 0). 디스크/스토리지 저장 금지(정책).
 //   (개정 7/10) STT/TTS 자동 오디오는 비저장 유지. 단, 사용자가 명시적으로 남긴 음성 편지·메모(diaryAudioStore)는 예외 저장 — 오너 확정.
+// 💸 한도(429)로 막혔을 때 호출부가 알 수 있게 하는 신호 (2026-08-10).
+//   🔴 그전까지는 실패가 전부 null 로 뭉개져 **키디가 조용해지고 아무도 이유를 몰랐다.**
+//   ⚠️ responseType:'blob' 이라 에러 본문도 Blob 으로 온다 → 텍스트로 풀어 JSON 을 읽는다.
+export class TTSQuotaError extends Error {
+  constructor(message) { super(message || 'tts-quota'); this.name = 'TTSQuotaError'; this.quotaMessage = message }
+}
+
+const readQuotaMessage = async (err) => {
+  try {
+    const d = err?.response?.data
+    const raw = (d && typeof d.text === 'function') ? await d.text() : d
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return parsed?.detail?.message || ''
+  } catch { return '' }
+}
+
 export const synthesizeKiddyVoice = async ({ text, tone = 'bright' }) => {
   if (!text || !text.trim()) return null
   try {
@@ -331,7 +347,11 @@ export const synthesizeKiddyVoice = async ({ text, tone = 'bright' }) => {
     // 전송 과정에서 타입이 비거나 어긋나도 안전하게 audio/mpeg로 강제 정규화(7/10 iOS 무음 대응).
     if (!blob.type || !blob.type.startsWith('audio/')) return new Blob([blob], { type: 'audio/mpeg' })
     return blob
-  } catch {
+  } catch (e) {
+    // 💸 한도(429)만 따로 알린다 — 나머지 실패와 원인이 다르고, 알려야 고칠 수 있다.
+    if (e?.response?.status === 429) {
+      throw new TTSQuotaError(await readQuotaMessage(e))
+    }
     // 키 오류·네트워크·CLOVA 실패(204/502) → 음성 없이 진행
     // ⚠️ 프로덕션 무음이면 제일 먼저 Railway 환경변수 CLOVA_VOICE_CLIENT_ID/SECRET 확인 (7/10 실사고 — 서버는 키 없으면 204)
     return null
