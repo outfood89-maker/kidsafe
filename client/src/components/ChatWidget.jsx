@@ -129,8 +129,15 @@ export default function ChatWidget({ onClose, isOpen = true, mobileClass = "", d
         voice.stop();
         voice.speak(data.reply, "bright");
       }
-    } catch {
-      setChatMessages((prev) => [...prev, { role: "assistant", content: "앗, 오류가 생겼어. 다시 말해줘! 😅" }]);
+    } catch (e) {
+      // 💸 한도(429)면 서버가 준 **아이용 문구**를 그대로 보여준다 (2026-08-10).
+      //    일반 오류 문구로 뭉개면 아이는 "고장났다"고 읽는다 — 한도는 고장이 아니다.
+      //    문구는 quota.LIMITS["chat"].msg_min / msg_day 에 있다.
+      const quotaMsg = e?.response?.status === 429 ? e?.response?.data?.detail?.message : null;
+      setChatMessages((prev) => [...prev, {
+        role: "assistant",
+        content: quotaMsg || "앗, 오류가 생겼어. 다시 말해줘! 😅",
+      }]);
     } finally {
       setChatLoading(false);
     }

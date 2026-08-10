@@ -320,6 +320,90 @@ with TestClient(app) as c:
           any("openai.com/v1/images" in str(a[1][0]) for a in rec.calls if a[0] == "http.post"),
           f"{[a[1][0] for a in rec.calls if a[0] == 'http.post']}")
 
+# ══════════════════════════════════════════════════════════════════════
+# 💬 키디 챗봇 한도 (2026-08-10 신설)
+#
+# 🔴 왜 늦게 붙었나: 그림 생성은 40원이라 눈에 띄어 먼저 막았는데, 챗봇은 **싸지만 무한**이었다.
+#    1회 5원이라도 하루 10만 회면 50만원 — 싼 것에 한도가 없는 쪽이 더 위험했다.
+#    quota 를 쓰는 경로만 검사가 봤고, **안 쓰는 경로는 아무도 안 봤다**(같은 날 care_signals 와 같은 종류).
+# ══════════════════════════════════════════════════════════════════════
+print("\n[J] 💬 키디 챗봇 — 한도가 실제로 걸리는가")
+
+import routers.chat as chat_mod  # noqa: E402
+
+fake_chat = FakeAnthropic(rec, "안녕! 나는 키디야.").install(chat_mod)
+
+
+def say(client, text="오늘 뭐 하고 놀까?"):
+    return client.post("/chat", json={"messages": [{"role": "user", "content": text}],
+                                      "profileName": "테스트", "profileAge": 7})
+
+
+with TestClient(app) as c:
+    quota._reset_all()
+    rec.clear()
+
+    # 🔴 대조군 먼저 — 막는 것만 보면 절반이다
+    day = quota.LIMITS["chat"]["per_day"]
+    per_min = quota.LIMITS["chat"]["per_min"]
+    r1 = say(c)
+    check("🔴 대조군 — 평범한 대화는 200 이다", r1.status_code == 200, f"{r1.status_code} {r1.text[:150]}")
+    check("   그 대화가 실제로 Anthropic 을 불렀다", rec.count("anthropic") >= 1, str(rec.names()))
+
+    # 분당 한도
+    quota._reset_all(); rec.clear()
+    codes = [say(c).status_code for _ in range(per_min + 1)]
+    check(f"🔴 대조군 — 분당 {per_min}회까지는 전부 통과", codes[:per_min] == [200] * per_min, str(codes))
+    check(f"{per_min + 1}번째는 429 로 막힌다", codes[-1] == 429, str(codes))
+    llm_calls = rec.count("anthropic")
+    check(f"🔴 막힌 뒤 LLM 호출은 {per_min}회뿐 (= 돈이 안 나간다)", llm_calls == per_min, f"실제 {llm_calls}회")
+
+    # 사유·문구
+    quota._reset_all(); rec.clear()
+    for _ in range(per_min):
+        say(c)
+    blocked = say(c)
+    detail = blocked.json().get("detail", {})
+    check("사유가 minute 로 구분된다", detail.get("scope") == "minute", str(detail))
+    check("🔴 429 가 {ok:false} 로 둔갑하지 않는다 (검사를 try 바깥에 두었나)",
+          "ok" not in blocked.json(), str(blocked.json())[:200])
+    # 🔴 "그림 이라는 단어가 없다" 만 보면 헐겁다 — 기본 분당 문구에도 '그림'이 없어서
+    #    분기를 통째로 지워도 통과한다(2026-08-10 차단시험 ⑦이 그렇게 뚫렸다).
+    #    ⇒ **설정한 문구가 실제로 그대로 나오는가** 를 본다.
+    check("🔴 설정한 분당 문구가 그대로 나온다 (기본 문구로 새지 않는다)",
+          detail.get("message") == quota.LIMITS["chat"].get("msg_min"),
+          f"{detail.get('message')!r} vs {quota.LIMITS['chat'].get('msg_min')!r}")
+    check("   챗봇 문구가 비어 있지 않다", bool(str(quota.LIMITS["chat"].get("msg_min") or "").strip()))
+    check("🔴 문구에 '그림' 이 없다 (대화를 했는데 '그림을 많이 그렸어요'면 사실 왜곡)",
+          "그림" not in str(detail.get("message", "")), str(detail.get("message")))
+
+    # 🚨 위기 발화는 한도와 무관해야 한다 — 안전 기능이 한도로 막히면 안 된다
+    quota._reset_all(); rec.clear()
+    # ⚠️ 80번을 연속으로 부르면 **분당(15)에 먼저 걸려** 하루 한도를 볼 수 없다.
+    #    그래서 하루 카운터만 소진 상태로 세팅한다(기존 '날짜 경계' 검사와 같은 방식).
+    quota._day[quota.scope_key("chat", "", USER_A)] = (quota.today_kst(), day)
+    over = say(c)
+    check(f"🔴 하루 {day}회를 넘기면 429", over.status_code == 429, f"{over.status_code}")
+    d_over = over.json().get("detail", {})
+    check("   사유가 day 로 구분된다", d_over.get("scope") == "day", str(d_over))
+    # 🔴 하루 문구도 본다. 분당만 검사하면 여기가 그림일기 기본값("오늘은 그림을 많이 그렸어요")으로
+    #    새어도 통과한다 — 대화를 했는데 그림 얘기를 하는 것이다.
+    check("🔴 설정한 하루 문구가 그대로 나온다",
+          d_over.get("message") == quota.LIMITS["chat"].get("msg_day"),
+          f"{d_over.get('message')!r} vs {quota.LIMITS['chat'].get('msg_day')!r}")
+    check("   하루 문구가 비어 있지 않다", bool(str(quota.LIMITS["chat"].get("msg_day") or "").strip()))
+    check("🔴 하루 문구에도 '그림' 이 없다", "그림" not in str(d_over.get("message", "")),
+          str(d_over.get("message")))
+    crisis = say(c, "죽고 싶어")
+    check("🔴 한도가 다 찬 뒤에도 **위기 발화는 응답한다** (안전 기능이 한도로 막히면 안 된다)",
+          crisis.status_code == 200, f"{crisis.status_code} {crisis.text[:150]}")
+    check("   그 응답은 사람이 검수한 고정 문구다 (LLM 을 안 탄다)",
+          bool(crisis.json().get("care")), str(crisis.json())[:200])
+    before = rec.count("anthropic")
+    say(c, "다른 얘기 하자")
+    check("🔴 위기 응답도, 막힌 요청도 LLM 을 부르지 않았다",
+          rec.count("anthropic") == before, f"{before} → {rec.count('anthropic')}")
+
 app.dependency_overrides.clear()
 quota._reset_all()
 

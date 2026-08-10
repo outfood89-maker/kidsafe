@@ -225,8 +225,11 @@ export default function KiddyRoom() {
       data = await sendChatMessage(next, profile?.name ?? null, profile?.age ?? null);
     } catch (e) {
       console.error("키디의 방 대화 실패:", e);
+      // 💸 한도(429)면 서버가 준 아이용 문구를 그대로 (2026-08-10).
+      //    "오류"로 뭉개면 아이는 고장난 줄 안다 — 한도는 고장이 아니다.
+      const quotaMsg = e?.response?.status === 429 ? e?.response?.data?.detail?.message : null;
       if (!endedRef.current && mountedRef.current) {
-        setKiddyLine(LINE_ERROR);
+        setKiddyLine(quotaMsg || LINE_ERROR);
         setPhase("idle");
       }
       return;

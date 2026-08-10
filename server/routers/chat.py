@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from auth import get_current_user  # GD-A2: 미인증 호출 차단
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-10) — 인증만으론 무한 호출을 못 막는다
 from safety_lexicon import screen_text, fixed_response, is_high
 
 router = APIRouter()
@@ -115,6 +116,21 @@ async def chat_with_kiddy(data: ChatRequest, user: dict = Depends(get_current_us
     crisis = screen_text(last_user)
     if crisis:
         return {"reply": fixed_response(crisis), "care": ("high" if is_high(crisis) else "soft")}
+
+    # ── 💸 비용 상한 (2026-08-10 신설) ────────────────────────────────────
+    # 🔴 여기 한도가 없던 동안 **인증만 통과하면 무한 호출**이었다. 초당 몇 번이든.
+    #    1회 5원이라도 하루 10만 회면 50만원 — 싼 것에 한도가 없는 쪽이 더 위험했다.
+    #
+    # ⚠️ 위치가 중요하다. 두 가지 다:
+    #   ① 위기 스크리닝 **뒤**  — 위기 발화는 LLM 을 안 부르므로 돈이 안 나간다.
+    #      여기서 한도로 막으면 **아이 안전 기능이 막힌다.** 절대 안 된다.
+    #      (한도를 우회하려고 위기 문장을 보내도 얻는 게 없다 — LLM 을 안 타니까)
+    #   ② `try` **바깥** — HTTPException 도 Exception 의 하위라, try 안에 두면
+    #      아래 `except Exception` 이 429 를 삼켜 500 으로 둔갑시킨다(.claude/rules/backend.md).
+    #
+    # profileId 를 안 넘긴다 → scope_key 가 계정 단위로 폴백한다. 의도한 것이다:
+    #   아이별로 세면 "이 아이가 오늘 몇 번 말했나"가 서버에 남는다(윤리선).
+    check_and_consume("chat", "", user["user_id"])
 
     # 수준 검증 — 모르는 값이면 초급으로 안전 폴백. max_tokens 도 수준별(고급일수록 길게 허용).
     level = data.level if data.level in LEVEL_GUIDE else "beginner"
