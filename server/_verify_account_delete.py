@@ -174,8 +174,18 @@ def main() -> int:
     #    care_signals 는 대시보드에서 만들어져 SQL 파일에 없었고, 그래서 이 검사가
     #    "설명되지 않는 표 0개"라고 초록불을 켰다. 실물엔 위기 신호가 남고 있었다.
     if os.path.exists(DB_SNAPSHOT):
-        snap = {l.strip() for l in read(DB_SNAPSHOT).splitlines()
-                if l.strip() and not l.startswith("#")}
+        # 형식: 표이름|판정(auth|profiles|none) — pg_constraint 가 답한 **실물**이다.
+        verdict = {}
+        for l in read(DB_SNAPSHOT).splitlines():
+            l = l.strip()
+            if not l or l.startswith("#"):
+                continue
+            name, _, v = l.partition("|")
+            verdict[name.strip()] = (v.strip() or "none")
+        snap = set(verdict)
+        bad_v = sorted(t for t, v in verdict.items() if v not in ("auth", "profiles", "none"))
+        check(not bad_v, f"스냅샷 판정값이 전부 auth/profiles/none 이다 (이상: {bad_v or '없음'})")
+
         missing = sorted(snap - set(tables) - set(UNDOCUMENTED_OK))
         check(len(snap) >= 25, f"DB 스냅샷에서 표 {len(snap)}개를 읽었다")
         check(not missing,
@@ -192,19 +202,38 @@ def main() -> int:
         universe = sorted(snap | set(tables))
     else:
         check(False, f"🔴 DB 표 스냅샷이 있다 ({DB_SNAPSHOT}) — 없으면 [C] 가 SQL 파일만 보게 된다")
-        universe = sorted(tables)
+        verdict, universe = {}, sorted(tables)
 
     # account.py 가 직접 지우는 표
     deleted_in_code = set(re.findall(r'sb_delete\(\s*"([a-z_]+)"', src))
+
+    # 🔴 SQL 파일이 말하는 것 vs DB 가 실제로 하는 것.
+    #    파일에 cascade 를 적어놓고 **실행하지 않으면** 여기서 걸린다.
+    #    (검사가 SQL 파일만 보던 시절엔 이 경우도 통과했다 — 글자만 맞으면 됐으니까)
+    written_only = []
+    for name in sorted(verdict):
+        tbody, alt = tables.get(name, ""), alter_fks.get(name, set())
+        said = ("auth" if (cascades_from(tbody, "auth.users") or "auth.users" in alt)
+                else "profiles" if (cascades_from(tbody, "public.profiles")
+                                    or cascades_from(tbody, "profiles") or "profiles" in alt)
+                else "none")
+        if said != "none" and verdict[name] == "none":
+            written_only.append(f"{name}(파일:{said} / 실물:none)")
+    check(not written_only,
+          f"🔴 SQL 에 적은 cascade 가 실물에도 있다 (어긋남: {written_only or '없음'}) "
+          "— 어긋나면 그 SQL 을 아직 실행하지 않은 것이다")
 
     unexplained, by_auth, by_profile, survivors = [], [], [], []
     for name in universe:
         tbody = tables.get(name, "")
         alt = alter_fks.get(name, set())
-        if cascades_from(tbody, "auth.users") or "auth.users" in alt:
+        # 🔴 실물 판정(pg_constraint)이 우선. SQL 파일 파싱은 스냅샷에 없는 표에만 쓴다.
+        v = verdict.get(name)
+        if v == "auth" or (v is None and (cascades_from(tbody, "auth.users") or "auth.users" in alt)):
             by_auth.append(name)
-        elif (cascades_from(tbody, "public.profiles") or cascades_from(tbody, "profiles")
-              or "profiles" in alt):
+        elif v == "profiles" or (v is None and (cascades_from(tbody, "public.profiles")
+                                                or cascades_from(tbody, "profiles")
+                                                or "profiles" in alt)):
             by_profile.append(name)
         elif name in deleted_in_code:
             pass  # 코드가 지운다

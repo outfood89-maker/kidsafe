@@ -34,6 +34,8 @@ CHECKS = [
     # 계약검사는 '코드가 그렇게 생겼는가'까지다. 아래는 '실제로 맞게 판정하는가'를 본다.
     ("🧹 고아 자산 판정(GD-8b)", "_verify_orphan_sweep.py"),
     ("🗑 회원 탈퇴 계약(B4)", "_verify_account_delete.py"),
+    # 계약검사는 '코드가 그렇게 생겼는가'까지다. 아래는 **실제로 실행해서** 순서·대상·실패 처리를 본다.
+    ("🗑 회원 탈퇴 실행(B4)", "_verify_account_delete_run.py"),
     ("가짜 주입 도구 자체 점검",     "_verify_fakes.py"),
 ]
 

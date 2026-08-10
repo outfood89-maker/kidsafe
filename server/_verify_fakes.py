@@ -205,9 +205,17 @@ class FakeDB:
 
     NAMES = ("sb_select", "sb_insert", "sb_update", "sb_delete")
 
-    def __init__(self, recorder, select_returns=None):
+    def __init__(self, recorder, select_returns=None, table_returns=None):
+        """table_returns: {"select:diary_assets": [...], "insert:diary_deletions": [...]}
+        표+동작별로 다른 응답을 준다. 없으면 기존 동작(select→select_returns / 나머지→{}).
+
+        ⚠️ 2026-08-10 추가. 한 요청이 여러 표를 순서대로 만지는 흐름(회원 탈퇴)에서는
+           모든 select 가 같은 값을 돌려주면 그 흐름을 재현할 수 없다.
+           특히 insert 가 **행을 돌려줘야** 그다음 단계가 돈다.
+        """
         self.rec = recorder
         self.select_returns = select_returns if select_returns is not None else []
+        self.table_returns = table_returns or {}
         self._originals = []
 
     def install(self, *modules):
@@ -228,8 +236,20 @@ class FakeDB:
         return self
 
     def _make(self, name):
+        op = name.replace("sb_", "")
+
         async def fake(*args, **kwargs):
-            self.rec.log(f"db.{name.replace('sb_', '')}:{args[0] if args else '?'}", *args, **kwargs)
+            table = args[0] if args else "?"
+            self.rec.log(f"db.{op}:{table}", *args, **kwargs)
+            key = f"{op}:{table}"
+            if key in self.table_returns:
+                got = self.table_returns[key]
+                # 🔴 callable 이면 요청 인자를 받아 응답을 만든다.
+                #    고정값만 돌려주면 "insert 한 것과 다른 행"이 돌아와 검사가 틀린 답을 준다
+                #    (2026-08-10 실제로 경로가 2배로 세어졌다).
+                if callable(got):
+                    got = got(*args, **kwargs)
+                return list(got) if isinstance(got, list) else got
             return list(self.select_returns) if name == "sb_select" else {}
         return fake
 
@@ -277,34 +297,70 @@ class FakeHTTP:
        헬퍼 이름이 바뀌거나 오타가 나면 조용히 안 걸린다(2026-08-05 사고 3).
     """
 
-    def __init__(self, recorder, json_body=None, status=200):
+    def __init__(self, recorder, json_body=None, status=200, status_map=None):
+        """status_map: {"url 조각": 상태코드} — 특정 엔드포인트만 실패시킬 때.
+
+        ⚠️ 2026-08-10 추가. 탈퇴처럼 **중간이 실패했을 때 뒷단이 안 도는가**를 봐야 하는
+           검사에는 "전부 성공" 가짜로는 부족하다. 실패를 만들 수 있어야 그 뒤를 볼 수 있다.
+        """
         self.rec = recorder
         self.json_body = json_body if json_body is not None else {"items": []}
         self.status = status
+        self.status_map = status_map or {}
 
-    def install(self, *modules):
-        import types
-        rec, body, status = self.rec, self.json_body, self.status
+    def client(self):
+        """httpx.AsyncClient 를 흉내내는 객체 하나. 모듈이 클라이언트를 캐시하는 경우
+        (storage._get_client 처럼) httpx 를 갈아끼워도 안 먹으므로 이걸 직접 넘긴다."""
+        return self._make_client_class()()
+
+    def _make_client_class(self):
+        rec, body, default_status, smap = self.rec, self.json_body, self.status, self.status_map
+
+        def _status_for(url):
+            for frag, code in smap.items():
+                if frag in str(url):
+                    return code
+            return default_status
 
         class _Resp:
-            status_code = status
-            def json(self): return body
-            def raise_for_status(self): pass
+            def __init__(self, status=default_status, b=body):
+                self.status_code = status
+                self._b = b
+            def json(self): return self._b
+            def raise_for_status(self):
+                # ⚠️ 실제 httpx 처럼 4xx·5xx 에서 던진다. 안 던지면 호출부의
+                #    try/except 방어막이 한 번도 안 밟혀 '거짓 통과'가 된다.
+                if self.status_code >= 400:
+                    raise RuntimeError(f"HTTP {self.status_code}")
             @property
-            def text(self): return str(body)
+            def text(self): return str(self._b)
 
         class _Client:
             def __init__(self, *a, **k): pass
             async def get(self, url, **kw):
-                rec.log("http.get", url, **kw); return _Resp()
+                rec.log("http.get", url, **kw); return _Resp(_status_for(url))
             async def post(self, url, **kw):
-                rec.log("http.post", url, **kw); return _Resp()
+                rec.log("http.post", url, **kw); return _Resp(_status_for(url))
+            async def delete(self, url, **kw):
+                rec.log("http.delete", url, **kw); return _Resp(_status_for(url))
+            async def put(self, url, **kw):
+                rec.log("http.put", url, **kw); return _Resp(_status_for(url))
+            async def patch(self, url, **kw):
+                rec.log("http.patch", url, **kw); return _Resp(_status_for(url))
+            async def request(self, method, url, **kw):
+                rec.log(f"http.{str(method).lower()}", url, **kw); return _Resp(_status_for(url))
             async def aclose(self): pass
             async def __aenter__(self): return self
             async def __aexit__(self, *a): return False
 
+        self._Resp = _Resp
+        return _Client
+
+    def install(self, *modules):
+        import types
+        _Client = self._make_client_class()
         for mod in modules:
-            patch(mod, "httpx", types.SimpleNamespace(AsyncClient=_Client, Response=_Resp))
+            patch(mod, "httpx", types.SimpleNamespace(AsyncClient=_Client, Response=self._Resp))
         return self
 
 
@@ -353,6 +409,41 @@ if __name__ == "__main__":
         t("sb_* 를 못 찾으면 에러가 난다", False)
     except RuntimeError:
         t("sb_* 를 못 찾으면 에러가 난다", True)
+
+    # ③-2 FakeDB 표별 응답 (2026-08-10 추가)
+    import asyncio
+    rec3 = Recorder()
+    mod3 = types.SimpleNamespace(sb_select=None, sb_insert=None, sb_update=None, sb_delete=None)
+    FakeDB(rec3, select_returns=[{"기본": 1}], table_returns={
+        "select:diary_assets": [{"표별": 1}],
+        # 🔴 callable — 넣은 값을 그대로 돌려준다. 고정값이면 검사가 틀린 답을 낸다
+        "insert:diary_deletions": lambda _t, row, *a, **k: [{"paths": list(row.get("paths") or [])}],
+    }).install(mod3)
+    t("표별 응답이 우선한다", asyncio.run(mod3.sb_select("diary_assets")) == [{"표별": 1}])
+    t("지정 안 한 표는 기존 동작(select_returns)", asyncio.run(mod3.sb_select("history")) == [{"기본": 1}])
+    t("insert 기본은 여전히 {} 다 (하위호환)", asyncio.run(mod3.sb_insert("history", {})) == {})
+    t("callable 이 요청 인자를 받는다",
+      asyncio.run(mod3.sb_insert("diary_deletions", {"paths": ["p1", "p2"]})) == [{"paths": ["p1", "p2"]}])
+
+    # ③-3 FakeHTTP 확장 (2026-08-10 추가) — delete/request 와 URL 별 실패
+    rec4 = Recorder()
+    fh = FakeHTTP(rec4, {"ok": 1}, status=200, status_map={"/fail/": 500})
+    cli = fh.client()
+    t("delete 를 지원한다", asyncio.run(cli.delete("https://x/ok/")).status_code == 200)
+    t("request(DELETE) 도 지원한다",
+      asyncio.run(cli.request("DELETE", "https://x/ok/")).status_code == 200)
+    t("🔴 status_map 으로 특정 URL 만 실패시킨다",
+      asyncio.run(cli.get("https://x/fail/y")).status_code == 500)
+    t("대조군 — 매칭 안 되는 URL 은 기본 상태다",
+      asyncio.run(cli.get("https://x/ok/y")).status_code == 200)
+    _r = asyncio.run(cli.get("https://x/fail/y"))
+    try:
+        _r.raise_for_status()
+        t("🔴 4xx·5xx 에서 raise_for_status 가 던진다", False)
+    except Exception:
+        t("🔴 4xx·5xx 에서 raise_for_status 가 던진다", True)
+    t("메서드가 이름으로 구분돼 기록된다",
+      {"http.delete", "http.get"} <= set(rec4.names()))
 
     # ④ block_dotenv 가 실제로 막는가
     import dotenv
