@@ -1,0 +1,56 @@
+# 실제 Supabase DB 의 public 표 전수 스냅샷
+#
+# 🔴 왜 이 파일이 있는가 (2026-08-10 실사고)
+#   `_verify_account_delete.py` [C] 는 원래 server/sql/*.sql 만 읽어서
+#   "탈퇴하면 이 표는 어떻게 되지?"에 답이 없는 표를 찾았다. 그런데
+#   **SQL 파일이 실물의 전부가 아니었다** — care_signals 는 대시보드에서
+#   직접 만들어져 파일에 정의가 없었고, 검사는 그 표의 존재조차 몰랐다.
+#   결과: 아이의 위기 신호가 프로필 삭제·탈퇴 양쪽에서 남고 있었는데
+#   검사는 "설명되지 않는 표 0개"라고 초록불을 켰다.
+#
+#   ⇒ 표를 손으로 세지 않게 만든 것까지는 맞았다.
+#      틀린 것은 **기계에게 읽힌 원본이 진실인지 의심하지 않은 것**이다.
+#
+# 🔄 갱신 방법 — 표를 만들거나 지웠으면 반드시 여기도 고칠 것
+#   Supabase → SQL Editor 에서:
+#
+#     select table_name from information_schema.tables
+#     where table_schema = 'public' and table_type = 'BASE TABLE'
+#     order by 1;
+#
+#   결과를 아래 목록에 그대로 반영한다.
+#   ⚠️ 갱신을 잊으면 검사가 "스냅샷이 최신이다"에서 걸린다(양방향으로 본다).
+#
+# 최종 갱신: 2026-08-10 (오너 실행 · 31개)
+#   · 33개였다가 011 로 backup_checkins_judgeweek · backup_history_judgeweek 를 버려 31개.
+accounts
+alert_settings
+alerts
+analysis_cache
+audit_log
+badges
+blocked_keywords
+care_signals
+channel_scores
+daily_checkins
+diary_assets
+diary_consents
+diary_deletions
+diary_entries
+diary_meta
+donations
+favorites
+feedback
+game_bonus
+history
+parent_reports
+payments
+pending_rules
+profiles
+prompt_rules
+report_coach
+schedules
+searches
+subscriptions
+trusted_channels
+usage

@@ -49,7 +49,12 @@ from pydantic import BaseModel
 
 from auth import get_current_user, SUPABASE_URL, SUPABASE_SECRET_KEY
 from db import sb_select, sb_insert, sb_delete
-from storage import sb_storage_remove
+# 🔴 파일 삭제 + 영수증 닫기는 GD-8b 의 _sweep_one 한 벌만 쓴다.
+#    처음엔 "한 벌만 유지하려고" 갱신을 sweeper 에 맡겼는데, sweeper 는 관리자가 손으로
+#    POST /diary/admin/sweep 을 불러야만 돈다(크론 없음). 결과는 **아무도 안 도는 큐**였다 —
+#    파일은 지워졌는데 영수증이 pending 으로 굳어 경로 문자열이 계속 남았다(2026-08-10 실측).
+#    한 벌 유지는 맞았고 맡긴 곳이 틀렸다. 직접 부르면 둘 다 된다.
+from routers.diary import _sweep_one
 
 router = APIRouter()
 
@@ -160,7 +165,7 @@ async def delete_account(body: DeleteRequest, user: dict = Depends(get_current_u
     # 개인정보 노출 경로는 없다(비공개 버킷 + 서명 URL). 한 청크 실패가 나머지를 막지 않는다.
     tombstones = 0
     orphaned = 0
-    pending: list = []          # [(tombstone_id, [path...])]
+    pending: list = []          # insert 가 돌려준 명세서 행 그대로 (⑤에서 _sweep_one 에 넘긴다)
     for pid, paths in by_profile.items():
         for i in range(0, len(paths), REMOVE_CHUNK):
             chunk = paths[i:i + REMOVE_CHUNK]
@@ -179,21 +184,20 @@ async def delete_account(body: DeleteRequest, user: dict = Depends(get_current_u
                     "state": "pending",
                 })
                 tombstones += 1
-                rid = (rows[0].get("id") if rows else None)
-                pending.append((rid, chunk))
+                if rows:
+                    pending.append(rows[0])
             except Exception:
                 orphaned += len(chunk)
                 continue
 
-    # ── ⑤ Storage 파일 삭제 (실패해도 200) ─────────────────────────────
-    # 실패분은 ④의 명세서가 pending 으로 남아 sweeper 가 재시도한다.
-    # 여기서 state 를 done 으로 바꾸는 것은 sweeper 와 같은 계약이지만,
-    # 우리는 '지웠다'만 확인하고 갱신은 sweeper 에 맡긴다 — 한 벌만 유지하기 위해.
+    # ── ⑤ Storage 파일 삭제 + 영수증 닫기 (실패해도 200) ───────────────
+    # _sweep_one 이 파일 삭제·성공 시 done(paths 비움)·실패 시 백오프 재시도까지 전부 한다.
+    # 실패분은 pending 으로 남아 나중에 sweeper 가 다시 집는다 — 계약이 하나다.
     removed = 0
-    for _rid, chunk in pending:
+    for row in pending:
         try:
-            if await sb_storage_remove(chunk):
-                removed += len(chunk)
+            if await _sweep_one(row):
+                removed += len(row.get("paths") or [])
         except Exception:
             continue
 

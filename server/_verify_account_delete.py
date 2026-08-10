@@ -28,7 +28,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SQL_DIR = os.path.join(HERE, "sql")
 ROUTER = os.path.join(HERE, "routers", "account.py")
+DIARY = os.path.join(HERE, "routers", "diary.py")
 ACCOUNT_JSX = os.path.join(HERE, "..", "client", "src", "pages", "Account.jsx")
+# 🔴 실제 DB 에 있는 표 목록 스냅샷. SQL 파일은 실물의 전부가 아니다(2026-08-10 실사고).
+DB_SNAPSHOT = os.path.join(SQL_DIR, "_db_tables.txt")
 
 _fails = []
 _passes = 0
@@ -69,6 +72,13 @@ ALLOWED_SURVIVORS = {
 #    비워두면 안 된다 — 검사가 [C] 에서 스스로 채운다.
 MUST_DELETE_IN_CODE = {"report_coach"}
 
+# DB 에는 있지만 server/sql/ 에 정의를 안 남긴 표 — **기한부 예외**.
+# ⚠️ 여기 넣는 것은 "정의를 남기지 않아도 된다"는 뜻이 아니라 "언제까지 이 상태인가"를
+#    적어두는 자리다. 기한 없이 넣으면 영구 사각지대가 된다.
+#    지금은 비어 있다 — backup_*_judgeweek 두 개가 여기 있었으나 011 로 버렸다(2026-08-10).
+#    비어 있는 것이 정상이다. 채우게 되면 기한을 함께 적을 것.
+UNDOCUMENTED_OK = {}
+
 
 def parse_tables(sql_text: str) -> dict:
     """`create table [if not exists] [public.]NAME ( ... );` 를 {이름: 본문} 으로."""
@@ -91,6 +101,24 @@ def cascades_from(body: str, target: str) -> bool:
     return bool(pat.search(body))
 
 
+def parse_alter_fks(sql_text: str) -> dict:
+    """`alter table [public.]X add constraint ... foreign key ... references T(id) on delete cascade`.
+
+    ⚠️ create table 본문만 보면 나중에 alter 로 붙인 FK 를 놓친다.
+       010(care_signals)이 정확히 그 방식이라, 이걸 안 읽으면 010 을 실행해도 검사는 모른다.
+    """
+    out = {}
+    pat = re.compile(
+        r"alter\s+table\s+(?:public\.)?([a-z_][a-z0-9_]*)\s+"
+        r"add\s+constraint\s+\S+\s+foreign\s+key\s*\([^)]*\)\s*"
+        r"references\s+([a-z_.]+)\s*\(\s*id\s*\)\s*on\s+delete\s+cascade",
+        re.I | re.S,
+    )
+    for m in pat.finditer(sql_text):
+        out.setdefault(m.group(1), set()).add(m.group(2).lower().replace("public.", ""))
+    return out
+
+
 def main() -> int:
     src = read(ROUTER)
 
@@ -100,7 +128,7 @@ def main() -> int:
     i_coach = src.find('sb_delete("report_coach"')
     i_auth = src.find("_delete_auth_user(uid)")
     i_tomb = src.find('sb_insert("diary_deletions"')
-    i_remove = src.find("sb_storage_remove(chunk)")
+    i_remove = src.find("_sweep_one(row)")
 
     check(i_collect > 0, "① 자산 경로 수집 호출이 있다")
     check(i_coach > 0, "② report_coach 삭제 호출이 있다")
@@ -131,22 +159,52 @@ def main() -> int:
 
     # ── [C] 🔴 없는 칸 찾기 — SQL 전수 ───────────────────────────────
     print("\n[C] 🔴 표 전수 — 탈퇴 시 어떻게 되는지 설명 안 되는 표가 있는가")
-    tables = {}
+    tables, alter_fks = {}, {}
     for fn in sorted(os.listdir(SQL_DIR)):
         if not fn.endswith(".sql") or fn.startswith("R_"):
             continue
-        for name, tbody in parse_tables(read(os.path.join(SQL_DIR, fn))).items():
+        text = read(os.path.join(SQL_DIR, fn))
+        for name, tbody in parse_tables(text).items():
             tables[name] = tbody
+        for name, targets in parse_alter_fks(text).items():
+            alter_fks.setdefault(name, set()).update(targets)
     check(len(tables) >= 25, f"SQL 에서 표 {len(tables)}개를 읽었다 (파서가 죽지 않았다)")
+
+    # 🔴 실제 DB 스냅샷과 대조 — SQL 파일이 실물의 전부가 아니다.
+    #    care_signals 는 대시보드에서 만들어져 SQL 파일에 없었고, 그래서 이 검사가
+    #    "설명되지 않는 표 0개"라고 초록불을 켰다. 실물엔 위기 신호가 남고 있었다.
+    if os.path.exists(DB_SNAPSHOT):
+        snap = {l.strip() for l in read(DB_SNAPSHOT).splitlines()
+                if l.strip() and not l.startswith("#")}
+        missing = sorted(snap - set(tables) - set(UNDOCUMENTED_OK))
+        check(len(snap) >= 25, f"DB 스냅샷에서 표 {len(snap)}개를 읽었다")
+        check(not missing,
+              f"🔴 DB 에 있는데 SQL 파일이 모르는 표 0개 (발견: {missing or '없음'}) "
+              "— 표를 만들었으면 server/sql/ 에 정의를 남길 것. 이 목록이 [C] 의 사각지대다")
+        for t, why in sorted(UNDOCUMENTED_OK.items()):
+            check(t in snap, f"기한부 예외 {t} 가 아직 DB 에 있다 — {why} "
+                             "(지웠으면 스냅샷과 이 목록에서 함께 뺄 것)")
+        # 스냅샷이 낡으면 검사가 조용히 헐거워진다 → 반대 방향도 본다
+        stale = sorted(set(tables) - snap)
+        check(not stale,
+              f"스냅샷이 최신이다 (SQL 엔 있는데 스냅샷엔 없는 표: {stale or '없음'}) "
+              "— 새 표를 만들고 스냅샷을 갱신하지 않았다면 여기서 걸린다")
+        universe = sorted(snap | set(tables))
+    else:
+        check(False, f"🔴 DB 표 스냅샷이 있다 ({DB_SNAPSHOT}) — 없으면 [C] 가 SQL 파일만 보게 된다")
+        universe = sorted(tables)
 
     # account.py 가 직접 지우는 표
     deleted_in_code = set(re.findall(r'sb_delete\(\s*"([a-z_]+)"', src))
 
     unexplained, by_auth, by_profile, survivors = [], [], [], []
-    for name, tbody in sorted(tables.items()):
-        if cascades_from(tbody, "auth.users"):
+    for name in universe:
+        tbody = tables.get(name, "")
+        alt = alter_fks.get(name, set())
+        if cascades_from(tbody, "auth.users") or "auth.users" in alt:
             by_auth.append(name)
-        elif cascades_from(tbody, "public.profiles") or cascades_from(tbody, "profiles"):
+        elif (cascades_from(tbody, "public.profiles") or cascades_from(tbody, "profiles")
+              or "profiles" in alt):
             by_profile.append(name)
         elif name in deleted_in_code:
             pass  # 코드가 지운다
@@ -217,6 +275,25 @@ def main() -> int:
           "④⑤에서 한 청크가 실패해도 나머지를 계속 처리한다")
     check('"prefix": None' in src,
           "명세서 prefix 를 비운다 (sb_storage_list 는 한 단계만 훑어 폴더명을 경로로 오인한다)")
+
+    # 🔴 영수증을 닫는가 — 파일은 지웠는데 pending 으로 굳으면 경로 문자열이 계속 남는다
+    #    (2026-08-10 실측: storage 는 0인데 diary_deletions 는 pending 2건이었다)
+    check("_sweep_one" in src,
+          "🔴 파일 삭제를 _sweep_one 에 위임한다 (삭제와 영수증 닫기가 한 벌)")
+    check("sb_storage_remove" not in src,
+          "파일 삭제를 두 벌로 구현하지 않는다 (직접 remove 하면 영수증이 안 닫힌다)")
+    # ⚠️ 위임한 함수가 실제로 닫는지까지 본다 — 방어가 딛고 선 판정도 시험할 것(2026-08-07 교훈)
+    if os.path.exists(DIARY):
+        dsrc = read(DIARY)
+        m3 = re.search(r"async def _sweep_one\(.*?\n(?=\nasync def |\n@router)", dsrc, re.S)
+        sweep_body = m3.group(0) if m3 else ""
+        check(bool(sweep_body), "_sweep_one 본문을 찾았다 (못 찾으면 아래가 거짓 통과한다)")
+        check('"state": "done"' in sweep_body,
+              "🔴 _sweep_one 이 성공 시 state 를 done 으로 닫는다")
+        check('"paths": []' in sweep_body,
+              "🔴 닫을 때 경로를 비운다 (개인정보 최소보관 — 경로에 날짜·식별자가 들어 있다)")
+    else:
+        check(False, "diary.py 를 찾을 수 있다")
 
     print("\n" + "=" * 66)
     print(f"통과 {_passes} · 실패 {len(_fails)}")
