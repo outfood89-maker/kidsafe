@@ -41,7 +41,14 @@ function humanDate(s) {
   return m ? `${m[1]}년 ${Number(m[2])}월 ${Number(m[3])}일` : String(s || "");
 }
 
-export default function DiaryStorageCard({ profiles = [], onCleaned }) {
+/**
+ * @param reloadKey  이 값이 바뀌면 사용량을 다시 읽는다.
+ *   🔴 왜 필요한가 (2026-08-12 오너 시범) — 마운트 때 한 번만 읽으면 **이사보다 먼저** 읽는다.
+ *      그래서 배너는 "1편 보관했어요" 인데 바로 위 카드는 `0` 이었다. 같은 화면이 서로 다른 말을 했다.
+ *      🧹 정리 화면을 열면 그때 새로 읽어오므로 **거기서만 진짜 용량이 보였다** — 그게 더 헷갈린다.
+ *      (정리 뒤에는 removePicked 가 load() 를 부른다. 빠져 있던 것은 '이사 직후' 하나였다)
+ */
+export default function DiaryStorageCard({ profiles = [], onCleaned, reloadKey = 0 }) {
   const navigate = useNavigate();
   const [usage, setUsage] = useState(null);
   const [err, setErr] = useState("");
@@ -57,7 +64,8 @@ export default function DiaryStorageCard({ profiles = [], onCleaned }) {
     catch { setErr("지금은 사용량을 읽지 못했어요."); }
   };
 
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [reloadKey]);
 
   const openCleanup = async () => {
     setOpen(true); setDone("");
@@ -206,6 +214,11 @@ export default function DiaryStorageCard({ profiles = [], onCleaned }) {
                   />
                   <span className="text-xs font-medium" style={{ color: C.text }}>{humanDate(r.date)}</span>
                   <span className="text-[11px]" style={{ color: C.muted }}>{nameOf(r.profileId)}</span>
+                  {/* 🔴 이 배지는 **오늘 절대 안 뜬다** (2026-08-12 확인). `share_with_parent` 를 false 로
+                      만드는 코드가 0건이고 설정 UI 도 없다 — sql/007:159 가 명시한 설계다
+                      ("비공개 그림일기는 성립하지 않는다 — 아이 기기는 부모도 만지는 기기다").
+                      지우지 않고 남긴다: 아이가 "이건 나만 볼래"를 고를 수 있게 되면 그날 바로 산다.
+                      ⚠️ 이 줄을 보고 "비공개 일기가 있구나" 라고 읽지 말 것. 비밀은 체크인에만 있다. */}
                   {!r.shared && (
                     <span className="text-[10px] px-1.5 py-0.5" style={{ borderRadius: "6px", backgroundColor: "#163635", color: C.muted }}>
                       비공개

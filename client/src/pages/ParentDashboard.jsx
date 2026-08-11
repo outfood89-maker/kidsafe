@@ -178,6 +178,9 @@ export default function ParentDashboard() {
   //    바로 아래 책장에는 **그대로 남아 있다** — "지웠는데 화면엔 있다" 는 삭제 기능에서 최악의 불일치다.
   //    ParentDiaryShelf 는 자체 재조회 트리거가 없어 key 를 바꿔 다시 마운트시킨다(기존 key 관례 그대로).
   const [shelfReloadKey, setShelfReloadKey] = useState(0);
+  // 🔴 이사가 끝나면 📦 용량 카드를 다시 읽게 한다 (2026-08-12 오너 시범).
+  //    카드는 마운트 때 한 번만 읽어서 **이사보다 먼저** 읽혔다 → 배너 "1편 보관" · 카드 `0`.
+  const [storageReloadKey, setStorageReloadKey] = useState(0);
   const [mig, setMig] = useState(null); // GD-8c: 이사 진행 { phase, profileName, done, total, uploaded, failed }
   const [scheduleTab, setScheduleTab] = useState(scopedId || ""); // 스케줄 — 아이별(전체 없음)
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -441,7 +444,12 @@ export default function ParentDashboard() {
     //    부모가 "보관됐다"고 믿게 만드는 자리라 **거짓말 중에서도 나쁜 쪽**이다.
     setMig(null);
     migrateAllProfiles(profiles, {
-      onProgress: (p) => { if (!aborted) setMig(p); },
+      onProgress: (p) => {
+        if (aborted) return;
+        setMig(p);
+        // 회차가 끝났고 **실제로 올린 게 있을 때만** 다시 읽는다(0편이면 용량도 그대로다).
+        if (p.phase === "finished" && p.uploaded > 0) setStorageReloadKey((n) => n + 1);
+      },
       isAborted: () => aborted,
     }).catch(() => { /* 이사 실패는 화면을 막지 않는다 */ });
     return () => { aborted = true; };
@@ -1207,7 +1215,7 @@ export default function ParentDashboard() {
                   ⚠️ 투어(예시 화면)에서는 숨긴다 — 가짜 프로필로 진짜 API 를 부를 수 없다.
                   ⚠️ DIARY_SERVER 가 꺼져 있으면 올라가는 것 자체가 없다 → 보이면 없는 걱정을 만든다. */}
               {!tourMode && DIARY_SERVER && (
-                <DiaryStorageCard profiles={profiles} onCleaned={() => setShelfReloadKey((n) => n + 1)} />
+                <DiaryStorageCard profiles={profiles} reloadKey={storageReloadKey} onCleaned={() => setShelfReloadKey((n) => n + 1)} />
               )}
 
               {/* GD-8c: 이사 진행/결과 — 부모에게만 보인다. 화면을 막지 않는 얇은 알림 줄. */}
