@@ -36,6 +36,8 @@ CHECKS = [
     ("🗑 회원 탈퇴 계약(B4)", "_verify_account_delete.py"),
     # 계약검사는 '코드가 그렇게 생겼는가'까지다. 아래는 **실제로 실행해서** 순서·대상·실패 처리를 본다.
     ("🗑 회원 탈퇴 실행(B4)", "_verify_account_delete_run.py"),
+    # 📦 저장 용량 1GB — 막는 것보다 **막을 때 Storage 를 안 건드리는가**가 핵심이다.
+    ("📦 저장 용량 상한 실행(1GB)", "_verify_storage_cap.py"),
     ("가짜 주입 도구 자체 점검",     "_verify_fakes.py"),
 ]
 

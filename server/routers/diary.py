@@ -36,6 +36,7 @@ from auth import get_current_user, require_admin
 # ⚠️ sb_update(table, **필터**, **패치**) — 순서를 헷갈리면 PostgREST 가 필터를 값으로 UPDATE 하려 들어
 #    502 로 죽는다. 2026-08-08 에 이 파일 6곳이 전부 뒤집혀 있었다(플래그가 꺼져 있어 아무도 안 불렀다).
 from db import sb_delete, sb_insert, sb_select, sb_upsert, sb_update
+from quota import check_and_consume  # 💸 비용 상한 (2026-08-11) — 업로드도 '돈 쓰는 코드'다
 from routers.profiles import get_owned_profile
 from storage import (
     ORIGINAL_TTL_SEC,
@@ -80,6 +81,30 @@ _CLIENT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 MAX_IMAGE_BYTES = 4 * 1024 * 1024      # 원본 이미지 4MB
 MAX_THUMB_BYTES = 200 * 1024           # 썸네일 200KB
 MAX_AUDIO_BYTES = 1 * 1024 * 1024      # 오디오 1MB
+
+# ── 📦 계정 저장 용량 상한 (2026-08-11 오너 확정: 1GB) ─────────────────────
+#
+# 🔴 위 세 상한은 **한 번에 얼마나 큰 것**만 막는다. 누적은 아무것도 안 막았다 —
+#    4MB 를 250번 올리면 1GB 이고, 그걸 막는 코드가 어디에도 없었다.
+#
+# 두 장치가 서로 **다른 것**을 막는다 (하나로는 안 된다):
+#   · quota "diary_upload" → 폭주.  upload_asset 은 upsert 라 **같은 자리를 덮어쓰면
+#                                    용량이 안 늘면서 쓰기만 무한**이다. 용량 상한은 이걸 못 본다.
+#   · 아래 1GB            → 누적.  새 자산이 계속 쌓이는 것. 횟수 한도는 매일 초기화되므로 이걸 못 본다.
+#
+# ⚠️ 상한에 걸렸을 때 **아이의 일기가 사라지지 않게** 하는 것이 이 설계의 절반이다.
+#    서버는 507 을 돌려주고, 아이 기기의 로컬 저장은 그대로다(diaryStore 는 로컬 우선).
+#    부모가 정리하면 다음 hydrate 의 재푸시(diaryStore.js:497)가 자동으로 올린다.
+#    🔴 그래서 **80% 경고가 이 기능의 본체다** — 100% 는 이미 늦었다.
+#       "가득 차기 전에 미리 부모님께 공지한다"(2026-08-11 오너).
+ACCOUNT_STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024   # 1GB
+STORAGE_WARN_RATIO = 0.8                                # 80% 에서 부모에게 알린다
+
+# 사용량 합산 페이지네이션. account.py 의 _collect_asset_paths 와 같은 관례.
+#   🔴 페이지 상한에 걸리면 **과소 계산**되어 상한이 안 걸린다 — 그래서 아래에서
+#      "다 못 셌다"를 통과가 아니라 **차단**으로 처리한다(_account_used_bytes 주석 참조).
+USAGE_PAGE = 1000
+USAGE_MAX_PAGES = 100
 
 _KINDS = {"image", "audio"}
 _ROLES = {"completed", "drawing", "memo", "letter"}
@@ -437,6 +462,68 @@ async def put_meta(body: MetaIn, user: dict = Depends(get_current_user)):
 
 
 # ── 자산 ──────────────────────────────────────────────────────────────
+# ── 📦 저장 용량 (2026-08-11) ─────────────────────────────────────────
+async def _account_used_bytes(user_id: str) -> tuple[int, bool]:
+    """계정 전체가 쓰고 있는 Storage 바이트를 센다.
+
+    반환: (바이트, 전부_셌나)
+
+    🔴 왜 아이별이 아니라 **계정 단위**인가 — 상한의 목적은 요금이고 요금은 계정에 붙는다.
+       아이별로 나누면 아이를 늘릴 때마다 상한이 하나씩 더 생긴다(quota 의 ACCOUNT_LIMITS 와 같은 이유).
+
+    🔴 두 번째 값이 False = **다 못 셌다**(페이지 상한 도달).
+       호출부는 이걸 '통과'로 쓰면 안 된다 — 못 센 만큼 실제 사용량이 더 크므로
+       **모르는 채로 통과시키면 상한이 없는 것과 같다.** 차단 쪽으로 붙인다.
+       (정상 사용자는 도달할 수 없는 값이다: 100,000행 = 자산 하나가 평균 10KB 여야 한다)
+
+    ⚠️ bytes·thumb_bytes 는 nullable 이다(006 스키마). 옛 행은 비어 있을 수 있어 0 으로 읽는다 —
+       즉 **과소 계산 쪽으로 틀린다**. 상한을 넘겨 막는 오작동은 안 난다.
+    """
+    total = 0
+    for page in range(USAGE_MAX_PAGES):
+        rows = await sb_select("diary_assets", {
+            "user_id": f"eq.{user_id}",
+            "select": "bytes,thumb_bytes",
+            "order": "created_at.asc",
+            "limit": str(USAGE_PAGE),
+            "offset": str(page * USAGE_PAGE),
+        })
+        if not rows:
+            return total, True
+        for a in rows:
+            total += (a.get("bytes") or 0) + (a.get("thumb_bytes") or 0)
+        if len(rows) < USAGE_PAGE:
+            return total, True
+    return total, False   # 페이지를 다 썼는데도 끝이 안 났다
+
+
+def _usage_payload(used: int, complete: bool) -> dict:
+    """사용량을 화면이 쓸 모양으로. percent 는 100 을 넘을 수 있다(이미 초과한 계정)."""
+    limit = ACCOUNT_STORAGE_LIMIT_BYTES
+    percent = round(used * 100 / limit, 1) if limit else 0.0
+    return {
+        "usedBytes": used,
+        "limitBytes": limit,
+        "percent": percent,
+        "warn": percent >= STORAGE_WARN_RATIO * 100,   # 80% — 부모에게 미리 알리는 선
+        "warnAtPercent": int(STORAGE_WARN_RATIO * 100),
+        "full": percent >= 100,
+        "complete": complete,                          # False = 다 못 셌다(비정상 규모)
+    }
+
+
+@router.get("/usage")
+async def get_storage_usage(user: dict = Depends(get_current_user)):
+    """계정 저장 용량 현황 — 부모 화면이 80% 경고를 띄우는 근거.
+
+    ⚠️ 프로필을 받지 않는다. 상한이 계정 단위라 아이별로 쪼개면 뜻이 달라진다.
+    ⚠️ 동의(get_consented_profile)를 요구하지 않는다 — 동의를 껐어도 **이미 올라간 것**이 있고,
+       부모는 그걸 보고 정리할 수 있어야 한다(삭제 경로에 동의를 안 거는 것과 같은 이유).
+    """
+    used, complete = await _account_used_bytes(user["user_id"])
+    return _usage_payload(used, complete)
+
+
 @router.post("/assets")
 async def upload_asset(
     profileId: str = Form(...),
@@ -459,12 +546,40 @@ async def upload_asset(
     if role not in _ROLES:
         raise HTTPException(status_code=400, detail="role 이 올바르지 않아요")
 
+    # ── 💸 게이트 ① 횟수 (2026-08-11) ─────────────────────────────────
+    # 🔴 용량 상한만으로는 안 막힌다 — 이 함수는 **upsert** 다. 같은 client_asset_id 로
+    #    계속 올리면 용량은 그대로인데 Storage 쓰기만 무한이다.
+    # ⚠️ 이 줄은 try 바깥이어야 한다(backend.md) — 429 가 except 에 먹히면
+    #    한도 초과가 조용히 '업로드 실패'로 둔갑한다.
+    check_and_consume("diary_upload", profileId, user["user_id"])
+
     data = await file.read()
     limit = MAX_IMAGE_BYTES if kind == "image" else MAX_AUDIO_BYTES
     if len(data) > limit:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="파일이 너무 커요",
+        )
+
+    # ── 📦 게이트 ② 계정 총량 1GB (2026-08-11) ─────────────────────────
+    # 🔴 여기서 막아도 **아이의 일기는 안 사라진다** — 로컬에 그대로 남고,
+    #    부모가 정리하면 다음 hydrate 재푸시(diaryStore.js:497)가 자동으로 올린다.
+    #    그래서 조용히 실패시키지 않고 아이가 알아들을 말을 함께 보낸다.
+    # ⚠️ 들어올 바이트를 **더해서** 판정한다. 지금 사용량만 보면 마지막 한 개가 상한을 넘겨 들어간다.
+    used, complete = await _account_used_bytes(user["user_id"])
+    incoming = len(data)   # 썸네일은 아래에서 크기를 알게 되지만, 최대 200KB 라 판정을 뒤집지 않는다
+    if not complete or used + incoming > ACCOUNT_STORAGE_LIMIT_BYTES:
+        payload = _usage_payload(used, complete)
+        raise HTTPException(
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            detail={
+                "code": "STORAGE_FULL",
+                **payload,
+                # 아이가 보는 말이다. 실패를 아이 탓으로 돌리지 않는다(GD-38 §1 "키디 귀").
+                "message": "책장이 가득 찼어! 오늘 그림은 여기 잘 두고 있을게. 엄마아빠한테 말해줄래? 📚",
+                # 부모 화면이 쓰는 말 — 아이용 문구를 부모에게 그대로 내보내면 사실이 흐려진다.
+                "parentMessage": "저장 공간이 가득 찼어요. 가족 책장에서 일기를 정리하면 다시 저장됩니다.",
+            },
         )
 
     # 🔴 MIME 파라미터를 반드시 떼어낸다 (2026-08-07 실사고).

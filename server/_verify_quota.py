@@ -421,7 +421,15 @@ import re as _re      # noqa: E402
 _ROUTERS = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "routers")
 
 # 돈이 나가는 신호 (외부 유료 API 호출)
-_SPEND = ("AsyncAnthropic", "anthropic.", "openai.com", "services.tts import", "synthesize(")
+#
+# 🔴 2026-08-11 — 여기가 **세 번째로 같은 사각지대**였다.
+#    care_signals(SQL 파일에 없어서 안 보임) → 챗봇(quota 를 안 써서 안 보임) → 그리고 이것.
+#    이 목록이 "돈 쓰는 코드 = LLM 호출"이라고만 적혀 있어서 **Storage 업로드를 못 봤다.**
+#    diary.py 의 `POST /diary/assets` 는 한도가 **0건**이었는데 이 검사는 초록불이었다.
+#    ⇒ 돈은 토큰으로만 나가지 않는다. **저장·전송도 돈이다.**
+#       새 저장 경로를 만들면 이제 여기서 걸린다.
+_SPEND = ("AsyncAnthropic", "anthropic.", "openai.com", "services.tts import", "synthesize(",
+          "sb_storage_upload")
 
 # 한도가 없어도 되는 파일 — **이유를 함께 적는다.** 이유 없는 면제는 구멍이다.
 _EXEMPT = {

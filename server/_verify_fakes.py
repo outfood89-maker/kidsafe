@@ -203,7 +203,13 @@ class FakeDB:
     그래야 그 위의 방어막(try/except)이 살아있는 채로 검증된다(2026-08-05 사고 1).
     """
 
-    NAMES = ("sb_select", "sb_insert", "sb_update", "sb_delete")
+    # 🔴 2026-08-11 — `sb_upsert` 가 빠져 있었다. 그 결과 upsert 를 쓰는 라우터
+    #    (diary.py 의 자산 저장)를 검사하면 **그 한 줄만 진짜 DB 로 나가** 500 이 났고,
+    #    검사는 "막혔다"를 **틀린 이유로** 읽었다. 대조군(통과해야 하는 경우)이 없었으면
+    #    차단 검사만 초록불인 채 조용히 넘어갔을 자리다.
+    #    ⇒ 목록류는 '있는 항목 검토'가 아니라 **'없는 칸 찾기'** (2026-08-07 규칙 ③).
+    #       db.py 의 sb_* 전수: select · insert · update · delete · upsert.
+    NAMES = ("sb_select", "sb_insert", "sb_update", "sb_delete", "sb_upsert")
 
     def __init__(self, recorder, select_returns=None, table_returns=None):
         """table_returns: {"select:diary_assets": [...], "insert:diary_deletions": [...]}
@@ -444,6 +450,26 @@ if __name__ == "__main__":
         t("🔴 4xx·5xx 에서 raise_for_status 가 던진다", True)
     t("메서드가 이름으로 구분돼 기록된다",
       {"http.delete", "http.get"} <= set(rec4.names()))
+
+    # ③-b 🔴 FakeDB 가 db.py 의 sb_* 를 **하나도 안 빠뜨리고** 덮는가 (2026-08-11 신설)
+    #      빠진 이름은 조용히 진짜 DB 로 나간다 — 그 요청만 500 이 나고,
+    #      검사는 "막혔다"를 틀린 이유로 읽는다. 실제로 sb_upsert 가 빠져 있었다.
+    import db as _db_mod
+    _real_sb = {n for n in dir(_db_mod)
+                if n.startswith("sb_") and callable(getattr(_db_mod, n))}
+    t(f"🔴 FakeDB 가 db.py 의 sb_* 전수를 덮는다 (빠진 것: {sorted(_real_sb - set(FakeDB.NAMES))})",
+      _real_sb <= set(FakeDB.NAMES))
+    t("   대조군 — 그 목록이 비어 있지 않다 (파서가 헛돌지 않았다)", len(_real_sb) >= 4)
+
+    # ③-c 🔴 install 이 그 이름들을 **실제로** 갈아끼우는가
+    _rec5 = Recorder()
+    _fake_mod = types.SimpleNamespace(**{n: getattr(_db_mod, n) for n in FakeDB.NAMES})
+    _fdb = FakeDB(_rec5, table_returns={"upsert:t": [{"echo": 1}]}).install(_fake_mod)
+    t("🔴 upsert 도 가짜로 바뀐다 (진짜 DB 로 새지 않는다)",
+      asyncio.run(_fake_mod.sb_upsert("t", {"a": 1})) == [{"echo": 1}])
+    t("   upsert 호출이 기록에 남는다", "db.upsert:t" in _rec5.names())
+    _fdb.restore()
+    t("   restore 로 되돌아온다", _fake_mod.sb_upsert is getattr(_db_mod, "sb_upsert"))
 
     # ④ block_dotenv 가 실제로 막는가
     import dotenv
