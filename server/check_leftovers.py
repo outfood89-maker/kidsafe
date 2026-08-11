@@ -35,11 +35,49 @@ URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 KEY = os.getenv("SUPABASE_SECRET_KEY", "")
 
 
+BUCKET = "diary-assets"
+
+
 async def q(client, table, params):
     r = await client.get(f"{URL}/rest/v1/{table}", params=params,
                          headers={"apikey": KEY, "Authorization": f"Bearer {KEY}"})
     r.raise_for_status()
     return r.json()
+
+
+async def _ls(client, prefix):
+    r = await client.post(
+        f"{URL}/storage/v1/object/list/{BUCKET}",
+        headers={"apikey": KEY, "Authorization": f"Bearer {KEY}",
+                 "Content-Type": "application/json"},
+        json={"prefix": prefix, "limit": 100},
+    )
+    return r.json() if r.status_code == 200 else []
+
+
+async def storage_files(client, prefix="", depth=0, out=None):
+    """Storage 버킷의 **실제 파일**을 전부 훑는다.
+
+    🔴 2026-08-11 실사고로 추가 — 그전까지 이 파일은 **DB만** 봤다.
+       그래서 프로필 삭제 뒤 `diary_assets` 행이 cascade 로 사라지자 "자산 0개 = 깨끗"이라고
+       말했는데, **Storage 에는 아이 그림·목소리 3개가 그대로 있었다.**
+       ⇒ DB 는 "기록", Storage 는 "실물"이다. **실물을 봐야 지워졌다고 말할 수 있다.**
+
+    ⚠️ 경로가 `{user}/{profile}/{asset}/orig.ext` 4단계다. 3단계까지만 훑으면
+       폴더만 보이고 파일은 안 보인다(첫 시도에서 실제로 그랬다 — `id=None` 이 폴더다).
+    """
+    if out is None:
+        out = []
+    for o in await _ls(client, prefix):
+        name = o.get("name")
+        if not name:
+            continue
+        full = f"{prefix}/{name}" if prefix else name
+        if o.get("id"):                       # id 가 있으면 실제 파일
+            out.append((full, (o.get("metadata") or {}).get("size") or 0))
+        elif depth < 5:                       # 없으면 폴더 → 더 들어간다
+            await storage_files(client, full, depth + 1, out)
+    return out
 
 
 async def main():
@@ -58,6 +96,8 @@ async def main():
                                                  "state": "eq.pending"})
         failed = await q(c, "diary_deletions", {"select": "id,paths", "state": "eq.failed"})
         profiles = await q(c, "profiles", {"select": "id,name"})
+        # 🔴 DB 가 아니라 **실물**. 이걸 안 봐서 2026-08-11 사고를 놓쳤다.
+        real = await storage_files(c)
 
     used = sum((a.get("bytes") or 0) + (a.get("thumb_bytes") or 0) for a in assets)
     pending_paths = sum(len(r.get("paths") or []) for r in pending)
@@ -66,12 +106,33 @@ async def main():
     print("=" * 62)
     print("🔍 지금 서버에 남아 있는 것")
     print("=" * 62)
+    real_bytes = sum(s or 0 for _, s in real)
     print(f"  아이 프로필   {len(profiles):>5}명   {[p.get('name') for p in profiles]}")
     print(f"  일기          {len(entries):>5}편")
-    print(f"  그림·음성     {len(assets):>5}개   ({used / 1024 / 1024:.1f}MB)")
+    print(f"  그림·음성(DB) {len(assets):>5}개   ({used / 1024 / 1024:.1f}MB)")
+    print(f"  🔴 실제 파일  {len(real):>5}개   ({real_bytes / 1024 / 1024:.1f}MB)  ← Storage 실물")
     print()
 
     ok = True
+
+    # ⓪ 🔴 주인 없는 **실제 파일** — 이게 이 도구의 핵심이다.
+    #    경로 규칙 `{user}/{profile}/{asset}/파일` 에서 2번째 조각이 profile_id 다.
+    alive_ids = {p["id"] for p in profiles}
+    ghost = [(f, s) for f, s in real
+             if len(f.split("/")) >= 2 and f.split("/")[1] not in alive_ids]
+    if ghost:
+        ok = False
+        print(f"  🔴 주인 없는 **파일** {len(ghost)}개 — 프로필은 사라졌는데 실물이 남았다")
+        for f, s in ghost[:10]:
+            print(f"       {f}  ({(s or 0) / 1024:.0f}KB)")
+        print("     → 알려주세요. 정리하겠습니다.")
+    else:
+        print(f"  ✅ 주인 없는 파일 없음 (실물 {len(real)}개를 전부 대조했다)")
+
+    # 🔴 DB 와 실물이 어긋나는가 — 어느 쪽이든 신호다
+    if len(assets) != len(real):
+        print(f"  ⚠️ DB({len(assets)}개)와 실물({len(real)}개)이 다르다 — "
+              "업로드 중이거나, 한쪽만 지워졌다는 뜻")
     # ① 영수증(명세서)이 안 닫힌 것 — 지웠는데 파일이 아직 안 지워졌다는 뜻
     if pending_paths:
         ok = False
@@ -108,7 +169,7 @@ async def main():
     print("=" * 62)
     if not ok:
         print("⚠️ 위 🔴 항목을 알려주세요. 남은 파일을 정리하겠습니다.")
-    elif not assets:
+    elif not assets and not real:
         # 🔴 "볼 게 없었다"를 "깨끗하다"로 말하지 않는다 (2026-08-11).
         #    자산이 0개인 상태에서 프로필을 지우면 **지워질 파일 자체가 없어서**
         #    당연히 아무 문제도 안 나온다. 그걸 "통과"로 읽으면 검증한 줄 알고 넘어간다.
