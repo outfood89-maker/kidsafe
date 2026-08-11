@@ -447,6 +447,24 @@ async def react_to_answer_stream(data: ReactRequest, user: dict = Depends(get_cu
 
         return StreamingResponse(crisis_gen(), media_type="text/plain; charset=utf-8")
 
+    # 💸 비용 상한 (2026-08-11 — 🔬 정밀검수로 발견)
+    #
+    # 🔴 어제(08-10) 한도를 `/react` 에만 걸었는데 **앱은 그 경로를 안 부른다.**
+    #    아이 화면(DailyCheckin.jsx:399)이 부르는 것은 이 스트리밍 경로다.
+    #    `reactToCheckin`(non-stream) 호출부는 레포 전체에 **0건** — 즉 어제의 한도는
+    #    걸려 있기만 하고 **한 번도 발동한 적이 없다.** 검사도 라우터 파일에 `check_and_consume` 이
+    #    있으면 통과라서(파일 단위) 이 구멍을 못 봤다.
+    #    ⇒ **방어를 건 자리와 앱이 실제로 부르는 자리가 같은지**를 물어야 한다.
+    #
+    # ⚠️ 위치가 두 조건을 만족해야 한다:
+    #    ① 위기 스크리닝 **뒤** — 위기 발화는 LLM 을 안 부르므로 돈이 안 나가고,
+    #       앞에 두면 한도가 찼을 때 **아이 안전 응답이 막힌다.**
+    #    ② `StreamingResponse` 를 만들기 **전** — 스트림이 시작된 뒤에는 상태코드를 바꿀 수 없어
+    #       429 가 200 짜리 빈 스트림으로 나간다(아이는 키디가 침묵한 것으로 본다).
+    #
+    # ⚠️ /react 와 **같은 카운터**를 쓴다. 같은 기능의 두 구현이라 따로 세면 총량이 두 배가 된다.
+    check_and_consume("checkin_react", "", user["user_id"])
+
     async def gen():
         try:
             client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -530,6 +548,15 @@ def _greet_user(data: "GreetRequest") -> str:
 async def greet_child(data: GreetRequest, user: dict = Depends(get_current_user)):
     """키디 환영 인사 생성 (Haiku). 실패 시 502 → 프론트가 로컬 템플릿으로 폴백."""
     name = data.profileName or "친구"
+
+    # 💸 비용 상한 (2026-08-11 — 🔬 정밀검수로 발견)
+    #   🔴 어제 이 파일에 한도를 넣으면서 **이 엔드포인트를 빠뜨렸다.** 그런데 검사는 통과했다 —
+    #      [K] 커버리지가 **파일 단위**라, 파일에 `check_and_consume` 이 하나라도 있으면 초록불이다.
+    #      ⇒ 같은 파일 안의 무한도 엔드포인트는 구조적으로 안 보인다.
+    #   ⚠️ `try` **바깥**이다 — 안에 두면 아래 `except Exception` 이 429 를 502 로 둔갑시킨다(backend.md).
+    #   ⚠️ 여기엔 위기 스크리닝이 없다. 인사는 아이 발화를 안 받는다(GreetRequest 에 answer 가 없다).
+    check_and_consume("checkin_greet", "", user["user_id"])
+
     try:
         client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         response = await client.messages.create(

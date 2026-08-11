@@ -353,6 +353,27 @@ export const reactToCheckinStream = async (payload, onChunk) => {
 //  - tone: 'calm'(😢😡 위로=차분) | 'bright'(😄🙂😐 밝게)
 // ⚠️ 다시듣기는 받은 Blob을 메모리에 들고 재생(추가 호출 0). 디스크/스토리지 저장 금지(정책).
 //   (개정 7/10) STT/TTS 자동 오디오는 비저장 유지. 단, 사용자가 명시적으로 남긴 음성 편지·메모(diaryAudioStore)는 예외 저장 — 오너 확정.
+// 🔴 서버 오류를 **화면에 그릴 문자열**로 바꾼다 (2026-08-11 — 🔬 정밀검수로 발견)
+//
+// 왜 헬퍼가 필요한가 — FastAPI 의 `detail` 은 **문자열일 때도 객체일 때도 있다.**
+//   · 대부분의 HTTPException: `detail="프로필을 찾을 수 없어요"`        → 문자열
+//   · 🔴 quota.py 의 429 / diary.py 의 507: `detail={"code":…, "message":…}` → **객체**
+// 그런데 호출부는 `err.response?.data?.detail || "기본 문구"` 로 받아 그대로 JSX 에 넣는다.
+// 객체가 들어오면 React 가 "Objects are not valid as a React child" 로 **throw** 하고,
+// 이 레포에는 **ErrorBoundary 가 0건**이라 루트까지 올라가 **화면 전체가 하얘진다.**
+//
+// 실제 사고: 부모가 AI 코치를 하루 세 번째로 누르면 429 → ParentDashboard 가 백지가 됐다.
+//   (KiddyRoom·ChatWidget 은 `.detail?.message` 로 한 단계 더 들어가 무사했다 — 거기만 빠졌다)
+//
+// ⚠️ 객체를 **객체로 쓰는** 곳(DiaryFlow 의 `detail.scope` 판정)은 이 헬퍼를 쓰지 않는다.
+//    화면에 **그리는** 자리만 여기를 거친다.
+export const readErrorText = (err, fallback) => {
+  const d = err?.response?.data?.detail
+  if (typeof d === 'string' && d.trim()) return d
+  if (d && typeof d === 'object' && typeof d.message === 'string' && d.message.trim()) return d.message
+  return fallback
+}
+
 // 💸 한도(429)로 막혔을 때 호출부가 알 수 있게 하는 신호 (2026-08-10).
 //   🔴 그전까지는 실패가 전부 null 로 뭉개져 **키디가 조용해지고 아무도 이유를 몰랐다.**
 //   ⚠️ responseType:'blob' 이라 에러 본문도 Blob 으로 온다 → 텍스트로 풀어 JSON 을 읽는다.

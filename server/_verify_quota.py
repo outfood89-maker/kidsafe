@@ -456,6 +456,78 @@ check(f"돈 쓰는 라우터를 {len(_covered) + len(_missing) + len(_EXEMPT)}�
 check("🔴 한도가 빠진 라우터 0개 — 새 LLM 경로를 만들면 여기서 걸린다",
       not _missing, f"발견: {_missing} · 면제: {sorted(_EXEMPT)}")
 
+# ══════════════════════════════════════════════════════════════════════
+# 🔴 파일 단위 판정의 구멍 — **엔드포인트 단위**로 다시 센다 (2026-08-11 🔬 정밀검수)
+#
+# 위 검사는 "파일에 check_and_consume 이 하나라도 있으면 통과"다. 그래서
+# `checkins.py` 는 `/react` 에만 한도가 있는데도 초록불이었고, **같은 파일의
+# `/react/stream`(아이가 실제로 부르는 것)과 `/greet` 은 무제한**이었다.
+# ⇒ 파일이 아니라 **함수 본문**을 잘라서, 돈을 쓰는 함수마다 한도를 확인한다.
+# ══════════════════════════════════════════════════════════════════════
+print("\n[K-2] 🔒 엔드포인트 단위 커버리지 — 같은 파일 안의 무한도 경로를 찾는다")
+
+# 함수 본문 단위 면제 — **이유를 함께** 적는다(이유 없는 면제는 구멍).
+_EXEMPT_FN = {
+    "analyze.py": "usage 표(DB)로 센다",
+    "feedback.py": "관리자 전용",
+    # 아래는 '돈 쓰는 신호'가 본문에 보이지만 실제로는 캐시·조회만 하는 함수들이다.
+    "search.py": "🔴 미해결 — YouTube 4경로에 한도 0건(2026-08-11 정밀검수 발견, 질문 28). 조사 전까지 면제",
+    "recommend.py": "🔴 미해결 — 같은 건(질문 28)",
+}
+
+
+def _endpoints(src):
+    """@router.<verb> 데코레이터로 시작하는 함수 블록을 (경로, 본문) 으로 자른다.
+
+    🔴 본문은 **그 함수까지**다. 첫 구현은 다음 `@router.` 까지 훑었는데, 그 사이의
+       **모듈 레벨 헬퍼 함수**(reports.py 의 `_insights_signature` 등)까지 본문에 들어가
+       `GET /insights` 를 "돈 쓰는데 한도 없음"으로 **오탐**했다(실제로는 DB 집계만 한다).
+       ⇒ 자기 `def` 를 지난 뒤 **컬럼 0의 다음 def** 를 만나면 거기서 끊는다.
+    """
+    out, cur, path, seen_def = [], None, None, False
+    for line in src.split("\n"):
+        m = _re.match(r'@router\.(get|post|put|patch|delete)\(\s*["\']([^"\']*)', line)
+        if m:
+            if cur is not None:
+                out.append((path, "\n".join(cur)))
+            path, cur, seen_def = f"{m.group(1).upper()} {m.group(2)}", [], False
+            continue
+        if cur is None:
+            continue
+        own_def = _re.match(r'(async )?def ', line)
+        if own_def and not seen_def:
+            seen_def = True                        # 이 엔드포인트 자신의 def
+        elif (own_def and seen_def) or line.startswith("@router."):
+            out.append((path, "\n".join(cur)))     # 다음 함수/데코레이터 → 여기서 끊는다
+            cur, path = None, None
+            continue
+        cur.append(line)
+    if cur is not None:
+        out.append((path, "\n".join(cur)))
+    return out
+
+
+_ep_missing, _ep_covered = [], []
+for _fn in sorted(_os.listdir(_ROUTERS)):
+    if not _fn.endswith(".py") or _fn == "__init__.py" or _fn in _EXEMPT_FN:
+        continue
+    _src = open(_os.path.join(_ROUTERS, _fn), encoding="utf-8").read()
+    for _path, _body in _endpoints(_src):
+        if not any(sig in _body for sig in _SPEND):
+            continue                               # 이 엔드포인트는 돈을 안 쓴다
+        if "check_and_consume(" in _body or "check_minute_only(" in _body:
+            _ep_covered.append(f"{_fn}:{_path}")
+        else:
+            _ep_missing.append(f"{_fn}:{_path}")
+
+# 🔴 대조군 — 하나도 못 찾았으면 파서가 헛돈 것이다(지뢰 #13: "X" not in "" 은 항상 참)
+check(f"돈 쓰는 **엔드포인트**를 {len(_ep_covered) + len(_ep_missing)}개 찾았다 (파서가 헛돌지 않았다)",
+      len(_ep_covered) >= 6, f"한도 있음: {_ep_covered}")
+check("🔴 같은 파일 안에 한도 없는 엔드포인트가 0개 — 파일 단위 판정이 놓치던 자리",
+      not _ep_missing, f"발견: {_ep_missing}")
+for _f, _why in sorted(_EXEMPT_FN.items()):
+    check(f"면제 {_f} — {_why}", _os.path.exists(_os.path.join(_ROUTERS, _f)))
+
 # 🔴 대조군 — 면제 목록이 실제로 그 이유를 갖고 있는가 (이유 없는 면제 = 구멍)
 for _f, _why in sorted(_EXEMPT.items()):
     _p = _os.path.join(_ROUTERS, _f)

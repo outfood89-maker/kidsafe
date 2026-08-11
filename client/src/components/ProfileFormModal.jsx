@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FaTimes } from "react-icons/fa";
-import { createProfile, updateProfile } from "../utils/api";
+import { createProfile, updateProfile, readErrorText } from "../utils/api";
 
 // 자녀 프로필 생성/수정 겸용 모달 (계정 영역 동작) — ProfileSelect에서 사용
 // onClose(): 닫기
@@ -42,7 +42,7 @@ export default function ProfileFormModal({ onClose, onCreated, profile = null, o
         onCreated?.(created);
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.detail || (isEdit ? "프로필 수정에 실패했어요." : "프로필 생성에 실패했어요."));
+      setError(err.response?.data?.error || readErrorText(err, isEdit ? "프로필 수정에 실패했어요." : "프로필 생성에 실패했어요."));
       setBusy(false);
     }
   };

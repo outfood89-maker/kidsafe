@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { FaArrowLeft, FaShieldAlt, FaUser, FaEnvelope, FaLock, FaSignOutAlt, FaTrash } from "react-icons/fa"
 import { useAuth } from "../contexts/AuthContext"
 import { supabase } from "../utils/supabase"
-import { deleteAccount } from "../utils/api"
+import { deleteAccount, readErrorText } from "../utils/api"
 
 export default function Account() {
   const navigate = useNavigate()
@@ -107,7 +107,7 @@ export default function Account() {
     } catch (err) {
       setDeleteStatus("idle")
       // 서버가 이유를 준 경우 그대로 보여준다(400 확인문구·502 등)
-      setDeleteError(err?.response?.data?.detail || "탈퇴 처리 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.")
+      setDeleteError(readErrorText(err, "탈퇴 처리 중 문제가 생겼어요. 잠시 후 다시 시도해주세요."))
     }
   }
 

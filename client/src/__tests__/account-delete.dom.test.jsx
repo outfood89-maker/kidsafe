@@ -36,9 +36,14 @@ vi.mock("../utils/supabase", () => ({
 }));
 
 const deleteAccount = vi.fn();
-vi.mock("../utils/api", () => ({
-  deleteAccount: (...a) => deleteAccount(...a),
-}));
+vi.mock("../utils/api", async () => {
+  // 🔴 readErrorText 는 **진짜를 쓴다**(2026-08-11). 가짜로 만들면
+  //    "429 의 detail 객체가 문자열로 바뀌는가" 라는 이 화면의 실제 계약이 검증에서 빠진다.
+  //    ⚠️ 가짜 목록이 실물보다 좁으면 그 import 는 undefined 가 되어 **호출 순간 터진다** —
+  //       실제로 이 테스트가 그렇게 깨져서 알았다(가짜 주입 3원칙 ①: 경계에만 끼운다).
+  const actual = await vi.importActual("../utils/api");
+  return { ...actual, deleteAccount: (...a) => deleteAccount(...a) };
+});
 
 const { default: Account } = await import("../pages/Account");
 

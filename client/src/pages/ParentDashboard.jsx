@@ -29,7 +29,7 @@ import {
   CartesianGrid, XAxis, YAxis, Tooltip, Legend,
 } from "recharts";
 
-import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach, getCareSignals, markCareSignalRead } from "../utils/api";
+import { getHistory, getProfiles, createProfile, deleteProfile, updateProfile, getBadges, getBlockedKeywords, addBlockedKeyword, deleteBlockedKeyword, getAlerts, markAlertRead, markAllAlertsRead, getAlertSettings, saveAlertSettings, addBlockedKeyword as addBlocked, deleteHistoryItem, deleteAllHistory, getReportInsights, getReportCoach, getCareSignals, markCareSignalRead, readErrorText } from "../utils/api";
 import { PARENT_SIGNAL_MESSAGE } from "../utils/safetyLexicon";
 import KiddyImg from "../components/KiddyImg";
 import KiddyVideo from "../components/KiddyVideo";
@@ -467,7 +467,9 @@ export default function ParentDashboard() {
       const data = await getReportCoach(chartTab === "전체" ? "all" : chartTab);
       setCoach(data.coach);
     } catch (err) {
-      setCoachError(err.response?.data?.detail || "AI 코치 분석에 실패했어요. 잠시 후 다시 시도해주세요.");
+      // 🔴 readErrorText 를 거친다 — 429 의 detail 은 **객체**라 그대로 넣으면
+      //    React 가 throw 하고 ErrorBoundary 가 없어 **대시보드가 백지가 된다**(2026-08-11 정밀검수).
+      setCoachError(readErrorText(err, "AI 코치 분석에 실패했어요. 잠시 후 다시 시도해주세요."));
     } finally {
       setCoachLoading(false);
     }
