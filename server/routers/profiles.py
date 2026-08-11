@@ -278,25 +278,77 @@ async def delete_profile(profile_id: str, user: dict = Depends(get_current_user)
         명세서를 뒤로 미뤘고, 여기는 프로필이 이미 확정적으로 사라진 뒤다.)
     """
     await get_owned_profile(profile_id, user["user_id"])
+
+    # ── ① 🔴 경로를 **지우기 전에** 걷어온다 ──────────────────────────────
+    #
+    # 🔴 2026-08-11 오너 시범 테스트로 발견 — 첫 수정이 불충분했다.
+    #    처음엔 "명세서를 도는 사람이 없다"만 고쳤는데(트리거가 만든 pending 을 _sweep_one 에 넘김),
+    #    실측해보니 **그 명세서가 비어 있었다**(`paths=0`). 파일 3개가 그대로 남았다.
+    #
+    #    왜 비었나 — 009 트리거는 `diary_entries` 를 지울 때 `diary_assets` 를 **조인해서**
+    #    경로를 찾는다. 아이가 일기를 찢을 때는 자산이 살아 있어서 잘 돈다.
+    #    그런데 `profiles` 를 지우면 `diary_entries` 와 `diary_assets` 가 **동시에 cascade** 되어,
+    #    트리거가 돌 시점에 조인 대상이 이미 없다 → 경로 0개 → 지울 게 없다고 판단하고 done.
+    #
+    #    ⚠️ 답은 어제 내가 직접 쓴 주석에 있었다(account.py:85):
+    #       *"diary_assets 는 CASCADE 로 사라진다. **지우기 전에** 걷어와야 한다"*
+    #       탈퇴는 그래서 무사했고, 프로필 삭제에 그 단계가 없었다.
+    paths: list = []
+    try:
+        for page in range(30):                       # account.py 와 같은 관례(1000×30)
+            rows = await sb_select("diary_assets", {
+                "profile_id": f"eq.{profile_id}",
+                "user_id": f"eq.{user['user_id']}",   # 🔴 남의 것이 섞이지 않게 두 겹
+                "select": "storage_path,thumb_path",
+                "order": "created_at.asc",
+                "limit": "1000",
+                "offset": str(page * 1000),
+            })
+            if not rows:
+                break
+            for a in rows:
+                # `_path` 접미사 관례 — 007 트리거·고아 청소기와 같은 규칙
+                for k, v in a.items():
+                    if k.endswith("_path") and v:
+                        paths.append(v)
+            if len(rows) < 1000:
+                break
+    except Exception:
+        paths = []          # 못 걷어와도 삭제는 진행한다(유실보다 잔존)
+
+    # ── ② 프로필 삭제 (여기서 cascade + 트리거가 돈다) ──────────────────
     await sb_delete(
         "profiles",
         {"id": f"eq.{profile_id}", "user_id": f"eq.{user['user_id']}"},
     )
 
-    # ── Storage 파일 정리 (실패해도 200 — 행은 이미 사라져 어느 화면에도 안 뜬다) ──
+    # ── ③ 명세서 + Storage 정리 (실패해도 200) ──────────────────────────
     # 🔴 지연 import 다. 모듈 최상단에 두면 **순환**이 된다:
     #    routers.diary 가 이 파일의 get_owned_profile 을 import 하기 때문(diary.py:40).
+    # ⚠️ 실패해도 500 을 내지 않는다 — 행은 이미 사라져 어느 화면에도 안 뜬다.
+    #    여기서 500 이면 "지워졌는데 실패했다"는 더 나쁜 불일치가 된다.
     removed, queued = 0, 0
     try:
         from routers.diary import _sweep_one   # noqa: PLC0415 — 순환 회피(위 주석)
 
-        rows = await sb_select("diary_deletions", {
-            "profile_id": f"eq.{profile_id}",
-            "state": "eq.pending",
-            "select": "*",
-            "limit": "1000",
-        })
-        for row in rows:
+        pending: list = []
+        if paths:
+            # 우리가 걷어온 경로로 **직접** 명세서를 만든다(account.py 와 같은 계약).
+            for i in range(0, len(paths), 100):
+                got = await sb_insert("diary_deletions", {
+                    "entry_id": profile_id, "profile_id": profile_id,
+                    "user_id": user["user_id"], "paths": paths[i:i + 100],
+                    "prefix": None, "state": "pending",
+                })
+                pending.extend(got or [])
+
+        # 트리거가 만든 것도 함께 처리한다(경로가 든 경우 — 아이가 찢은 뒤 실패분 등).
+        pending.extend(await sb_select("diary_deletions", {
+            "profile_id": f"eq.{profile_id}", "state": "eq.pending",
+            "select": "*", "limit": "1000",
+        }) or [])
+
+        for row in pending:
             n = len(row.get("paths") or [])
             try:
                 if await _sweep_one(row):
@@ -306,8 +358,7 @@ async def delete_profile(profile_id: str, user: dict = Depends(get_current_user)
             except Exception:
                 queued += n
     except Exception:
-        # 명세서 조회 자체가 실패해도 삭제는 성공이다 — 파일은 pending 으로 남아
-        # 나중에 sweeper 가 집는다. 여기서 500 을 내면 "지워졌는데 실패했다"가 된다.
         pass
 
-    return {"success": True, "files": {"removedNow": removed, "queued": queued}}
+    return {"success": True, "files": {"collected": len(paths),
+                                       "removedNow": removed, "queued": queued}}

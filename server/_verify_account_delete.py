@@ -401,6 +401,33 @@ def main() -> int:
     check(not _del_bad,
           f"🔴 명세서를 만들고 안 도는 경로 0개 (발견: {_del_bad or '없음'}) "
           "— 지웠으면 같은 함수에서 _sweep_one/_sweep_for_entry 로 파일까지 정리할 것")
+
+    # 🔴 [G-2] 그것만으로는 부족했다 — **경로를 지우기 전에 걷어왔는가** (2026-08-11 실사고)
+    #
+    #   프로필 삭제에 `_sweep_one` 을 붙여놓고 통과했는데, 오너 시범에서 파일 3개가 남았다.
+    #   원인: 009 트리거는 `diary_entries` 삭제 시 `diary_assets` 를 **조인해서** 경로를 찾는다.
+    #   아이가 일기를 찢을 때는 자산이 살아 있어 잘 돈다. 그런데 `profiles` 를 지우면
+    #   두 표가 **동시에 cascade** 되어 트리거가 돌 시점에 조인 대상이 없다 → 명세서가 **빈 채로** 생긴다.
+    #   ⇒ `_sweep_one` 은 "지울 게 없다"며 done 으로 닫고, 파일은 영원히 남는다.
+    #
+    #   판정: `profiles` 를 지우는 함수는 **sb_delete 보다 먼저** diary_assets 를 조회해야 한다.
+    #   ⚠️ account.py 는 이 판정에서 빠진다 — 거기는 auth.users 를 지우고
+    #      `_collect_asset_paths` 로 이미 먼저 걷어온다([A] 가 순서를 검사한다).
+    _order_bad = []
+    for fn in sorted(os.listdir(ROUTERS_DIR)):
+        if not fn.endswith(".py") or fn == "__init__.py":
+            continue
+        for fname, fbody in _funcs(read(os.path.join(ROUTERS_DIR, fn))):
+            code = _code_only(fbody)
+            m_del = re.search(r'sb_delete\(\s*["\']profiles["\']', code)
+            if not m_del:
+                continue
+            m_get = re.search(r'sb_select\(\s*["\']diary_assets["\']', code)
+            if not m_get or m_get.start() > m_del.start():
+                _order_bad.append(f"{fn}:{fname}")
+    check(not _order_bad,
+          f"🔴 profiles 를 지우기 **전에** diary_assets 경로를 걷어온다 (발견: {_order_bad or '없음'}) "
+          "— cascade 가 자산을 함께 지워서 트리거가 경로를 못 찾는다(빈 명세서 → 파일 영구 잔존)")
     for k, why in sorted(SWEEP_EXEMPT.items()):
         check(k in _del_seen, f"면제 {k} 가 실재한다 — {why}")
 
