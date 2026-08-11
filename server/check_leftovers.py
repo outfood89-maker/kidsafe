@@ -86,16 +86,16 @@ async def main():
         return 1
 
     async with httpx.AsyncClient(timeout=20) as c:
-        entries = await q(c, "diary_entries", {"select": "id"})
+        entries = await q(c, "diary_entries", {"select": "id,user_id"})
         # 🔴 profile_id 를 반드시 함께 가져온다. 처음엔 빼먹었더니 아래 '주인 없는 자산'
         #    검사가 **항상 통과**했다 — 비교할 값 자체가 없으니 0건이 나온다.
         #    (오늘만 네 번째 같은 함정이다: 검사가 아무것도 안 하면서 초록불)
         assets = await q(c, "diary_assets",
-                         {"select": "id,profile_id,storage_path,thumb_path,bytes,thumb_bytes"})
+                         {"select": "id,user_id,profile_id,storage_path,thumb_path,bytes,thumb_bytes"})
         pending = await q(c, "diary_deletions", {"select": "id,paths,attempts,state",
                                                  "state": "eq.pending"})
         failed = await q(c, "diary_deletions", {"select": "id,paths", "state": "eq.failed"})
-        profiles = await q(c, "profiles", {"select": "id,name"})
+        profiles = await q(c, "profiles", {"select": "id,name,user_id"})
         # 🔴 DB 가 아니라 **실물**. 이걸 안 봐서 2026-08-11 사고를 놓쳤다.
         real = await storage_files(c)
 
@@ -107,10 +107,31 @@ async def main():
     print("🔍 지금 서버에 남아 있는 것")
     print("=" * 62)
     real_bytes = sum(s or 0 for _, s in real)
-    print(f"  아이 프로필   {len(profiles):>5}명   {[p.get('name') for p in profiles]}")
+    # 🔴 이 도구는 service key 를 써서 **전체 DB**를 본다 (2026-08-11 오너 지적으로 정정).
+    #    처음엔 합계만 찍었더니 내가 *"이 계정을 지우면 아이 15명이 사라진다"* 고 말했고,
+    #    오너가 *"한 계정에는 프로필 1개뿐이잖아"* 라고 되물어 틀린 걸 알았다.
+    #    실제로는 **계정 11개에 흩어진 15명**이었다.
+    #    ⇒ 합계만 보여주면 "이 계정의 것"으로 읽힌다. **계정별로 쪼개서** 보여준다.
+    accounts = {}
+    for p in profiles:
+        accounts.setdefault(p.get("user_id"), {"names": [], "entries": 0, "assets": 0})["names"].append(p.get("name"))
+    for e in entries:
+        accounts.setdefault(e.get("user_id"), {"names": [], "entries": 0, "assets": 0})["entries"] += 1
+    for a in assets:
+        accounts.setdefault(a.get("user_id"), {"names": [], "entries": 0, "assets": 0})["assets"] += 1
+
+    print(f"  ⚠️ 아래는 **전체 DB 합계**다 (계정 {len(accounts)}개 전부). 특정 계정 것이 아니다.")
+    print(f"  아이 프로필   {len(profiles):>5}명")
     print(f"  일기          {len(entries):>5}편")
     print(f"  그림·음성(DB) {len(assets):>5}개   ({used / 1024 / 1024:.1f}MB)")
     print(f"  🔴 실제 파일  {len(real):>5}개   ({real_bytes / 1024 / 1024:.1f}MB)  ← Storage 실물")
+    print()
+    print("  ── 계정별 (자산이 있거나 아이가 2명 이상인 곳만) ──")
+    for uid, v in sorted(accounts.items(), key=lambda kv: -(kv[1]["assets"] * 100 + len(kv[1]["names"]))):
+        if v["assets"] == 0 and len(v["names"]) < 2 and v["entries"] == 0:
+            continue
+        print(f"     {str(uid)[:8]}…  아이 {len(v['names'])}명 · 일기 {v['entries']}편 · 자산 {v['assets']}개"
+              f"   {v['names']}")
     print()
 
     ok = True
