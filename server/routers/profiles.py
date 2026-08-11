@@ -259,10 +259,55 @@ async def diary_consent(profile_id: str, body: DiaryConsent, user: dict = Depend
 # DELETE /profiles/{id}
 @router.delete("/{profile_id}")
 async def delete_profile(profile_id: str, user: dict = Depends(get_current_user)):
-    # 소유권 확인 후 삭제 — 종속 데이터는 DB cascade 가 자동 정리
+    """아이 프로필 삭제 — DB 는 cascade 가, **Storage 파일은 여기가** 정리한다.
+
+    🔴 2026-08-11 🔬 정밀검수로 발견 — 그전까지 **그림·음성 파일이 영원히 남았다.**
+       *"종속 데이터는 DB cascade 가 자동 정리"* 라는 주석이 절반만 맞았다:
+         · `diary_entries`·`diary_assets` **행**은 cascade 로 사라진다 ✓
+         · 009 트리거가 삭제 경로를 `diary_deletions` 에 **명세서(pending)로 남긴다** ✓
+         · 🔴 그런데 **그 명세서를 도는 사람이 없었다.** sweeper 는 관리자가 손으로 부르는
+           `POST /diary/admin/sweep` 뿐이고 크론이 없다(2026-08-10 결정 ③에서 이미 배운 것).
+       탈퇴(`account.py`)는 그래서 `_sweep_one` 을 직접 부르게 고쳤는데,
+       **프로필 삭제는 같이 안 고쳤다.** 같은 구멍이 한 자리에만 메워져 있었다.
+
+    ⚠️ 개인정보보호법 제21조(파기) · 처리방침 제7조가 약속하는 자리다.
+       부모가 아이 프로필을 지웠는데 그 아이의 그림·목소리가 서버에 남는다.
+
+    ⚠️ 순서: **삭제 뒤에** 명세서를 읽는다. 트리거가 만들어야 읽을 게 생긴다.
+       (탈퇴와 방향이 다르다 — 거기는 auth 삭제가 실패하면 산 계정 파일을 지울 위험이 있어
+        명세서를 뒤로 미뤘고, 여기는 프로필이 이미 확정적으로 사라진 뒤다.)
+    """
     await get_owned_profile(profile_id, user["user_id"])
     await sb_delete(
         "profiles",
         {"id": f"eq.{profile_id}", "user_id": f"eq.{user['user_id']}"},
     )
-    return {"success": True}
+
+    # ── Storage 파일 정리 (실패해도 200 — 행은 이미 사라져 어느 화면에도 안 뜬다) ──
+    # 🔴 지연 import 다. 모듈 최상단에 두면 **순환**이 된다:
+    #    routers.diary 가 이 파일의 get_owned_profile 을 import 하기 때문(diary.py:40).
+    removed, queued = 0, 0
+    try:
+        from routers.diary import _sweep_one   # noqa: PLC0415 — 순환 회피(위 주석)
+
+        rows = await sb_select("diary_deletions", {
+            "profile_id": f"eq.{profile_id}",
+            "state": "eq.pending",
+            "select": "*",
+            "limit": "1000",
+        })
+        for row in rows:
+            n = len(row.get("paths") or [])
+            try:
+                if await _sweep_one(row):
+                    removed += n
+                else:
+                    queued += n
+            except Exception:
+                queued += n
+    except Exception:
+        # 명세서 조회 자체가 실패해도 삭제는 성공이다 — 파일은 pending 으로 남아
+        # 나중에 sweeper 가 집는다. 여기서 500 을 내면 "지워졌는데 실패했다"가 된다.
+        pass
+
+    return {"success": True, "files": {"removedNow": removed, "queued": queued}}

@@ -324,6 +324,86 @@ def main() -> int:
     else:
         check(False, "diary.py 를 찾을 수 있다")
 
+    # ── [G] 🔴 명세서를 **만드는** 경로마다 **도는** 사람이 있는가 ────────
+    #
+    # 2026-08-11 🔬 정밀검수로 발견한 구멍이다.
+    #   009 트리거는 `after delete on diary_entries` 라, 그 표의 행이 사라지면
+    #   **직접 지웠든 cascade 로 지워졌든** 명세서(pending)가 생긴다.
+    #   그런데 sweeper 는 관리자가 손으로 부르는 `POST /diary/admin/sweep` 뿐이다(크론 없음).
+    #   ⇒ 명세서를 만들어놓고 **아무도 안 도는 경로**가 있으면 Storage 파일이 영원히 남는다.
+    #
+    #   실제로 `DELETE /profiles/{id}` 가 그랬다 — 탈퇴는 2026-08-10 에 `_sweep_one` 위임으로
+    #   고쳤는데, **프로필 삭제는 같이 안 고쳤다.** 같은 구멍이 한 자리에만 메워져 있었다.
+    #   부모가 아이 프로필을 지웠는데 그 아이의 그림·목소리가 서버에 남았다(법 제21조·방침 제7조).
+    #
+    # 판정: `profiles` 또는 `diary_entries` 를 지우는 함수는 **같은 함수 안에서**
+    #       `_sweep_one` 또는 `_sweep_for_entry` 를 불러야 한다.
+    print("\n[G] 🔴 명세서를 만드는 경로마다 도는 사람이 있는가 (cascade 포함)")
+    ROUTERS_DIR = os.path.join(HERE, "routers")
+    # 🔴 정규식이다. 처음엔 `'sb_delete("profiles"'` 로 **글자 그대로** 찾았는데,
+    #    실제 코드는 인자가 줄바꿈돼 있어(`sb_delete(\n        "profiles",`) **놓쳤다.**
+    #    그래서 방금 고친 profiles.py:delete_profile 이 검사에 안 잡혔다 — 대조군이 없었으면
+    #    "0개 발견 = 통과"로 조용히 넘어갔을 자리다(지뢰 #13).
+    DELETE_RE = re.compile(r'sb_delete\(\s*["\'](profiles|diary_entries)["\']')
+    SWEEPERS = ("_sweep_one", "_sweep_for_entry")
+    # 면제 — **이유를 함께** 적는다(이유 없는 면제는 구멍). 지금은 비어 있는 것이 정상이다.
+    SWEEP_EXEMPT = {}
+
+    def _code_only(text: str) -> str:
+        """독스트링과 `#` 주석을 벗긴 **코드만**.
+
+        🔴 2026-08-11 — 이걸 안 하면 검사가 **자기 설명문을 코드로 센다.**
+           `delete_profile` 의 독스트링에 *"`_sweep_one` 을 직접 부르게 고쳤는데"* 라고
+           적어뒀더니, 실제 호출을 통째로 지워도 검사가 **통과**했다(차단시험 ①).
+           같은 함정을 오늘만 세 번 만났다(ErrorBoundary 단어 · [K-2] 헬퍼 · 여기).
+           ⇒ **문서를 읽는 검사는 문서를 먼저 벗긴다.**
+        """
+        no_doc = re.sub(r'("""|\'\'\')(?:.|\n)*?\1', "", text)
+        return "\n".join(l.split("#", 1)[0] for l in no_doc.split("\n"))
+
+    def _funcs(text: str):
+        """`(async )def NAME(` 부터 다음 최상위 def 전까지를 (이름, 본문) 으로."""
+        out, cur, name = [], None, None
+        for line in text.split("\n"):
+            m = re.match(r"(?:async )?def ([A-Za-z_][A-Za-z0-9_]*)\(", line)
+            if m:
+                if cur is not None:
+                    out.append((name, "\n".join(cur)))
+                name, cur = m.group(1), [line]
+                continue
+            if cur is not None:
+                cur.append(line)
+        if cur is not None:
+            out.append((name, "\n".join(cur)))
+        return out
+
+    _del_seen, _del_bad = [], []
+    for fn in sorted(os.listdir(ROUTERS_DIR)):
+        if not fn.endswith(".py") or fn == "__init__.py":
+            continue
+        text = read(os.path.join(ROUTERS_DIR, fn))
+        if not DELETE_RE.search(text):
+            continue
+        for fname, fbody in _funcs(text):
+            if not DELETE_RE.search(fbody):
+                continue
+            key = f"{fn}:{fname}"
+            _del_seen.append(key)
+            if key in SWEEP_EXEMPT:
+                continue
+            # 🔴 코드만 본다 — 주석·독스트링의 글자를 호출로 세면 안 된다(_code_only 주석 참조)
+            if not any(f"{s}(" in _code_only(fbody) for s in SWEEPERS):
+                _del_bad.append(key)
+
+    # 🔴 대조군 — 하나도 못 찾았으면 파서가 헛돈 것이다(지뢰 #13)
+    check(len(_del_seen) >= 3,
+          f"profiles·diary_entries 를 지우는 함수를 {len(_del_seen)}개 찾았다 (파서가 헛돌지 않았다) — {_del_seen}")
+    check(not _del_bad,
+          f"🔴 명세서를 만들고 안 도는 경로 0개 (발견: {_del_bad or '없음'}) "
+          "— 지웠으면 같은 함수에서 _sweep_one/_sweep_for_entry 로 파일까지 정리할 것")
+    for k, why in sorted(SWEEP_EXEMPT.items()):
+        check(k in _del_seen, f"면제 {k} 가 실재한다 — {why}")
+
     print("\n" + "=" * 66)
     print(f"통과 {_passes} · 실패 {len(_fails)}")
     if _fails:
