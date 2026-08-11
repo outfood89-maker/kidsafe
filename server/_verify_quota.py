@@ -497,6 +497,116 @@ for _k in _acct_only:
           "— 다르면 표가 거짓말을 한다(실제 상한은 LIMITS 쪽)",
           quota.LIMITS[_k]["per_day"] == _acc["per_day"])
 
+# ══════════════════════════════════════════════════════════════════════
+# 🔴 [L-2] 폴백 키와 계정 총량 키가 **갈라져 있는가** (2026-08-11 정밀검수 · 실측 재현)
+#
+# 위 [L] 은 라우터 소스를 정규식으로 훑는다 → `check_and_consume("report_coach",
+# (scope_key if scope_key != "all" else ""), user_id)` 처럼 **리터럴 "" 가 아닌** 호출은 못 본다.
+# 그래서 아래 사고를 [L] 이 한 번도 못 잡았다:
+#
+#   `scope_key(kind, "", uid)` 와 `account_scope(kind, pid, uid)` 가 **같은 문자열**이었다.
+#   → 부모가 아이 A·B 코치를 열면 집계 키가 2 가 되고,
+#     '전체보기' 코치를 **처음** 열 때 그 키를 자기 카운터로 읽는데 비교 대상은 per_day(2)라 첫 시도에서 429.
+#   → 화면엔 "지금 보시는 건 오늘 분석 결과예요" — **분석한 적이 없는데** 그렇게 말했다.
+#
+# ⇒ 소스를 읽지 않는다. **함수를 실제로 돌려** 키를 비교한다.
+# ══════════════════════════════════════════════════════════════════════
+print("\n[L-2] 🔒 폴백 키와 계정 총량 키가 갈라져 있는가 (실행으로 확인)")
+
+_snap_day, _snap_min = dict(quota._day), dict(quota._min)
+_uid, _pid = "UID_VERIFY", "PID_VERIFY"
+
+_collide = [
+    _k for _k in sorted(quota.ACCOUNT_LIMITS)
+    if quota.scope_key(_k, "", _uid) == quota.account_scope(_k, _pid, _uid)[0]
+]
+check(f"🔴 폴백 키와 계정 총량 키가 겹치는 종류가 0개다 (겹친 것: {_collide})", not _collide)
+# 🔴 대조군 — 아무것도 안 돌고 통과한 게 아닌지(지뢰 #13)
+check(f"   대조군 — 종류 {len(quota.ACCOUNT_LIMITS)}개를 실제로 돌았다",
+      len(quota.ACCOUNT_LIMITS) >= 5)
+
+# 실물 재현 — 아이별로 계정 총량을 채운 뒤 폴백 요청이 **자기 몫**을 쓰는가
+_kk = "report_coach"
+quota._day.clear(); quota._min.clear()
+for _c in ("child1", "child2"):
+    quota.check_and_consume(_kk, _c, _uid)
+_passed = True
+try:
+    quota.check_and_consume(_kk, "", _uid)
+except Exception:
+    _passed = False
+check(f"🔴 {_kk}: 아이 2명을 연 뒤에도 '전체보기' 첫 시도가 통과한다", _passed)
+
+# 🔴 대조군 — 자기 몫을 다 쓰면 **막혀야** 한다. 한쪽만 있으면 방어가 한 방향으로만 밀린다
+quota._day.clear(); quota._min.clear()
+for _ in range(quota.LIMITS[_kk]["per_day"]):
+    quota.check_and_consume(_kk, "", _uid)
+_blocked = False
+try:
+    quota.check_and_consume(_kk, "", _uid)
+except Exception:
+    _blocked = True
+check(f"   대조군 — {_kk}: 폴백 요청도 자기 하루 한도({quota.LIMITS[_kk]['per_day']})를 넘기면 막힌다",
+      _blocked)
+
+# 🔴 '그날 치가 끝났는데 잠시 뒤에 다시 오라'고 하지 않는가 (고정 축 4 — 사실 왜곡)
+quota._day.clear(); quota._min.clear()
+for _ in range(quota.LIMITS[_kk]["per_day"]):
+    quota.check_and_consume(_kk, "", _uid)
+_scope = None
+try:
+    quota.check_and_consume(_kk, "", _uid)
+except Exception as _e:
+    _scope = (getattr(_e, "detail", {}) or {}).get("scope")
+check(f"🔴 {_kk}: 하루치가 끝난 뒤의 429 는 scope='day' 다 (분당 문구면 '기다리면 열린다'는 거짓말) "
+      f"— 실제: {_scope}", _scope == "day")
+
+quota._day.clear(); quota._min.clear()
+quota._day.update(_snap_day); quota._min.update(_snap_min)
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴 [M] 한도표 자체 검사(_validate_limits)가 **전 종류**를 도는가 (2026-08-11)
+#
+# `per_day < per_min` 가드가 ACCOUNT_LIMITS 루프 안에 들어가 있었다. 그 루프에는 `lim` 이 없어서
+# 앞 루프에서 새어나온 **마지막 값 하나**를 12번 반복해서 봤다 — 12종을 보는 것처럼 보였지만
+# 실제로는 1종만 봤고, 그 사이 2종(report_coach·report_weekly)이 위반 상태로 통과했다.
+# ⚠️ 하네스 장치 표에 이 함수가 올라 있다. **반만 살아 있는 검사가 없는 검사보다 나쁘다.**
+# ══════════════════════════════════════════════════════════════════════
+print("\n[M] 🔒 한도표 자체 검사가 전 종류를 도는가")
+
+_viol = [(k, v["per_day"], v["per_min"]) for k, v in quota.LIMITS.items()
+         if v["per_day"] < v["per_min"]]
+check(f"🔴 per_day < per_min 인 종류가 0개다 (위반: {_viol})", not _viol)
+
+# 🔴 차단 시험 — **맨 앞** 종류를 일부러 깨뜨린다.
+#    마지막 항목을 깨뜨리면 버그가 있던 코드도 통과한다 → 자리를 앞에 두는 것이 이 시험의 핵심이다.
+#
+# 🔴 `per_min` **하나만** 올린다 (2026-08-11 — 이 시험이 처음엔 틀린 이유로 초록불이었다).
+#    처음엔 `per_day: 1, per_min: 99` 로 깨뜨렸는데, per_day 를 건드리면 바로 아래
+#    ACCOUNT_LIMITS 의 '아이별 × MAX_PROFILES' 가드가 **먼저** 걸린다.
+#    ⇒ per_day/per_min 가드를 소스에서 통째로 지워도 이 시험은 초록불이었다(실측).
+#    한 시험은 **한 가지만** 깨뜨려야 그 하나를 검증한다.
+_first = next(iter(quota.LIMITS))
+_orig = dict(quota.LIMITS[_first])
+try:
+    quota.LIMITS[_first] = {**_orig, "per_min": _orig["per_day"] + 1}
+    _caught = False
+    try:
+        quota._validate_limits()
+    except RuntimeError:
+        _caught = True
+    check(f"🔴 차단 시험 — 맨 앞 종류('{_first}')를 깨뜨리면 _validate_limits 가 잡는다", _caught)
+finally:
+    quota.LIMITS[_first] = _orig
+
+_restored = True
+try:
+    quota._validate_limits()
+except RuntimeError:
+    _restored = False
+check("   대조군 — 되돌리면 통과한다 (검사가 늘 빨간불인 게 아니다)", _restored)
+
+
 print("\n[K-2] 🔒 엔드포인트 단위 커버리지 — 같은 파일 안의 무한도 경로를 찾는다")
 
 # 함수 본문 단위 면제 — **이유를 함께** 적는다(이유 없는 면제는 구멍).

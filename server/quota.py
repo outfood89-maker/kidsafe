@@ -163,12 +163,17 @@ LIMITS = {
     #    오너 방침: "무조건 하루 1회". 다만 계정 총량 검증이 `아이별 < 계정 < 아이별×4` 를
     #    요구해서 아이별 1·계정 5 는 통과하지 못한다(1×4=4 ≤ 5) → 아이별 2 로 둔다.
     #    아이 4명 + 전체보기('all') = 스코프 5개라 계정 5 가 맞다.
-    "report_coach":   {"per_day": 2, "per_min": 3, "cost_krw": 15,
+    # 🔴 per_min 을 3 → 2 로 내렸다 (2026-08-11 정밀검수). per_day(2) 보다 per_min(3) 이 커서
+    #    `_validate_limits` 의 'per_day < per_min' 규칙을 위반한 상태였는데, 그 검사가 루프 버그로
+    #    죽어 있어 아무도 못 봤다. 검사를 살리면서 데이터도 맞춘다 — **검사를 느슨하게 하지 않는다.**
+    #    ⚠️ 실제 동작 변화는 없다: 분당 카운터는 **스코프별**(`report_coach:p:<pid>`)이고,
+    #       같은 스코프 반복은 reports.py 의 캐시가 먼저 받아내 소비 자체가 일어나지 않는다.
+    "report_coach":   {"per_day": 2, "per_min": 2, "cost_krw": 15,
                        "msg_min": "잠시 뒤에 다시 열어주세요.",
                        "msg_day": "AI 코치는 하루 한 번 새로 분석해요. 지금 보시는 건 오늘 분석 결과예요."},
 
-    # 주간 리포트 생성 (**Sonnet**). parent_reports 캐시 있음
-    "report_weekly":  {"per_day": 2, "per_min": 3, "cost_krw": 15,
+    # 주간 리포트 생성 (**Sonnet**). parent_reports 캐시 있음 (per_min 은 위와 같은 이유로 2)
+    "report_weekly":  {"per_day": 2, "per_min": 2, "cost_krw": 15,
                        "msg_min": "잠시 뒤에 다시 열어주세요.",
                        "msg_day": "주간 리포트는 하루 한 번 새로 만들어요. 지금 보시는 건 오늘 리포트예요."},
 
@@ -295,6 +300,17 @@ def _validate_limits() -> None:
                     f"   분당 제한은 '얼마나 빨리'만 막습니다 — 하루 총량은 per_day 만이 막습니다.\n"
                     f"   (분당 3회만 두면 하루 4,320회가 그대로 통과합니다)"
                 )
+        # 🔴 이 검사는 **이 루프 안**에 있어야 한다 (2026-08-11 정밀검수).
+        #    원래 아래 ACCOUNT_LIMITS 루프에 들어가 있었는데, 그 루프에는 `lim` 이 없다 —
+        #    앞 루프에서 새어나온 마지막 값(diary_upload)을 12번 반복해서 볼 뿐이었다.
+        #    ⇒ 12종을 검사하는 것처럼 보였지만 **실제로는 1종만** 봤고, 그 사이 2종이 위반 상태로 통과했다.
+        #    ⚠️ 하네스 장치 표에 이 함수가 올라 있다. 검사가 반만 살아 있는 것이
+        #       검사가 없는 것보다 나쁘다 — 없는 보호를 있다고 믿게 된다.
+        if lim["per_day"] < lim["per_min"]:
+            raise RuntimeError(
+                f"❌ quota.LIMITS['{kind}']: per_day({lim['per_day']}) 가 "
+                f"per_min({lim['per_min']}) 보다 작습니다 — 하루 한도가 1분 만에 소진됩니다."
+            )
     # 🔴 계정 총량도 같은 방식으로 못박는다 (2026-08-09).
     for kind, acc in ACCOUNT_LIMITS.items():
         if kind not in LIMITS:
@@ -318,11 +334,6 @@ def _validate_limits() -> None:
                 f"❌ quota.ACCOUNT_LIMITS['{kind}'] per_day={acc['per_day']} 가\n"
                 f"   아이별 {per_child} × 최대 프로필 {MAX_PROFILES} = {per_child * MAX_PROFILES} 이상입니다.\n"
                 f"   그러면 아이별 한도가 먼저 걸리므로 계정 총량이 **아무것도 막지 못합니다.**"
-            )
-        if lim["per_day"] < lim["per_min"]:
-            raise RuntimeError(
-                f"❌ quota.LIMITS['{kind}']: per_day({lim['per_day']}) 가 "
-                f"per_min({lim['per_min']}) 보다 작습니다 — 하루 한도가 1분 만에 소진됩니다."
             )
 
 
@@ -406,6 +417,10 @@ def scope_key(kind: str, profile_id: str = "", user_id: str = "") -> str:
        (남의 쿼터를 태울 수 없다 — 자기 계정 몫만 쓴다. 그래서 우회해도 얻는 게 없다)
 
     prefix p:/u: 로 프로필 id 와 계정 id 를 구분한다(둘 다 uuid 라 섞이면 구분이 안 된다).
+
+    🔴 여기가 만드는 `{kind}:u:{uid}` 는 **폴백 요청 자신의 카운터**다.
+       계정 총량 집계는 `account_scope` 가 별도로 `{kind}:acct:{uid}` 를 쓴다 — 섞으면 안 된다.
+       (2026-08-11 사고: 두 키가 같은 문자열이라 AI 코치 '전체보기'가 첫 시도에서 막혔다)
     """
     pid = (profile_id or "").strip()
     if pid:
@@ -416,15 +431,25 @@ def scope_key(kind: str, profile_id: str = "", user_id: str = "") -> str:
 def account_scope(kind: str, profile_id: str = "", user_id: str = "") -> tuple:
     """계정 전체 총량을 셀 키와 하루 한도. 해당 없으면 (None, 0).
 
-    🔴 profile_id 가 **없을 때는 None 을 준다.** 그때는 scope_key 가 이미 계정 키를 쓰므로,
+    🔴 profile_id 가 **없을 때는 None 을 준다.** 폴백 요청은 scope_key 가 이미 계정 단위로 세므로,
        여기서 또 세면 **한 번 요청에 2회가 소비된다**(= 한도가 절반으로 줄어 아이가 일찍 막힌다).
+
+    🔴 키 이름이 `:acct:` 인 이유 (2026-08-11 정밀검수 — 실측 재현) —
+       예전엔 여기도 `{kind}:u:{uid}` 를 썼는데, 그건 `scope_key` 가 **폴백 요청 자신의 카운터**로
+       쓰는 것과 **글자 하나까지 같은 문자열**이었다. 그래서:
+         부모가 아이 A·B 코치를 연다 → 집계 키 `report_coach:u:UID` 가 2 가 된다
+         → '전체보기' 코치를 **처음** 열면 profile_id="" 라 그 키를 자기 카운터로 읽는데
+           비교 대상은 ACCOUNT_LIMITS(5)가 아니라 LIMITS per_day(**2**) → 첫 시도에서 429.
+       화면엔 "지금 보시는 건 오늘 분석 결과예요" 가 떴다 — **분석한 적이 없는데** 그렇게 말했다.
+       ⚠️ 키 문자열을 조립하는 곳은 이 파일 두 곳뿐이고(전수 grep), 저장은 메모리 dict 라
+          이름을 바꿔도 마이그레이션이 없다. 파싱하는 코드도 없다.
     """
     acc = ACCOUNT_LIMITS.get(kind)
     pid = (profile_id or "").strip()
     uid = (user_id or "").strip()
     if not acc or not pid or not uid:
         return None, 0
-    return f"{kind}:u:{uid}", acc["per_day"]
+    return f"{kind}:acct:{uid}", acc["per_day"]
 
 
 def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> None:
@@ -447,8 +472,15 @@ def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> Non
     today, bucket = today_kst(), minute_bucket()
 
     # ① 분당 — 급제동. 자동 스크립트는 여기서 죽는다
+    #
+    # 🔴 `and used_day < per_day` 를 왜 붙였나 (2026-08-11) — **그날 치가 이미 끝났는데**
+    #    "잠시 뒤에 다시 해보세요" 라고 하면 거짓말이다(고정 축 4: 사실 왜곡). 기다려도 안 열린다.
+    #    둘 다 소진됐으면 아래 ②가 받아서 하루 문구로 알린다.
+    #    ⚠️ 순서를 뒤집지 않은 이유: `DiaryFlow.jsx:357` 이 `detail.scope` 로 아이 문구를 가른다.
+    #       조건 하나만 더해 **막는 힘은 그대로 두고 말만 정확하게** 한다.
     used_min = _read_min(key, bucket)
-    if used_min >= limit["per_min"]:
+    used_day = _read_day(key, today)
+    if used_min >= limit["per_min"] and used_day < limit["per_day"]:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
@@ -460,8 +492,7 @@ def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> Non
             },
         )
 
-    # ② 하루 — 총량
-    used_day = _read_day(key, today)
+    # ② 하루 — 총량 (used_day 는 위에서 이미 읽었다)
     if used_day >= limit["per_day"]:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
