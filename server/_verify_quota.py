@@ -464,6 +464,39 @@ check("🔴 한도가 빠진 라우터 0개 — 새 LLM 경로를 만들면 여�
 # `/react/stream`(아이가 실제로 부르는 것)과 `/greet` 은 무제한**이었다.
 # ⇒ 파일이 아니라 **함수 본문**을 잘라서, 돈을 쓰는 함수마다 한도를 확인한다.
 # ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+# 🔴 [L] 계정 단위로 세는 종류는 **표가 거짓말하면 안 된다** (2026-08-11)
+#
+# 라우터가 `check_and_consume("kind", "", user_id)` 처럼 profileId 를 **안 주면**
+# scope_key 가 계정 단위로 폴백하고, `account_scope` 는 (None, 0) 을 돌려준다.
+# ⇒ 그 종류의 ACCOUNT_LIMITS 값은 **절대 걸리지 않는다.**
+#
+# 실제 사고: `checkin_react` 가 LIMITS 8 / ACCOUNT 30 이었다. 표만 보면 "계정 30" 인데
+# 실제 상한은 **8** 이었고, 체크인 1세션이 3회를 쓰므로 **아이 3명이면 막혔다.**
+# 어제까지는 그 한도가 아무도 안 부르는 경로에 있어 발동을 안 해 안 보였다.
+# ⇒ 두 값을 강제로 같게 묶는다. 다르면 사람이 잘못된 숫자를 보고 판단한다.
+# ══════════════════════════════════════════════════════════════════════
+print("\n[L] 🔒 계정 단위 종류 — LIMITS 와 ACCOUNT_LIMITS 가 같은 숫자인가")
+
+_acct_only = sorted(set(_re.findall(
+    r'check_and_consume\(\s*"([a-z_]+)"\s*,\s*""\s*,',
+    "\n".join(open(_os.path.join(_ROUTERS, f), encoding="utf-8").read()
+              for f in _os.listdir(_ROUTERS) if f.endswith(".py")))))
+
+# 🔴 대조군 — 하나도 못 찾았으면 파서가 헛돈 것이다(지뢰 #13)
+check(f"profileId 를 안 주는 종류를 {len(_acct_only)}개 찾았다 (파서가 헛돌지 않았다) — {_acct_only}",
+      len(_acct_only) >= 3)
+for _k in _acct_only:
+    # 실물로 확인 — 정말 계정 폴백이 되는가(주석·기억이 아니라 함수를 돌려본다)
+    check(f"   {_k}: account_scope 가 (None,0) 이다 = ACCOUNT_LIMITS 가 안 걸린다",
+          quota.account_scope(_k, "", "U1") == (None, 0))
+    _acc = quota.ACCOUNT_LIMITS.get(_k)
+    if _acc is None:
+        continue
+    check(f"🔴 {_k}: LIMITS({quota.LIMITS[_k]['per_day']}) == ACCOUNT_LIMITS({_acc['per_day']}) "
+          "— 다르면 표가 거짓말을 한다(실제 상한은 LIMITS 쪽)",
+          quota.LIMITS[_k]["per_day"] == _acc["per_day"])
+
 print("\n[K-2] 🔒 엔드포인트 단위 커버리지 — 같은 파일 안의 무한도 경로를 찾는다")
 
 # 함수 본문 단위 면제 — **이유를 함께** 적는다(이유 없는 면제는 구멍).
