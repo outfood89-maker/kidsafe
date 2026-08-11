@@ -25,7 +25,8 @@ import { getImage } from "./diaryImageStore";       // 읽기 전용
 import { getAudio } from "./diaryAudioStore";       // 읽기 전용
 // ⚠️ 얇은 어댑터 — 브리프는 `diaryServer.js` 를 전제했으나 GD-8a 산출물은 api.js 에 있다.
 //    계약(성질)은 동일하다: 목록 조회 / upsert / 결정적 경로 덮어쓰기.
-import { getDiaryEntries, postDiaryEntry } from "./api";
+// 🔴 getDiaryDeletions 는 GD-8d 의 삭제 명세서(tombstone). 없으면 지운 일기를 다시 올려 **부활**시킨다.
+import { getDiaryEntries, postDiaryEntry, getDiaryDeletions } from "./api";
 // 🔴 자산 업로드는 여기로 위임한다 — 썸네일·role·크기 처리를 한 곳에 모은다(정상 push 와 동일 계약).
 import { uploadImageAsset, uploadAudioAsset } from "./diaryAssets";
 
@@ -134,11 +135,33 @@ export async function migrateProfileDiary(pid, opts = {}) {
 
   // ① 멱등성의 권위 = 서버 id 집합. 실패하면 상태를 바꾸지 않고 조용히 빠진다
   //    (빈 배열로 뭉개면 전량 재업로드가 된다).
+  //
+  // 🔴 ①-b 삭제 명세서(tombstone)도 **반드시 함께** 본다 (2026-08-11 정밀검수).
+  //    서버 id 집합만 보면 "서버엔 없고 로컬엔 있다" 가 두 가지를 한 덩어리로 만든다:
+  //      ⓐ 아직 못 올린 것(= 올려야 한다)   ⓑ 부모가 지운 것(= 절대 올리면 안 된다)
+  //    diaryStore.js:506 은 이미 이 구분을 하고 있었고 그 자리에 🔴 주석까지 있었는데,
+  //    같은 판단을 하는 이 파일에는 없었다 — 📦 정리 화면에서 지운 일기가 다음 회차에 부활했다.
+  //    (정리 화면은 서버만 지운다 — DiaryStorageCard.jsx:81. 이 기기의 로컬 사본은 그대로 남는다)
+  //
+  //    ⚠️ 두 GET 을 **순차**로 받는다. 처음엔 Promise.all 로 썼다가 `_verify_diary_contract` 에 잡혔다 —
+  //       이 파일은 Promise.all 자체가 금지다(문자열로 막는다). "이건 목록 조회라 예외"라고
+  //       주석으로 우회하려 했던 것이 잘못이다: **금지를 논리로 비켜가지 않는다.**
+  //       대가는 부모 화면 진입 시 왕복 1회뿐이고, 얻는 것은 규칙이 계속 장치로 남는 것이다.
   let serverIds;
+  let deletedIds;
   try {
     const res = await getDiaryEntries(pid);
+    const delRes = await getDiaryDeletions(pid);
     serverIds = new Set((res?.entries || []).map((e) => e.id));
+    deletedIds = new Set(
+      (Array.isArray(delRes?.deletions) ? delRes.deletions : [])
+        .map((d) => d?.clientEntryId)
+        .filter(Boolean),
+    );
   } catch (err) {
+    // 🔴 삭제 목록 조회가 실패하면 **이번 회차를 통째로 건너뛴다.**
+    //    diaryStore 쪽은 실패 시 '아무것도 지우지 않는다' 가 안전한 쪽이지만, 여기는 반대다 —
+    //    모르는 채로 올리면 부활이고, **부활은 되돌릴 수 없다.** 안 올리는 건 다음 회차에 만회된다.
     const reason = err?.response?.status === 401 ? "auth" : "network";
     return { ok: false, status: "partial", uploaded: 0, skipped: 0, failed: [], total: 0, reason };
   }
@@ -147,7 +170,9 @@ export async function migrateProfileDiary(pid, opts = {}) {
   const prevFailed = Array.isArray(prev.failed) ? prev.failed : [];
   const triesOf = (id) => (prevFailed.find((f) => f.id === id)?.tries || 0);
 
-  let targets = local.filter((e) => e?.id && !serverIds.has(e.id));
+  // 🔴 deletedIds 를 반드시 뺀다 — 안 빼면 부모가 📦 정리에서 지운 일기를 **부활시킨다.**
+  //    (diaryStore.js:506 과 같은 판정. 두 곳이 갈라지면 한쪽으로 새어나간다)
+  let targets = local.filter((e) => e?.id && !serverIds.has(e.id) && !deletedIds.has(e.id));
   // 5회 이상 실패한 것은 자동 회차에서 제외한다(무한 재시도 방지). '이어서 옮기기'가 force 로 넘긴다.
   if (!force) targets = targets.filter((e) => triesOf(e.id) < 5);
 

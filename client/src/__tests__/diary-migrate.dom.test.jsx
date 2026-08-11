@@ -30,6 +30,10 @@ vi.mock("../utils/api", () => ({
     return { asset: {} };
   }),
   postDiaryEntry: vi.fn(async (payload) => { H.entryCalls.push(payload); return { entry: {} }; }),
+  // 🔴 삭제 명세서(GD-8d) — 이사 엔진이 **반드시** 본다(2026-08-11). 부모가 📦 정리에서 지운 일기를
+  //    다시 올리지 않기 위해서다. 가짜에 없으면 조회가 던져서 회차가 통째로 건너뛰어지고,
+  //    검사는 "0편 올렸다"로 조용히 실패한다 — 실제로 이 파일 11건이 한꺼번에 빨간불이 됐다.
+  getDiaryDeletions: vi.fn(async () => ({ deletions: H.deletions || [] })),
 }));
 // B13: 이사 엔진은 isDiaryServerOn 게이트 뒤에 있다. 배포 플래그가 꺼져 있어 항상 false 이므로,
 //   **게이트만** true 로 갈아끼워 이사 로직 자체를 검증한다(나머지 구현은 진짜).
@@ -63,7 +67,7 @@ function seed(n, extra = {}) {
 
 beforeEach(() => {
   localStorage.clear();
-  H.serverEntries = []; H.assetCalls = []; H.entryCalls = []; H.assetMeta = [];
+  H.serverEntries = []; H.assetCalls = []; H.entryCalls = []; H.assetMeta = []; H.deletions = [];
   H.assetFails = new Set(); H.img.clear(); H.aud.clear();
   vi.clearAllMocks();
 });
