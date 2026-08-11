@@ -26,6 +26,7 @@
 
 import ast
 import os
+import re
 import sys
 
 ROUTER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "routers")
@@ -115,14 +116,61 @@ def scan():
     return problems, total, profile_routes
 
 
+def check_jwt_leeway():
+    """🔴 토큰 검증에 **시계 오차 허용(leeway)** 이 있는가 (2026-08-11 실사고).
+
+    오너 탈퇴가 401 로 막혔다. 화면에도 로그에도 이유가 없었고, 임시 로그를 넣고서야 보였다:
+      `ImmatureSignatureError: The token is not yet valid (iat)`
+    Supabase 가 **방금 발급한** 토큰의 iat 이 우리 서버 시계보다 미래였다.
+    실측 — 그 기기가 표준시보다 **2초** 느렸다. **그 2초에 로그인이 통째로 막혔다.**
+
+    ⚠️ 로컬만의 문제가 아니다. leeway 가 없으면 **1초만 어긋나도** 전 사용자가 막히고,
+       증상은 "로그인이 안 돼요" 한 줄뿐이라 원인을 찾기가 극히 어렵다.
+       서버 시계가 잠깐 밀리는 것은 흔하다(NTP 재동기 · 컨테이너 이주).
+
+    함께 본다: `except` 가 **원인을 로그로 남기는가**. 안 남기면 다음에도 똑같이 헤맨다
+    (그 자리 주석은 원래 *"원인은 서버 로그로만"* 이라 적혀 있었는데 **로그가 없었다**).
+    """
+    ok = True
+    src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "auth.py"),
+               encoding="utf-8").read()
+
+    m = re.search(r"jwt\.decode\((.*?)\n\s*\)", src, re.S)
+    if not m:
+        print("  ❌ auth.py 에서 jwt.decode 를 못 찾았다 (파서가 헛돌았다)")
+        return False
+    body = m.group(1)
+
+    lm = re.search(r"leeway\s*=\s*(\d+)", body)
+    if not lm:
+        print("  ❌ 🔴 jwt.decode 에 leeway 가 없다 — 서버 시계가 1초만 밀려도 전 사용자가 막힌다")
+        print("       (2026-08-11: 기기가 2초 느려 오너 탈퇴가 401 로 막혔다)")
+        ok = False
+    elif not (5 <= int(lm.group(1)) <= 120):
+        print(f"  ❌ leeway={lm.group(1)}초 — 5~120초 범위를 벗어난다 "
+              "(너무 작으면 못 막고, 너무 크면 만료 판정이 헐거워진다)")
+        ok = False
+    else:
+        print(f"  ✅ 🔴 토큰 검증에 시계 오차 허용 {lm.group(1)}초 (시계가 밀려도 로그인이 안 죽는다)")
+
+    # 🔴 원인을 로그로 남기는가 — 안 남기면 401 의 진짜 이유가 영영 안 보인다
+    if re.search(r"except Exception as \w+:(?:.|\n)*?print\(", src):
+        print("  ✅ 토큰 검증 실패의 **원인을 로그로 남긴다** (401 만 보고 헤매지 않게)")
+    else:
+        print("  ❌ 🔴 except 가 원인을 안 남긴다 — 화면에도 로그에도 이유가 없어진다(지뢰 #8)")
+        ok = False
+    return ok
+
+
 def main():
     problems, total, profile_routes = scan()
+    leeway_ok = check_jwt_leeway()
 
     print(f"  검사한 라우트 {total}개 / 그중 프로필을 다루는 라우트 {profile_routes}개")
 
     if not problems:
         print(f"  ✅ 인가(소유권) 검증 누락 0건 (예외 허용 {len(ALLOW)}건)")
-        return 0
+        return 0 if leeway_ok else 1
 
     print(f"  ❌ 소유권 검증이 없는 라우트 {len(problems)}건:")
     for p in problems:

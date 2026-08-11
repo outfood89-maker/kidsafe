@@ -85,14 +85,35 @@ async def get_current_user(
             algorithms=_ALLOWED_ALGS,
             audience="authenticated",
             issuer=f"{SUPABASE_URL}/auth/v1",
+            # 🔴 시계 오차 허용 (2026-08-11 실사고).
+            #    오너 탈퇴가 401 로 막혔고 이유는 `ImmatureSignatureError: token is not yet valid (iat)`,
+            #    즉 **Supabase 가 방금 발급한 토큰의 iat 이 우리 서버 시계보다 미래**였다.
+            #    실측: 이 기기가 표준시보다 **2초** 느렸다. 그 2초에 로그인이 통째로 막혔다.
+            #
+            #    ⚠️ 이건 로컬만의 문제가 아니다 — leeway 가 없으면 **1초만 어긋나도** 전 사용자가 막힌다.
+            #       서버 시계가 잠깐 밀리는 것은 흔한 일이고(NTP 재동기·컨테이너 이주),
+            #       그때 증상은 "로그인이 안 돼요" 한 줄뿐이라 원인을 찾기가 극히 어렵다.
+            #    ⚠️ 30초는 만료(exp) 판정도 그만큼 느슨하게 만든다. 토큰 수명이 1시간이라
+            #       30초는 무시할 수 있는 크기이고, JWT 라이브러리들의 통상 권장 범위(수십 초)다.
+            leeway=30,
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="세션이 만료됐어요. 다시 로그인해주세요",
         )
-    except Exception:
-        # 위조·형식오류 등 모든 검증 실패를 401 로 (원인은 서버 로그로만)
+    except Exception as e:
+        # 위조·형식오류 등 모든 검증 실패를 401 로. 화면에는 이유를 말하지 않는다(위조 힌트가 된다).
+        #
+        # 🔴 2026-08-11 — 여기 주석은 원래 *"원인은 서버 로그로만"* 이라고 적혀 있었는데
+        #    **로그를 남기는 코드가 없었다.** 그래서 오너 탈퇴가 401 로 막혔을 때
+        #    화면에도 로그에도 이유가 없었다 — 지뢰 #8 이 경고한 그대로다:
+        #    *"이 except 가 SSL 오류·설정 오류까지 전부 '유효하지 않은 인증 토큰'으로 둔갑시킨다."*
+        #    ⚠️ 주석이 약속한 것을 코드가 안 하면, 그건 없는 보호를 있다고 믿게 만든다.
+        #
+        # ⚠️ **토큰을 찍지 않는다.** 예외 타입과 메시지만 — 그것만으로 원인이 갈린다
+        #    (ExpiredSignature 는 위에서 이미 걸렀고, 여기 남는 건 서명·발급자·audience·JWKS 계열이다).
+        print(f"🔴 auth: 토큰 검증 실패 — {type(e).__name__}: {str(e)[:200]}", flush=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 인증 토큰입니다",
