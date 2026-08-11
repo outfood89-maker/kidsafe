@@ -12,6 +12,8 @@ import { getTodayCheckin, generateDiaryImage } from "../utils/api";
 import HoldToConfirm from "../components/HoldToConfirm"; // 지우기는 2초 길게 눌러야 실행된다(실수 방지)
 import { getImage, putImage, deleteImage } from "../utils/diaryImageStore";
 import { getAudio } from "../utils/diaryAudioStore"; // B08a: 부모 음성 편지 재생(IDB)
+// 📦 저장 공간이 가득 찼을 때 — 조용히 막히지 않게 아이에게 말한다(2026-08-11)
+import { readStorageFullNotice, onStorageFull } from "../utils/diaryAssets";
 import { SHELF_NAME, IMAGE_PLACEHOLDER, TEAR, SHELF_DELETE, TILE, HOME_WRITE, BRIDGE, SHELF_FOOTER, CONTINUE_PICK, CONTINUE_RETURN, LETTER_READ, LETTER_READ_CTA, VOICE_LETTER, VOICE_MEMO, monthBookTitle, monthBookMeta, REGEN, REGEN_OUT, REMAKE, DIARYFLOW_TOUR_SEED, FAMILYSHELF_TOUR } from "../utils/diaryCopy"; // B08c: LETTER_READ_VOICE 사용처 제거(안내 TTS 폐지) → import 정리. 카피는 diaryCopy 보존.
 import useTour from "../hooks/useTour"; // 항목2-⑤: 부모 소개 튜토리얼(앵커드 스포트라이트) 공용 훅
 import TourCoachmark from "../components/TourCoachmark";
@@ -81,6 +83,10 @@ export default function FamilyShelf() {
     return () => { try { stopKiddyBgm(); } catch { /* 무시 */ } };
   }, []);
 
+  // 📦 저장 공간 가득 참 구독 — 업로드는 화면 밖(fire-and-forget)에서 돌아 나중에 실패한다.
+  //    그래서 마운트 시점 값만 읽으면 놓친다. 구독해서 그때그때 받는다.
+  useEffect(() => onStorageFull(setStorageFull), []);
+
   const [profile, setProfile] = useState(null);
   const [entries, setEntries] = useState([]);
   const [openId, setOpenId] = useState(null); // 상세 열람 중인 페이지
@@ -94,6 +100,9 @@ export default function FamilyShelf() {
   const [editMode, setEditMode] = useState(false); // AD-9 §2: 부모 '수정(삭제)' 모드 — 월 나가면 리셋
   const [deleteTarget, setDeleteTarget] = useState(null); // AD-9 §2: 부모 삭제 대상 엔트리 id(확인 다이얼로그 표시 조건)
   const [thumbs, setThumbs] = useState({}); // AD-9 §1: 열린 월 페이지 썸네일(entry.id → dataURL)
+  // 📦 저장 공간이 가득 참(507). 🔴 아이가 글을 못 읽어도 **뭔가 일어났다**는 건 보여야 한다 —
+  //    조용히 실패하면 아이는 그냥 고장으로 읽는다(2026-08-10 TTS 에서 배운 것).
+  const [storageFull, setStorageFull] = useState(() => readStorageFullNotice());
   const [detailImg, setDetailImg] = useState(null); // AD-5: 상세 페이지 그림(IDB 로드)
   const [detailDrawing, setDetailDrawing] = useState(null); // AD-8: 원본 낙서(이어그리기 채택본 병치)
   const [lightbox, setLightbox] = useState(null); // 라이트박스 {src,alt} — 상세 그림 탭 시 확대
@@ -420,6 +429,32 @@ export default function FamilyShelf() {
 
       {/* 콘텐츠 래퍼 — 투어 중 inert(데모 뷰 클릭·서버호출 차단). 뷰 구동은 우리 setState라 inert와 무관하게 동작. */}
       <div className="mx-auto max-w-2xl px-4 py-6" inert={tour.isActive}>
+        {/* 📦 저장 공간이 가득 참 (2026-08-11).
+            🔴 아이 화면이라 **글에 기대지 않는다** — 4~7세는 글을 못 읽는다.
+               키디 얼굴 + 📚 아이콘이 "뭔가 알려주는 중"을 먼저 말하고, 글은 부모가 읽는다.
+            ⚠️ 실패를 아이 탓으로 돌리지 않는다. 일기는 이 기기에 그대로 있다 —
+               부모가 정리하면 다음 진입에서 자동으로 올라간다. */}
+        {storageFull && !tour.isActive && (
+          <div
+            data-testid="storage-full-notice"
+            className="mb-4 flex items-start gap-3 rounded-2xl p-4"
+            style={{ backgroundColor: "#13302B", border: "1px solid rgba(95,224,188,0.3)" }}
+          >
+            <span className="text-2xl leading-none" aria-hidden>📚</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold leading-relaxed" style={{ color: "#EAF5F1" }}>
+                {storageFull.message || "책장이 가득 찼어! 오늘 그림은 여기 잘 두고 있을게."}
+              </p>
+              <button
+                onClick={() => setStorageFull(null)}
+                className="mt-2 text-xs font-bold rounded-full px-3 py-1.5"
+                style={{ backgroundColor: "#18C49A", color: "#08160F" }}
+              >
+                응, 알겠어
+              </button>
+            </div>
+          </div>
+        )}
         {/* AD-8b: 이어그리기 완성본 복귀 배너 — 대기 중 이탈해도 '나중에 받기'. 브라우징 뷰에서만 노출 */}
         {pendingReturn && returnMode === "banner" && !openEntry && !bridge && !writing && !torn && (
           <button onClick={openReturnPick} className="w-full mb-4 rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition" style={{ background: "linear-gradient(135deg, #18C49A, #14B8C4)", boxShadow: "0 8px 24px rgba(20,184,196,0.3)" }}>

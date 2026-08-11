@@ -12,7 +12,7 @@
 //   이미 로컬에 저장돼 있다 — 여기서 예외가 올라가면 멀쩡한 저장 흐름이 깨진다.
 
 import axios from "axios";
-import { postDiaryAsset, getDiaryAssetUrl } from "./api";
+import { postDiaryAsset, getDiaryAssetUrl, readStorageFull } from "./api";
 // 인코딩은 imageCodec 한 곳에서만 — 저장(diaryImageStore.putImage)과 업로드가 같은 구현을 쓴다.
 import { reencode, compressForStorage } from "./imageCodec";
 
@@ -27,6 +27,49 @@ let currentPid = null;
 
 export function getAssetProfileId() {
   return currentPid;
+}
+
+// ── 📦 저장 공간이 가득 찼을 때 (2026-08-11) ──────────────────────────
+//
+// 🔴 왜 필요한가 — 이 파일은 **절대 throw 하지 않는다**(위 ⚠️ 참조). 그래서 지금까지
+//    업로드 실패는 전부 `catch { return false; }` 로 사라졌고, 호출부(pushEntryToServer)도
+//    반환값을 안 본다. 결과: **아이는 아무 일도 없던 것처럼 보고, 부모는 영영 모른다.**
+//
+//    그건 어제 배운 것을 그대로 어기는 자리다:
+//      "조용히 막히면 조이면 안 되고, 보이게 막히면 조여도 된다" (2026-08-10, TTS)
+//    ⇒ throw 계약은 지키되, 507 만 **이름 붙여 밖으로 알린다.**
+//
+// ⚠️ 507 만이다. 통신 실패·413 은 여기 안 담는다 — 그것들은 다음 hydrate 가 재시도하면
+//    조용히 나아지는 종류라, 알리면 오히려 없는 문제를 만든다.
+let storageFull = null;                 // { message, parentMessage, percent, … , at }
+const fullSubs = new Set();
+
+/** 지금 저장 공간이 가득 찬 상태인가. 아니면 null. */
+export function readStorageFullNotice() {
+  return storageFull;
+}
+
+/** 안내를 지운다(아이가 확인했거나, 부모가 정리한 뒤). */
+export function clearStorageFullNotice() {
+  storageFull = null;
+  fullSubs.forEach((f) => { try { f(null); } catch { /* 구독자 하나가 화면을 깨지 않게 */ } });
+}
+
+/** 가득 참 알림 구독. 해제 함수를 돌려준다. */
+export function onStorageFull(fn) {
+  fullSubs.add(fn);
+  return () => fullSubs.delete(fn);
+}
+
+/** 업로드 예외가 507 이면 기록하고 true. 그 외는 false(기존 동작 그대로). */
+function noteStorageFull(err) {
+  try {
+    const d = readStorageFull(err);
+    if (!d) return false;
+    storageFull = { ...d, at: Date.now() };
+    fullSubs.forEach((f) => { try { f(storageFull); } catch { /* 무시 */ } });
+    return true;
+  } catch { return false; }
 }
 
 /** hydrate 응답의 assets 맵을 캐시에 일괄 주입 + 현재 프로필 기록. */
@@ -109,7 +152,8 @@ export async function uploadImageAsset(pid, clientAssetId, dataUrl, role) {
     if (thumb) fd.append("thumb", thumb, "thumb.jpg");
     await postDiaryAsset(fd);
     return true;
-  } catch { return false; }
+    // 🔴 throw 하지 않는 계약은 그대로. 507 만 이름 붙여 밖으로 알린다(조용히 막히지 않게).
+  } catch (e) { noteStorageFull(e); return false; }
 }
 
 /** 음성 1건 업로드. 성공 여부만 반환. */
@@ -124,7 +168,7 @@ export async function uploadAudioAsset(pid, clientAssetId, blob, role) {
     fd.append("file", blob, "orig.webm");
     await postDiaryAsset(fd);
     return true;
-  } catch { return false; }
+  } catch (e) { noteStorageFull(e); return false; }
 }
 
 /** 서명 URL 얻기(캐시 우선). 반환: 문자열 또는 null. */

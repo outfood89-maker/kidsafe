@@ -271,6 +271,89 @@ check(f"   {_lim['per_min'] + 1}번째는 429 로 막힌다 (용량은 그대로
 quota_mod._reset_all()
 
 # ══════════════════════════════════════════════════════════════════════
+print("\n[K] 🐤 윤리선 카나리아 — 정리 목록에 **일기 내용이 실리지 않는가**")
+# 🔴 여기가 이 작업에서 제일 위험한 자리다. /diary/usage/entries 는 **부모 화면**이 부르는데
+#    용량을 차지하는 건 비공개 일기까지 전부라 목록에 담긴다. 내용이 한 글자라도 섞이면
+#    "아이의 비밀 친구"가 무너진다 — 그리고 그건 **에러도 안 나고 화면도 멀쩡하다.**
+CANARY = "카나리아유출표식_비공개일기_YY42"
+# 🔴 남의 계정 일기 — 대조군. 목록에 뜨면 남의 가족 일기 날짜·용량이 새는 것이다.
+CANARY_OTHER = "카나리아유출표식_남의집일기_YY43"
+_entry_rows = [{
+    "user_id": USER,
+    "client_entry_id": "e_old", "entry_date": "2026-03-01", "profile_id": PID,
+    "share_with_parent": False,                      # 🔴 비공개
+    "image_client_id": "img_old", "drawing_client_id": None,
+    "voice_client_id": None, "stamp_voice_client_id": None,
+    # 아래는 전부 **나가면 안 되는 것**들이다.
+    # ⚠️ 정직하게: `select` 를 `*` 로 바꾸는 것만으로는 안 샌다 — 응답을 키 5개로 **직접 조립**하기
+    #    때문이다(차단시험으로 확인). 이 표식이 잡는 것은 그다음 단계, 즉 누군가
+    #    `out.append({**r, ...})` 처럼 **행을 통째로 펼치는** 순간이다. 그때 전량이 샌다.
+    "sentences": [CANARY], "mood_emoji": CANARY, "child_pick": CANARY,
+    "stamp": {"letter": CANARY}, "img_source": CANARY,
+}, {
+    "user_id": OTHER,
+    "client_entry_id": CANARY_OTHER, "entry_date": "2026-01-01", "profile_id": PID_X,
+    "share_with_parent": False,
+    "image_client_id": "img_other", "drawing_client_id": None,
+    "voice_client_id": None, "stamp_voice_client_id": None,
+}]
+
+
+def usage_entries(entry_rows, asset_rows):
+    rec = Recorder()
+
+    def sel(table, params=None, *_a, **_k):
+        rows = entry_rows if table == "diary_entries" else asset_rows
+        # 🔴 가짜가 **필터를 실제로 적용**해야 한다 (2026-08-11, 이 파일에서 두 번째로 당했다).
+        #    처음엔 필터를 무시하고 전부 돌려줬고, 그래서 차단시험 ④(user_id 필터 제거)가
+        #    **통과해버렸다** — "남의 일기가 안 섞인다" 검사가 아무것도 안 하고 있었다.
+        want = str((params or {}).get("user_id") or "")
+        if want.startswith("eq."):
+            rows = [r for r in rows if r.get("user_id") == want[3:]]
+        try:
+            off = int((params or {}).get("offset") or 0)
+            lim = int((params or {}).get("limit") or 1000)
+        except (TypeError, ValueError):
+            off, lim = 0, 1000
+        return rows[off:off + lim]
+
+    fdb = FakeDB(rec, table_returns={
+        "select:diary_entries": sel, "select:diary_assets": sel,
+        "select:profiles": [{"id": PID, "user_id": USER, "diary_server_on": True}],
+    }).install(diary_mod, profiles_mod)
+    with TestClient(app) as c:
+        r = c.get("/diary/usage/entries")
+    fdb.restore()
+    return r
+
+
+_ar = [{"user_id": USER, "client_asset_id": "img_old", "bytes": 3 * MB, "thumb_bytes": 100 * 1024},
+       {"user_id": OTHER, "client_asset_id": "img_other", "bytes": 9 * MB, "thumb_bytes": 0},
+       # 🔴 **같은 client_asset_id 를 가진 남의 자산**. 이건 가정이 아니라 실제로 가능하다 —
+       #    그 id 는 앱이 만든다(`img_2026-08-05_123456`). 같은 날 같은 밀리초면 겹친다.
+       #    자산 조회에서 user_id 필터가 빠지면 **남의 용량이 내 일기에 붙는다**(뒤 행이 덮어쓴다).
+       {"user_id": OTHER, "client_asset_id": "img_old", "bytes": 777 * MB, "thumb_bytes": 0}]
+_r = usage_entries(_entry_rows, _ar)
+check("200 으로 온다", _r.status_code == 200, f"실제 {_r.status_code} / {_r.text[:200]}")
+_body = _r.text
+check("🔴 **비공개 일기의 내용 표식이 응답 어디에도 없다** (행을 통째로 펼치면 여기서 걸린다)",
+      CANARY not in _body, _body[:300])
+check("🔴 **남의 계정 일기가 목록에 안 섞인다** (날짜·용량도 남의 집 정보다)",
+      CANARY_OTHER not in _body, _body[:300])
+_items = (_r.json() or {}).get("entries") or []
+check("🔴 대조군 — 내 비공개 일기는 목록에 **있다** (정리하려면 보여야 한다)",
+      len(_items) == 1 and _items[0].get("id") == "e_old", str(_items)[:200])
+check("   용량이 실제로 붙었다 (검사가 헛돌지 않았다)",
+      _items and _items[0].get("bytes") == 3 * MB + 100 * 1024, str(_items)[:200])
+check("   공유 여부는 알려준다 (부모가 '내가 본 그 일기'인지 알아본다)",
+      _items and _items[0].get("shared") is False, str(_items)[:200])
+check("🔴 항목의 키가 딱 5개다 — 새 컬럼이 조용히 따라 나오지 않는다",
+      _items and set(_items[0]) == {"id", "profileId", "date", "bytes", "shared"},
+      str(sorted(_items[0])) if _items else "")
+check("정렬 파라미터가 오래된 순이다 ('오래된 것부터 정리')",
+      "entry_date.asc" in open("routers/diary.py", encoding="utf-8").read())
+
+# ══════════════════════════════════════════════════════════════════════
 print("\n[J] 🔒 검사가 딛고 선 것 — 상수와 계약")
 check("업로드 한도가 quota.LIMITS 에 있다", "diary_upload" in quota_mod.LIMITS)
 check("계정 총량도 있다 (아이를 늘려도 총액이 고정된다)",

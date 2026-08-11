@@ -42,6 +42,7 @@ import PinModal from "../components/PinModal";
 import { getSafetyGrade } from "../utils/safetyFilter";
 import NavBar from "../components/NavBar";
 import ParentDiaryShelf from "../components/ParentDiaryShelf"; // AD-6 §2: 부모 가족 책장(열람+도장·편지)
+import DiaryStorageCard from "../components/DiaryStorageCard"; // 📦 저장 용량 + 80% 사전 안내 + 정리(2026-08-11)
 import { DIARY_V0, DIARY_SERVER } from "../utils/diaryStore"; // AD-6: feature/diary-v0 게이트 / B13: 킬스위치
 import { childStem } from "../utils/josa"; // 아이 이름 애칭형 어간(받침 있으면 '이' 붙임: 주혁→주혁이) — 앱 전역 공용
 import TourCoachmark from "../components/TourCoachmark"; // AD-7: 부모 둘러보기 코치마크
@@ -1188,6 +1189,13 @@ export default function ParentDashboard() {
                   />
                 ) : null;
               })()}
+
+              {/* 📦 저장 용량 (2026-08-11) — 동의 카드 바로 아래.
+                  🔴 여기 두는 이유: 부모가 "서버에 저장한다"를 켜는 자리가 바로 위다.
+                     용량 이야기는 그 결정의 **뒷면**이라 같은 화면에 있어야 한다.
+                  ⚠️ 투어(예시 화면)에서는 숨긴다 — 가짜 프로필로 진짜 API 를 부를 수 없다.
+                  ⚠️ DIARY_SERVER 가 꺼져 있으면 올라가는 것 자체가 없다 → 보이면 없는 걱정을 만든다. */}
+              {!tourMode && DIARY_SERVER && <DiaryStorageCard profiles={profiles} />}
 
               {/* GD-8c: 이사 진행/결과 — 부모에게만 보인다. 화면을 막지 않는 얇은 알림 줄. */}
               {mig && mig.total > 0 && (

@@ -524,6 +524,72 @@ async def get_storage_usage(user: dict = Depends(get_current_user)):
     return _usage_payload(used, complete)
 
 
+@router.get("/usage/entries")
+async def list_entries_by_size(user: dict = Depends(get_current_user)):
+    """📦 정리 화면용 — 계정의 일기를 **용량과 함께** 오래된 순으로.
+
+    🚨 윤리선 (이 함수의 존재 이유이자 가장 위험한 자리)
+       이건 **부모 화면**이 부르는 API 다. 그런데 용량을 차지하는 것은 공유분만이 아니라
+       **비공개 일기까지 전부**다. 부모가 정리하려면 그것들도 목록에 있어야 한다.
+       ⇒ 그래서 **내용을 한 글자도 싣지 않는다.** 날짜 · 바이트 · 공유 여부, 그 셋뿐이다.
+
+       나가지 않는 것: 문장 · 감정 · 아이가 고른 것 · 그림/음성 URL · 도장/편지
+       🔴 `/shelf` 처럼 select 를 좁혀 **쿼리 레벨에서** 못박는다. 뒤에서 필터하면
+          컬럼이 하나 늘 때 조용히 샌다(reports.py:599 와 같은 문법).
+
+    ⚠️ 동의를 요구하지 않는다 — 삭제 경로와 같은 이유다. 동의를 껐어도 **이미 올라간 것**이
+       용량을 차지하고, 부모는 그걸 정리할 수 있어야 한다.
+    """
+    uid = user["user_id"]
+
+    # 🚨 select 를 여기서 좁힌다. `*` 로 받아 뒤에서 고르지 않는다.
+    rows = await sb_select("diary_entries", {
+        "user_id": f"eq.{uid}",
+        "select": "client_entry_id,entry_date,profile_id,share_with_parent,"
+                  "image_client_id,drawing_client_id,voice_client_id,stamp_voice_client_id",
+        "order": "entry_date.asc",
+        "limit": str(USAGE_PAGE),
+    })
+
+    # 자산 바이트를 client_asset_id 로 찾아 붙인다.
+    sizes: dict = {}
+    for page in range(USAGE_MAX_PAGES):
+        arows = await sb_select("diary_assets", {
+            "user_id": f"eq.{uid}",
+            "select": "client_asset_id,bytes,thumb_bytes",
+            "order": "created_at.asc",
+            "limit": str(USAGE_PAGE),
+            "offset": str(page * USAGE_PAGE),
+        })
+        if not arows:
+            break
+        for a in arows:
+            key = a.get("client_asset_id")
+            if key:
+                sizes[key] = (a.get("bytes") or 0) + (a.get("thumb_bytes") or 0)
+        if len(arows) < USAGE_PAGE:
+            break
+
+    out = []
+    for r in rows:
+        used = 0
+        for k in ("image_client_id", "drawing_client_id", "voice_client_id", "stamp_voice_client_id"):
+            cid = r.get(k)
+            if cid:
+                used += sizes.get(cid, 0)
+        out.append({
+            "id": r.get("client_entry_id"),
+            "profileId": r.get("profile_id"),
+            "date": r.get("entry_date"),
+            "bytes": used,
+            # 공유 여부만 알려준다 — 부모가 "내가 본 그 일기"인지 알아볼 수 있게.
+            # 🔴 공유분이라도 **내용은 안 싣는다.** 내용은 /shelf 가 줄 일이다.
+            "shared": r.get("share_with_parent") is True,
+        })
+    # 오래된 순이 기본이다 — "오래된 것부터 정리"(2026-08-11 오너).
+    return {"entries": out}
+
+
 @router.post("/assets")
 async def upload_asset(
     profileId: str = Form(...),

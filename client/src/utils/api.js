@@ -93,6 +93,43 @@ export const getDiaryShelf = async (profileId) => {
   return res.data
 }
 
+// 📦 저장 용량 (2026-08-11) — 부모 화면이 80% 경고를 띄우는 근거.
+//    { usedBytes, limitBytes, percent, warn, warnAtPercent, full, complete }
+//    ⚠️ 프로필을 안 보낸다 — 상한이 **계정 단위**라 아이별로 쪼개면 뜻이 달라진다.
+export const getDiaryUsage = async () => {
+  const res = await axios.get(`${BASE_URL}/diary/usage`)
+  return res.data
+}
+
+// 📦 정리 화면용 목록 — 오래된 순. 항목은 { id, profileId, date, bytes, shared } **다섯 개뿐**이다.
+//    🚨 윤리선: 비공개 일기도 자리를 차지하므로 목록에 뜨지만 **내용은 서버가 안 보낸다.**
+//       화면에서 여기에 썸네일·문장을 붙이지 말 것 — 그 순간 부모 화면으로 비공개가 샌다.
+export const getDiaryUsageEntries = async () => {
+  const res = await axios.get(`${BASE_URL}/diary/usage/entries`)
+  return res.data
+}
+
+// 📦 507 = 저장 공간이 가득 참. 429(한도)·413(파일 큼)과 **다르게 말해야 한다.**
+//    🔴 지금은 업로드 실패가 전부 조용히 삼켜진다(diaryStore.pushEntryToServer 의 catch).
+//       아이는 아무 일도 안 일어난 것처럼 보고, 부모는 영영 모른다.
+//       그래서 실패를 여기서 **이름 붙여** 위로 올린다.
+export class StorageFullError extends Error {
+  constructor(detail) {
+    super(detail?.message || "책장이 가득 찼어요")
+    this.name = "StorageFullError"
+    this.detail = detail || {}
+  }
+}
+
+/** 업로드 예외에서 507 을 골라낸다. 아니면 null. */
+export const readStorageFull = (err) => {
+  if (err instanceof StorageFullError) return err.detail
+  const res = err?.response
+  if (res?.status !== 507) return null
+  const d = res.data?.detail
+  return d && typeof d === "object" ? d : { code: "STORAGE_FULL" }
+}
+
 // 키워드로 YouTube 영상 검색
 export const searchVideos = async (keyword) => {
   const response = await axios.get(`${BASE_URL}/search`, {
