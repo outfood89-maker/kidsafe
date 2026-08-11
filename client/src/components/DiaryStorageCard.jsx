@@ -13,6 +13,7 @@
 // ⚠️ 지우기는 되돌릴 수 없다(방침 제5조). 그래서 확인을 붙이고, 문구가 정직해야 한다.
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDiaryUsage, getDiaryUsageEntries, deleteDiaryEntry } from "../utils/api";
 
 const C = {
@@ -41,6 +42,7 @@ function humanDate(s) {
 }
 
 export default function DiaryStorageCard({ profiles = [], onCleaned }) {
+  const navigate = useNavigate();
   const [usage, setUsage] = useState(null);
   const [err, setErr] = useState("");
   const [open, setOpen] = useState(false);         // 정리 화면
@@ -154,13 +156,18 @@ export default function DiaryStorageCard({ profiles = [], onCleaned }) {
         >
           🧹 오래된 것부터 정리
         </button>
-        <a
-          href="/family-shelf"
+        {/* 🔴 <a href> 가 아니라 navigate 다 — <a> 는 **전체 페이지 리로드**를 일으켜
+            SPA 라우팅을 깬다(번들 재파싱 · 세션 복원 · 대시보드 상태 소실).
+            ⚠️ 같은 파일 계열의 `<a href="/privacy">`(DiaryConsentCard) 는 다르다 —
+               그건 앱 밖으로 나가는 성격의 문서 링크고, 이건 **앱 안의 화면 전환**이다. */}
+        <button
+          data-testid="storage-goto-shelf"
+          onClick={() => navigate("/family-shelf")}
           className="text-xs font-bold rounded-full px-3 py-1.5"
           style={{ backgroundColor: "#163635", color: C.muted, border: `1px solid ${C.line}` }}
         >
           📚 가족 책장에서 보고 고르기
-        </a>
+        </button>
       </div>
 
       {/* ── 정리 화면 ────────────────────────────────────────────── */}

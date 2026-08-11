@@ -36,7 +36,7 @@ from auth import get_current_user, require_admin
 # ⚠️ sb_update(table, **필터**, **패치**) — 순서를 헷갈리면 PostgREST 가 필터를 값으로 UPDATE 하려 들어
 #    502 로 죽는다. 2026-08-08 에 이 파일 6곳이 전부 뒤집혀 있었다(플래그가 꺼져 있어 아무도 안 불렀다).
 from db import sb_delete, sb_insert, sb_select, sb_upsert, sb_update
-from quota import check_and_consume  # 💸 비용 상한 (2026-08-11) — 업로드도 '돈 쓰는 코드'다
+from quota import check_and_consume, refund  # 💸 비용 상한 (2026-08-11) — 업로드도 '돈 쓰는 코드'다
 from routers.profiles import get_owned_profile
 from storage import (
     ORIGINAL_TTL_SEC,
@@ -622,6 +622,8 @@ async def upload_asset(
     data = await file.read()
     limit = MAX_IMAGE_BYTES if kind == "image" else MAX_AUDIO_BYTES
     if len(data) > limit:
+        # 413 도 **아무것도 저장하지 않고** 막는 자리다 → 횟수를 돌려준다(507 과 같은 이유).
+        refund("diary_upload", profileId, user["user_id"])
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="파일이 너무 커요",
@@ -636,6 +638,13 @@ async def upload_asset(
     incoming = len(data)   # 썸네일은 아래에서 크기를 알게 되지만, 최대 200KB 라 판정을 뒤집지 않는다
     if not complete or used + incoming > ACCOUNT_STORAGE_LIMIT_BYTES:
         payload = _usage_payload(used, complete)
+        # 🔴 여기서 막으면 **아무 일도 안 했다** — Storage 도 DB 도 안 건드렸다.
+        #    그러니 위에서 소비한 횟수를 돌려준다. 안 돌려주면 이렇게 된다:
+        #      가득 찬 계정에서 아이가 책장을 열 때마다 hydrate 가 재푸시(최대 12회)를 시도하고,
+        #      전부 507 인데 횟수만 12회씩 사라진다 → 스무 번이면 하루 한도(240)가 없어진다.
+        #      ⇒ **그날 부모가 정리해서 공간을 비워도 아무것도 못 올린다.**
+        #    조이는 쪽 실수는 조용히 일어난다 — 아이는 그냥 계속 안 되는 것으로 본다.
+        refund("diary_upload", profileId, user["user_id"])
         raise HTTPException(
             status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
             detail={

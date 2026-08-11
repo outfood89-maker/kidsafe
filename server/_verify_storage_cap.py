@@ -122,6 +122,21 @@ def upload(payload_bytes, existing, client_asset_id="img_new", kind="image", rol
     return r, rec
 
 
+def upload_raw(payload_bytes, existing, client_asset_id="img_new"):
+    """upload() 와 같지만 **카운터를 초기화하지 않는다.**
+    🔴 [L] 처럼 '여러 번 부른 뒤 잔량'을 재는 검사는 upload() 를 쓰면 안 된다 —
+       그 함수가 매 호출마다 _reset_all() 을 해서 **측정 대상을 스스로 지운다.**
+       (실제로 첫 시도에서 대조군이 3회 소비를 1회로 읽었다.)"""
+    _rec, _restore = wire(existing)
+    with TestClient(app) as c:
+        r = c.post("/diary/assets",
+                   data={"profileId": PID, "clientAssetId": client_asset_id,
+                         "kind": "image", "role": "completed"},
+                   files={"file": ("orig.png", b"\x00" * payload_bytes, "image/png")})
+    _restore()
+    return r
+
+
 def detail_of(resp):
     """응답의 detail 을 dict 로. 🔴 500 이면 detail 이 **문자열**이라 .get 이 터진다 —
     거기서 죽으면 뒤 검사가 통째로 안 돌고, 그건 '검사 없음'과 같다."""
@@ -352,6 +367,72 @@ check("🔴 항목의 키가 딱 5개다 — 새 컬럼이 조용히 따라 나�
       str(sorted(_items[0])) if _items else "")
 check("정렬 파라미터가 오래된 순이다 ('오래된 것부터 정리')",
       "entry_date.asc" in open("routers/diary.py", encoding="utf-8").read())
+
+# ══════════════════════════════════════════════════════════════════════
+print("\n[L] 🔴 막을 때 **횟수를 태우지 않는다** — 조이는 쪽 실수는 조용히 일어난다")
+# 🔴 왜 이 검사가 필요한가 (2026-08-11, 오너의 '다시 검증해봐' 에서 발견)
+#    check_and_consume 은 일을 하기 **전에** 소비한다(그게 맞다 — 나중에 세면 실패가 공짜가 된다).
+#    그런데 그 뒤에 **일을 안 하고 막는 관문**(507·413)이 있으면 막힐 때마다 횟수만 사라진다.
+#    실제 시나리오: 가득 찬 계정에서 아이가 책장을 열 때마다 hydrate 재푸시(최대 3편 × 자산 4개
+#    = 12회)가 전부 507 인데 횟수는 12회씩 소비된다. 스무 번이면 하루 한도(240)가 없어지고,
+#    ⇒ **그날 부모가 정리해서 공간을 비워도 아무것도 못 올린다.**
+_lim = quota_mod.LIMITS["diary_upload"]
+
+
+def used_after(fn):
+    quota_mod._reset_all()
+    fn()
+    return quota_mod.peek("diary_upload", PID, USER)
+
+
+_full_rows = make_assets(USER, PID, 260, 4 * MB)
+FULL_DAY = quota_mod.peek("diary_upload", PID, USER)["day_left"]     # 아무것도 안 쓴 상태의 잔량
+FULL_MIN = _lim["per_min"]
+
+_p = used_after(lambda: [upload_raw(1 * MB, _full_rows) for _ in range(5)])
+check("🔴 507 로 5번 막혀도 하루 잔량이 그대로다 (환불이 돈다)",
+      _p.get("day_left") == FULL_DAY, f"{_p} / 기대 {FULL_DAY}")
+check("   분당 잔량도 그대로다 (분당이 남아야 정리 직후 바로 올릴 수 있다)",
+      _p.get("min_left") == FULL_MIN, f"{_p} / 기대 {FULL_MIN}")
+
+_p = used_after(lambda: upload_raw(MB * 99, make_assets(USER, PID, 1, 1 * MB)))  # 413
+check("🔴 413(파일이 큼)도 횟수를 안 태운다 (저장을 안 했으니)",
+      _p.get("day_left") == FULL_DAY, f"{_p} / 기대 {FULL_DAY}")
+
+# 🔴 계정 총량 카운터도 되돌아가는가 — `peek` 로는 안 보인다.
+#    아이별(200)이 계정(240)보다 작아 min() 이 아이별을 돌려주기 때문이다.
+#    ⇒ 계정 키를 **직접** 읽는다. (첫 차단시험에서 ④가 통과해버려서 발견 — 3원칙 ③)
+def account_used():
+    _k, _ = quota_mod.account_scope("diary_upload", PID, USER)
+    return quota_mod._read_day(_k, quota_mod.today_kst()) if _k else -1
+
+
+quota_mod._reset_all()
+for _ in range(5):
+    upload_raw(1 * MB, _full_rows)
+check("🔴 계정 총량 카운터도 되돌아간다 (아이별만 되돌리면 계정 쪽이 조용히 닳는다)",
+      account_used() == 0, f"계정 소비 {account_used()}회")
+
+# 🔴 대조군 — 환불이 **과하면** 한도가 통째로 무력해진다. 성공은 반드시 소비해야 한다.
+quota_mod._reset_all()
+for _ in range(3):
+    upload_raw(1024, make_assets(USER, PID, 1, 1 * MB))
+_p = quota_mod.peek("diary_upload", PID, USER)
+check("🔴 대조군 — 성공한 3번은 **소비된다** (환불이 과하면 한도가 사라진다)",
+      _p.get("day_left") == FULL_DAY - 3, f"{_p} / 기대 {FULL_DAY - 3}")
+check("🔴 대조군 — 성공은 **계정 총량도** 소비한다", account_used() == 3, f"계정 소비 {account_used()}회")
+check("🔴 대조군 — 성공은 분당도 소비한다 (안 그러면 폭주 방어가 사라진다)",
+      _p.get("min_left") == FULL_MIN - 3, f"{_p} / 기대 {FULL_MIN - 3}")
+quota_mod._reset_all()
+
+# 실제 시나리오 그대로: 가득 참 상태로 많이 두드린 뒤, 정리되면 곧바로 올라가는가
+quota_mod._reset_all()
+for _ in range(20):
+    upload_raw(1024, _full_rows, client_asset_id="img_x")          # 전부 507
+_after = upload_raw(1024, make_assets(USER, PID, 1, 1 * MB), client_asset_id="img_y")  # 정리 후
+check("🔴 **가득 찬 채로 20번 막힌 뒤, 정리되면 곧바로 올라간다** (한도가 안 사라졌다)",
+      _after.status_code == 200, f"실제 {_after.status_code} / {_after.text[:200]}")
+quota_mod._reset_all()
 
 # ══════════════════════════════════════════════════════════════════════
 print("\n[J] 🔒 검사가 딛고 선 것 — 상수와 계약")

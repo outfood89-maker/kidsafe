@@ -11,6 +11,13 @@
 //   [F] 🔴 아이 화면 — 507 이면 **키디가 말한다** (조용히 막히지 않는다)
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+const navigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return { ...actual, useNavigate: () => navigate };
+});
 
 const getDiaryUsage = vi.fn();
 const getDiaryUsageEntries = vi.fn();
@@ -48,7 +55,10 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const draw = () => render(<DiaryStorageCard profiles={PROFILES} />);
+const onCleaned = vi.fn();
+const draw = () => render(
+  <MemoryRouter><DiaryStorageCard profiles={PROFILES} onCleaned={onCleaned} /></MemoryRouter>,
+);
 
 describe("[A] 🔴 대조군 — 여유가 있으면 경고하지 않는다", () => {
   it("10% 면 카드는 뜨되 경고 문구가 없다", async () => {
@@ -224,15 +234,31 @@ describe("[E] 🔴 지우기 — 확인 없이는 부르지 않는다", () => {
     fireEvent.click(screen.getByTestId("storage-cleanup-confirm"));
     await waitFor(() => expect(getDiaryUsage.mock.calls.length).toBeGreaterThan(before));
   });
+
+  it("🔴 지운 뒤 부모에게 알린다(onCleaned) — 아래 책장이 옛 목록에 굳으면 '지웠는데 그대로'가 된다", async () => {
+    // 삭제 기능에서 최악의 불일치는 "지웠다고 했는데 화면엔 있다" 이다.
+    // ParentDiaryShelf 는 자체 재조회 트리거가 없어 부모가 key 를 바꿔 다시 마운트시킨다.
+    await pickTwo();
+    fireEvent.click(screen.getByTestId("storage-cleanup-ask"));
+    fireEvent.click(screen.getByTestId("storage-cleanup-confirm"));
+    await waitFor(() => expect(onCleaned).toHaveBeenCalled());
+  });
 });
 
 describe("[F] 부모의 선택지 — 정리 화면과 가족 책장 둘 다", () => {
   it("가족 책장으로 가는 길이 부모 화면에 있다", async () => {
-    // 🔴 이 링크가 지금까지 **0개**였다 — 부모는 보기만 되고 지우지는 못했다(2026-08-11 확인)
+    // 🔴 이 길이 지금까지 **0개**였다 — 부모는 보기만 되고 지우지는 못했다(2026-08-11 확인)
     draw();
-    await screen.findByTestId("diary-storage-card");
-    const link = screen.getByText(/가족 책장에서 보고 고르기/).closest("a");
-    expect(link?.getAttribute("href")).toBe("/family-shelf");
+    fireEvent.click(await screen.findByTestId("storage-goto-shelf"));
+    expect(navigate).toHaveBeenCalledWith("/family-shelf");
+  });
+
+  it("🔴 <a href> 가 아니라 navigate 다 — <a> 는 전체 페이지 리로드를 일으킨다", async () => {
+    // 리로드되면 번들 재파싱·세션 복원·대시보드 상태 소실이 따라온다(SPA 가 깨진다)
+    draw();
+    const btn = await screen.findByTestId("storage-goto-shelf");
+    expect(btn.tagName).toBe("BUTTON");
+    expect(btn.closest("a")).toBeNull();
   });
 
   it("사용량을 못 읽으면 조용히 알린다 (화면을 막지 않는다)", async () => {

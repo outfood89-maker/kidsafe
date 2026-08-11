@@ -462,6 +462,41 @@ def check_and_consume(kind: str, profile_id: str = "", user_id: str = "") -> Non
     _sweep(_day, today)
 
 
+def refund(kind: str, profile_id: str = "", user_id: str = "") -> None:
+    """
+    🔴 방금 소비한 1회를 되돌린다 (2026-08-11 신설).
+
+    왜 필요한가 — `check_and_consume` 은 **일을 하기 전에** 소비한다(그게 맞다. 나중에 세면
+    실패한 요청이 공짜가 된다). 그런데 그 뒤에 **일을 안 하고 막는 관문**이 하나 더 있으면
+    막힐 때마다 횟수만 태운다.
+
+    실제로 그럴 뻔했다 — 저장 용량(1GB)이 찬 계정:
+      아이가 책장을 열 때마다 hydrate 가 밀린 일기를 재푸시한다(최대 3편 × 자산 4개 = 12회).
+      전부 507 로 막히는데 **횟수는 12회씩 소비**된다. 스무 번이면 하루 한도(240)가 사라진다.
+      ⇒ 그날 부모가 정리해서 **공간을 비워도, 한도가 없어서 아무것도 못 올린다.**
+      ⚠️ 그리고 이 실수는 **조용히** 일어난다 — 아이는 그냥 계속 안 되는 것으로 본다.
+
+    ⚠️ 아무 실패에나 쓰지 말 것. **일(외부 호출·저장)을 실제로 하지 않은 경우에만.**
+       LLM 을 부른 뒤의 실패는 돈이 이미 나갔으므로 환불하면 안 된다.
+    ⚠️ 0 밑으로는 안 내려간다(중복 호출 방어).
+    """
+    if kind not in LIMITS:
+        raise RuntimeError(f"quota: 알 수 없는 종류 '{kind}' — LIMITS 에 등록하세요")
+    today, bucket = today_kst(), minute_bucket()
+
+    def _back(store, key, stamp):
+        cur = store.get(key)
+        if cur and cur[0] == stamp and cur[1] > 0:
+            store[key] = (stamp, cur[1] - 1)
+
+    key = scope_key(kind, profile_id, user_id)
+    _back(_min, key, bucket)
+    _back(_day, key, today)
+    acct_key, _ = account_scope(kind, profile_id, user_id)
+    if acct_key:
+        _back(_day, acct_key, today)
+
+
 def check_minute_only(kind: str, profile_id: str = "", user_id: str = "") -> None:
     """
     분당(급제동)만 확인·소비한다. 하루 총량을 **다른 곳에서** 세는 경로용.

@@ -174,6 +174,10 @@ export default function ParentDashboard() {
   const [reportTab, setReportTab] = useState(scopedId || "all");
   const [kiddyTab, setKiddyTab] = useState(scopedId || ""); // 키디의 한 주 — 아이별(전체 없음)
   const [shelfTab, setShelfTab] = useState(scopedId || ""); // AD-6: 가족 책장 — 아이별(전체 없음, kiddyTab 패턴)
+  // 📦 정리 후 책장 강제 갱신 (2026-08-11). 🔴 이게 없으면 부모가 일기를 지웠는데
+  //    바로 아래 책장에는 **그대로 남아 있다** — "지웠는데 화면엔 있다" 는 삭제 기능에서 최악의 불일치다.
+  //    ParentDiaryShelf 는 자체 재조회 트리거가 없어 key 를 바꿔 다시 마운트시킨다(기존 key 관례 그대로).
+  const [shelfReloadKey, setShelfReloadKey] = useState(0);
   const [mig, setMig] = useState(null); // GD-8c: 이사 진행 { phase, profileName, done, total, uploaded, failed }
   const [scheduleTab, setScheduleTab] = useState(scopedId || ""); // 스케줄 — 아이별(전체 없음)
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -1195,7 +1199,9 @@ export default function ParentDashboard() {
                      용량 이야기는 그 결정의 **뒷면**이라 같은 화면에 있어야 한다.
                   ⚠️ 투어(예시 화면)에서는 숨긴다 — 가짜 프로필로 진짜 API 를 부를 수 없다.
                   ⚠️ DIARY_SERVER 가 꺼져 있으면 올라가는 것 자체가 없다 → 보이면 없는 걱정을 만든다. */}
-              {!tourMode && DIARY_SERVER && <DiaryStorageCard profiles={profiles} />}
+              {!tourMode && DIARY_SERVER && (
+                <DiaryStorageCard profiles={profiles} onCleaned={() => setShelfReloadKey((n) => n + 1)} />
+              )}
 
               {/* GD-8c: 이사 진행/결과 — 부모에게만 보인다. 화면을 막지 않는 얇은 알림 줄. */}
               {mig && mig.total > 0 && (
@@ -1248,7 +1254,7 @@ export default function ParentDashboard() {
               ) : (
                 // ⚠️ 여기는 삼항의 표현식 자리다 — {/* */} 주석을 넣으면 형제가 둘이 되어 파싱이 깨진다.
                 //    B16: childName 은 빈 책장 안내에 아이 이름을 넣기 위한 것("○○의 그림일기는 …").
-                <ParentDiaryShelf key={shelfProfileId} profileId={shelfProfileId} childName={profiles.find((x) => x.id === shelfProfileId)?.name} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} tourOpenEntryId={tourMode && TOUR_STATIONS[tourStep]?.tab === "shelf" ? tourStampTargetId : undefined} />
+                <ParentDiaryShelf key={`${shelfProfileId}:${shelfReloadKey}`} profileId={shelfProfileId} childName={profiles.find((x) => x.id === shelfProfileId)?.name} entries={tourMode ? tourEntries : undefined} onStamp={tourMode ? memoryStampHandler : undefined} tourOpenEntryId={tourMode && TOUR_STATIONS[tourStep]?.tab === "shelf" ? tourStampTargetId : undefined} />
               )}
             </section>
           );
