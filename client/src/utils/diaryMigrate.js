@@ -211,7 +211,22 @@ export async function migrateProfileDiary(pid, opts = {}) {
   return { ok: true, status, uploaded, skipped, failed, total };
 }
 
-/** 프로필 여러 개를 순서대로 옮긴다(부모 화면의 '전부 옮기기'). */
+/** 프로필 여러 개를 순서대로 옮긴다(부모 화면의 '전부 옮기기').
+ *
+ * 🔴 2026-08-11 오너 시범에서 드러난 것 — 화면 배너가 **거짓말을 했다.**
+ *    아이를 지우고 새로 만든 뒤에도 *"일기 1편을 안전하게 보관했어요"* 가 계속 떠 있었다.
+ *    실제로 그 아이의 서버 저장분은 0편이었다. 부모에게 하면 안 되는 종류의 거짓이다.
+ *
+ *    원인이 셋이었다:
+ *      ① `migrateProfileDiary` 는 **올릴 게 없으면 onProgress 를 아예 안 부른다**(:131, :158)
+ *         → 화면의 마지막 이벤트가 **앞 프로필 것**으로 남는다
+ *      ② 여러 프로필을 순회하는데 각자의 이벤트를 그대로 흘려보내
+ *         → 배너가 **누구 것인지** 뒤섞인다
+ *      ③ 회차가 새로 시작해도 화면이 옛 값을 지우지 않는다(ParentDashboard 쪽)
+ *
+ *    ⇒ 여기서 **회차 전체의 최종 요약을 마지막에 한 번** 보고한다.
+ *      화면은 그것만 믿으면 되고, 올린 게 0이면 `total: 0` 이라 배너가 아예 안 뜬다.
+ */
 export async function migrateAllProfiles(profiles, opts = {}) {
   const byProfile = [];
   let uploaded = 0;
@@ -225,6 +240,18 @@ export async function migrateAllProfiles(profiles, opts = {}) {
     byProfile.push({ profileId: p.id, name: p.name, ...r });
     uploaded += r.uploaded || 0;
     failed += (r.failed || []).length;
+  }
+
+  // 🔴 회차 전체 요약 — **반드시 마지막에** 보낸다. 개별 프로필 이벤트를 덮어
+  //    "이번에 실제로 무슨 일이 있었나"만 남긴다.
+  //    ⚠️ total = 시도한 편수다. 0 이면 화면이 배너를 **안 띄운다**(조건: total > 0).
+  //       "올릴 게 없었다"와 "올렸다"를 화면이 구분할 수 있어야 한다.
+  if (!opts.isAborted?.()) {
+    opts.onProgress?.({
+      phase: "finished", scope: "all",
+      done: uploaded + failed, total: uploaded + failed,
+      uploaded, failed,
+    });
   }
   return { ok: true, uploaded, failed, byProfile };
 }

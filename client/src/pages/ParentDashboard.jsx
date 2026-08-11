@@ -435,6 +435,11 @@ export default function ParentDashboard() {
     if (loading) return;               // profiles 미도착
     if (!profiles.length) return;
     let aborted = false;
+    // 🔴 새 회차를 시작하면 **옛 결과를 먼저 지운다** (2026-08-11 오너 시범에서 발견).
+    //    안 지우면 아이를 지우고 새로 만든 뒤에도 *"일기 1편을 안전하게 보관했어요"* 가
+    //    그대로 떠 있다 — 실제로는 그 아이의 서버 저장분이 0편인데도.
+    //    부모가 "보관됐다"고 믿게 만드는 자리라 **거짓말 중에서도 나쁜 쪽**이다.
+    setMig(null);
     migrateAllProfiles(profiles, {
       onProgress: (p) => { if (!aborted) setMig(p); },
       isAborted: () => aborted,
