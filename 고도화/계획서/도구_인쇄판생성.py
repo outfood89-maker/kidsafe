@@ -20,6 +20,8 @@ def card(m):
     inner = m.group(1)
     head, _, tail = inner.partition("\n")
     if tail.strip():
+        # 카드 안 소항목("- **무엇**: …")이 한 문단으로 뭉개지지 않게 글머리로 되살린다
+        tail = tail.replace("\n- ", "<br>•&nbsp;")
         return f'<div class="card"><div class="card-head">{head}</div><p>{tail}</p></div>'
     return f'<div class="card head-only"><div class="card-head">{head}</div></div>'
 body = re.sub(r"<p>(<strong>[\u2460-\u2473].*?)</p>", card, body, flags=re.S)
