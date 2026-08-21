@@ -5,16 +5,24 @@ import markdown
 ROOT = pathlib.Path("/Users/kimhyeungmin/Desktop/kidsafe/고도화/계획서")
 src = io.open(ROOT / "KT_고도화계획서_초안_v1.md", encoding="utf-8").read()
 
-# ── 내부 표시 제거 (합의된 범위만) ──
-src = src.replace("# Kiddy 솔루션 고도화 계획서 (초안 v13 — 내부 검수용)", "")
-# 머리 인용 블록(메타+내부 노트) 통째로 제거 — 메타는 표지가 대신한다
-src = re.sub(r"^> \*\*접수번호\*\*.*?(?=\n---)", "", src, count=1, flags=re.S)
+# ── 내부 헤더(제목·검수용 블록) 제거: 첫 구분선(---) 이전을 통째로 버린다 ──
+lines = src.split("\n")
+cut = next(i for i, ln in enumerate(lines) if ln.strip() == "---")
+src = "\n".join(lines[cut + 1:])
+assert "오너 검수용" not in src and "변경(2026" not in src, "내부 헤더가 남아 있다"
 src = src.replace("> 📎 **부록 A: 화면별 실제 스크린샷 14장** — 캡처 완료(`부록A_스크린샷/`), PDF 변환 시 삽입. 아래 표는 그 색인입니다.",
                   "> 📎 **부록 A: 화면별 실제 스크린샷 14장** — 문서 끝에 첨부되어 있습니다. 아래 표는 그 색인입니다.")
-src = src.lstrip("\n-— \n")
-if src.startswith("---"): src = src[3:]
 
 body = markdown.markdown(src, extensions=["tables"])
+
+# ── 번호 블록(①②③…)을 카드로: 제목 줄과 본문이 한 단위로, 페이지에서 안 잘리게 ──
+def card(m):
+    inner = m.group(1)
+    head, _, tail = inner.partition("\n")
+    if tail.strip():
+        return f'<div class="card"><div class="card-head">{head}</div><p>{tail}</p></div>'
+    return f'<div class="card head-only"><div class="card-head">{head}</div></div>'
+body = re.sub(r"<p>(<strong>[\u2460-\u2473].*?)</p>", card, body, flags=re.S)
 
 # 이미지 base64 (자체 완결 파일)
 def b64(p):
@@ -69,6 +77,17 @@ html = f"""<meta charset="utf-8">
   td {{ border: 1px solid #d5e5df; padding: 2.2mm 3mm; vertical-align: top; }}
   tr {{ page-break-inside: avoid; }}
   tr:nth-child(even) td {{ background: #f6fbf9; }}
+  /* ── 카드 (번호 블록) ── */
+  .card {{ border: 1px solid #cfe5dd; border-left: 4px solid #0e9f79; border-radius: 8px;
+          background: #fbfefd; padding: 3mm 4.5mm; margin: 3.2mm 0; page-break-inside: avoid; }}
+  .card-head {{ font-weight: 700; font-size: 11.2pt; color: #0b3d33; margin-bottom: 1.2mm; }}
+  .card-head strong {{ color: #0e9f79; }}
+  .card p {{ margin: 0; }}
+  .card.head-only {{ page-break-after: avoid; }}   /* 제목 카드가 다음 목록과 떨어지지 않게 */
+  h2, h3 {{ page-break-after: avoid; }}
+  li {{ page-break-inside: avoid; }}
+  li > strong:first-child, li p > strong:first-child {{ color: #0e6e57; }}
+  blockquote {{ page-break-inside: avoid; }}
   /* ── 부록 ── */
   .appendix figure {{ page-break-inside: avoid; margin: 0 0 8mm; text-align: center; }}
   .appendix img {{ width: 100%; border: 1px solid #d5e5df; border-radius: 8px; }}
@@ -80,10 +99,8 @@ html = f"""<meta charset="utf-8">
   <div class="sub">아이의 첫 마음 친구 — AI 정서 돌봄 미디어 플랫폼</div>
   <img src="data:image/png;base64,{cover_img}">
   <table class="meta">
-    <tr><td>접수번호</td><td>B-일-0033</td></tr>
-    <tr><td>팀</td><td>Kiddy (키디) · 개인 · 김형민</td></tr>
+    <tr><td>팀</td><td>Kiddy (키디) · 김형민</td></tr>
     <tr><td>솔루션</td><td>https://kidsafe-eight.vercel.app</td></tr>
-    <tr><td>제출일</td><td>2026년 8월 26일</td></tr>
     <tr><td>고도화 기간</td><td>2026년 8월 26일 ~ 11월 20일 (12주)</td></tr>
   </table>
 </div>
