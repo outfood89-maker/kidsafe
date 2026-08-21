@@ -188,12 +188,7 @@ def print_pdf(html_path, pdf_path):
                 r = json.loads(ws.recv())
                 if r.get("id") == mid[0]: return r.get("result", {})
         time.sleep(3)
-        r = call("Page.printToPDF", {
-            "printBackground": True, "preferCSSPageSize": True,
-            "displayHeaderFooter": True,
-            "headerTemplate": "<span></span>",
-            "footerTemplate": '<div style="width:100%;text-align:center;font-size:8px;color:#7a9a90;">'
-                              '- <span class="pageNumber"></span> -</div>'})
+        r = call("Page.printToPDF", {"printBackground": True, "preferCSSPageSize": True})
         open(pdf_path, "wb").write(base64.b64decode(r["data"]))
         ws.close()
     finally:
@@ -220,5 +215,24 @@ out_html = ROOT / "KT_고도화계획서_인쇄판.html"
 io.open(out_html, "w", encoding="utf-8").write(build_html(pages))
 print_pdf(out_html, ROOT / "KT_고도화계획서_Kiddy.pdf")
 tmp_html.unlink(); tmp_pdf.unlink()
+
+# ── 쪽번호 스탬프: PDF 자체에 그린다 — 어떤 뷰어에서도 보인다 (표지는 제외, 번호는 표지 포함 순번) ──
+from pypdf import PdfWriter
+from reportlab.pdfgen import canvas as rl_canvas
+from reportlab.lib.pagesizes import A4
+final = ROOT / "KT_고도화계획서_Kiddy.pdf"
+reader2 = PdfReader(final)
+writer = PdfWriter()
+for idx, pg in enumerate(reader2.pages):
+    if idx > 0:
+        buf = io.BytesIO()
+        c = rl_canvas.Canvas(buf, pagesize=(float(pg.mediabox.width), float(pg.mediabox.height)))
+        c.setFont("Helvetica", 9); c.setFillColorRGB(0.45, 0.58, 0.55)
+        c.drawCentredString(float(pg.mediabox.width) / 2, 18, f"- {idx + 1} -")
+        c.save(); buf.seek(0)
+        pg.merge_page(PdfReader(buf).pages[0])
+    writer.add_page(pg)
+with open(final, "wb") as f:
+    writer.write(f)
 n = len(PdfReader(ROOT / "KT_고도화계획서_Kiddy.pdf").pages)
 print(f"✅ 최종 PDF {n}p · 목차:", {k: v for k, v in pages.items()})
