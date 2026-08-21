@@ -26,6 +26,12 @@ def card(m):
     return f'<div class="card head-only"><div class="card-head">{head}</div></div>'
 body = re.sub(r"<p>(<strong>[\u2460-\u2473].*?)</p>", card, body, flags=re.S)
 
+# ── §3-6(추가 작업 목표)을 체크리스트 구역으로 감싼다 ──
+_i = body.index("3-6. 추가 작업 목표")
+_start = body.rindex("<h3", 0, _i)
+_end = body.index("<h2", _i)
+body = body[:_start] + '<section class="goals">' + body[_start:_end] + "</section>" + body[_end:]
+
 # 이미지 base64 (자체 완결 파일)
 def b64(p):
     return base64.b64encode(open(p, "rb").read()).decode()
@@ -40,7 +46,7 @@ for s in shots:
         f"<figcaption>{s.stem.split('_')[0]}. {captions[s.stem]}</figcaption></figure>")
 appendix.append("</section>")
 
-cover_img = b64(shots_dir / "01_랜딩.png")
+logo_img = b64(pathlib.Path("/Users/kimhyeungmin/Desktop/kidsafe/client/public/images/logo/kiddy_logo_clean.png"))
 
 html = f"""<meta charset="utf-8">
 <style>
@@ -48,15 +54,13 @@ html = f"""<meta charset="utf-8">
   * {{ box-sizing: border-box; }}
   body {{ font-family: "Apple SD Gothic Neo", "Pretendard", sans-serif; color: #1a2b28;
          font-size: 10.5pt; line-height: 1.72; margin: 0; }}
-  /* ── 표지 ── */
-  .cover {{ page-break-after: always; text-align: center; padding-top: 30mm; }}
-  .cover .eyebrow {{ color: #0e9f79; font-weight: 700; letter-spacing: .18em; font-size: 10pt; }}
-  .cover h1 {{ font-size: 27pt; margin: 8mm 0 3mm; border: none; letter-spacing: -0.02em; }}
-  .cover .sub {{ color: #4a5f5a; font-size: 12pt; margin-bottom: 12mm; }}
-  .cover img {{ width: 128mm; border-radius: 10px; box-shadow: 0 3px 16px rgba(15,60,50,.22); }}
-  .cover .meta {{ margin: 12mm auto 0; border-collapse: collapse; font-size: 10.5pt; }}
-  .cover .meta td {{ padding: 1.6mm 5mm; border: none; }}
-  .cover .meta td:first-child {{ color: #0e9f79; font-weight: 700; text-align: right; }}
+  /* ── 머리 밴드 (표지 대신 — 같은 페이지에서 본문 시작) ── */
+  .head {{ display: flex; align-items: center; gap: 6mm; border-bottom: 2.5px solid #0e9f79;
+          padding-bottom: 4mm; margin-bottom: 6mm; }}
+  .head img {{ width: 23mm; flex: none; }}
+  .head .eyebrow {{ color: #0e9f79; font-weight: 700; letter-spacing: .14em; font-size: 9pt; }}
+  .head h1 {{ font-size: 19pt; margin: 1mm 0; letter-spacing: -0.02em; }}
+  .head .meta-line {{ color: #4a5f5a; font-size: 9.5pt; }}
   /* ── 제목 체계 ── */
   h2 {{ page-break-before: always; font-size: 16.5pt; color: #0b3d33; margin: 0 0 5mm;
         padding-bottom: 2.5mm; border-bottom: 2.5px solid #0e9f79; letter-spacing: -0.01em; }}
@@ -79,6 +83,8 @@ html = f"""<meta charset="utf-8">
   td {{ border: 1px solid #d5e5df; padding: 2.2mm 3mm; vertical-align: top; }}
   tr {{ page-break-inside: avoid; }}
   tr:nth-child(even) td {{ background: #f6fbf9; }}
+  th, td {{ word-break: keep-all; overflow-wrap: break-word; }}
+  th:first-child, td:first-child {{ white-space: nowrap; }}
   /* ── 카드 (번호 블록) ── */
   .card {{ border: 1px solid #cfe5dd; border-left: 4px solid #0e9f79; border-radius: 8px;
           background: #fbfefd; padding: 3mm 4.5mm; margin: 3.2mm 0; page-break-inside: avoid; }}
@@ -90,21 +96,25 @@ html = f"""<meta charset="utf-8">
   li {{ page-break-inside: avoid; }}
   li > strong:first-child, li p > strong:first-child {{ color: #0e6e57; }}
   blockquote {{ page-break-inside: avoid; }}
+  /* ── §3-6 체크리스트 ── */
+  .goals h3 {{ font-size: 13.5pt; }}
+  .goals .card {{ background: #fffdf6; border-color: #e8dcc0; border-left-color: #d99a06; }}
+  .goals .card-head::before {{ content: "☐  "; color: #d99a06; font-weight: 800; }}
+  .goals ul {{ list-style: none; padding-left: 1.5mm; }}
+  .goals li {{ position: relative; padding-left: 7mm; margin: 2mm 0; }}
+  .goals li::before {{ content: "☐"; position: absolute; left: 0; top: 0; color: #d99a06; font-weight: 800; }}
   /* ── 부록 ── */
   .appendix figure {{ page-break-inside: avoid; margin: 0 0 8mm; text-align: center; }}
   .appendix img {{ width: 100%; border: 1px solid #d5e5df; border-radius: 8px; }}
   .appendix figcaption {{ color: #4a5f5a; font-size: 9.5pt; margin-top: 1.5mm; }}
 </style>
-<div class="cover">
-  <div class="eyebrow">2026 K-AI 콘텐츠 공모전 · 솔루션 고도화 계획서</div>
-  <h1>Kiddy (키디)</h1>
-  <div class="sub">아이의 첫 마음 친구 — AI 정서 돌봄 미디어 플랫폼</div>
-  <img src="data:image/png;base64,{cover_img}">
-  <table class="meta">
-    <tr><td>팀</td><td>Kiddy (키디) · 김형민</td></tr>
-    <tr><td>솔루션</td><td>https://kidsafe-eight.vercel.app</td></tr>
-    <tr><td>고도화 기간</td><td>2026년 8월 26일 ~ 11월 20일 (12주)</td></tr>
-  </table>
+<div class="head">
+  <img src="data:image/png;base64,{logo_img}">
+  <div>
+    <div class="eyebrow">2026 K-AI 콘텐츠 공모전 · 솔루션 고도화 계획서</div>
+    <h1>Kiddy (키디) — 아이의 첫 마음 친구</h1>
+    <div class="meta-line">김형민 · https://kidsafe-eight.vercel.app · 고도화 기간 2026. 8. 26 ~ 11. 20 (12주)</div>
+  </div>
 </div>
 {body}
 {''.join(appendix)}
